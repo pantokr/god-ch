@@ -1,0 +1,236 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+    function memberPath(cid) {
+      return /databases/$(database)/documents/churches/$(cid)/members/$(request.auth.uid);
+    }
+    // 교회별로 승인된 교인만 해당 교회 데이터에 접근할 수 있다.
+    function isActive(cid) {
+      return signedIn() && exists(memberPath(cid)) && get(memberPath(cid)).data.status == 'approved';
+    }
+    function isStaff(cid) {
+      return isActive(cid) && get(memberPath(cid)).data.role in ['staff', 'admin'];
+    }
+    function isAdmin(cid) {
+      return isActive(cid) && get(memberPath(cid)).data.role == 'admin';
+    }
+    function prayer(cid, pid) {
+      return get(/databases/$(database)/documents/churches/$(cid)/prayers/$(pid)).data;
+    }
+    // 부서 전용 글(departmentId != null)은 그 부서에 소속된 교인에게만 보인다.
+    function inDept(cid, deptId) {
+      return deptId == null || deptId in get(memberPath(cid)).data.departmentIds;
+    }
+    function isOpen(cid, pid) {
+      return prayer(cid, pid).visibility == 'public'
+        && prayer(cid, pid).deleted == false
+        && inDept(cid, prayer(cid, pid).departmentId);
+    }
+    function inviteOk(cid, code) {
+      let invite = get(/databases/$(database)/documents/inviteCodes/$(code)).data;
+      return invite.churchId == cid && invite.expiresAt > request.time;
+    }
+    function changed() {
+      return request.resource.data.diff(resource.data).affectedKeys();
+    }
+
+    // 초대 코드: 유효기간이 지난 코드는 조회 자체가 거부된다. 코드를 아는 사람만 get 할 수 있다.
+    match /inviteCodes/{code} {
+      allow get: if signedIn() && resource.data.expiresAt > request.time;
+      // 교역자는 자기 교회의 코드 목록을 볼 수 있다 (churchId 조건으로만 조회).
+      allow list: if signedIn() && isStaff(resource.data.churchId);
+      // 교회를 만든 사람(최초 코드) 또는 그 교회의 교역자만 코드를 만들 수 있다. 최대 31일.
+      allow create: if signedIn()
+        && request.resource.data.keys().hasOnly(['churchId', 'churchName', 'expiresAt', 'createdBy'])
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.expiresAt is timestamp
+        && request.resource.data.expiresAt > request.time
+        && request.resource.data.expiresAt <= request.time + duration.value(31, 'd')
+        && (getAfter(/databases/$(database)/documents/churches/$(request.resource.data.churchId)).data.createdBy
+              == request.auth.uid
+            || isStaff(request.resource.data.churchId));
+      allow update: if false;
+      allow delete: if signedIn() && isStaff(resource.data.churchId);
+    }
+    // 내 소속 교회 목록(collection group 쿼리): 본인 문서만 읽을 수 있다.
+    match /{path=**}/members/{memberId} {
+      allow read: if signedIn() && resource.data.uid == request.auth.uid;
+    }
+
+    match /churches/{churchId} {
+      // 누구나 교회를 만들 수 있고, 만든 사람이 첫 관리자가 된다.
+      allow create: if signedIn()
+        && request.resource.data.keys().hasOnly(['name', 'createdBy', 'createdAt'])
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 50;
+      allow get: if isStaff(churchId);
+      allow update, delete: if false;
+
+      // ---- 교회별 교인 / 입장 신청 ----
+      match /members/{memberId} {
+        allow get: if signedIn() && (request.auth.uid == memberId || isStaff(churchId));
+        allow list: if isStaff(churchId);
+
+        allow create: if signedIn()
+          && request.auth.uid == memberId
+          && request.resource.data.keys().hasOnly(
+               ['uid', 'churchId', 'churchName', 'name', 'email', 'role', 'status', 'createdAt',
+                'departmentIds', 'inviteCode'])
+          && request.resource.data.departmentIds == []
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.churchId == churchId
+          && request.resource.data.name is string
+          && request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 30
+          && (
+            // 유효기간 안의 초대 코드로만 입장 신청: 항상 '교인 / 승인 대기'
+            (request.resource.data.role == 'member' && request.resource.data.status == 'pending'
+                && request.resource.data.inviteCode is string
+                && inviteOk(churchId, request.resource.data.inviteCode))
+            // 교회를 만든 사람: 첫 관리자
+            || (request.resource.data.role == 'admin' && request.resource.data.status == 'approved'
+                && getAfter(/databases/$(database)/documents/churches/$(churchId)).data.createdBy
+                   == request.auth.uid)
+          );
+
+        allow update:
+          // 관리자: 역할·상태 관리 (본인 계정은 제외해 잠금 방지)
+          if (isAdmin(churchId) && request.auth.uid != memberId
+                && changed().hasOnly(['role', 'status']))
+          // 교역자: 일반 교인의 승인 상태만 변경
+          || (isStaff(churchId) && resource.data.role == 'member'
+                && changed().hasOnly(['status']))
+          // 본인: 소속 부서 선택 (승인된 교인만)
+          || (isActive(churchId) && request.auth.uid == memberId
+                && changed().hasOnly(['departmentIds'])
+                && request.resource.data.departmentIds is list
+                && request.resource.data.departmentIds.size() <= 20);
+
+        allow delete: if false;
+      }
+
+      // ---- 부서: 교역자가 만들고, 교인이 스스로 소속을 선택한다 ----
+      match /departments/{deptId} {
+        allow read: if isActive(churchId);
+        allow create: if isStaff(churchId)
+          && request.resource.data.keys().hasOnly(['name', 'createdBy', 'createdAt'])
+          && request.resource.data.createdBy == request.auth.uid
+          && request.resource.data.name is string
+          && request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 30;
+        allow update: if isStaff(churchId)
+          && changed().hasOnly(['name'])
+          && request.resource.data.name is string
+          && request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 30;
+        allow delete: if false;
+      }
+
+      // ---- 기도제목 ----
+      match /prayers/{prayerId} {
+        // 일반 교인은 '공개 + 미삭제' 글과 본인의 미삭제 글만 읽을 수 있다.
+        // 비공개 글은 쿼리 결과에도 포함되지 않는다.
+        allow read: if isActive(churchId) && (
+          isStaff(churchId)
+          || (resource.data.visibility == 'public' && resource.data.deleted == false
+              && inDept(churchId, resource.data.departmentId))
+          || (resource.data.authorId == request.auth.uid && resource.data.deleted == false)
+        );
+
+        allow create: if isActive(churchId)
+          && request.resource.data.keys().hasOnly(
+               ['authorId', 'title', 'content', 'visibility', 'createdAt', 'updatedAt', 'deleted',
+                'departmentId'])
+          // 교회 전체(null)이거나 내가 소속된 부서에만 쓸 수 있다.
+          && (request.resource.data.departmentId == null
+              || isStaff(churchId)
+              || request.resource.data.departmentId in get(memberPath(churchId)).data.departmentIds)
+          && request.resource.data.authorId == request.auth.uid
+          && request.resource.data.deleted == false
+          && request.resource.data.visibility in ['public', 'private']
+          && request.resource.data.title is string
+          && request.resource.data.title.size() > 0 && request.resource.data.title.size() <= 100
+          && request.resource.data.content is string
+          && request.resource.data.content.size() > 0 && request.resource.data.content.size() <= 3000;
+
+        allow update: if isActive(churchId) && (
+          // 작성자: 내용 수정 / 답변 확인 표시
+          (resource.data.authorId == request.auth.uid && resource.data.deleted == false
+            && changed().hasOnly(['title', 'content', 'visibility', 'updatedAt', 'responseSeenAt'])
+            && request.resource.data.visibility in ['public', 'private']
+            && request.resource.data.title.size() > 0 && request.resource.data.title.size() <= 100
+            && request.resource.data.content.size() > 0 && request.resource.data.content.size() <= 3000)
+          // 작성자: 본인 글 삭제 (소프트 삭제)
+          || (resource.data.authorId == request.auth.uid && resource.data.deleted == false
+            && changed().hasOnly(['deleted', 'deletedAt', 'deletedBy', 'deleteReason'])
+            && request.resource.data.deleted == true
+            && request.resource.data.deletedBy == request.auth.uid)
+          // 교역자: 삭제(사유 필수) / 복구 / 비공개 글 응답 시각 기록
+          || (isStaff(churchId)
+            && changed().hasOnly(['deleted', 'deletedAt', 'deletedBy', 'deleteReason', 'lastResponseAt'])
+            && (request.resource.data.deleted == false
+                || (request.resource.data.deletedBy == request.auth.uid
+                    && request.resource.data.deleteReason is string
+                    && request.resource.data.deleteReason.size() > 0)))
+        );
+
+        // 영구 삭제는 허용하지 않는다 (소프트 삭제만).
+        allow delete: if false;
+
+        // 이모티콘 응원: 문서 ID는 {uid}_{type}. 공개 글에만 가능하다.
+        match /reactions/{reactionId} {
+          allow read: if isActive(churchId) && (isStaff(churchId) || isOpen(churchId, prayerId));
+          allow create: if isActive(churchId)
+            && isOpen(churchId, prayerId)
+            && request.resource.data.keys().hasOnly(['uid', 'type', 'createdAt'])
+            && request.resource.data.uid == request.auth.uid
+            && request.resource.data.type in ['pray', 'love', 'cheer', 'peace']
+            && reactionId == request.auth.uid + '_' + request.resource.data.type;
+          allow update: if false;
+          allow delete: if isActive(churchId) && resource.data.uid == request.auth.uid;
+        }
+
+        // 교역자 댓글: 공개 글에만, 교역자·관리자만 작성.
+        match /comments/{commentId} {
+          allow read: if isActive(churchId) && (isStaff(churchId) || isOpen(churchId, prayerId));
+          allow create: if isStaff(churchId)
+            && isOpen(churchId, prayerId)
+            && request.resource.data.keys().hasOnly(['authorId', 'content', 'createdAt'])
+            && request.resource.data.authorId == request.auth.uid
+            && request.resource.data.content is string
+            && request.resource.data.content.size() > 0 && request.resource.data.content.size() <= 500;
+          allow update: if false;
+          allow delete: if isStaff(churchId)
+            && (resource.data.authorId == request.auth.uid || isAdmin(churchId));
+        }
+
+        // 비공개 글에 대한 교역자 응답: 작성자와 교역자만 읽을 수 있다.
+        match /responses/{responseId} {
+          allow read: if isStaff(churchId)
+            || (isActive(churchId)
+                && prayer(churchId, prayerId).authorId == request.auth.uid
+                && prayer(churchId, prayerId).deleted == false);
+          allow create: if isStaff(churchId)
+            && prayer(churchId, prayerId).visibility == 'private'
+            && request.resource.data.keys().hasOnly(['staffId', 'content', 'createdAt'])
+            && request.resource.data.staffId == request.auth.uid
+            && request.resource.data.content is string
+            && request.resource.data.content.size() > 0 && request.resource.data.content.size() <= 1000;
+          allow update, delete: if false;
+        }
+      }
+
+      // ---- 비공개 글 접근 기록: 교역자가 기록하고 관리자만 열람, 수정·삭제 불가 ----
+      match /accessLogs/{logId} {
+        allow create: if isStaff(churchId)
+          && request.resource.data.keys().hasOnly(['staffId', 'prayerId', 'at'])
+          && request.resource.data.staffId == request.auth.uid;
+        allow read: if isAdmin(churchId);
+        allow update, delete: if false;
+      }
+    }
+  }
+}
+

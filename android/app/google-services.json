@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "803236883584",
+    "project_id": "being-built-together",
+    "storage_bucket": "being-built-together.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:803236883584:android:ff470e40c3f46356b18a65",
+        "android_client_info": {
+          "package_name": "com.pantokr.built_in_together"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDgRws4EIKBHhN0f5nuDzFd6pcSl5tnFnU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

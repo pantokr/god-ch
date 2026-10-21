@@ -1,0 +1,32 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
+import 'firestore_codec.dart';
+
+/// Firestore 컬렉션 경로를 한곳에 모았다. 모든 교회 데이터는 churches/{churchId} 아래에 있다.
+class FirestorePaths {
+  const FirestorePaths(this.db);
+
+  final FirebaseFirestore db;
+
+  CollectionReference<Json> get churches => db.collection('churches');
+
+  /// 초대 코드 → 교회 연결. 문서 ID가 코드 자체다.
+  CollectionReference<Json> get inviteCodes => db.collection('inviteCodes');
+
+  DocumentReference<Json> church(String churchId) => churches.doc(churchId);
+
+  CollectionReference<Json> members(String churchId) =>
+      church(churchId).collection('members');
+
+  CollectionReference<Json> departments(String churchId) =>
+      church(churchId).collection('departments');
+
+  CollectionReference<Json> prayers(String churchId) =>
+      church(churchId).collection('prayers');
+
+  CollectionReference<Json> accessLogs(String churchId) =>
+      church(churchId).collection('accessLogs');
+
+  /// 모든 교회의 members 문서 (내 소속 교회 조회용 collection group).
+  Query<Json> get allMembers => db.collectionGroup('members');
+}
