@@ -8,7 +8,8 @@ service cloud.firestore {
     function memberPath(cid) {
       return /databases/$(database)/documents/churches/$(cid)/members/$(request.auth.uid);
     }
-    // 교회별로 승인된 교인만 해당 교회 데이터에 접근할 수 있다.
+    // 교회별로 승인된 교인만 해당 교회 데이터(기도제목 등)에 접근할 수 있다.
+    // 앱 운영자는 교회 소속이 아니므로 기도제목 내용은 볼 수 없다 (아래 isManager/isOwner 참고).
     function isActive(cid) {
       return signedIn() && exists(memberPath(cid)) && get(memberPath(cid)).data.status == 'approved';
     }
@@ -17,6 +18,14 @@ service cloud.firestore {
     }
     function isAdmin(cid) {
       return isActive(cid) && get(memberPath(cid)).data.role == 'admin';
+    }
+    // 교회 관리 데이터(교인·초대 코드·부서)를 다룰 수 있는 사람: 그 교회의 교역자·교회 운영자, 앱 운영자.
+    function isManager(cid) {
+      return isPlatformAdmin() || isStaff(cid);
+    }
+    // 교인의 역할을 바꿀 수 있는 사람: 그 교회의 교회 운영자, 앱 운영자.
+    function isOwner(cid) {
+      return isPlatformAdmin() || isAdmin(cid);
     }
     function prayer(cid, pid) {
       return get(/databases/$(database)/documents/churches/$(cid)/prayers/$(pid)).data;
@@ -37,24 +46,104 @@ service cloud.firestore {
     function changed() {
       return request.resource.data.diff(resource.data).affectedKeys();
     }
+    // 앱 운영자: 계정에 platformAdmin 클레임이 있거나 admins/{uid} 문서가 있는 계정.
+    // 둘 다 서버 관리자 권한으로만 만들 수 있다.
+    function isPlatformAdmin() {
+      return signedIn()
+        && (request.auth.token.get('platformAdmin', false) == true
+            || exists(/databases/$(database)/documents/admins/$(request.auth.uid)));
+    }
+    // 이메일 인증을 마친 계정인가 (Google 로그인은 항상 인증됨).
+    function emailVerified() {
+      return signedIn() && request.auth.token.get('email_verified', false) == true;
+    }
+    // 교회 생성 요청 문서. 승인되면 같은 ID로 교회가 만들어진다.
+    function churchRequest(requestId) {
+      return get(/databases/$(database)/documents/churchRequests/$(requestId)).data;
+    }
+
+    // 로그인 ID → 이메일 조회. 로그인 전에 읽어야 하므로 get은 누구나 가능하고 목록은 볼 수 없다.
+    // ID는 한 번 만들면 바꾸거나 지울 수 없고, 예약된 ID(admin 등)는 만들 수 없다.
+    match /loginIds/{loginId} {
+      allow get: if true;
+      allow list: if false;
+      allow create: if signedIn()
+        && loginId.matches('^[a-z][a-z0-9_]{3,19}$')
+        && !(loginId in ['admin', 'administrator', 'root', 'system', 'operator'])
+        && request.resource.data.keys().hasOnly(['uid', 'email'])
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.email == request.auth.token.email;
+      allow update, delete: if false;
+    }
+
+    // 회원 프로필: 가입할 때 받은 이름·전화번호와 개인정보 제3자 제공 동의 기록.
+    match /users/{userId} {
+      allow get: if signedIn() && (request.auth.uid == userId || isPlatformAdmin());
+      // 앱 운영자 패널의 회원 관리에서 전체 회원을 볼 수 있다.
+      allow list: if isPlatformAdmin();
+      allow create: if signedIn()
+        && request.auth.uid == userId
+        && request.resource.data.keys().hasOnly(
+             ['loginId', 'name', 'phone', 'email', 'consentThirdParty', 'consentAt', 'createdAt'])
+        && request.resource.data.consentThirdParty == true
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 30
+        && request.resource.data.phone is string
+        && request.resource.data.phone.size() >= 8 && request.resource.data.phone.size() <= 20
+        && request.resource.data.email == request.auth.token.email;
+      allow update, delete: if false;
+    }
+
+    match /admins/{adminId} {
+      // 자신이 운영자인지 확인할 수 있을 뿐, 클라이언트에서는 만들거나 바꿀 수 없다.
+      allow get: if signedIn() && request.auth.uid == adminId;
+      allow list, write: if false;
+    }
+
+    // 교회 생성 요청: 누구나 신청하고, 앱 운영자가 승인/거절한다.
+    match /churchRequests/{requestId} {
+      allow create: if emailVerified()
+        && request.resource.data.keys().hasOnly(
+             ['requesterId', 'requesterName', 'requesterEmail', 'requesterPhone', 'name', 'phone',
+              'address', 'status', 'createdAt'])
+        && (!('requesterPhone' in request.resource.data) || request.resource.data.requesterPhone.size() <= 20)
+        && request.resource.data.requesterId == request.auth.uid
+        && request.resource.data.status == 'pending'
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 50
+        && request.resource.data.phone is string
+        && request.resource.data.phone.size() >= 8 && request.resource.data.phone.size() <= 20
+        && request.resource.data.address is string
+        && request.resource.data.address.size() > 0 && request.resource.data.address.size() <= 200
+        && request.resource.data.requesterName is string
+        && request.resource.data.requesterName.size() > 0
+        && request.resource.data.requesterName.size() <= 30;
+      // 요청자는 자기 요청만, 운영자는 모든 요청을 읽는다.
+      allow get: if signedIn() && (resource.data.requesterId == request.auth.uid || isPlatformAdmin());
+      allow list: if signedIn() && (resource.data.requesterId == request.auth.uid || isPlatformAdmin());
+      allow update: if isPlatformAdmin()
+        && resource.data.status == 'pending'
+        && changed().hasOnly(['status', 'reviewedBy', 'reviewedAt', 'rejectReason', 'churchId'])
+        && request.resource.data.status in ['approved', 'rejected']
+        && request.resource.data.reviewedBy == request.auth.uid;
+      allow delete: if false;
+    }
 
     // 초대 코드: 유효기간이 지난 코드는 조회 자체가 거부된다. 코드를 아는 사람만 get 할 수 있다.
     match /inviteCodes/{code} {
       allow get: if signedIn() && resource.data.expiresAt > request.time;
-      // 교역자는 자기 교회의 코드 목록을 볼 수 있다 (churchId 조건으로만 조회).
-      allow list: if signedIn() && isStaff(resource.data.churchId);
-      // 교회를 만든 사람(최초 코드) 또는 그 교회의 교역자만 코드를 만들 수 있다. 최대 31일.
+      // 교역자·교회 운영자·앱 운영자는 그 교회의 코드 목록을 볼 수 있다 (churchId 조건으로만 조회).
+      allow list: if signedIn() && isManager(resource.data.churchId);
+      // 그 교회의 교역자만 코드를 만들 수 있다. 유효기간은 최대 31일.
       allow create: if signedIn()
         && request.resource.data.keys().hasOnly(['churchId', 'churchName', 'expiresAt', 'createdBy'])
         && request.resource.data.createdBy == request.auth.uid
         && request.resource.data.expiresAt is timestamp
         && request.resource.data.expiresAt > request.time
         && request.resource.data.expiresAt <= request.time + duration.value(31, 'd')
-        && (getAfter(/databases/$(database)/documents/churches/$(request.resource.data.churchId)).data.createdBy
-              == request.auth.uid
-            || isStaff(request.resource.data.churchId));
+        && isManager(request.resource.data.churchId);
       allow update: if false;
-      allow delete: if signedIn() && isStaff(resource.data.churchId);
+      allow delete: if signedIn() && isManager(resource.data.churchId);
     }
     // 내 소속 교회 목록(collection group 쿼리): 본인 문서만 읽을 수 있다.
     match /{path=**}/members/{memberId} {
@@ -62,47 +151,66 @@ service cloud.firestore {
     }
 
     match /churches/{churchId} {
-      // 누구나 교회를 만들 수 있고, 만든 사람이 첫 관리자가 된다.
-      allow create: if signedIn()
-        && request.resource.data.keys().hasOnly(['name', 'createdBy', 'createdAt'])
-        && request.resource.data.createdBy == request.auth.uid
-        && request.resource.data.name is string
-        && request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 50;
-      allow get: if isStaff(churchId);
+      // 교회는 앱 운영자가 생성 요청을 승인할 때만 만들어진다. 교회 ID는 요청 ID와 같고,
+      // 내용은 요청과 일치해야 하며, 요청한 사람이 만든 사람(첫 관리자)이 된다.
+      allow create: if isPlatformAdmin()
+        && request.resource.data.keys().hasOnly(
+             ['name', 'phone', 'address', 'createdBy', 'createdAt'])
+        && (
+          // 앱 운영자가 직접 등록: 전화번호는 비워둘 수 있다.
+          (request.resource.data.createdBy == request.auth.uid
+              && request.resource.data.name is string
+              && request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 50
+              && request.resource.data.phone is string && request.resource.data.phone.size() <= 20
+              && request.resource.data.address is string
+              && request.resource.data.address.size() > 0 && request.resource.data.address.size() <= 200)
+          // 교회 생성 요청 승인: 요청과 같은 ID·내용으로만 만든다.
+          || (churchRequest(churchId).status == 'pending'
+              && request.resource.data.createdBy == churchRequest(churchId).requesterId
+              && request.resource.data.name == churchRequest(churchId).name
+              && request.resource.data.phone == churchRequest(churchId).phone
+              && request.resource.data.address == churchRequest(churchId).address)
+        );
+      // 등록된 모든 교회 목록은 앱 운영자만 볼 수 있다.
+      allow list: if isPlatformAdmin();
+      allow get: if isManager(churchId);
       allow update, delete: if false;
 
       // ---- 교회별 교인 / 입장 신청 ----
       match /members/{memberId} {
-        allow get: if signedIn() && (request.auth.uid == memberId || isStaff(churchId));
-        allow list: if isStaff(churchId);
+        allow get: if signedIn() && (request.auth.uid == memberId || isManager(churchId));
+        allow list: if isManager(churchId);
 
         allow create: if signedIn()
-          && request.auth.uid == memberId
           && request.resource.data.keys().hasOnly(
-               ['uid', 'churchId', 'churchName', 'name', 'email', 'role', 'status', 'createdAt',
-                'departmentIds', 'inviteCode'])
+               ['uid', 'churchId', 'churchName', 'name', 'email', 'phone', 'role', 'status',
+                'createdAt', 'departmentIds', 'inviteCode'])
+          && (!('phone' in request.resource.data) || request.resource.data.phone.size() <= 20)
           && request.resource.data.departmentIds == []
-          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.uid == memberId
           && request.resource.data.churchId == churchId
           && request.resource.data.name is string
           && request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 30
           && (
-            // 유효기간 안의 초대 코드로만 입장 신청: 항상 '교인 / 승인 대기'
-            (request.resource.data.role == 'member' && request.resource.data.status == 'pending'
+            // 본인이 유효기간 안의 초대 코드로 입장 신청: 항상 '교인 / 승인 대기'
+            (request.auth.uid == memberId && emailVerified()
+                && request.resource.data.role == 'member' && request.resource.data.status == 'pending'
                 && request.resource.data.inviteCode is string
                 && inviteOk(churchId, request.resource.data.inviteCode))
-            // 교회를 만든 사람: 첫 관리자
-            || (request.resource.data.role == 'admin' && request.resource.data.status == 'approved'
-                && getAfter(/databases/$(database)/documents/churches/$(churchId)).data.createdBy
-                   == request.auth.uid)
+
+            // 앱 운영자가 교회 생성 요청을 승인할 때: 요청한 사람을 교회 운영자로 등록
+            || (isPlatformAdmin()
+                && request.resource.data.role == 'admin' && request.resource.data.status == 'approved'
+                && churchRequest(churchId).status == 'pending'
+                && churchRequest(churchId).requesterId == memberId)
           );
 
         allow update:
           // 관리자: 역할·상태 관리 (본인 계정은 제외해 잠금 방지)
-          if (isAdmin(churchId) && request.auth.uid != memberId
+          if (isOwner(churchId) && request.auth.uid != memberId
                 && changed().hasOnly(['role', 'status']))
           // 교역자: 일반 교인의 승인 상태만 변경
-          || (isStaff(churchId) && resource.data.role == 'member'
+          || (isManager(churchId) && resource.data.role == 'member'
                 && changed().hasOnly(['status']))
           // 본인: 소속 부서 선택 (승인된 교인만)
           || (isActive(churchId) && request.auth.uid == memberId
@@ -115,13 +223,13 @@ service cloud.firestore {
 
       // ---- 부서: 교역자가 만들고, 교인이 스스로 소속을 선택한다 ----
       match /departments/{deptId} {
-        allow read: if isActive(churchId);
-        allow create: if isStaff(churchId)
+        allow read: if isActive(churchId) || isPlatformAdmin();
+        allow create: if isManager(churchId)
           && request.resource.data.keys().hasOnly(['name', 'createdBy', 'createdAt'])
           && request.resource.data.createdBy == request.auth.uid
           && request.resource.data.name is string
           && request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 30;
-        allow update: if isStaff(churchId)
+        allow update: if isManager(churchId)
           && changed().hasOnly(['name'])
           && request.resource.data.name is string
           && request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 30;

@@ -65,7 +65,7 @@ class _HomeShellState extends State<HomeShell> {
   static const _labels = {
     _Section.feed: '기도제목',
     _Section.mine: '내 기도제목',
-    _Section.admin: '관리',
+    _Section.admin: '교회 관리',
     _Section.info: '내 정보',
   };
 

@@ -7,7 +7,7 @@ import 'department_admin_tab.dart';
 import 'member_admin_tab.dart';
 import 'prayer_admin_tab.dart';
 
-/// 교역자·관리자 전용 화면: 기도제목 관리, 교인 관리, 부서 관리.
+/// 교회 관리: 교역자·교회 운영자 전용. 기도제목 관리, 교인 관리(초대 코드 포함), 부서 관리.
 class AdminPage extends StatelessWidget {
   const AdminPage({super.key, required this.me});
 
@@ -27,7 +27,10 @@ class AdminPage extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const SizedBox(height: 28),
-                const PageTitle(title: '관리', subtitle: '기도제목, 교인, 부서를 관리해요.'),
+                const PageTitle(
+                  title: '교회 관리',
+                  subtitle: '기도제목, 교인, 부서를 관리해요.',
+                ),
                 const TabBar(
                   isScrollable: true,
                   tabs: [

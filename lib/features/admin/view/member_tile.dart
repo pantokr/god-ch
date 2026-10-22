@@ -13,7 +13,7 @@ class MemberTile extends StatelessWidget {
   static const _roleLabel = {
     Role.member: '교인',
     Role.staff: '교역자',
-    Role.admin: '관리자',
+    Role.admin: '교회 운영자',
   };
   static const _statusLabel = {
     MemberStatus.pending: '승인 대기',
@@ -30,7 +30,8 @@ class MemberTile extends StatelessWidget {
     return ListTile(
       title: Text(member.name),
       subtitle: Text(
-        '${member.email}\n'
+        // 전화번호는 교인이 교회에 제공하는 것에 동의한 정보다.
+        '${member.email}${member.phone.isEmpty ? '' : ' · ${member.phone}'}\n'
         '${_roleLabel[member.role]} · ${_statusLabel[member.status]}',
       ),
       isThreeLine: true,
@@ -70,7 +71,7 @@ class MemberTile extends StatelessWidget {
                     if (canRole && member.role != Role.admin)
                       PopupMenuItem(
                         value: () => vm.setRole(member, Role.admin),
-                        child: const Text('관리자로 지정'),
+                        child: const Text('교회 운영자로 지정'),
                       ),
                   ],
                 ),

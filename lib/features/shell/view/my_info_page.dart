@@ -63,7 +63,7 @@ class MyInfoPage extends StatelessWidget {
 List<ProfileDetail> profileDetailsOf(Member me) => [
   ProfileDetail('교회', me.churchName),
   ProfileDetail('역할', switch (me.role) {
-    Role.admin => '관리자',
+    Role.admin => '교회 운영자',
     Role.staff => '교역자',
     Role.member => '교인',
   }),

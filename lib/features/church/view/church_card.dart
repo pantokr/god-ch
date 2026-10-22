@@ -34,7 +34,7 @@ class ChurchCard extends StatelessWidget {
                     height: 44,
                     decoration: BoxDecoration(
                       color: AppColors.brand.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(AppRadius.control),
                     ),
                     child: const Icon(Icons.church, color: AppColors.brand),
                   ),
@@ -50,7 +50,7 @@ class ChurchCard extends StatelessWidget {
                           ),
                         ),
                         Text(switch (member.role) {
-                          Role.admin => '관리자',
+                          Role.admin => '교회 운영자',
                           Role.staff => '교역자',
                           Role.member => '교인',
                         }, style: const TextStyle(color: AppColors.muted)),

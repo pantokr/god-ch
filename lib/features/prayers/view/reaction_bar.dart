@@ -84,13 +84,16 @@ class _ReactionPill extends StatelessWidget {
         color: selected
             ? AppColors.brand.withValues(alpha: 0.1)
             : Colors.transparent,
-        shape: StadiumBorder(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.control),
           side: BorderSide(
             color: selected ? AppColors.brand : AppColors.border,
           ),
         ),
         child: InkWell(
-          customBorder: const StadiumBorder(),
+          customBorder: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadius.control),
+          ),
           onTap: onTap,
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),

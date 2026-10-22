@@ -4,7 +4,9 @@ import '../../../app/app_scope.dart';
 import '../../../core/mvvm/view_model_builder.dart';
 import '../../../core/theme.dart';
 import '../view_model/login_view_model.dart';
+import 'sign_up_page.dart';
 
+/// ID + 비밀번호로 로그인하거나, Google로 계속한다.
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
 
@@ -15,25 +17,19 @@ class LoginPage extends StatefulWidget {
 class _LoginPageState extends State<LoginPage> {
   // 입력 컨트롤러는 화면(View)의 상태다. 로그인 동작은 ViewModel이 맡는다.
   final _form = GlobalKey<FormState>();
-  final _name = TextEditingController();
-  final _email = TextEditingController();
+  final _loginId = TextEditingController();
   final _password = TextEditingController();
 
   @override
   void dispose() {
-    _name.dispose();
-    _email.dispose();
+    _loginId.dispose();
     _password.dispose();
     super.dispose();
   }
 
   void _submit(LoginViewModel vm) {
     if (!_form.currentState!.validate()) return;
-    vm.submit(
-      name: _name.text.trim(),
-      email: _email.text.trim(),
-      password: _password.text,
-    );
+    vm.signIn(_loginId.text, _password.text);
   }
 
   @override
@@ -69,36 +65,24 @@ class _LoginPageState extends State<LoginPage> {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       Text(
-                        vm.signUp ? '회원가입' : '로그인',
+                        '로그인',
                         style: theme.textTheme.headlineSmall?.copyWith(
                           fontWeight: FontWeight.w700,
                         ),
                       ),
                       const SizedBox(height: 4),
-                      Text(
-                        vm.signUp
-                            ? '가입은 자유롭게, 교회 입장은 교회별로 승인받아요.'
-                            : '함께 기도해요에 오신 것을 환영해요.',
-                        style: const TextStyle(color: AppColors.muted),
+                      const Text(
+                        '함께 기도해요에 오신 것을 환영해요.',
+                        style: TextStyle(color: AppColors.muted),
                       ),
                       const SizedBox(height: 24),
-                      if (vm.signUp) ...[
-                        TextFormField(
-                          controller: _name,
-                          decoration: const InputDecoration(labelText: '이름'),
-                          validator: (v) => (v == null || v.trim().isEmpty)
-                              ? '이름을 입력해 주세요'
-                              : null,
-                        ),
-                        const SizedBox(height: 12),
-                      ],
                       TextFormField(
-                        controller: _email,
-                        keyboardType: TextInputType.emailAddress,
-                        autofillHints: const [AutofillHints.email],
-                        decoration: const InputDecoration(labelText: '이메일'),
-                        validator: (v) => (v == null || !v.contains('@'))
-                            ? '이메일을 입력해 주세요'
+                        controller: _loginId,
+                        autofillHints: const [AutofillHints.username],
+                        autocorrect: false,
+                        decoration: const InputDecoration(labelText: '아이디'),
+                        validator: (v) => (v == null || v.trim().isEmpty)
+                            ? '아이디를 입력해 주세요'
                             : null,
                       ),
                       const SizedBox(height: 12),
@@ -107,9 +91,8 @@ class _LoginPageState extends State<LoginPage> {
                         obscureText: true,
                         autofillHints: const [AutofillHints.password],
                         decoration: const InputDecoration(labelText: '비밀번호'),
-                        validator: (v) => (v == null || v.length < 6)
-                            ? '6자 이상 입력해 주세요'
-                            : null,
+                        validator: (v) =>
+                            (v == null || v.isEmpty) ? '비밀번호를 입력해 주세요' : null,
                         onFieldSubmitted: (_) => _submit(vm),
                       ),
                       if (vm.error != null) ...[
@@ -122,7 +105,7 @@ class _LoginPageState extends State<LoginPage> {
                       const SizedBox(height: 20),
                       FilledButton(
                         onPressed: vm.busy ? null : () => _submit(vm),
-                        child: Text(vm.signUp ? '가입하기' : '로그인'),
+                        child: const Text('로그인'),
                       ),
                       const SizedBox(height: 10),
                       OutlinedButton.icon(
@@ -132,10 +115,15 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                       const SizedBox(height: 8),
                       TextButton(
-                        onPressed: vm.busy ? null : vm.toggleMode,
-                        child: Text(
-                          vm.signUp ? '이미 계정이 있어요 · 로그인' : '계정이 없어요 · 회원가입',
-                        ),
+                        onPressed: vm.busy
+                            ? null
+                            : () => Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const SignUpPage(),
+                                ),
+                              ),
+                        child: const Text('계정이 없어요 · 회원가입'),
                       ),
                     ],
                   ),

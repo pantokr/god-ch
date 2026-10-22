@@ -5,29 +5,29 @@ import '../../../core/layout/card_grid.dart';
 import '../../../core/layout/page_frame.dart';
 import '../../../core/layout/site_header.dart';
 import '../../../core/theme.dart';
+import '../../../data/models/church_request.dart';
 import '../../../data/models/department.dart';
 import '../../../data/models/member.dart';
 import 'church_card.dart';
-import 'create_church_dialog.dart';
+import 'church_request_dialog.dart';
 import 'join_church_dialog.dart';
 
-/// 내가 속한 교회와 소속 부서. 속한 교회가 없으면 큰 안내 영역을 보여준다.
+/// 일반 회원의 "내 교회" 화면: 상단 바 + [MyChurchesBody].
 class MyChurchesPage extends StatelessWidget {
   const MyChurchesPage({
     super.key,
     required this.approved,
     required this.others,
+    required this.requests,
     required this.userName,
     required this.userEmail,
     required this.onSignOut,
     required this.onOpen,
   });
 
-  /// 승인되어 들어갈 수 있는 교회.
   final List<Member> approved;
-
-  /// 승인 대기 중이거나 이용이 제한된 교회.
   final List<Member> others;
+  final List<ChurchRequest> requests;
   final String userName;
   final String userEmail;
   final VoidCallback onSignOut;
@@ -35,7 +35,6 @@ class MyChurchesPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final hasChurch = approved.isNotEmpty;
     return Scaffold(
       body: Column(
         children: [
@@ -45,24 +44,11 @@ class MyChurchesPage extends StatelessWidget {
             onSignOut: onSignOut,
           ),
           Expanded(
-            child: SingleChildScrollView(
-              child: PageFrame(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    if (hasChurch)
-                      _ChurchList(approved: approved, onOpen: onOpen)
-                    else
-                      const _NoChurchNotice(),
-                    const SizedBox(height: 24),
-                    _Actions(centered: !hasChurch),
-                    if (others.isNotEmpty) ...[
-                      const SizedBox(height: 40),
-                      _ApplicationStatus(others: others),
-                    ],
-                  ],
-                ),
-              ),
+            child: MyChurchesBody(
+              approved: approved,
+              others: others,
+              requests: requests,
+              onOpen: onOpen,
             ),
           ),
         ],
@@ -71,7 +57,53 @@ class MyChurchesPage extends StatelessWidget {
   }
 }
 
-/// 초대 코드 입장 / 교회 생성 버튼. 교회가 없으면 안내 영역 아래에 가운데 정렬된다.
+/// 내가 속한 교회와 소속 부서. 속한 교회가 없으면 큰 안내 영역을 보여준다.
+/// 앱 운영자의 "입장" 화면도 같은 내용을 쓴다.
+class MyChurchesBody extends StatelessWidget {
+  const MyChurchesBody({
+    super.key,
+    required this.approved,
+    required this.others,
+    required this.requests,
+    required this.onOpen,
+  });
+
+  /// 승인되어 들어갈 수 있는 교회.
+  final List<Member> approved;
+
+  /// 승인 대기 중이거나 이용이 제한된 교회(입장 신청 현황).
+  final List<Member> others;
+
+  /// 내가 보낸 교회 생성 요청 중 아직 교회가 되지 않은 것(대기·거절).
+  final List<ChurchRequest> requests;
+  final void Function(Member church, Department? department) onOpen;
+
+  @override
+  Widget build(BuildContext context) {
+    final hasChurch = approved.isNotEmpty;
+    return SingleChildScrollView(
+      child: PageFrame(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (hasChurch)
+              _ChurchList(approved: approved, onOpen: onOpen)
+            else
+              const _NoChurchNotice(),
+            const SizedBox(height: 24),
+            _Actions(centered: !hasChurch),
+            if (others.isNotEmpty || requests.isNotEmpty) ...[
+              const SizedBox(height: 40),
+              _ApplicationStatus(others: others, requests: requests),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// 초대 코드 입장 / 교회 생성 요청 버튼. 교회가 없으면 안내 영역 아래에 가운데 정렬된다.
 class _Actions extends StatelessWidget {
   const _Actions({required this.centered});
 
@@ -92,9 +124,9 @@ class _Actions extends StatelessWidget {
         ),
         OutlinedButton.icon(
           onPressed: () =>
-              showAppDialog<void>(context, child: const CreateChurchDialog()),
+              showAppDialog<void>(context, child: const ChurchRequestDialog()),
           icon: const Icon(Icons.add, size: 18),
-          label: const Text('교회 생성하기'),
+          label: const Text('교회 생성 요청'),
         ),
       ],
     );
@@ -150,7 +182,7 @@ class _NoChurchNotice extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             const Text(
-              '교회에서 받은 초대 코드로 입장하거나, 새 교회를 만들어 보세요.',
+              '교회에서 받은 초대 코드로 입장하거나, 교회 생성을 요청해 보세요.',
               textAlign: TextAlign.center,
               style: TextStyle(color: AppColors.muted, fontSize: 16),
             ),
@@ -161,14 +193,45 @@ class _NoChurchNotice extends StatelessWidget {
   }
 }
 
-/// 승인 대기 중이거나 이용이 제한된 교회 목록.
+/// 입장 신청(승인 대기·이용 제한)과 교회 생성 요청(대기·거절) 현황.
 class _ApplicationStatus extends StatelessWidget {
-  const _ApplicationStatus({required this.others});
+  const _ApplicationStatus({required this.others, required this.requests});
 
   final List<Member> others;
+  final List<ChurchRequest> requests;
 
   @override
   Widget build(BuildContext context) {
+    final rows = <Widget>[
+      for (final r in requests)
+        ListTile(
+          leading: Icon(
+            r.status == RequestStatus.pending
+                ? Icons.hourglass_top
+                : Icons.block,
+            color: AppColors.muted,
+          ),
+          title: Text('${r.name} · 교회 생성 요청'),
+          subtitle: Text(
+            r.status == RequestStatus.pending
+                ? '운영자 승인 대기 중'
+                : '거절됨${r.rejectReason == null ? '' : ' · ${r.rejectReason}'}',
+          ),
+        ),
+      for (final m in others)
+        ListTile(
+          leading: Icon(
+            m.status == MemberStatus.pending
+                ? Icons.hourglass_top
+                : Icons.block,
+            color: AppColors.muted,
+          ),
+          title: Text(m.churchName),
+          subtitle: Text(
+            m.status == MemberStatus.pending ? '입장 승인 대기 중' : '이용이 제한된 교회',
+          ),
+        ),
+    ];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -177,22 +240,9 @@ class _ApplicationStatus extends StatelessWidget {
         Card(
           child: Column(
             children: [
-              for (var i = 0; i < others.length; i++) ...[
+              for (var i = 0; i < rows.length; i++) ...[
                 if (i > 0) const Divider(),
-                ListTile(
-                  leading: Icon(
-                    others[i].status == MemberStatus.pending
-                        ? Icons.hourglass_top
-                        : Icons.block,
-                    color: AppColors.muted,
-                  ),
-                  title: Text(others[i].churchName),
-                  subtitle: Text(
-                    others[i].status == MemberStatus.pending
-                        ? '승인 대기 중'
-                        : '이용이 제한된 교회',
-                  ),
-                ),
+                rows[i],
               ],
             ],
           ),

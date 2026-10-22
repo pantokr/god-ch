@@ -1,5 +1,19 @@
 import 'package:flutter/material.dart';
 
+/// 앱 전체의 모서리 둥글기. 아주 약하게만 둥글린다.
+class AppRadius {
+  AppRadius._();
+
+  /// 버튼·입력창·칩·배지 등 작은 요소.
+  static const control = 4.0;
+
+  /// 카드·팝업 메뉴.
+  static const card = 6.0;
+
+  /// 대화상자.
+  static const dialog = 8.0;
+}
+
 class AppColors {
   AppColors._();
 
@@ -29,7 +43,7 @@ ThemeData buildTheme() {
     seedColor: AppColors.brand,
     surface: Colors.white,
   );
-  const radius = BorderRadius.all(Radius.circular(8));
+  final radius = BorderRadius.circular(AppRadius.control);
   final shape = RoundedRectangleBorder(borderRadius: radius);
 
   return ThemeData(
@@ -67,20 +81,20 @@ ThemeData buildTheme() {
       margin: EdgeInsets.zero,
       clipBehavior: Clip.antiAlias,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AppRadius.card),
         side: const BorderSide(color: AppColors.border),
       ),
     ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
       fillColor: Colors.white,
-      border: const OutlineInputBorder(
+      border: OutlineInputBorder(
         borderRadius: radius,
-        borderSide: BorderSide(color: AppColors.border),
+        borderSide: const BorderSide(color: AppColors.border),
       ),
-      enabledBorder: const OutlineInputBorder(
+      enabledBorder: OutlineInputBorder(
         borderRadius: radius,
-        borderSide: BorderSide(color: AppColors.border),
+        borderSide: const BorderSide(color: AppColors.border),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: radius,
@@ -113,21 +127,31 @@ ThemeData buildTheme() {
     dialogTheme: DialogThemeData(
       backgroundColor: Colors.white,
       surfaceTintColor: Colors.transparent,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppRadius.dialog),
+      ),
     ),
     chipTheme: ChipThemeData(
       side: const BorderSide(color: AppColors.border),
-      shape: const StadiumBorder(),
+      shape: shape,
       backgroundColor: Colors.white,
     ),
     popupMenuTheme: PopupMenuThemeData(
       color: Colors.white,
       surfaceTintColor: Colors.transparent,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(AppRadius.card),
         side: const BorderSide(color: AppColors.border),
       ),
     ),
+    // 선택 버튼(공개 범위·필터)도 약한 모서리로 맞춘다.
+    segmentedButtonTheme: SegmentedButtonThemeData(
+      style: ButtonStyle(
+        shape: WidgetStatePropertyAll(shape),
+        side: const WidgetStatePropertyAll(BorderSide(color: AppColors.border)),
+      ),
+    ),
+    snackBarTheme: SnackBarThemeData(shape: shape),
     // 모바일 하단 탭: 그림자 없이 위쪽 테두리만 둔다.
     navigationBarTheme: NavigationBarThemeData(
       backgroundColor: Colors.white,
@@ -135,6 +159,7 @@ ThemeData buildTheme() {
       elevation: 0,
       height: 64,
       indicatorColor: AppColors.brand.withValues(alpha: 0.12),
+      indicatorShape: shape,
       labelTextStyle: WidgetStateProperty.resolveWith(
         (states) => TextStyle(
           fontSize: 12,

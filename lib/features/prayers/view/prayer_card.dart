@@ -117,7 +117,7 @@ class _Badge extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
         color: AppColors.bg,
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: BorderRadius.circular(AppRadius.control),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,

@@ -10,6 +10,13 @@ class FirestorePaths {
 
   CollectionReference<Json> get churches => db.collection('churches');
 
+  /// 교회 생성 요청. 승인되면 같은 ID로 churches 문서가 만들어진다.
+  CollectionReference<Json> get churchRequests =>
+      db.collection('churchRequests');
+
+  /// 앱 운영자 계정. 문서는 Firebase 콘솔에서만 만든다.
+  CollectionReference<Json> get admins => db.collection('admins');
+
   /// 초대 코드 → 교회 연결. 문서 ID가 코드 자체다.
   CollectionReference<Json> get inviteCodes => db.collection('inviteCodes');
 

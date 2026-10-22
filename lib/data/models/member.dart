@@ -16,6 +16,7 @@ class Member {
     required this.email,
     required this.role,
     required this.status,
+    this.phone = '',
     this.departmentIds = const [],
     this.createdAt,
   });
@@ -26,6 +27,9 @@ class Member {
   final String churchName;
   final String name;
   final String email;
+
+  /// 가입할 때 받은 전화번호 (교회에 제공하는 것에 동의한 정보).
+  final String phone;
   final Role role;
   final MemberStatus status;
 
@@ -45,6 +49,7 @@ class Member {
       churchName: d['churchName'] as String? ?? '',
       name: d['name'] as String? ?? '',
       email: d['email'] as String? ?? '',
+      phone: d['phone'] as String? ?? '',
       role: enumByName(Role.values, d['role'], Role.member),
       status: enumByName(
         MemberStatus.values,

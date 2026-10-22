@@ -8,19 +8,20 @@ import '../../../data/firestore_paths.dart';
 import '../../../data/models/invite_code.dart';
 import '../../../data/models/member.dart';
 import '../../auth/data/auth_repository.dart';
+import '../../auth/data/profile_repository.dart';
 
-/// 교회 만들기, 초대 코드 발급·사용, 내 소속 교회 목록.
+/// 초대 코드 발급·사용(입장 신청)과 내 소속 교회 목록.
+/// 교회 생성은 [ChurchRequestRepository]가 맡는다.
 class ChurchRepository {
-  ChurchRepository(FirebaseFirestore db, this._auth)
-    : _paths = FirestorePaths(db),
-      _db = db;
+  ChurchRepository(FirebaseFirestore db, this._auth, this._profiles)
+    : _paths = FirestorePaths(db);
 
   /// 초대 코드가 유효한 기간. 규칙은 최대 31일까지 허용한다.
   static const inviteValidity = Duration(days: 7);
 
-  final FirebaseFirestore _db;
   final FirestorePaths _paths;
   final AuthRepository _auth;
+  final ProfileRepository _profiles;
 
   /// 내가 속하거나 신청한 모든 교회에서의 내 교인 정보.
   Stream<List<Member>> myMemberships() =>
@@ -29,44 +30,6 @@ class ChurchRepository {
         list.sort((a, b) => a.churchName.compareTo(b.churchName));
         return list;
       });
-
-  /// 교회를 만들고 만든 사람을 첫 관리자로 등록한다. 첫 초대 코드를 돌려준다.
-  Future<String> createChurch(String name) async {
-    final trimmed = name.trim();
-    if (trimmed.isEmpty) throw const AppException('교회 이름을 입력해 주세요.');
-
-    for (var attempt = 0; attempt < 5; attempt++) {
-      final churchRef = _paths.churches.doc();
-      final code = _randomCode();
-      final batch = _db.batch();
-      batch.set(churchRef, {
-        'name': trimmed,
-        'createdBy': _auth.uid,
-        'createdAt': FieldValue.serverTimestamp(),
-      });
-      batch.set(
-        _paths.inviteCodes.doc(code),
-        _inviteData(churchRef.id, trimmed),
-      );
-      batch.set(
-        _paths.members(churchRef.id).doc(_auth.uid),
-        _memberData(
-          churchId: churchRef.id,
-          churchName: trimmed,
-          role: Role.admin,
-          status: MemberStatus.approved,
-        ),
-      );
-      try {
-        await batch.commit();
-        return code;
-      } on FirebaseException catch (e) {
-        // 초대 코드가 이미 있으면 규칙이 거부한다. 새 코드로 다시 시도한다.
-        if (e.code != 'permission-denied' || attempt == 4) rethrow;
-      }
-    }
-    throw const AppException('교회를 만들지 못했습니다.');
-  }
 
   /// 교역자가 새 초대 코드를 만든다. 기존 코드는 그대로 두고 만료되게 둔다.
   Future<String> createInviteCode(String churchId, String churchName) async {
@@ -121,11 +84,15 @@ class ChurchRepository {
     if ((await ref.get()).exists) {
       throw const AppException('이미 이 교회에 가입했거나 신청한 상태입니다.');
     }
+    // 가입할 때 받은 이름·전화번호를 교회에 제공한다 (제3자 제공 동의 기반).
+    final profile = await _profiles.requireCurrent();
     try {
       await ref.set(
         _memberData(
           churchId: churchId,
           churchName: churchName,
+          name: profile.name,
+          phone: profile.phone,
           role: Role.member,
           status: MemberStatus.pending,
           inviteCode: code,
@@ -147,6 +114,8 @@ class ChurchRepository {
   Json _memberData({
     required String churchId,
     required String churchName,
+    required String name,
+    required String phone,
     required Role role,
     required MemberStatus status,
     String? inviteCode,
@@ -154,8 +123,9 @@ class ChurchRepository {
     'uid': _auth.uid,
     'churchId': churchId,
     'churchName': churchName,
-    'name': _auth.displayName,
-    'email': _auth.email,
+    'name': name,
+    'email': _auth.email.toLowerCase(),
+    'phone': phone,
     'role': role.name,
     'status': status.name,
     'departmentIds': <String>[],

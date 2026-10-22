@@ -3,7 +3,7 @@ import '../../../data/models/member.dart';
 import '../../members/data/member_repository.dart';
 
 /// 교인 관리: 가입 승인, 비활성화, 역할 지정.
-/// 교역자는 일반 교인의 승인 상태만, 관리자는 역할까지 바꿀 수 있다 (본인 계정은 제외).
+/// 교역자는 일반 교인의 승인 상태만, 교회 운영자는 역할까지 바꿀 수 있다 (본인 계정은 제외).
 class MemberAdminViewModel extends ViewModel {
   MemberAdminViewModel(this._members, this.me)
     : members = _members.members(me.churchId);
