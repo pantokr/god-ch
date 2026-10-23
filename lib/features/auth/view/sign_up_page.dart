@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../app/app_scope.dart';
+import '../../../app/routes.dart';
 import '../../../core/formatters/korean_phone.dart';
 import '../../../core/layout/sub_page.dart';
 import '../../../core/mvvm/view_model_builder.dart';
@@ -41,8 +42,7 @@ class _SignUpPageState extends State<SignUpPage> {
 
   Future<void> _submit(SignUpViewModel vm) async {
     if (!_form.currentState!.validate()) return;
-    final navigator = Navigator.of(context);
-    final ok = await vm.submit(
+    await vm.submit(
       SignUpData(
         loginId: _loginId.text,
         password: _password.text,
@@ -52,8 +52,7 @@ class _SignUpPageState extends State<SignUpPage> {
         consentThirdParty: _consent,
       ),
     );
-    // 가입하면 로그인된 상태가 되므로, 가입 화면을 닫고 이메일 인증 화면으로 넘어간다.
-    if (ok) navigator.pop();
+    // 가입하면 로그인된 상태가 되므로, 라우터가 알아서 이메일 인증 화면으로 보낸다.
   }
 
   @override
@@ -63,6 +62,7 @@ class _SignUpPageState extends State<SignUpPage> {
       create: (context) => SignUpViewModel(AppScope.read(context).auth),
       builder: (context, vm) => SubPage(
         title: '회원가입',
+        fallbackLocation: Routes.login,
         maxWidth: 520,
         child: Card(
           child: Padding(
@@ -158,12 +158,15 @@ class _SignUpPageState extends State<SignUpPage> {
                     child: const Text('가입하고 인증 메일 받기'),
                   ),
                   if (!_consent)
-                    const Padding(
+                    Padding(
                       padding: EdgeInsets.only(top: 8),
                       child: Text(
                         '필수 항목에 동의하면 가입할 수 있어요.',
                         textAlign: TextAlign.center,
-                        style: TextStyle(color: AppColors.muted, fontSize: 13),
+                        style: TextStyle(
+                          color: context.palette.muted,
+                          fontSize: 13,
+                        ),
                       ),
                     ),
                 ],

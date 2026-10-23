@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../../app/routes.dart';
 import '../../../core/format.dart';
 import '../../../core/theme.dart';
 import '../../../data/models/member.dart';
 import '../../../data/models/prayer.dart';
-import 'prayer_detail_page.dart';
 import 'reaction_bar.dart';
 
 class PrayerCard extends StatelessWidget {
@@ -30,12 +31,9 @@ class PrayerCard extends StatelessWidget {
         prayer.departmentId != null || !prayer.isPublic || prayer.deleted;
     return Card(
       child: InkWell(
-        onTap: () => Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => PrayerDetailPage(prayer: prayer, me: me),
-          ),
-        ),
+        // 주소로 이동하므로 브라우저 뒤로가기로 목록에 돌아온다. 이미 가진 글은 함께 넘겨 바로 보여준다.
+        onTap: () =>
+            context.push(Routes.prayer(me.churchId, prayer.id), extra: prayer),
         child: Padding(
           padding: const EdgeInsets.all(20),
           child: Column(
@@ -67,7 +65,7 @@ class PrayerCard extends StatelessWidget {
               const SizedBox(height: 4),
               Text(
                 [fmtDate(prayer.createdAt), ?subtitle].join(' · '),
-                style: const TextStyle(color: AppColors.muted, fontSize: 13),
+                style: TextStyle(color: context.palette.muted, fontSize: 13),
               ),
               const SizedBox(height: 12),
               Text(
@@ -116,17 +114,17 @@ class _Badge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: AppColors.bg,
+        color: context.palette.bg,
         borderRadius: BorderRadius.circular(AppRadius.control),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 14, color: AppColors.muted),
+          Icon(icon, size: 14, color: context.palette.muted),
           const SizedBox(width: 4),
           Text(
             label,
-            style: const TextStyle(fontSize: 12, color: AppColors.muted),
+            style: TextStyle(fontSize: 12, color: context.palette.muted),
           ),
         ],
       ),

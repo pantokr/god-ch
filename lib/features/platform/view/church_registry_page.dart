@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../app/app_scope.dart';
+import '../../../app/routes.dart';
 import '../../../core/layout/app_dialog.dart';
 import '../../../core/layout/page_frame.dart';
 import '../../../core/mvvm/view_model_builder.dart';
 import '../../../data/models/church.dart';
 import '../../church/view/church_requests_admin_card.dart';
 import '../view_model/church_registry_view_model.dart';
-import 'church_detail_page.dart';
 import 'register_church_dialog.dart';
 import 'registered_churches.dart';
 
@@ -16,10 +17,9 @@ import 'registered_churches.dart';
 class ChurchRegistryPage extends StatelessWidget {
   const ChurchRegistryPage({super.key});
 
-  void _openChurch(BuildContext context, Church church) => Navigator.push(
-    context,
-    MaterialPageRoute(builder: (_) => ChurchDetailPage(church: church)),
-  );
+  /// 교회 상세 관리를 주소로 연다. 브라우저 뒤로가기로 목록에 돌아온다.
+  void _openChurch(BuildContext context, Church church) =>
+      context.push(Routes.adminChurch(church.id));
 
   @override
   Widget build(BuildContext context) {

@@ -30,6 +30,7 @@ class SiteHeader extends StatelessWidget {
     required this.userEmail,
     required this.onSignOut,
     this.profileDetails = const [],
+    this.profileExtras,
     this.breadcrumb = const [],
     this.nav = const [],
   });
@@ -40,6 +41,9 @@ class SiteHeader extends StatelessWidget {
 
   /// "내 정보"에 덧붙여 보여줄 항목 (예: 교회, 역할).
   final List<ProfileDetail> profileDetails;
+
+  /// "내 정보" 대화상자 아래에 붙일 위젯 (예: 화면 모드 선택).
+  final Widget? profileExtras;
   final List<Widget> breadcrumb;
   final List<NavItem> nav;
 
@@ -49,9 +53,9 @@ class SiteHeader extends StatelessWidget {
     final pad = pagePadding(context);
 
     return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        border: Border(bottom: BorderSide(color: AppColors.border)),
+      decoration: BoxDecoration(
+        color: context.palette.surface,
+        border: Border(bottom: BorderSide(color: context.palette.border)),
       ),
       child: Center(
         child: ConstrainedBox(
@@ -65,19 +69,22 @@ class SiteHeader extends StatelessWidget {
                   height: 56,
                   child: Row(
                     children: [
-                      const Icon(
+                      Icon(
                         Icons.volunteer_activism,
-                        color: AppColors.brand,
+                        color: context.palette.brand,
                       ),
                       const SizedBox(width: 8),
-                      const Text(
-                        '함께 기도해요',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 16,
+                      // 이름이 길어 오른쪽 메뉴와 겹치지 않도록, 남는 자리만 쓰고 넘치면 줄인다.
+                      Expanded(
+                        child: Text(
+                          '함께 지어져 가는 공동체',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          // 로고 글자는 제목과 같은 명조로 둔다.
+                          style: Theme.of(context).textTheme.titleLarge
+                              ?.copyWith(fontSize: 17),
                         ),
                       ),
-                      const Spacer(),
                       if (!narrow) ...[
                         for (final n in nav) _NavLink(item: n),
                         if (nav.isNotEmpty) const _VerticalGap(),
@@ -87,6 +94,7 @@ class SiteHeader extends StatelessWidget {
                             name: userName,
                             email: userEmail,
                             details: profileDetails,
+                            extras: profileExtras,
                           ),
                           icon: const Icon(Icons.person_outline, size: 18),
                           label: const Text('내 정보'),
@@ -97,7 +105,17 @@ class SiteHeader extends StatelessWidget {
                           label: const Text('로그아웃'),
                         ),
                       ] else if (nav.isEmpty)
-                        _AccountMenu(name: userName, onSignOut: onSignOut),
+                        _AccountMenu(
+                          name: userName,
+                          onSignOut: onSignOut,
+                          onShowProfile: () => showProfileDialog(
+                            context,
+                            name: userName,
+                            email: userEmail,
+                            details: profileDetails,
+                            extras: profileExtras,
+                          ),
+                        ),
                     ],
                   ),
                 ),
@@ -108,10 +126,10 @@ class SiteHeader extends StatelessWidget {
                       children: [
                         for (var i = 0; i < breadcrumb.length; i++) ...[
                           if (i > 0)
-                            const Icon(
+                            Icon(
                               Icons.chevron_right,
                               size: 18,
-                              color: AppColors.muted,
+                              color: context.palette.muted,
                             ),
                           breadcrumb[i],
                         ],
@@ -146,7 +164,7 @@ class _NavLink extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = item.selected ? AppColors.brand : AppColors.muted;
+    final color = item.selected ? context.palette.brand : context.palette.muted;
     return InkWell(
       onTap: item.onTap,
       child: Container(
@@ -155,7 +173,7 @@ class _NavLink extends StatelessWidget {
         decoration: BoxDecoration(
           border: Border(
             bottom: BorderSide(
-              color: item.selected ? AppColors.brand : Colors.transparent,
+              color: item.selected ? context.palette.brand : Colors.transparent,
               width: 2,
             ),
           ),
@@ -181,10 +199,15 @@ class _NavLink extends StatelessWidget {
 
 /// 좁은 화면에서 하단 탭이 없는 화면(내 교회 목록)에 쓰는 계정 메뉴.
 class _AccountMenu extends StatelessWidget {
-  const _AccountMenu({required this.name, required this.onSignOut});
+  const _AccountMenu({
+    required this.name,
+    required this.onSignOut,
+    required this.onShowProfile,
+  });
 
   final String name;
   final VoidCallback onSignOut;
+  final VoidCallback onShowProfile;
 
   @override
   Widget build(BuildContext context) {
@@ -192,23 +215,25 @@ class _AccountMenu extends StatelessWidget {
       tooltip: '계정',
       offset: const Offset(0, 48),
       onSelected: (v) {
+        if (v == 'profile') onShowProfile();
         if (v == 'logout') onSignOut();
       },
       itemBuilder: (_) => [
         PopupMenuItem(enabled: false, child: Text(name)),
         const PopupMenuDivider(),
+        const PopupMenuItem(value: 'profile', child: Text('내 정보 · 화면 모드')),
         const PopupMenuItem(value: 'logout', child: Text('로그아웃')),
       ],
       child: Padding(
         padding: const EdgeInsets.all(8),
         child: CircleAvatar(
           radius: 14,
-          backgroundColor: AppColors.brand.withValues(alpha: 0.12),
+          backgroundColor: context.palette.brand.withValues(alpha: 0.12),
           child: Text(
             name.isEmpty ? '?' : name.characters.first,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 13,
-              color: AppColors.brand,
+              color: context.palette.brand,
               fontWeight: FontWeight.w700,
             ),
           ),

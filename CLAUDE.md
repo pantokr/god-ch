@@ -17,6 +17,8 @@ Flutter(웹 우선) + Firebase 앱. 개요와 환경 설정은 [README.md](READM
 - 역할: 앱 운영자(`platformAdmin` 클레임, 교회 소속 아님, 기도제목 내용 열람 불가) / 교회 운영자(`admin`) / 교역자(`staff`) / 교인(`member`).
 - 로그인은 아이디+비밀번호. `loginIds/{id}`가 아이디→이메일을 연결한다. 예약 아이디(`admin` 등)는 가상 이메일(`LoginId.aliasEmail`)로 로그인한다.
 - 교회는 앱 운영자의 승인(`churchRequests`)이나 직접 등록으로만 만들어지고, 입장은 만료 있는 초대 코드(`inviteCodes`)로만 가능하다.
+- 교회 메인 콘텐츠(공지·일정·사진첩·설교영상·말씀묵상)는 `churches/{id}/{notices|events|photos|sermons|devotions}`에 있고 종류 목록은 `lib/data/models/church_content.dart`의 `ContentKind`와 `firestore.rules`가 일치해야 한다. 이미지는 Firebase Storage(`churches/{id}/{종류}/...`, `storage.rules`)에 올리고 글에는 다운로드 주소만 저장한다. 공지는 `imageUrls`의 첫 번째가 3:4 썸네일, 두 번째가 캐러셀 가로 배경이다.
+- 로그인하면 승인된 교회가 있을 때 `/churches`가 마지막 교회의 메인으로 바로 넘어간다. 목록을 보려면 `Routes.churchList`.
 - 새 필드를 추가하면 모델·저장소·`firestore.rules`의 `hasOnly([...])` 목록을 **같이** 고친다. 이모티콘 종류도 `lib/data/models/reaction.dart`와 규칙이 일치해야 한다.
 
 ## 자주 쓰는 명령
@@ -26,6 +28,7 @@ flutter analyze
 dart format lib
 flutter build web --no-wasm-dry-run
 firebase deploy --only firestore            # 규칙 + 인덱스
+firebase deploy --only storage              # 이미지 저장소 규칙
 firebase deploy --only firestore:rules --dry-run   # 규칙 문법 검사
 ```
 

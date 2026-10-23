@@ -44,9 +44,9 @@ class _JoinChurchDialogState extends State<JoinChurchDialog> {
         children: [
           Text('초대 코드로 입장', style: theme.textTheme.titleLarge),
           const SizedBox(height: 4),
-          const Text(
+          Text(
             '교회에서 받은 초대 코드를 입력하세요. 코드는 발급 후 7일 동안만 유효해요.',
-            style: TextStyle(color: AppColors.muted),
+            style: TextStyle(color: context.palette.muted),
           ),
           const SizedBox(height: 16),
           TextField(

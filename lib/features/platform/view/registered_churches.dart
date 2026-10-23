@@ -40,13 +40,13 @@ class RegisteredChurches extends StatelessWidget {
                 child: Center(child: CircularProgressIndicator()),
               )
             else if (churches.isEmpty)
-              const Card(
+              Card(
                 child: Padding(
                   padding: EdgeInsets.all(32),
                   child: Center(
                     child: Text(
                       '아직 등록된 교회가 없어요.',
-                      style: TextStyle(color: AppColors.muted),
+                      style: TextStyle(color: context.palette.muted),
                     ),
                   ),
                 ),

@@ -61,9 +61,9 @@ class InviteCodeCard extends StatelessWidget {
                       .where((c) => !c.isExpired)
                       .toList();
                   if (active.isEmpty) {
-                    return const Text(
+                    return Text(
                       '유효한 초대 코드가 없어요. 새 코드를 만들어 교인에게 알려 주세요.',
-                      style: TextStyle(color: AppColors.muted),
+                      style: TextStyle(color: context.palette.muted),
                     );
                   }
                   return Column(

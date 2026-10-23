@@ -50,9 +50,9 @@ class _ChurchRequestDialogState extends State<ChurchRequestDialog> {
             children: [
               Text('교회 생성 요청', style: theme.textTheme.titleLarge),
               const SizedBox(height: 4),
-              const Text(
+              Text(
                 '요청을 보내면 앱 운영자가 확인한 뒤 교회를 만들어 드려요. 승인되면 요청한 분이 교회 운영자가 됩니다.',
-                style: TextStyle(color: AppColors.muted),
+                style: TextStyle(color: context.palette.muted),
               ),
               const SizedBox(height: 20),
               ChurchInfoFields(name: _name, phone: _phone, address: _address),
@@ -97,10 +97,10 @@ class _Submitted extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Icon(
+        Icon(
           Icons.check_circle_outline,
           size: 48,
-          color: AppColors.brand,
+          color: context.palette.brand,
         ),
         const SizedBox(height: 16),
         Text(
@@ -112,7 +112,7 @@ class _Submitted extends StatelessWidget {
         Text(
           '"$name" 생성 요청을 앱 운영자가 확인하면 교회가 만들어져요.\n진행 상황은 첫 화면의 신청 현황에서 볼 수 있어요.',
           textAlign: TextAlign.center,
-          style: const TextStyle(color: AppColors.muted),
+          style: TextStyle(color: context.palette.muted),
         ),
         const SizedBox(height: 20),
         Align(

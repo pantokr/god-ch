@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import '../theme.dart';
 import 'page_frame.dart';
@@ -10,12 +11,16 @@ class SubPage extends StatelessWidget {
     super.key,
     required this.title,
     required this.child,
+    required this.fallbackLocation,
     this.actions = const [],
     this.maxWidth = 760,
   });
 
   final String title;
   final Widget child;
+
+  /// 이전 화면이 없을 때(주소로 바로 열었거나 새로고침한 뒤) 돌아갈 주소.
+  final String fallbackLocation;
   final List<Widget> actions;
   final double maxWidth;
 
@@ -26,9 +31,9 @@ class SubPage extends StatelessWidget {
       body: Column(
         children: [
           Container(
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              border: Border(bottom: BorderSide(color: AppColors.border)),
+            decoration: BoxDecoration(
+              color: context.palette.surface,
+              border: Border(bottom: BorderSide(color: context.palette.border)),
             ),
             child: Center(
               child: ConstrainedBox(
@@ -40,7 +45,9 @@ class SubPage extends StatelessWidget {
                     child: Row(
                       children: [
                         TextButton.icon(
-                          onPressed: () => Navigator.maybePop(context),
+                          onPressed: () => context.canPop()
+                              ? context.pop()
+                              : context.go(fallbackLocation),
                           icon: const Icon(Icons.arrow_back, size: 18),
                           label: const Text('돌아가기'),
                         ),

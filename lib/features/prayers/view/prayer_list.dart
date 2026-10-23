@@ -103,7 +103,7 @@ class PrayerGrid extends StatelessWidget {
                 child: Text(
                   emptyText,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(color: AppColors.muted),
+                  style: TextStyle(color: context.palette.muted),
                 ),
               ),
             ),

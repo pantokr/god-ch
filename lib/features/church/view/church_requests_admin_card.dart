@@ -50,9 +50,9 @@ class ChurchRequestsAdminCard extends StatelessWidget {
                   if (snap.hasError)
                     Text('불러오지 못했습니다\n${snap.error}')
                   else if (items.isEmpty)
-                    const Text(
+                    Text(
                       '승인 대기 중인 요청이 없어요.',
-                      style: TextStyle(color: AppColors.muted),
+                      style: TextStyle(color: context.palette.muted),
                     )
                   else
                     for (var i = 0; i < items.length; i++) ...[
@@ -88,7 +88,7 @@ class _RequestRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final r = request;
-    const muted = TextStyle(color: AppColors.muted);
+    final muted = TextStyle(color: context.palette.muted);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [

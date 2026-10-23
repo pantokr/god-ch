@@ -28,10 +28,10 @@ class EmailVerificationPage extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      const Icon(
+                      Icon(
                         Icons.mark_email_unread_outlined,
                         size: 48,
-                        color: AppColors.brand,
+                        color: context.palette.brand,
                       ),
                       const SizedBox(height: 16),
                       Text(
@@ -45,14 +45,14 @@ class EmailVerificationPage extends StatelessWidget {
                       Text(
                         '${vm.email}\n주소로 보낸 인증 메일의 링크를 눌러 주세요.\n인증이 끝나면 자동으로 넘어가요.',
                         textAlign: TextAlign.center,
-                        style: const TextStyle(color: AppColors.muted),
+                        style: TextStyle(color: context.palette.muted),
                       ),
                       if (vm.resent) ...[
                         const SizedBox(height: 12),
-                        const Text(
+                        Text(
                           '인증 메일을 다시 보냈어요.',
                           textAlign: TextAlign.center,
-                          style: TextStyle(color: AppColors.brand),
+                          style: TextStyle(color: context.palette.brand),
                         ),
                       ],
                       if (vm.error != null) ...[

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../../app/routes.dart';
 import '../../../core/layout/responsive.dart';
 import '../../../core/theme.dart';
 import '../../../data/models/church.dart';
@@ -18,9 +20,9 @@ class ChurchDetailPage extends StatelessWidget {
       body: Column(
         children: [
           Container(
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              border: Border(bottom: BorderSide(color: AppColors.border)),
+            decoration: BoxDecoration(
+              color: context.palette.surface,
+              border: Border(bottom: BorderSide(color: context.palette.border)),
             ),
             child: Center(
               child: ConstrainedBox(
@@ -32,7 +34,9 @@ class ChurchDetailPage extends StatelessWidget {
                     child: Row(
                       children: [
                         TextButton.icon(
-                          onPressed: () => Navigator.maybePop(context),
+                          onPressed: () => context.canPop()
+                              ? context.pop()
+                              : context.go(Routes.adminChurches),
                           icon: const Icon(Icons.arrow_back, size: 18),
                           label: const Text('교회 목록'),
                         ),

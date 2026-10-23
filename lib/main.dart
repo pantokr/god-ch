@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 
 import 'app/app.dart';
+import 'app/theme_mode_controller.dart';
 import 'firebase_options.dart';
 
 Future<void> main() async {
@@ -11,5 +12,7 @@ Future<void> main() async {
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   // 웹에서 새로고침·재실행 후에도 로그인을 유지한다 (브라우저 저장소 사용).
   if (kIsWeb) await FirebaseAuth.instance.setPersistence(Persistence.LOCAL);
-  runApp(const App());
+  // 저장된 화면 모드를 먼저 불러와 첫 화면부터 맞는 모드로 그린다.
+  final themeMode = await ThemeModeController.load();
+  runApp(App(themeMode: themeMode));
 }

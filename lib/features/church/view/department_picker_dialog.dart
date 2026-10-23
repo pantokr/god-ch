@@ -30,9 +30,9 @@ class DepartmentPickerDialog extends StatelessWidget {
         children: [
           Text('${member.churchName} 소속 부서', style: theme.textTheme.titleLarge),
           const SizedBox(height: 4),
-          const Text(
+          Text(
             '속하는 부서를 골라 주세요. 선택하지 않아도 괜찮아요.',
-            style: TextStyle(color: AppColors.muted),
+            style: TextStyle(color: context.palette.muted),
           ),
           const SizedBox(height: 12),
           if (departments.isEmpty)

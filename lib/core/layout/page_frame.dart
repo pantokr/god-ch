@@ -66,7 +66,7 @@ class PageTitle extends StatelessWidget {
                     padding: const EdgeInsets.only(top: 4),
                     child: Text(
                       subtitle!,
-                      style: const TextStyle(color: AppColors.muted),
+                      style: TextStyle(color: context.palette.muted),
                     ),
                   ),
               ],

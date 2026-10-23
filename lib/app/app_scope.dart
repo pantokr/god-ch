@@ -5,31 +5,38 @@ import '../features/auth/data/profile_repository.dart';
 import '../features/church/data/church_repository.dart';
 import '../features/church/data/church_request_repository.dart';
 import '../features/church/data/department_repository.dart';
+import '../features/home/data/content_repository.dart';
 import '../features/members/data/member_repository.dart';
 import '../features/platform/data/church_registry_repository.dart';
 import '../features/prayers/data/prayer_repository.dart';
+import 'theme_mode_controller.dart';
 
 /// 앱 전체에서 쓰는 저장소 모음. ViewModel을 만들 때 여기서 꺼내 주입한다.
 class AppScope extends InheritedWidget {
   const AppScope({
     super.key,
+    required this.themeMode,
     required this.auth,
     required this.profiles,
     required this.churches,
     required this.churchRequests,
     required this.churchRegistry,
     required this.departments,
+    required this.contents,
     required this.members,
     required this.prayers,
     required super.child,
   });
 
+  /// 화면 모드(시스템/라이트/다크).
+  final ThemeModeController themeMode;
   final AuthRepository auth;
   final ProfileRepository profiles;
   final ChurchRepository churches;
   final ChurchRequestRepository churchRequests;
   final ChurchRegistryRepository churchRegistry;
   final DepartmentRepository departments;
+  final ContentRepository contents;
   final MemberRepository members;
   final PrayerRepository prayers;
 

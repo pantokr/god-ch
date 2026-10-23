@@ -25,6 +25,12 @@ class ChurchRegistryRepository {
       .snapshots()
       .map((s) => s.docs.map(Church.fromDoc).toList());
 
+  /// 교회 한 곳 (앱 운영자 전용). 없으면 null.
+  Stream<Church?> church(String churchId) => _paths
+      .church(churchId)
+      .snapshots()
+      .map((s) => s.exists ? Church.fromDoc(s) : null);
+
   /// 가입한 모든 회원 (앱 운영자 전용, 최근 가입 순).
   Stream<List<UserProfile>> users() => _db
       .collection('users')

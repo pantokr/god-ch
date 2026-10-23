@@ -6,13 +6,15 @@ import '../data/prayer_repository.dart';
 
 /// 기도제목 상세: 본문, 교역자 댓글·답변, 삭제·복구.
 class PrayerDetailViewModel extends ViewModel {
-  PrayerDetailViewModel(this._prayers, this.me, Prayer initial)
-    : prayer = _prayers.prayer(me.churchId, initial.id),
-      comments = _prayers.comments(me.churchId, initial.id),
-      responses = _prayers.responses(me.churchId, initial.id) {
-    _recordOpened(initial);
+  PrayerDetailViewModel(this._prayers, this.me, String prayerId)
+    : prayer = _prayers.prayer(me.churchId, prayerId),
+      comments = _prayers.comments(me.churchId, prayerId),
+      responses = _prayers.responses(me.churchId, prayerId) {
+    // 주소로 바로 들어와도 글을 처음 불러온 때 한 번만 기록한다.
+    _prayers.prayer(me.churchId, prayerId).first.then((p) {
+      if (p != null) _recordOpened(p);
+    }).ignore();
   }
-
   final PrayerRepository _prayers;
   final Member me;
 

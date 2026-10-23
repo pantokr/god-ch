@@ -36,12 +36,12 @@ class ProfileSummary extends StatelessWidget {
           children: [
             CircleAvatar(
               radius: 28,
-              backgroundColor: AppColors.brand.withValues(alpha: 0.12),
+              backgroundColor: context.palette.brand.withValues(alpha: 0.12),
               child: Text(
                 name.isEmpty ? '?' : name.characters.first,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 22,
-                  color: AppColors.brand,
+                  color: context.palette.brand,
                   fontWeight: FontWeight.w700,
                 ),
               ),
@@ -58,7 +58,7 @@ class ProfileSummary extends StatelessWidget {
                     ),
                   ),
                   if (email.isNotEmpty)
-                    Text(email, style: const TextStyle(color: AppColors.muted)),
+                    Text(email, style: TextStyle(color: context.palette.muted)),
                 ],
               ),
             ),
@@ -76,7 +76,7 @@ class ProfileSummary extends StatelessWidget {
                     width: 72,
                     child: Text(
                       d.label,
-                      style: const TextStyle(color: AppColors.muted),
+                      style: TextStyle(color: context.palette.muted),
                     ),
                   ),
                   Expanded(child: Text(d.value)),
@@ -95,6 +95,7 @@ Future<void> showProfileDialog(
   required String name,
   required String email,
   List<ProfileDetail> details = const [],
+  Widget? extras,
 }) => showAppDialog<void>(
   context,
   maxWidth: 420,
@@ -105,6 +106,12 @@ Future<void> showProfileDialog(
       Text('내 정보', style: Theme.of(context).textTheme.titleMedium),
       const SizedBox(height: 16),
       ProfileSummary(name: name, email: email, details: details),
+      if (extras != null) ...[
+        const SizedBox(height: 16),
+        const Divider(),
+        const SizedBox(height: 16),
+        extras,
+      ],
       const SizedBox(height: 16),
       Align(
         alignment: Alignment.centerRight,

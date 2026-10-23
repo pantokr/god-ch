@@ -1,0 +1,30 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // 교인 정보는 Firestore에 있으므로 교차 서비스 조회로 확인한다.
+    function memberDoc(cid) {
+      return /databases/(default)/documents/churches/$(cid)/members/$(request.auth.uid);
+    }
+    function isActive(cid) {
+      return request.auth != null
+        && firestore.exists(memberDoc(cid))
+        && firestore.get(memberDoc(cid)).data.status == 'approved';
+    }
+    function isStaff(cid) {
+      return isActive(cid) && firestore.get(memberDoc(cid)).data.role in ['staff', 'admin'];
+    }
+
+    // 교회 메인 페이지 이미지: churches/{교회}/{종류}/{파일}
+    // 승인된 교인이 읽고, 교역자·교회 운영자가 올리고 지운다. 이미지 10MB 이하만.
+    // 종류 목록은 firestore.rules의 콘텐츠 컬렉션과 같아야 한다.
+    match /churches/{churchId}/{kind}/{fileName} {
+      allow read: if isActive(churchId);
+      allow create, update: if isStaff(churchId)
+        && kind in ['notices', 'events', 'photos', 'sermons', 'devotions']
+        && request.resource.size < 10 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+      allow delete: if isStaff(churchId);
+    }
+  }
+}

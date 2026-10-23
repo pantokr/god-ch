@@ -1,11 +1,11 @@
 {
-    "name": "built_in_together",
-    "short_name": "built_in_together",
+    "name": "함께 지어져 가는 공동체",
+    "short_name": "함께 지어져 가는 공동체",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "description": "서로의 기도제목을 조용히 나누는 교회 공동체 앱",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

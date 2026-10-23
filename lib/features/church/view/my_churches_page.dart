@@ -8,6 +8,7 @@ import '../../../core/theme.dart';
 import '../../../data/models/church_request.dart';
 import '../../../data/models/department.dart';
 import '../../../data/models/member.dart';
+import '../../settings/view/theme_mode_selector.dart';
 import 'church_card.dart';
 import 'church_request_dialog.dart';
 import 'join_church_dialog.dart';
@@ -42,6 +43,7 @@ class MyChurchesPage extends StatelessWidget {
             userName: userName,
             userEmail: userEmail,
             onSignOut: onSignOut,
+            profileExtras: const ThemeModeSelector(),
           ),
           Expanded(
             child: MyChurchesBody(
@@ -171,7 +173,7 @@ class _NoChurchNotice extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.church_outlined, size: 64, color: AppColors.muted),
+            Icon(Icons.church_outlined, size: 64, color: context.palette.muted),
             const SizedBox(height: 24),
             Text(
               '소속된 교회가 없습니다.',
@@ -181,10 +183,10 @@ class _NoChurchNotice extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 12),
-            const Text(
+            Text(
               '교회에서 받은 초대 코드로 입장하거나, 교회 생성을 요청해 보세요.',
               textAlign: TextAlign.center,
-              style: TextStyle(color: AppColors.muted, fontSize: 16),
+              style: TextStyle(color: context.palette.muted, fontSize: 16),
             ),
           ],
         ),
@@ -209,7 +211,7 @@ class _ApplicationStatus extends StatelessWidget {
             r.status == RequestStatus.pending
                 ? Icons.hourglass_top
                 : Icons.block,
-            color: AppColors.muted,
+            color: context.palette.muted,
           ),
           title: Text('${r.name} · 교회 생성 요청'),
           subtitle: Text(
@@ -224,7 +226,7 @@ class _ApplicationStatus extends StatelessWidget {
             m.status == MemberStatus.pending
                 ? Icons.hourglass_top
                 : Icons.block,
-            color: AppColors.muted,
+            color: context.palette.muted,
           ),
           title: Text(m.churchName),
           subtitle: Text(

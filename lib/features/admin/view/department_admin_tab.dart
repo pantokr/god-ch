@@ -39,11 +39,11 @@ class DepartmentAdminTab extends StatelessWidget {
                   return const Center(child: CircularProgressIndicator());
                 }
                 if (items.isEmpty) {
-                  return const Padding(
+                  return Padding(
                     padding: EdgeInsets.all(24),
                     child: Text(
                       '만들어진 부서가 없어요.',
-                      style: TextStyle(color: AppColors.muted),
+                      style: TextStyle(color: context.palette.muted),
                     ),
                   );
                 }

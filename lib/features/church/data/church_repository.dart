@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/app_exception.dart';
 import '../../../data/firestore_codec.dart';
@@ -30,6 +31,33 @@ class ChurchRepository {
         list.sort((a, b) => a.churchName.compareTo(b.churchName));
         return list;
       });
+
+  String get _lastChurchKey => 'lastChurch.${_auth.uid}';
+
+  /// 마지막으로 들어간 교회. 로그인하면 소속 교회가 여럿일 때 이 교회로 바로 간다.
+  Future<String?> lastChurchId() async {
+    try {
+      return (await SharedPreferences.getInstance()).getString(_lastChurchKey);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> rememberChurch(String churchId) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_lastChurchKey, churchId);
+    } catch (_) {
+      // 기억하지 못해도 앱은 그대로 쓸 수 있다.
+    }
+  }
+
+  /// 한 교회에서의 내 교인 정보. 입장을 신청한 적이 없으면 null.
+  Stream<Member?> membership(String churchId) => _paths
+      .members(churchId)
+      .doc(_auth.uid)
+      .snapshots()
+      .map((s) => s.exists ? Member.fromDoc(s) : null);
 
   /// 교역자가 새 초대 코드를 만든다. 기존 코드는 그대로 두고 만료되게 둔다.
   Future<String> createInviteCode(String churchId, String churchName) async {
@@ -86,6 +114,8 @@ class ChurchRepository {
     }
     // 가입할 때 받은 이름·전화번호를 교회에 제공한다 (제3자 제공 동의 기반).
     final profile = await _profiles.requireCurrent();
+    // 이메일 인증을 방금 마쳤다면 로그인 토큰이 아직 옛 값일 수 있어 새로 받는다.
+    if (_auth.isEmailVerified) await _auth.refreshToken();
     try {
       await ref.set(
         _memberData(
@@ -99,8 +129,15 @@ class ChurchRepository {
         ),
       );
     } on FirebaseException catch (e) {
-      if (e.code == 'permission-denied') throw invalid;
-      rethrow;
+      if (e.code != 'permission-denied') rethrow;
+      // 코드는 확인됐는데 신청 저장이 거부된 경우다. 코드 문제와 구분해서 알려 준다.
+      if (!_auth.isEmailVerified) {
+        throw const AppException('이메일 인증을 먼저 마쳐 주세요.');
+      }
+      // 확인한 직후에 코드가 만료되었거나 폐기된 경우일 수 있다.
+      throw const AppException(
+        '입장 신청을 저장하지 못했어요. 초대 코드가 방금 만료되었는지 확인하고 다시 시도해 주세요.',
+      );
     }
   }
 

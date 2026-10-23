@@ -150,7 +150,16 @@ class AuthRepository {
       _guard(() => _auth.currentUser!.sendEmailVerification());
 
   /// 메일의 인증 링크를 누른 뒤 최신 상태를 가져온다. userChanges에도 반영된다.
-  Future<void> reloadUser() async => _auth.currentUser?.reload();
+  /// 보안 규칙은 로그인 토큰의 email_verified 값을 보므로, 인증이 확인되면 토큰도 새로 받는다.
+  Future<void> reloadUser() async {
+    final user = _auth.currentUser;
+    if (user == null) return;
+    await user.reload();
+    if (_auth.currentUser?.emailVerified ?? false) await refreshToken();
+  }
+
+  /// 로그인 토큰을 서버에서 새로 받는다. 이메일 인증이나 권한이 바뀐 직후에 쓴다.
+  Future<void> refreshToken() async => _auth.currentUser?.getIdToken(true);
 
   /// Firebase 오류를 사용자에게 보여줄 한글 메시지로 바꾼다.
   Future<void> _guard(Future<void> Function() action) async {

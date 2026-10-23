@@ -48,13 +48,13 @@ class UsersPage extends StatelessWidget {
                   }
                   final users = snap.data!.where(vm.matches).toList();
                   if (users.isEmpty) {
-                    return const Card(
+                    return Card(
                       child: Padding(
                         padding: EdgeInsets.all(40),
                         child: Center(
                           child: Text(
                             '해당하는 회원이 없어요.',
-                            style: TextStyle(color: AppColors.muted),
+                            style: TextStyle(color: context.palette.muted),
                           ),
                         ),
                       ),
@@ -89,11 +89,11 @@ class _UserRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListTile(
       leading: CircleAvatar(
-        backgroundColor: AppColors.brand.withValues(alpha: 0.12),
+        backgroundColor: context.palette.brand.withValues(alpha: 0.12),
         child: Text(
           user.name.isEmpty ? '?' : user.name.characters.first,
-          style: const TextStyle(
-            color: AppColors.brand,
+          style: TextStyle(
+            color: context.palette.brand,
             fontWeight: FontWeight.w700,
           ),
         ),
@@ -105,7 +105,7 @@ class _UserRow extends StatelessWidget {
       isThreeLine: true,
       trailing: Text(
         fmtDate(user.createdAt),
-        style: const TextStyle(color: AppColors.muted, fontSize: 13),
+        style: TextStyle(color: context.palette.muted, fontSize: 13),
       ),
     );
   }

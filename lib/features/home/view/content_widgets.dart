@@ -1,0 +1,204 @@
+import 'package:flutter/material.dart';
+
+import '../../../core/theme.dart';
+import '../../../data/models/church_content.dart';
+
+/// 주소로 불러오는 이미지. 불러오지 못하면 빈 면을 보여준다.
+/// 다른 사이트의 이미지가 막혀도(CORS) 웹에서는 `<img>`로 한 번 더 시도한다.
+class ContentImage extends StatelessWidget {
+  const ContentImage(this.url, {super.key, this.icon = Icons.image_outlined});
+
+  final String? url;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    final placeholder = ColoredBox(
+      color: context.palette.brand.withValues(alpha: 0.08),
+      child: Center(
+        child: Icon(icon, color: context.palette.brand.withValues(alpha: 0.5)),
+      ),
+    );
+    final u = url;
+    if (u == null || u.isEmpty) return placeholder;
+    return Image.network(
+      u,
+      fit: BoxFit.cover,
+      width: double.infinity,
+      height: double.infinity,
+      webHtmlElementStrategy: WebHtmlElementStrategy.fallback,
+      errorBuilder: (_, _, _) => placeholder,
+      loadingBuilder: (_, child, progress) =>
+          progress == null ? child : placeholder,
+    );
+  }
+}
+
+/// 메인 페이지의 구역 제목과 "더보기".
+class SectionHeader extends StatelessWidget {
+  const SectionHeader({super.key, required this.title, this.onMore});
+
+  final String title;
+  final VoidCallback? onMore;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 36, bottom: 12),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              title,
+              style: Theme.of(context).textTheme.titleLarge
+                  ?.copyWith(fontSize: 19),
+            ),
+          ),
+          if (onMore != null)
+            TextButton(
+              onPressed: onMore,
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [Text('더보기'), Icon(Icons.chevron_right, size: 18)],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 내용이 없을 때의 안내.
+class EmptyHint extends StatelessWidget {
+  const EmptyHint(this.text, {super.key});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 16),
+      decoration: BoxDecoration(
+        color: context.palette.surface,
+        border: Border.all(color: context.palette.border),
+        borderRadius: BorderRadius.circular(AppRadius.card),
+      ),
+      child: Text(
+        text,
+        textAlign: TextAlign.center,
+        style: TextStyle(color: context.palette.muted),
+      ),
+    );
+  }
+}
+
+/// 콘텐츠 스트림의 로딩·오류를 처리하고, 목록이 오면 [builder]로 그린다.
+class ContentStream extends StatelessWidget {
+  const ContentStream({
+    super.key,
+    required this.stream,
+    required this.builder,
+    this.loadingHeight = 120,
+  });
+
+  final Stream<List<ChurchContent>> stream;
+  final Widget Function(BuildContext context, List<ChurchContent> items)
+  builder;
+  final double loadingHeight;
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<List<ChurchContent>>(
+      stream: stream,
+      builder: (context, snap) {
+        if (snap.hasError) {
+          return EmptyHint('불러오지 못했습니다\n${snap.error}');
+        }
+        final items = snap.data;
+        if (items == null) {
+          return SizedBox(
+            height: loadingHeight,
+            child: const Center(child: CircularProgressIndicator()),
+          );
+        }
+        return builder(context, items);
+      },
+    );
+  }
+}
+
+/// 일정 등에서 쓰는 월/일 배지.
+class DateBadge extends StatelessWidget {
+  const DateBadge(this.date, {super.key});
+
+  final DateTime date;
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = context.palette;
+    return Container(
+      width: 52,
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      decoration: BoxDecoration(
+        color: palette.brand.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(AppRadius.card),
+      ),
+      child: Column(
+        children: [
+          Text(
+            '${date.month}월',
+            style: TextStyle(
+              color: palette.brand,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          Text(
+            '${date.day}',
+            style: TextStyle(
+              color: palette.brand,
+              fontSize: 20,
+              fontWeight: FontWeight.w800,
+              height: 1.1,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 짧은 요일 글자.
+String weekdayLabel(DateTime d) => '월화수목금토일'[d.weekday - 1];
+
+/// 폭에 따라 [wide]열 또는 [narrow]열로 나누어 놓는다 (좁은 폭은 560 미만).
+class ColumnWrap extends StatelessWidget {
+  const ColumnWrap({
+    super.key,
+    required this.children,
+    this.wide = 3,
+    this.narrow = 1,
+    this.gap = 12,
+  });
+
+  final List<Widget> children;
+  final int wide;
+  final int narrow;
+  final double gap;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final cols = constraints.maxWidth < 560 ? narrow : wide;
+        final w = (constraints.maxWidth - gap * (cols - 1)) / cols;
+        return Wrap(
+          spacing: gap,
+          runSpacing: gap,
+          children: [for (final c in children) SizedBox(width: w, child: c)],
+        );
+      },
+    );
+  }
+}

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../app/app_scope.dart';
+import '../../../app/routes.dart';
 import '../../../core/layout/card_grid.dart';
 import '../../../core/layout/page_frame.dart';
 import '../../../core/mvvm/view_model_builder.dart';
@@ -9,10 +11,7 @@ import '../view_model/platform_dashboard_view_model.dart';
 
 /// 앱 운영자 대시보드: 교회·요청·회원 현황.
 class DashboardPage extends StatelessWidget {
-  const DashboardPage({super.key, required this.onOpenChurches});
-
-  /// 교회 등록 관리(승인 대기 요청이 있는 곳)로 이동한다.
-  final VoidCallback onOpenChurches;
+  const DashboardPage({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -43,7 +42,7 @@ class DashboardPage extends StatelessWidget {
                     label: '승인 대기 중인 교회 생성 요청',
                     value: vm.pendingRequestCount,
                     highlightWhenPositive: true,
-                    onTap: onOpenChurches,
+                    onTap: () => context.go(Routes.adminChurches),
                   ),
                   _StatCard(
                     icon: Icons.people_outline,
@@ -94,18 +93,22 @@ class _StatCard extends StatelessWidget {
                 children: [
                   Icon(
                     icon,
-                    color: highlight ? AppColors.brand : AppColors.muted,
+                    color: highlight
+                        ? context.palette.brand
+                        : context.palette.muted,
                   ),
                   const SizedBox(height: 12),
                   Text(
                     count?.toString() ?? '-',
                     style: Theme.of(context).textTheme.displaySmall?.copyWith(
                       fontWeight: FontWeight.w800,
-                      color: highlight ? AppColors.brand : AppColors.ink,
+                      color: highlight
+                          ? context.palette.brand
+                          : context.palette.ink,
                     ),
                   ),
                   const SizedBox(height: 4),
-                  Text(label, style: const TextStyle(color: AppColors.muted)),
+                  Text(label, style: TextStyle(color: context.palette.muted)),
                 ],
               );
             },

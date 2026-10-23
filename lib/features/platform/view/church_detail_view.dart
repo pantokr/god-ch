@@ -120,7 +120,7 @@ class _Row extends StatelessWidget {
         children: [
           SizedBox(
             width: 100,
-            child: Text(label, style: const TextStyle(color: AppColors.muted)),
+            child: Text(label, style: TextStyle(color: context.palette.muted)),
           ),
           Expanded(child: Text(value)),
         ],

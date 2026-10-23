@@ -67,11 +67,11 @@ class _EntrySectionState extends State<EntrySection> {
               builder: (context, snap) {
                 final items = snap.data ?? const [];
                 if (items.isEmpty) {
-                  return const Padding(
+                  return Padding(
                     padding: EdgeInsets.symmetric(vertical: 12),
                     child: Text(
                       '아직 없습니다.',
-                      style: TextStyle(color: AppColors.muted),
+                      style: TextStyle(color: context.palette.muted),
                     ),
                   );
                 }

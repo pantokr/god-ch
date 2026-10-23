@@ -31,6 +31,10 @@ class FirestorePaths {
   CollectionReference<Json> prayers(String churchId) =>
       church(churchId).collection('prayers');
 
+  /// 교회 메인 페이지 콘텐츠 (공지·일정·사진첩·설교·말씀묵상). 종류별로 컬렉션이 따로 있다.
+  CollectionReference<Json> contents(String churchId, String collection) =>
+      church(churchId).collection(collection);
+
   CollectionReference<Json> accessLogs(String churchId) =>
       church(churchId).collection('accessLogs');
 

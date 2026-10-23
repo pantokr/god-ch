@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../app/app_scope.dart';
+import '../../../app/routes.dart';
 import '../../../core/layout/sub_page.dart';
 import '../../../core/mvvm/view_model_builder.dart';
 import '../../../core/theme.dart';
@@ -41,16 +43,25 @@ class _PrayerEditorPageState extends State<PrayerEditorPage> {
     super.dispose();
   }
 
+  /// 작성·수정이 끝나거나 취소하면 이전 화면으로 돌아간다 (주소로 바로 열었다면 기도제목 목록으로).
+  void _leave(GoRouter router) {
+    if (router.canPop()) {
+      router.pop();
+    } else {
+      router.go(Routes.section(widget.me.churchId, ChurchSection.feed));
+    }
+  }
+
   Future<void> _save(PrayerEditorViewModel vm) async {
     if (!_form.currentState!.validate()) return;
-    final navigator = Navigator.of(context);
+    final router = GoRouter.of(context);
     final messenger = ScaffoldMessenger.of(context);
     final ok = await vm.save(
       title: _title.text.trim(),
       content: _content.text.trim(),
     );
     if (ok) {
-      navigator.pop();
+      _leave(router);
     } else {
       messenger.showSnackBar(
         SnackBar(content: Text('저장하지 못했습니다: ${vm.error}')),
@@ -69,6 +80,10 @@ class _PrayerEditorPageState extends State<PrayerEditorPage> {
       ),
       builder: (context, vm) => SubPage(
         title: vm.isEditing ? '기도제목 수정' : '기도제목 쓰기',
+        fallbackLocation: Routes.section(
+          widget.me.churchId,
+          ChurchSection.feed,
+        ),
         child: Card(
           child: Padding(
             padding: const EdgeInsets.all(28),
@@ -108,7 +123,7 @@ class _PrayerEditorPageState extends State<PrayerEditorPage> {
                       TextButton(
                         onPressed: vm.busy
                             ? null
-                            : () => Navigator.pop(context),
+                            : () => _leave(GoRouter.of(context)),
                         child: const Text('취소'),
                       ),
                       const SizedBox(width: 8),
@@ -205,7 +220,7 @@ class _VisibilityPicker extends StatelessWidget {
           isPublic
               ? '승인된 교인에게 공개되며 이모티콘으로 응원받을 수 있어요. 작성자 이름은 표시되지 않습니다.'
               : '다른 교인에게는 보이지 않고, 교역자만 읽고 답변할 수 있어요.',
-          style: const TextStyle(color: AppColors.muted, fontSize: 13),
+          style: TextStyle(color: context.palette.muted, fontSize: 13),
         ),
       ],
     );

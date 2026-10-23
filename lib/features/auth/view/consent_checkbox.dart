@@ -66,7 +66,7 @@ class _ConsentText extends StatelessWidget {
                   width: 96,
                   child: Text(
                     label,
-                    style: const TextStyle(color: AppColors.muted),
+                    style: TextStyle(color: context.palette.muted),
                   ),
                 ),
                 Expanded(child: Text(value)),

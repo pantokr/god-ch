@@ -53,7 +53,7 @@ class ReactionBar extends StatelessWidget {
               ),
               Text(
                 '응원 ${summary.total}',
-                style: const TextStyle(color: AppColors.muted, fontSize: 13),
+                style: TextStyle(color: context.palette.muted, fontSize: 13),
               ),
             ],
           );
@@ -82,12 +82,12 @@ class _ReactionPill extends StatelessWidget {
       message: type.label,
       child: Material(
         color: selected
-            ? AppColors.brand.withValues(alpha: 0.1)
+            ? context.palette.accent.withValues(alpha: 0.1)
             : Colors.transparent,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppRadius.control),
           side: BorderSide(
-            color: selected ? AppColors.brand : AppColors.border,
+            color: selected ? context.palette.accent : context.palette.border,
           ),
         ),
         child: InkWell(
@@ -100,7 +100,7 @@ class _ReactionPill extends StatelessWidget {
             child: Text(
               '${type.emoji} $count',
               style: TextStyle(
-                color: selected ? AppColors.brand : AppColors.ink,
+                color: selected ? context.palette.accent : context.palette.ink,
                 fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
               ),
             ),

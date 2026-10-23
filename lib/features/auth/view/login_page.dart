@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../app/app_scope.dart';
+import '../../../app/routes.dart';
 import '../../../core/mvvm/view_model_builder.dart';
 import '../../../core/theme.dart';
 import '../view_model/login_view_model.dart';
-import 'sign_up_page.dart';
 
 /// ID + 비밀번호로 로그인하거나, Google로 계속한다.
 class LoginPage extends StatefulWidget {
@@ -71,9 +72,9 @@ class _LoginPageState extends State<LoginPage> {
                         ),
                       ),
                       const SizedBox(height: 4),
-                      const Text(
-                        '함께 기도해요에 오신 것을 환영해요.',
-                        style: TextStyle(color: AppColors.muted),
+                      Text(
+                        ' 오신 것을 환영해요.',
+                        style: TextStyle(color: context.palette.muted),
                       ),
                       const SizedBox(height: 24),
                       TextFormField(
@@ -117,12 +118,7 @@ class _LoginPageState extends State<LoginPage> {
                       TextButton(
                         onPressed: vm.busy
                             ? null
-                            : () => Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => const SignUpPage(),
-                                ),
-                              ),
+                            : () => context.push(Routes.signUp),
                         child: const Text('계정이 없어요 · 회원가입'),
                       ),
                     ],
@@ -143,16 +139,19 @@ class _Brand extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Column(
+    return Column(
       children: [
-        Icon(Icons.volunteer_activism, color: AppColors.brand, size: 40),
+        Icon(Icons.volunteer_activism, color: context.palette.brand, size: 40),
         SizedBox(height: 12),
         Text(
-          '함께 기도해요',
+          '함께 지어져 가는 공동체',
           style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800),
         ),
         SizedBox(height: 6),
-        Text('서로의 기도제목을 조용히 나누는 공간', style: TextStyle(color: AppColors.muted)),
+        Text(
+          '서로의 기도제목을 조용히 나누는 공간',
+          style: TextStyle(color: context.palette.muted),
+        ),
       ],
     );
   }

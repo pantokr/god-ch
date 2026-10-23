@@ -123,3 +123,6 @@ app.*.symbols
 # IDE
 .idea/
 *.iml
+
+# Firebase 호스팅 배포 캐시
+.firebase/

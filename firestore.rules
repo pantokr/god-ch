@@ -46,6 +46,14 @@ service cloud.firestore {
     function changed() {
       return request.resource.data.diff(resource.data).affectedKeys();
     }
+    // 메인 페이지 콘텐츠 한 건의 형식 검사.
+    function contentValid(d) {
+      return d.title is string && d.title.size() > 0 && d.title.size() <= 100
+        && d.body is string && d.body.size() <= 5000
+        && d.date is timestamp
+        && d.imageUrls is list && d.imageUrls.size() <= 30
+        && d.videoUrl is string && d.videoUrl.size() <= 300;
+    }
     // 앱 운영자: 계정에 platformAdmin 클레임이 있거나 admins/{uid} 문서가 있는 계정.
     // 둘 다 서버 관리자 권한으로만 만들 수 있다.
     function isPlatformAdmin() {
@@ -328,6 +336,25 @@ service cloud.firestore {
             && request.resource.data.content.size() > 0 && request.resource.data.content.size() <= 1000;
           allow update, delete: if false;
         }
+      }
+
+      // ---- 교회 메인 페이지 콘텐츠: 공지·일정·사진첩·설교영상·말씀묵상 ----
+      // 승인된 교인이 읽고, 교역자·교회 운영자가 만들고 고친다. 종류가 늘면 아래 목록도 함께 고친다.
+      match /{kind}/{contentId} {
+        allow read: if kind in ['notices', 'events', 'photos', 'sermons', 'devotions']
+          && isActive(churchId);
+        allow create: if kind in ['notices', 'events', 'photos', 'sermons', 'devotions']
+          && isStaff(churchId)
+          && request.resource.data.keys().hasOnly(
+               ['title', 'body', 'date', 'imageUrls', 'videoUrl', 'createdBy', 'createdAt'])
+          && request.resource.data.createdBy == request.auth.uid
+          && contentValid(request.resource.data);
+        allow update: if kind in ['notices', 'events', 'photos', 'sermons', 'devotions']
+          && isStaff(churchId)
+          && changed().hasOnly(['title', 'body', 'date', 'imageUrls', 'videoUrl', 'updatedAt'])
+          && contentValid(request.resource.data);
+        allow delete: if kind in ['notices', 'events', 'photos', 'sermons', 'devotions']
+          && isStaff(churchId);
       }
 
       // ---- 비공개 글 접근 기록: 교역자가 기록하고 관리자만 열람, 수정·삭제 불가 ----
