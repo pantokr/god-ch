@@ -72,7 +72,7 @@ class _ProfileCompletionPageState extends State<ProfileCompletionPage> {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            'Google 계정(${vm.email})으로 처음 오셨어요. 아래 정보를 입력하면 가입이 끝나요.',
+                            'Google 계정으로 처음 오셨어요. 아래 정보를 입력하면 가입이 끝나요.',
                             style: TextStyle(color: context.palette.muted),
                           ),
                           const SizedBox(height: 20),

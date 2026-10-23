@@ -28,7 +28,5 @@ class MyChurchesViewModel extends ViewModel {
 
   String get userName => _auth.displayName;
 
-  String get userEmail => _auth.email;
-
   Future<void> signOut() => _auth.signOut();
 }

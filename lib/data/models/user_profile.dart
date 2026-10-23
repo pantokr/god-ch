@@ -8,7 +8,6 @@ class UserProfile {
     required this.uid,
     required this.name,
     required this.phone,
-    required this.email,
     required this.consentThirdParty,
     this.loginId,
     this.createdAt,
@@ -20,7 +19,6 @@ class UserProfile {
   final String? loginId;
   final String name;
   final String phone;
-  final String email;
 
   /// 개인정보 제3자(소속 교회) 제공 동의 여부.
   final bool consentThirdParty;
@@ -33,7 +31,6 @@ class UserProfile {
       loginId: d['loginId'] as String?,
       name: d['name'] as String? ?? '',
       phone: d['phone'] as String? ?? '',
-      email: d['email'] as String? ?? '',
       consentThirdParty: d['consentThirdParty'] as bool? ?? false,
       createdAt: toDate(d['createdAt']),
     );

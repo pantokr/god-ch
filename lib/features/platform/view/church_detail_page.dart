@@ -33,12 +33,12 @@ class ChurchDetailPage extends StatelessWidget {
                     height: 56,
                     child: Row(
                       children: [
-                        TextButton.icon(
+                        IconButton(
+                          tooltip: '교회 목록',
                           onPressed: () => context.canPop()
                               ? context.pop()
                               : context.go(Routes.adminChurches),
-                          icon: const Icon(Icons.arrow_back, size: 18),
-                          label: const Text('교회 목록'),
+                          icon: const Icon(Icons.arrow_back),
                         ),
                         const SizedBox(width: 8),
                         Expanded(

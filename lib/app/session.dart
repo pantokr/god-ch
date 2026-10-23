@@ -16,9 +16,6 @@ enum SessionStatus {
   /// 로그인하지 않음.
   signedOut,
 
-  /// 이메일 인증을 아직 하지 않음.
-  needsVerification,
-
   /// 가입 정보(이름·전화번호·동의)를 아직 입력하지 않음.
   needsProfile,
 
@@ -30,7 +27,7 @@ enum SessionStatus {
 }
 
 /// 로그인 상태를 지켜보다가 [status]가 바뀌면 알려 준다. 라우터가 이 값으로 화면을 나눈다.
-/// 앱 운영자는 이메일 인증과 가입 정보 입력을 거치지 않는다.
+/// 앱 운영자는 가입 정보 입력을 거치지 않는다.
 class SessionNotifier extends ChangeNotifier {
   SessionNotifier(this._auth, this._profiles, this._requests) {
     _userSub = _auth.userChanges().listen(_onUser);
@@ -46,21 +43,17 @@ class SessionNotifier extends ChangeNotifier {
   SessionStatus _status = SessionStatus.loading;
 
   // 같은 계정의 토큰 갱신 등으로 값이 다시 나와도 화면이 깜빡이지 않게,
-  // 계정이나 이메일 인증 여부가 실제로 바뀔 때만 다시 판단한다.
+  // 계정이 실제로 바뀔 때만 다시 판단한다.
   String? _lastUid;
-  bool? _lastVerified;
   int _generation = 0;
 
   SessionStatus get status => _status;
 
   Future<void> _onUser(User? user) async {
-    if (user?.uid == _lastUid &&
-        user?.emailVerified == _lastVerified &&
-        _status != SessionStatus.loading) {
+    if (user?.uid == _lastUid && _status != SessionStatus.loading) {
       return;
     }
     _lastUid = user?.uid;
-    _lastVerified = user?.emailVerified;
     final generation = ++_generation;
     await _profileSub?.cancel();
     _profileSub = null;
@@ -71,7 +64,6 @@ class SessionNotifier extends ChangeNotifier {
     final operator = await _isOperator();
     if (generation != _generation) return;
     if (operator) return _set(SessionStatus.operator);
-    if (!user.emailVerified) return _set(SessionStatus.needsVerification);
 
     // 가입 정보가 생기면 자동으로 member가 된다.
     _profileSub = _profiles

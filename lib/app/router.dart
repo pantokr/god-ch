@@ -3,7 +3,6 @@ import 'package:go_router/go_router.dart';
 
 import '../data/models/church_content.dart';
 import '../data/models/prayer.dart';
-import '../features/auth/view/email_verification_page.dart';
 import '../features/auth/view/login_page.dart';
 import '../features/auth/view/profile_completion_page.dart';
 import '../features/auth/view/sign_up_page.dart';
@@ -41,10 +40,6 @@ GoRouter buildRouter(SessionNotifier session) {
       GoRoute(
         path: Routes.signUp,
         builder: (context, state) => const SignUpPage(),
-      ),
-      GoRoute(
-        path: Routes.verifyEmail,
-        builder: (context, state) => const EmailVerificationPage(),
       ),
       GoRoute(
         path: Routes.profile,
@@ -97,19 +92,73 @@ GoRouter buildRouter(SessionNotifier session) {
                   segments.length > 2 ? segments[2] : '',
                 ) ??
                 ChurchSection.home,
+            pageId:
+                segments.length > 3 && segments[2] == ChurchSection.page.path
+                ? segments[3]
+                : null,
             departmentId: state.uri.queryParameters['dept'],
             child: child,
           );
         },
         routes: [
           _sectionRoute(ChurchSection.home, const HomeSectionPage()),
+          GoRoute(
+            path: '/churches/:cid/${ChurchSection.page.path}/:pid',
+            pageBuilder: (context, state) => NoTransitionPage(
+              key: ValueKey(state.uri.path),
+              child: PageSectionPage(pageId: state.pathParameters['pid']!),
+            ),
+          ),
           _sectionRoute(ChurchSection.feed, const FeedSectionPage()),
           _sectionRoute(ChurchSection.mine, const MineSectionPage()),
-          _sectionRoute(ChurchSection.manage, const ManageSectionPage()),
+          _sectionRoute(ChurchSection.posts, const PostManageSectionPage()),
+          _sectionRoute(ChurchSection.members, const MemberManageSectionPage()),
+          // 예전 "교회 관리" 주소는 인원 관리로 보낸다.
+          GoRoute(
+            path: '/churches/:cid/manage',
+            redirect: (context, state) => Routes.section(
+              state.pathParameters['cid']!,
+              ChurchSection.members,
+            ),
+          ),
+          GoRoute(
+            path: '/churches/:cid/${ChurchSection.departments.path}',
+            // 부모와 자식 경로가 한 화면 스택에 함께 쌓이므로, 키는 각자 맞은 주소(matchedLocation)로 둔다.
+            // (둘 다 현재 주소 전체를 키로 쓰면 같은 키가 겹쳐 "keyReservation" 오류가 난다.)
+            pageBuilder: (context, state) => NoTransitionPage(
+              key: ValueKey(state.matchedLocation),
+              child: const DepartmentManageSectionPage(),
+            ),
+            routes: [
+              GoRoute(
+                path: ':did',
+                pageBuilder: (context, state) => NoTransitionPage(
+                  key: ValueKey(state.matchedLocation),
+                  child: DepartmentDetailSectionPage(
+                    departmentId: state.pathParameters['did']!,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          GoRoute(
+            path: '/churches/:cid/${ChurchSection.content.path}/p/:pid',
+            pageBuilder: (context, state) => NoTransitionPage(
+              key: ValueKey(state.uri.path),
+              child: PageEditSectionPage(pageId: state.pathParameters['pid']!),
+            ),
+          ),
           GoRoute(
             path: '/churches/:cid/${ChurchSection.content.path}',
             pageBuilder: (context, state) => NoTransitionPage(
               key: ValueKey('${state.pathParameters['cid']}/content'),
+              child: const PageListSectionPage(),
+            ),
+          ),
+          GoRoute(
+            path: '/churches/:cid/${ChurchSection.contents.path}',
+            pageBuilder: (context, state) => NoTransitionPage(
+              key: ValueKey('${state.pathParameters['cid']}/contents'),
               child: ContentEditSectionPage(
                 kind: ContentKind.fromPath(
                   state.uri.queryParameters['kind'] ?? '',
@@ -125,7 +174,7 @@ GoRouter buildRouter(SessionNotifier session) {
                 ? Routes.home(state.pathParameters['cid']!)
                 : null,
             pageBuilder: (context, state) => NoTransitionPage(
-              key: ValueKey(state.uri.path),
+              key: ValueKey(state.matchedLocation),
               child: ContentListSectionPage(
                 kind: ContentKind.fromPath(state.pathParameters['kind']!)!,
               ),
@@ -134,7 +183,7 @@ GoRouter buildRouter(SessionNotifier session) {
               GoRoute(
                 path: ':id',
                 pageBuilder: (context, state) => NoTransitionPage(
-                  key: ValueKey(state.uri.path),
+                  key: ValueKey(state.matchedLocation),
                   child: ContentDetailSectionPage(
                     kind: ContentKind.fromPath(state.pathParameters['kind']!)!,
                     contentId: state.pathParameters['id']!,
@@ -207,9 +256,6 @@ String? sessionRedirect(SessionStatus status, Uri uri) {
         path: Routes.login,
         queryParameters: remember == null ? null : {'from': remember},
       ).toString();
-
-    case SessionStatus.needsVerification:
-      return path == Routes.verifyEmail ? null : Routes.verifyEmail;
 
     case SessionStatus.needsProfile:
       return path == Routes.profile ? null : Routes.profile;

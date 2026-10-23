@@ -17,13 +17,12 @@ class UsersViewModel extends ViewModel {
     notifyListeners();
   }
 
-  /// 이름·아이디·이메일·전화번호 중 하나라도 검색어를 포함하면 보여준다.
+  /// 이름·아이디·전화번호 중 하나라도 검색어를 포함하면 보여준다.
   bool matches(UserProfile u) {
     if (_query.isEmpty) return true;
     final digits = _query.replaceAll(RegExp(r'\D'), '');
     return u.name.toLowerCase().contains(_query) ||
         (u.loginId ?? '').contains(_query) ||
-        u.email.toLowerCase().contains(_query) ||
         (digits.isNotEmpty && u.phone.replaceAll('-', '').contains(digits));
   }
 }

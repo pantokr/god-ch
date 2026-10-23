@@ -88,6 +88,20 @@ class PrayerRepository {
     'updatedAt': FieldValue.serverTimestamp(),
   });
 
+  /// 교역자가 공개 글의 제목·내용을 고친다 (유해하거나 고쳐야 할 내용). 기록은 moderatedBy/At에 남는다.
+  Future<void> editByStaff(
+    String churchId,
+    String id, {
+    required String title,
+    required String content,
+  }) => _paths.prayers(churchId).doc(id).update({
+    'title': title,
+    'content': content,
+    'updatedAt': FieldValue.serverTimestamp(),
+    'moderatedBy': _auth.uid,
+    'moderatedAt': FieldValue.serverTimestamp(),
+  });
+
   Future<void> deleteOwn(String churchId, String id) =>
       _softDelete(churchId, id, '본인 삭제');
 

@@ -44,12 +44,12 @@ class SubPage extends StatelessWidget {
                     height: 56,
                     child: Row(
                       children: [
-                        TextButton.icon(
+                        IconButton(
+                          tooltip: '돌아가기',
                           onPressed: () => context.canPop()
                               ? context.pop()
                               : context.go(fallbackLocation),
-                          icon: const Icon(Icons.arrow_back, size: 18),
-                          label: const Text('돌아가기'),
+                          icon: const Icon(Icons.arrow_back),
                         ),
                         const SizedBox(width: 8),
                         Expanded(

@@ -4,7 +4,9 @@ import 'package:go_router/go_router.dart';
 import '../../../app/routes.dart';
 import '../../../core/layout/profile_summary.dart';
 import '../../../core/layout/sidebar_scaffold.dart';
-import '../../settings/view/theme_mode_selector.dart';
+import '../../../core/layout/app_dialog.dart';
+import '../../auth/view/profile_edit_dialog.dart';
+import '../../settings/view/settings_dialog.dart';
 
 /// 앱 운영자 전용 관리자 패널의 틀. 교회에 소속되지 않고, 이 패널 안에서만 움직인다.
 /// 왼쪽 메뉴(좁은 화면에서는 서랍)로 이동하며, 메뉴를 바꾸면 주소가 바뀌므로
@@ -14,7 +16,6 @@ class PlatformShell extends StatelessWidget {
     super.key,
     required this.section,
     required this.userName,
-    required this.userEmail,
     required this.onSignOut,
     required this.child,
   });
@@ -22,7 +23,6 @@ class PlatformShell extends StatelessWidget {
   /// 지금 보고 있는 메뉴 (주소에서 읽는다).
   final PlatformSection section;
   final String userName;
-  final String userEmail;
   final VoidCallback onSignOut;
   final Widget child;
 
@@ -41,12 +41,17 @@ class PlatformShell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SidebarScaffold(
-      title: '앱 운영 · ${_labels[section]}',
       userName: userName,
-      userEmail: userEmail,
+      onProfile: () => showAppDialog<void>(
+        context,
+        maxWidth: 420,
+        child: ProfileEditDialog(
+          name: userName,
+          details: const [ProfileDetail('역할', '앱 운영자')],
+        ),
+      ),
+      onSettings: () => showSettingsDialog(context),
       onSignOut: onSignOut,
-      profileDetails: const [ProfileDetail('역할', '앱 운영자')],
-      profileExtras: const ThemeModeSelector(),
       groups: [
         SidebarGroup(
           title: '앱 운영',

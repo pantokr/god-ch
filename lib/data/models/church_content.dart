@@ -25,7 +25,7 @@ enum ContentKind {
 }
 
 /// 공지·일정·사진첩·설교·말씀묵상 한 건. 종류마다 쓰는 필드가 조금씩 다르다.
-/// - 공지: 제목, 본문, 썸네일(첫 이미지, 3:4 고정), 캐러셀 배경(둘째 이미지, 가로)
+/// - 공지: 제목, 본문, 썸네일(첫 이미지, 4:3 고정), 캐러셀 배경(둘째 이미지, 가로)
 /// - 일정: 제목, 본문(장소·설명), [date]가 일정 날짜
 /// - 사진첩: 제목, 본문, 사진 여러 장
 /// - 설교영상: 제목, 본문, [videoUrl](유튜브 주소), [date]가 설교한 날
@@ -100,5 +100,5 @@ String? youtubeThumbnail(String url) {
   return id == null ? null : 'https://img.youtube.com/vi/$id/hqdefault.jpg';
 }
 
-/// 썸네일은 항상 3:4 (가로:세로) 비율로 보여 준다.
-const kThumbnailAspect = 3 / 4;
+/// 썸네일은 항상 4:3 (가로:세로) 비율로 보여 준다.
+const kThumbnailAspect = 4 / 3;

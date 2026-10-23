@@ -18,10 +18,14 @@ class ChurchShellRoute extends StatelessWidget {
     required this.section,
     required this.departmentId,
     required this.child,
+    this.pageId,
   });
 
   final String churchId;
   final ChurchSection section;
+
+  /// 주소 `/p/{페이지}`의 페이지 ID.
+  final String? pageId;
 
   /// 주소의 `?dept=`. 있으면 그 부서 전용 공간으로 본다.
   final String? departmentId;
@@ -39,9 +43,9 @@ class ChurchShellRoute extends StatelessWidget {
           builder: (context, department) => ChurchShell(
             me: me,
             section: section,
+            pageId: pageId,
             department: department,
             userName: account.userName,
-            userEmail: account.userEmail,
             onSignOut: account.signOut,
             child: child,
           ),

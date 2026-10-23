@@ -27,7 +27,6 @@ class SiteHeader extends StatelessWidget {
   const SiteHeader({
     super.key,
     required this.userName,
-    required this.userEmail,
     required this.onSignOut,
     this.profileDetails = const [],
     this.profileExtras,
@@ -36,7 +35,6 @@ class SiteHeader extends StatelessWidget {
   });
 
   final String userName;
-  final String userEmail;
   final VoidCallback onSignOut;
 
   /// "내 정보"에 덧붙여 보여줄 항목 (예: 교회, 역할).
@@ -92,7 +90,6 @@ class SiteHeader extends StatelessWidget {
                           onPressed: () => showProfileDialog(
                             context,
                             name: userName,
-                            email: userEmail,
                             details: profileDetails,
                             extras: profileExtras,
                           ),
@@ -111,7 +108,6 @@ class SiteHeader extends StatelessWidget {
                           onShowProfile: () => showProfileDialog(
                             context,
                             name: userName,
-                            email: userEmail,
                             details: profileDetails,
                             extras: profileExtras,
                           ),

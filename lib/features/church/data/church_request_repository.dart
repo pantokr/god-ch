@@ -30,12 +30,9 @@ class ChurchRequestRepository {
     if (phone.trim().isEmpty) throw const AppException('교회 전화번호를 입력해 주세요.');
     if (address.trim().isEmpty) throw const AppException('교회 주소를 입력해 주세요.');
     final profile = await _profiles.requireCurrent();
-    // 이메일 인증을 방금 마쳤다면 로그인 토큰이 옛 값일 수 있어 새로 받는다.
-    if (_auth.isEmailVerified) await _auth.refreshToken();
     await _paths.churchRequests.add({
       'requesterId': _auth.uid,
       'requesterName': profile.name,
-      'requesterEmail': _auth.email.toLowerCase(),
       'requesterPhone': profile.phone,
       'name': name.trim(),
       'phone': phone.trim(),
@@ -90,7 +87,6 @@ class ChurchRequestRepository {
       'churchId': r.id,
       'churchName': r.name,
       'name': r.requesterName,
-      'email': r.requesterEmail,
       if (r.requesterPhone.isNotEmpty) 'phone': r.requesterPhone,
       'role': Role.admin.name,
       'status': MemberStatus.approved.name,

@@ -262,10 +262,10 @@ class NoticeRow extends StatelessWidget {
           children: [
             ClipRRect(
               borderRadius: BorderRadius.circular(AppRadius.control),
-              // 공지 썸네일은 3:4 고정.
+              // 공지 썸네일은 4:3 고정.
               child: SizedBox(
-                width: 60,
-                height: 60 / kThumbnailAspect,
+                width: 80,
+                height: 80 / kThumbnailAspect,
                 child: ContentImage(
                   content.thumbnail,
                   icon: Icons.campaign_outlined,

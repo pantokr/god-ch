@@ -1,0 +1,110 @@
+import 'package:flutter/material.dart';
+
+import '../../../app/app_scope.dart';
+import '../../../core/layout/profile_summary.dart';
+import '../../../core/mvvm/view_model_builder.dart';
+import '../../../core/theme.dart';
+import '../view_model/profile_edit_view_model.dart';
+
+/// 내 정보를 보고 이름·전화번호를 고치는 대화상자 내용.
+class ProfileEditDialog extends StatefulWidget {
+  const ProfileEditDialog({
+    super.key,
+    required this.name,
+    this.details = const [],
+  });
+
+  final String name;
+  final List<ProfileDetail> details;
+
+  @override
+  State<ProfileEditDialog> createState() => _ProfileEditDialogState();
+}
+
+class _ProfileEditDialogState extends State<ProfileEditDialog> {
+  late final _name = TextEditingController(text: widget.name);
+  final _phone = TextEditingController();
+  bool _filled = false;
+
+  @override
+  void dispose() {
+    _name.dispose();
+    _phone.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save(ProfileEditViewModel vm) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final navigator = Navigator.of(context);
+    if (await vm.save(_name.text, _phone.text)) {
+      navigator.pop();
+      messenger.showSnackBar(const SnackBar(content: Text('내 정보를 저장했어요.')));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return ViewModelBuilder<ProfileEditViewModel>(
+      create: (context) =>
+          ProfileEditViewModel(AppScope.read(context).profiles),
+      builder: (context, vm) {
+        if (vm.loaded && !_filled) {
+          _filled = true;
+          _phone.text = vm.profile?.phone ?? '';
+        }
+        final hasProfile = vm.profile != null;
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text('내 정보', style: theme.textTheme.titleLarge),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _name,
+              maxLength: 30,
+              decoration: const InputDecoration(labelText: '이름'),
+            ),
+            if (hasProfile) ...[
+              const SizedBox(height: 4),
+              TextField(
+                controller: _phone,
+                keyboardType: TextInputType.phone,
+                maxLength: 20,
+                decoration: const InputDecoration(labelText: '전화번호'),
+                onSubmitted: (_) => _save(vm),
+              ),
+            ],
+            for (final d in widget.details)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Text(
+                  '${d.label}  ${d.value}',
+                  style: TextStyle(color: context.palette.muted),
+                ),
+              ),
+            if (vm.error != null) ...[
+              const SizedBox(height: 12),
+              Text(vm.error!, style: TextStyle(color: theme.colorScheme.error)),
+            ],
+            const SizedBox(height: 20),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('취소'),
+                ),
+                const SizedBox(width: 8),
+                FilledButton(
+                  onPressed: vm.busy || !vm.loaded ? null : () => _save(vm),
+                  child: const Text('저장'),
+                ),
+              ],
+            ),
+          ],
+        );
+      },
+    );
+  }
+}

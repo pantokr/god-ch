@@ -13,7 +13,6 @@ class Member {
     required this.churchId,
     required this.churchName,
     required this.name,
-    required this.email,
     required this.role,
     required this.status,
     this.phone = '',
@@ -26,7 +25,6 @@ class Member {
   final String churchId;
   final String churchName;
   final String name;
-  final String email;
 
   /// 가입할 때 받은 전화번호 (교회에 제공하는 것에 동의한 정보).
   final String phone;
@@ -48,7 +46,6 @@ class Member {
       churchId: d['churchId'] as String? ?? '',
       churchName: d['churchName'] as String? ?? '',
       name: d['name'] as String? ?? '',
-      email: d['email'] as String? ?? '',
       phone: d['phone'] as String? ?? '',
       role: enumByName(Role.values, d['role'], Role.member),
       status: enumByName(

@@ -39,7 +39,7 @@ class ContentListPage extends StatelessWidget {
                   action: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      if (me.isStaff)
+                      if (me.isAdmin)
                         OutlinedButton.icon(
                           onPressed: () => context.go(
                             Routes.contentEdit(me.churchId, kind: kind),
@@ -48,12 +48,12 @@ class ContentListPage extends StatelessWidget {
                           label: const Text('편집'),
                         ),
                       const SizedBox(width: 8),
-                      TextButton.icon(
+                      IconButton(
+                        tooltip: '메인',
                         onPressed: () => context.canPop()
                             ? context.pop()
                             : context.go(Routes.home(me.churchId)),
-                        icon: const Icon(Icons.arrow_back, size: 18),
-                        label: const Text('메인'),
+                        icon: const Icon(Icons.arrow_back),
                       ),
                     ],
                   ),

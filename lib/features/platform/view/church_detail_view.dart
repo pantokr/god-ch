@@ -6,8 +6,8 @@ import '../../../core/mvvm/view_model_builder.dart';
 import '../../../core/theme.dart';
 import '../../../data/models/church.dart';
 import '../../../data/models/member.dart';
-import '../../admin/view/department_admin_tab.dart';
-import '../../admin/view/member_admin_tab.dart';
+import '../../admin/view/department_manage_page.dart';
+import '../../admin/view/member_manage_page.dart';
 import '../view_model/church_summary_view_model.dart';
 
 /// 한 교회의 상세 관리: 교회 정보 / 교인·초대 코드 / 부서.
@@ -39,8 +39,8 @@ class ChurchDetailView extends StatelessWidget {
             child: TabBarView(
               children: [
                 _InfoTab(church: church),
-                MemberAdminTab(me: operator),
-                DepartmentAdminTab(me: operator),
+                MemberManagePage(me: operator),
+                DepartmentManagePage(me: operator),
               ],
             ),
           ),

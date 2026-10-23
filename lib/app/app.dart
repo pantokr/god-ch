@@ -10,6 +10,7 @@ import '../features/church/data/church_repository.dart';
 import '../features/church/data/church_request_repository.dart';
 import '../features/church/data/department_repository.dart';
 import '../features/home/data/content_repository.dart';
+import '../features/home/data/page_layout_repository.dart';
 import '../features/members/data/member_repository.dart';
 import '../features/platform/data/church_registry_repository.dart';
 import '../features/prayers/data/prayer_repository.dart';
@@ -54,6 +55,7 @@ class _AppState extends State<App> {
     FirebaseStorage.instance,
     _auth,
   );
+  late final PageLayoutRepository _pageLayouts = PageLayoutRepository(_db);
   late final MemberRepository _members = MemberRepository(_db, _auth);
   late final PrayerRepository _prayers = PrayerRepository(_db, _auth);
 
@@ -87,6 +89,7 @@ class _AppState extends State<App> {
       churchRegistry: _churchRegistry,
       departments: _departments,
       contents: _contents,
+      pageLayouts: _pageLayouts,
       members: _members,
       prayers: _prayers,
       // 화면 모드가 바뀌면 앱 전체가 새 테마로 다시 그려진다.

@@ -10,7 +10,6 @@ class ChurchRequest {
     required this.id,
     required this.requesterId,
     required this.requesterName,
-    required this.requesterEmail,
     this.requesterPhone = '',
     required this.name,
     required this.phone,
@@ -23,7 +22,6 @@ class ChurchRequest {
   final String id;
   final String requesterId;
   final String requesterName;
-  final String requesterEmail;
   final String requesterPhone;
 
   /// 교회 이름.
@@ -44,7 +42,6 @@ class ChurchRequest {
       id: doc.id,
       requesterId: d['requesterId'] as String? ?? '',
       requesterName: d['requesterName'] as String? ?? '',
-      requesterEmail: d['requesterEmail'] as String? ?? '',
       requesterPhone: d['requesterPhone'] as String? ?? '',
       name: d['name'] as String? ?? '',
       phone: d['phone'] as String? ?? '',

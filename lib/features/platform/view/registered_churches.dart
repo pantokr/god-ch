@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/layout/responsive.dart';
 import '../../../core/theme.dart';
 import '../../../data/models/church.dart';
 import '../view_model/church_registry_view_model.dart';
@@ -105,12 +106,17 @@ class _ChurchRow extends StatelessWidget {
       church.address,
       if (church.phone.isNotEmpty) church.phone,
     ].join('\n');
+    // 좁은 화면에서는 "관리" 버튼 대신 줄 전체를 눌러 열고, 글자가 쓸 폭을 넓힌다.
+    final narrow = MediaQuery.sizeOf(context).width < kNarrow;
     return ListTile(
+      onTap: narrow ? onManage : null,
       leading: const Icon(Icons.church_outlined),
       title: Text(church.name),
       subtitle: Text(details),
       isThreeLine: church.phone.isNotEmpty,
-      trailing: OutlinedButton(onPressed: onManage, child: const Text('관리')),
+      trailing: narrow
+          ? const Icon(Icons.chevron_right)
+          : OutlinedButton(onPressed: onManage, child: const Text('관리')),
     );
   }
 }

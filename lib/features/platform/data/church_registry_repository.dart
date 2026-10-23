@@ -64,7 +64,6 @@ class ChurchRegistryRepository {
     churchId: church.id,
     churchName: church.name,
     name: _auth.displayName,
-    email: _auth.email,
     role: Role.admin,
     status: MemberStatus.approved,
   );

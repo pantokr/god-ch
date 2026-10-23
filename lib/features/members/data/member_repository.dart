@@ -24,6 +24,21 @@ class MemberRepository {
   Future<void> setRole(String churchId, String userId, Role role) =>
       _paths.members(churchId).doc(userId).update({'role': role.name});
 
+  /// 교역자가 교인을 부서에 넣는다 (이미 있으면 그대로).
+  Future<void> addToDepartment(String churchId, String userId, String deptId) =>
+      _paths.members(churchId).doc(userId).update({
+        'departmentIds': FieldValue.arrayUnion([deptId]),
+      });
+
+  /// 교역자가 교인을 부서에서 뺀다.
+  Future<void> removeFromDepartment(
+    String churchId,
+    String userId,
+    String deptId,
+  ) => _paths.members(churchId).doc(userId).update({
+    'departmentIds': FieldValue.arrayRemove([deptId]),
+  });
+
   /// 내 소속 부서를 통째로 저장한다 (선택 사항이라 빈 목록도 가능).
   Future<void> setMyDepartments(String churchId, List<String> ids) =>
       _paths.members(churchId).doc(_auth.uid).update({'departmentIds': ids});

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../theme.dart';
-import 'profile_summary.dart';
 import 'responsive.dart';
 
 /// 왼쪽 메뉴 한 칸.
@@ -21,7 +20,7 @@ class SidebarItem {
   final VoidCallback onTap;
 }
 
-/// 제목이 붙은 메뉴 묶음 (예: "교회 관리").
+/// 제목이 붙은 메뉴 묶음 (예: "관리").
 class SidebarGroup {
   const SidebarGroup({this.title, required this.items});
 
@@ -31,63 +30,65 @@ class SidebarGroup {
 
 /// 파이어베이스 콘솔처럼 왼쪽에 앱 이름과 메뉴를 두는 화면 틀.
 /// - 넓은 화면: 왼쪽에 메뉴가 항상 보인다.
-/// - 좁은 화면: 상단 바의 ☰ 버튼으로 같은 메뉴를 서랍(드로어)으로 연다.
-/// 오른쪽 위에는 계정 메뉴(내 정보 · 화면 모드 · 로그아웃)가 있다.
+/// - 좁은 화면: 왼쪽 위 상단 탭(바탕 없음)의 ☰ 버튼으로 같은 메뉴를 서랍(드로어)으로 연다.
+/// 오른쪽에는 열 필요 없는 얇은 띠가 있다: 프로필 · 로그아웃, 맨 아래에 설정.
 class SidebarScaffold extends StatelessWidget {
   const SidebarScaffold({
     super.key,
     required this.groups,
     required this.userName,
-    required this.userEmail,
+    required this.onProfile,
+    required this.onSettings,
     required this.onSignOut,
     required this.child,
     this.sidebarHeader,
-    this.title,
-    this.onBack,
-    this.backLabel = '뒤로',
-    this.profileDetails = const [],
-    this.profileExtras,
   });
 
   final List<SidebarGroup> groups;
 
-  /// 있으면 상단 바 왼쪽에 뒤로가기 버튼이 생긴다 (예: 교회 안에서 내 교회 목록으로).
-  final VoidCallback? onBack;
-  final String backLabel;
-
   /// 앱 이름 아래에 놓는 위젯 (예: 지금 보는 교회와 교회 바꾸기).
   final Widget? sidebarHeader;
-
-  /// 상단 바의 현재 위치 표시.
-  final String? title;
   final String userName;
-  final String userEmail;
+  final VoidCallback onProfile;
+  final VoidCallback onSettings;
   final VoidCallback onSignOut;
-  final List<ProfileDetail> profileDetails;
-  final Widget? profileExtras;
   final Widget child;
 
   static const sidebarWidth = 248.0;
+  static const railWidth = 56.0;
+  static const menuBarHeight = 48.0;
 
   @override
   Widget build(BuildContext context) {
     final narrow = MediaQuery.sizeOf(context).width < kNarrow;
-    final topBar = _TopBar(
-      title: title,
-      onBack: onBack,
-      backLabel: backLabel,
-      showMenu: narrow,
-      userName: userName,
-      userEmail: userEmail,
-      onSignOut: onSignOut,
-      profileDetails: profileDetails,
-      profileExtras: profileExtras,
-    );
     final panel = _SidebarPanel(
       groups: groups,
       header: sidebarHeader,
       // 서랍 안에서는 메뉴를 고르면 서랍을 닫는다.
       closeOnTap: narrow,
+    );
+    final rail = Container(
+      width: railWidth,
+      decoration: BoxDecoration(
+        color: context.palette.surface,
+        border: Border(left: BorderSide(color: context.palette.border)),
+      ),
+      child: SafeArea(
+        child: Column(
+          children: [
+            const SizedBox(height: 8),
+            _AvatarButton(name: userName, onTap: onProfile),
+            _LogoutButton(onSignOut: onSignOut),
+            const Spacer(),
+            IconButton(
+              tooltip: '설정',
+              icon: const Icon(Icons.settings_outlined),
+              onPressed: onSettings,
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
     );
 
     if (narrow) {
@@ -99,10 +100,34 @@ class SidebarScaffold extends StatelessWidget {
           shape: const RoundedRectangleBorder(),
           child: SafeArea(child: panel),
         ),
-        body: Column(
+        body: Row(
           children: [
-            topBar,
-            Expanded(child: child),
+            Expanded(
+              child: Column(
+                children: [
+                  // 서랍을 여는 버튼: 바탕 없이 왼쪽 위에 얹힌 얇은 상단 탭.
+                  SafeArea(
+                    bottom: false,
+                    right: false,
+                    child: SizedBox(
+                      height: menuBarHeight,
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: Builder(
+                          builder: (context) => IconButton(
+                            tooltip: '메뉴',
+                            icon: const Icon(Icons.menu),
+                            onPressed: () => Scaffold.of(context).openDrawer(),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  Expanded(child: child),
+                ],
+              ),
+            ),
+            rail,
           ],
         ),
       );
@@ -113,148 +138,58 @@ class SidebarScaffold extends StatelessWidget {
           Container(
             width: sidebarWidth,
             decoration: BoxDecoration(
-              color: context.palette.surface,
+              color: _warmPaper(context),
               border: Border(right: BorderSide(color: context.palette.border)),
             ),
             child: panel,
           ),
-          Expanded(
-            child: Column(
-              children: [
-                topBar,
-                Expanded(child: child),
-              ],
-            ),
-          ),
+          Expanded(child: child),
+          rail,
         ],
       ),
     );
   }
 }
 
-class _TopBar extends StatelessWidget {
-  const _TopBar({
-    required this.title,
-    required this.onBack,
-    required this.backLabel,
-    required this.showMenu,
-    required this.userName,
-    required this.userEmail,
-    required this.onSignOut,
-    required this.profileDetails,
-    required this.profileExtras,
-  });
+class _LogoutButton extends StatelessWidget {
+  const _LogoutButton({required this.onSignOut});
 
-  final String? title;
-  final VoidCallback? onBack;
-  final String backLabel;
-  final bool showMenu;
-  final String userName;
-  final String userEmail;
   final VoidCallback onSignOut;
-  final List<ProfileDetail> profileDetails;
-  final Widget? profileExtras;
 
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 56,
-      padding: EdgeInsets.symmetric(horizontal: showMenu ? 4 : 16),
-      decoration: BoxDecoration(
-        color: context.palette.surface,
-        border: Border(bottom: BorderSide(color: context.palette.border)),
-      ),
-      child: SafeArea(
-        bottom: false,
-        child: Row(
-          children: [
-            if (showMenu)
-              Builder(
-                builder: (context) => IconButton(
-                  tooltip: '메뉴',
-                  icon: const Icon(Icons.menu),
-                  onPressed: () => Scaffold.of(context).openDrawer(),
-                ),
-              ),
-            if (onBack != null)
-              IconButton(
-                tooltip: backLabel,
-                icon: const Icon(Icons.arrow_back),
-                onPressed: onBack,
-              ),
-            Expanded(
-              child: Text(
-                title ?? '',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontWeight: FontWeight.w700),
-              ),
-            ),
-            AccountMenuButton(
-              name: userName,
-              email: userEmail,
-              onSignOut: onSignOut,
-              details: profileDetails,
-              extras: profileExtras,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => IconButton(
+    tooltip: '로그아웃',
+    icon: const Icon(Icons.logout),
+    onPressed: onSignOut,
+  );
 }
 
-/// 동그란 이름 글자 버튼. 누르면 내 정보 · 로그아웃 메뉴가 열린다.
-class AccountMenuButton extends StatelessWidget {
-  const AccountMenuButton({
-    super.key,
-    required this.name,
-    required this.email,
-    required this.onSignOut,
-    this.details = const [],
-    this.extras,
-  });
+/// 동그란 프로필 버튼. 누르면 내 정보 · 화면 모드 대화상자가 열린다.
+class _AvatarButton extends StatelessWidget {
+  const _AvatarButton({required this.name, required this.onTap});
 
   final String name;
-  final String email;
-  final VoidCallback onSignOut;
-  final List<ProfileDetail> details;
-  final Widget? extras;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return PopupMenuButton<String>(
-      tooltip: '계정',
-      offset: const Offset(0, 48),
-      onSelected: (v) {
-        if (v == 'profile') {
-          showProfileDialog(
-            context,
-            name: name,
-            email: email,
-            details: details,
-            extras: extras,
-          );
-        }
-        if (v == 'logout') onSignOut();
-      },
-      itemBuilder: (_) => [
-        PopupMenuItem(enabled: false, child: Text(name)),
-        const PopupMenuDivider(),
-        const PopupMenuItem(value: 'profile', child: Text('내 정보 · 화면 모드')),
-        const PopupMenuItem(value: 'logout', child: Text('로그아웃')),
-      ],
-      child: Padding(
-        padding: const EdgeInsets.all(8),
-        child: CircleAvatar(
-          radius: 15,
-          backgroundColor: context.palette.brand.withValues(alpha: 0.12),
-          child: Text(
-            name.isEmpty ? '?' : name.characters.first,
-            style: TextStyle(
-              fontSize: 13,
-              color: context.palette.brand,
-              fontWeight: FontWeight.w700,
+    return InkResponse(
+      onTap: onTap,
+      radius: 22,
+      child: Tooltip(
+        message: '내 정보',
+        child: Padding(
+          padding: const EdgeInsets.all(8),
+          child: CircleAvatar(
+            radius: 15,
+            backgroundColor: context.palette.brand.withValues(alpha: 0.12),
+            child: Text(
+              name.isEmpty ? '?' : name.characters.first,
+              style: TextStyle(
+                fontSize: 13,
+                color: context.palette.brand,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ),
         ),
@@ -262,6 +197,12 @@ class AccountMenuButton extends StatelessWidget {
     );
   }
 }
+
+/// 사이드바 바탕: 종이 색에 금빛을 아주 살짝 섞어 따뜻하게.
+Color _warmPaper(BuildContext context) => Color.alphaBlend(
+  context.palette.accent.withValues(alpha: 0.07),
+  context.palette.surface,
+);
 
 class _SidebarPanel extends StatelessWidget {
   const _SidebarPanel({
@@ -276,25 +217,43 @@ class _SidebarPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        // 앱 이름
-        SizedBox(
-          height: 56,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+    final palette = context.palette;
+    return ColoredBox(
+      color: _warmPaper(context),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // 앱 제목
+          Padding(
+            padding: EdgeInsets.fromLTRB(
+              20,
+              closeOnTap ? 12 : 28,
+              12,
+              closeOnTap ? 8 : 20,
+            ),
             child: Row(
               children: [
-                Icon(Icons.volunteer_activism, color: context.palette.brand),
-                const SizedBox(width: 8),
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: palette.brand.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(AppRadius.card + 2),
+                  ),
+                  child: Icon(
+                    Icons.volunteer_activism,
+                    size: 24,
+                    color: palette.brand,
+                  ),
+                ),
+                const SizedBox(width: 14),
                 Expanded(
                   child: Text(
-                    '함께 지어져 가는 공동체',
-                    maxLines: 1,
+                    '함께 지어져\n가는 공동체',
+                    maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.titleLarge
-                        ?.copyWith(fontSize: 16),
+                        ?.copyWith(fontSize: 18, height: 1.35),
                   ),
                 ),
                 // 서랍이 화면을 가득 채우면 바깥을 눌러 닫을 수 없으므로 닫기 버튼을 둔다.
@@ -307,34 +266,42 @@ class _SidebarPanel extends StatelessWidget {
               ],
             ),
           ),
-        ),
-        Divider(height: 1, color: context.palette.border),
-        if (header != null)
-          Padding(padding: const EdgeInsets.all(12), child: header),
-        Expanded(
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(12, 8, 12, 16),
-            children: [
-              for (final g in groups) ...[
-                if (g.title != null)
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(12, 16, 12, 6),
-                    child: Text(
-                      g.title!,
-                      style: TextStyle(
-                        color: context.palette.muted,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
+          if (header != null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: header,
+            ),
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+              children: [
+                for (final g in groups) ...[
+                  if (g.title != null)
+                    Padding(
+                      padding: EdgeInsets.fromLTRB(
+                        14,
+                        closeOnTap ? 14 : 24,
+                        14,
+                        closeOnTap ? 6 : 10,
+                      ),
+                      child: Text(
+                        g.title!,
+                        style: TextStyle(
+                          color: palette.muted,
+                          fontSize: 12,
+                          letterSpacing: 0.6,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
-                  ),
-                for (final item in g.items)
-                  _SidebarTile(item: item, closeOnTap: closeOnTap),
+                  for (final item in g.items)
+                    _SidebarTile(item: item, closeOnTap: closeOnTap),
+                ],
               ],
-            ],
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
@@ -347,41 +314,75 @@ class _SidebarTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = context.palette;
     final selected = item.selected;
-    final color = selected ? context.palette.brand : context.palette.ink;
+    final color = selected ? palette.brand : palette.ink;
+    final radius = BorderRadius.circular(AppRadius.card + 2);
     return Padding(
-      padding: const EdgeInsets.only(bottom: 2),
+      padding: EdgeInsets.only(bottom: closeOnTap ? 4 : 6),
       child: Material(
-        color: selected
-            ? context.palette.brand.withValues(alpha: 0.1)
-            : Colors.transparent,
-        borderRadius: BorderRadius.circular(AppRadius.control),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(AppRadius.control),
-          onTap: () {
-            if (closeOnTap) Navigator.maybePop(context);
-            item.onTap();
-          },
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
-            child: Row(
-              children: [
-                Icon(
-                  selected ? item.selectedIcon : item.icon,
-                  size: 20,
-                  color: color,
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    item.label,
-                    style: TextStyle(
-                      color: color,
-                      fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+        color: selected ? palette.surface : Colors.transparent,
+        borderRadius: radius,
+        child: Ink(
+          decoration: BoxDecoration(
+            borderRadius: radius,
+            border: selected
+                ? Border.all(color: palette.brand.withValues(alpha: 0.28))
+                : null,
+          ),
+          child: InkWell(
+            borderRadius: radius,
+            onTap: () {
+              if (closeOnTap) Navigator.maybePop(context);
+              item.onTap();
+            },
+            child: SizedBox(
+              // 서랍(좁은 화면)에서는 관리 메뉴까지 한눈에 보이도록 칸을 낮춘다.
+              height: closeOnTap ? 50 : 60,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 14),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        color: selected
+                            ? palette.brand.withValues(alpha: 0.14)
+                            : palette.border.withValues(alpha: 0.35),
+                        borderRadius: BorderRadius.circular(AppRadius.card),
+                      ),
+                      child: Icon(
+                        selected ? item.selectedIcon : item.icon,
+                        size: 20,
+                        color: selected ? palette.brand : palette.muted,
+                      ),
                     ),
-                  ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Text(
+                        item.label,
+                        style: TextStyle(
+                          color: color,
+                          fontSize: 15,
+                          fontWeight: selected
+                              ? FontWeight.w700
+                              : FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                    if (selected)
+                      Container(
+                        width: 6,
+                        height: 6,
+                        decoration: BoxDecoration(
+                          color: palette.accent,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                  ],
                 ),
-              ],
+              ),
             ),
           ),
         ),

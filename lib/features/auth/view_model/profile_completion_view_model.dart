@@ -12,8 +12,6 @@ class ProfileCompletionViewModel extends ViewModel {
   /// 이름 입력란의 기본값 (Google 계정 이름).
   String get suggestedName => _auth.displayName;
 
-  String get email => _auth.email;
-
   Future<bool> submit({
     required String name,
     required String phone,

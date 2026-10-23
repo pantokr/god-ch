@@ -25,7 +25,6 @@ class _SignUpPageState extends State<SignUpPage> {
   final _password = TextEditingController();
   final _passwordConfirm = TextEditingController();
   final _name = TextEditingController();
-  final _email = TextEditingController();
   final _phone = TextEditingController();
   bool _consent = false;
 
@@ -35,7 +34,6 @@ class _SignUpPageState extends State<SignUpPage> {
     _password.dispose();
     _passwordConfirm.dispose();
     _name.dispose();
-    _email.dispose();
     _phone.dispose();
     super.dispose();
   }
@@ -47,12 +45,11 @@ class _SignUpPageState extends State<SignUpPage> {
         loginId: _loginId.text,
         password: _password.text,
         name: _name.text,
-        email: _email.text,
         phone: _phone.text,
         consentThirdParty: _consent,
       ),
     );
-    // 가입하면 로그인된 상태가 되므로, 라우터가 알아서 이메일 인증 화면으로 보낸다.
+    // 가입하면 로그인된 상태가 되므로, 라우터가 알아서 내 교회 화면으로 보낸다.
   }
 
   @override
@@ -108,21 +105,6 @@ class _SignUpPageState extends State<SignUpPage> {
                     decoration: const InputDecoration(labelText: '이름'),
                     validator: (v) =>
                         (v == null || v.trim().isEmpty) ? '이름을 입력해 주세요' : null,
-                  ),
-                  const SizedBox(height: 4),
-                  TextFormField(
-                    controller: _email,
-                    keyboardType: TextInputType.emailAddress,
-                    autocorrect: false,
-                    decoration: const InputDecoration(
-                      labelText: '이메일',
-                      helperText: '인증 메일이 이 주소로 발송돼요',
-                    ),
-                    validator: (v) =>
-                        RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
-                            .hasMatch((v ?? '').trim())
-                        ? null
-                        : '이메일 형식이 올바르지 않아요',
                   ),
                   const SizedBox(height: 12),
                   TextFormField(

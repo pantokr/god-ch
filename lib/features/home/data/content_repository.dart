@@ -2,6 +2,7 @@ import 'dart:typed_data';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:image/image.dart' as img;
 
 import '../../../core/app_exception.dart';
 import '../../../data/firestore_codec.dart';
@@ -42,15 +43,16 @@ class ContentRepository {
     return q.snapshots().map((s) => _map(kind, s));
   }
 
-  /// 오늘 이후의 일정을 가까운 날짜순으로.
-  Stream<List<ChurchContent>> upcomingEvents(String churchId, {int? limit}) {
-    final today = DateTime.now();
-    final start = DateTime(today.year, today.month, today.day);
-    var q = _query(churchId, ContentKind.event)
+  /// [month]가 속한 달의 일정을 날짜순으로.
+  Stream<List<ChurchContent>> eventsInMonth(String churchId, DateTime month) {
+    final start = DateTime(month.year, month.month);
+    final end = DateTime(month.year, month.month + 1);
+    return _query(churchId, ContentKind.event)
         .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(start))
-        .orderBy('date');
-    if (limit != null) q = q.limit(limit);
-    return q.snapshots().map((s) => _map(ContentKind.event, s));
+        .where('date', isLessThan: Timestamp.fromDate(end))
+        .orderBy('date')
+        .snapshots()
+        .map((s) => _map(ContentKind.event, s));
   }
 
   Stream<ChurchContent?> one(String churchId, ContentKind kind, String id) =>
@@ -125,29 +127,83 @@ class ContentRepository {
   }
 
   /// 이미지를 Storage에 올리고 다운로드 주소를 돌려준다.
+  /// 휴대폰 사진처럼 큰 이미지는 올리기 전에 긴 변 2048px 이하의 JPEG로 줄인다.
   Future<String> uploadImage(
     String churchId,
     ContentKind kind, {
     required String fileName,
     required Uint8List bytes,
   }) async {
-    if (bytes.length > maxImageBytes) {
+    var data = bytes;
+    var ext = _imageExtension(bytes, fileName);
+    if (ext == null) {
+      throw const AppException(
+        'JPG, PNG, GIF, WEBP 이미지만 올릴 수 있어요. (아이폰 HEIC 사진은 카메라 설정에서 "호환성 우선"으로 찍거나 JPG로 바꿔 주세요.)',
+      );
+    }
+    if (ext != 'gif' && bytes.length > resizeAboveBytes) {
+      final shrunk = _shrink(bytes);
+      if (shrunk != null) {
+        data = shrunk;
+        ext = 'jpg';
+      }
+    }
+    if (data.length > maxImageBytes) {
       throw const AppException('이미지는 10MB 이하만 올릴 수 있어요.');
     }
-    final ext = fileName.contains('.')
-        ? fileName.split('.').last.toLowerCase()
-        : 'jpg';
     final contentType = switch (ext) {
       'png' => 'image/png',
       'gif' => 'image/gif',
       'webp' => 'image/webp',
-      'jpg' || 'jpeg' => 'image/jpeg',
-      _ => throw const AppException('JPG, PNG, GIF, WEBP 이미지만 올릴 수 있어요.'),
+      _ => 'image/jpeg',
     };
     // 파일 이름이 겹치지 않도록 시각을 붙인다. 한글 이름은 쓰지 않는다.
     final name = '${DateTime.now().microsecondsSinceEpoch}.$ext';
     final ref = _storage.ref('churches/$churchId/${kind.collection}/$name');
-    await ref.putData(bytes, SettableMetadata(contentType: contentType));
+    await ref.putData(data, SettableMetadata(contentType: contentType));
     return ref.getDownloadURL();
+  }
+
+  /// 이 크기를 넘는 이미지는 올리기 전에 줄인다.
+  static const resizeAboveBytes = 2 * 1024 * 1024;
+
+  /// 파일 내용으로 이미지 종류를 알아낸다 (휴대폰에서 고른 파일은 이름에 확장자가 없을 수 있다).
+  /// 지원하지 않는 형식(HEIC 등)이면 null.
+  static String? _imageExtension(Uint8List b, String fileName) {
+    bool starts(List<int> sig, [int at = 0]) {
+      if (b.length < at + sig.length) return false;
+      for (var i = 0; i < sig.length; i++) {
+        if (b[at + i] != sig[i]) return false;
+      }
+      return true;
+    }
+
+    if (starts([0xFF, 0xD8, 0xFF])) return 'jpg';
+    if (starts([0x89, 0x50, 0x4E, 0x47])) return 'png';
+    if (starts([0x47, 0x49, 0x46, 0x38])) return 'gif';
+    if (starts([0x52, 0x49, 0x46, 0x46]) &&
+        starts([0x57, 0x45, 0x42, 0x50], 8)) {
+      return 'webp';
+    }
+    return null;
+  }
+
+  /// 긴 변이 2048px을 넘지 않는 JPEG로 줄인다. 해석하지 못하면 null (원본 그대로 올린다).
+  static Uint8List? _shrink(Uint8List bytes) {
+    try {
+      final image = img.decodeImage(bytes);
+      if (image == null) return null;
+      final longest = image.width > image.height ? image.width : image.height;
+      final resized = longest > 2048
+          ? img.copyResize(
+              image,
+              width: image.width >= image.height ? 2048 : null,
+              height: image.height > image.width ? 2048 : null,
+            )
+          : image;
+      return Uint8List.fromList(img.encodeJpg(resized, quality: 85));
+    } catch (_) {
+      return null;
+    }
   }
 }

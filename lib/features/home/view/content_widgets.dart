@@ -70,14 +70,19 @@ class SectionHeader extends StatelessWidget {
 
 /// 내용이 없을 때의 안내.
 class EmptyHint extends StatelessWidget {
-  const EmptyHint(this.text, {super.key});
+  const EmptyHint(this.text, {super.key, this.height});
 
   final String text;
+
+  /// 있으면 그 높이를 차지한다. 자료가 들어왔을 때와 같은 높이로 잡아 화면이 출렁이지 않게 한다.
+  final double? height;
 
   @override
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
+      height: height,
+      alignment: height == null ? null : Alignment.center,
       padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 16),
       decoration: BoxDecoration(
         color: context.palette.surface,

@@ -21,7 +21,6 @@ class MyChurchesPage extends StatelessWidget {
     required this.others,
     required this.requests,
     required this.userName,
-    required this.userEmail,
     required this.onSignOut,
     required this.onOpen,
   });
@@ -30,7 +29,6 @@ class MyChurchesPage extends StatelessWidget {
   final List<Member> others;
   final List<ChurchRequest> requests;
   final String userName;
-  final String userEmail;
   final VoidCallback onSignOut;
   final void Function(Member church, Department? department) onOpen;
 
@@ -41,7 +39,6 @@ class MyChurchesPage extends StatelessWidget {
         children: [
           SiteHeader(
             userName: userName,
-            userEmail: userEmail,
             onSignOut: onSignOut,
             profileExtras: const ThemeModeSelector(),
           ),

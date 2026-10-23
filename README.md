@@ -25,7 +25,7 @@ lib/
     members/  교인 저장소
     prayers/  피드, 상세, 작성, 응원
     shell/    교회 안 화면 틀(상단 메뉴 / 모바일 하단 탭)
-    admin/    교회 관리(기도제목·교인·초대 코드·부서)
+    admin/    교회 관리(게시글 관리·인원 관리·부서 관리, 초대 코드)
     platform/ 앱 운영자 패널(대시보드·교회 관리·회원 관리)
 firestore.rules, firestore.indexes.json   보안 규칙과 인덱스
 tool/create_admin.ps1                      앱 운영자 계정 생성/비밀번호 재설정

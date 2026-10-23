@@ -60,7 +60,6 @@ class MyChurchesRoute extends StatelessWidget {
                   .where((r) => r.status != RequestStatus.approved)
                   .toList(),
               userName: vm.userName,
-              userEmail: vm.userEmail,
               onSignOut: vm.signOut,
               // 부서 공간은 그 부서의 중보기도로, 교회 전체는 메인으로 들어간다.
               onOpen: (church, department) => context.go(

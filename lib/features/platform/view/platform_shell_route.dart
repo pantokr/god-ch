@@ -24,7 +24,6 @@ class PlatformShellRoute extends StatelessWidget {
       builder: (context, account) => PlatformShell(
         section: section,
         userName: account.userName,
-        userEmail: account.userEmail,
         onSignOut: account.signOut,
         child: child,
       ),

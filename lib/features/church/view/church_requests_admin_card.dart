@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../app/app_scope.dart';
 import '../../../core/format.dart';
 import '../../../core/layout/app_dialog.dart';
+import '../../../core/layout/responsive.dart';
 import '../../../core/mvvm/view_model_builder.dart';
 import '../../../core/theme.dart';
 import '../../../data/models/church_request.dart';
@@ -23,17 +24,26 @@ class ChurchRequestsAdminCard extends StatelessWidget {
           final items = snap.data ?? const <ChurchRequest>[];
           return Card(
             child: Padding(
-              padding: const EdgeInsets.all(20),
+              padding: EdgeInsets.all(
+                MediaQuery.sizeOf(context).width < kNarrow ? 16 : 20,
+              ),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  // 좁은 화면에서 제목이 길어도 넘치지 않게 남는 폭 안에서 줄을 바꾼다.
                   Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Icon(Icons.admin_panel_settings_outlined),
+                      const Padding(
+                        padding: EdgeInsets.only(top: 2),
+                        child: Icon(Icons.admin_panel_settings_outlined),
+                      ),
                       const SizedBox(width: 10),
-                      Text(
-                        '교회 생성 요청 (운영자) · ${items.length}건',
-                        style: Theme.of(context).textTheme.titleMedium,
+                      Expanded(
+                        child: Text(
+                          '교회 생성 요청 (운영자) · ${items.length}건',
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
                       ),
                     ],
                   ),
@@ -100,21 +110,23 @@ class _RequestRow extends StatelessWidget {
         const SizedBox(height: 4),
         Text('전화  ${r.phone}', style: muted),
         Text('주소  ${r.address}', style: muted),
-        Text(
-          '요청자  ${r.requesterName} (${r.requesterEmail}) · ${fmtDate(r.createdAt)}',
-          style: muted,
-        ),
+        Text('요청자  ${r.requesterName} · ${fmtDate(r.createdAt)}', style: muted),
         const SizedBox(height: 12),
+        // 좁은 화면에서는 두 버튼이 한 줄을 반씩 나눠 쓴다.
         Row(
           children: [
-            FilledButton(
-              onPressed: vm.busy ? null : () => vm.approve(r),
-              child: const Text('승인'),
+            Expanded(
+              child: FilledButton(
+                onPressed: vm.busy ? null : () => vm.approve(r),
+                child: const Text('승인'),
+              ),
             ),
             const SizedBox(width: 8),
-            OutlinedButton(
-              onPressed: vm.busy ? null : () => _reject(context),
-              child: const Text('거절'),
+            Expanded(
+              child: OutlinedButton(
+                onPressed: vm.busy ? null : () => _reject(context),
+                child: const Text('거절'),
+              ),
             ),
           ],
         ),

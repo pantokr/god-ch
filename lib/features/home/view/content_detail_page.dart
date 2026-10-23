@@ -59,12 +59,12 @@ class ContentDetailPage extends StatelessWidget {
                 children: [
                   Align(
                     alignment: Alignment.centerLeft,
-                    child: TextButton.icon(
+                    child: IconButton(
+                      tooltip: '${kind.label} 목록',
                       onPressed: () => context.canPop()
                           ? context.pop()
                           : context.go(Routes.contentList(me.churchId, kind)),
-                      icon: const Icon(Icons.arrow_back, size: 18),
-                      label: Text('${kind.label} 목록'),
+                      icon: const Icon(Icons.arrow_back),
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -139,7 +139,7 @@ class _Detail extends StatelessWidget {
           ),
           const SizedBox(height: 20),
         ],
-        // 공지는 3:4 썸네일 한 장만 보여 주고(둘째 이미지는 캐러셀 배경), 사진첩은 모두 보여 준다.
+        // 공지는 4:3 썸네일 한 장만 보여 주고(둘째 이미지는 캐러셀 배경), 사진첩은 모두 보여 준다.
         if (content.kind == ContentKind.notice &&
             content.thumbnail != null) ...[
           Align(

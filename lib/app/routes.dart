@@ -8,14 +8,26 @@ enum ChurchSection {
   /// 중보기도: 기도제목 피드.
   feed('prayers'),
 
+  /// 교역자가 구성한 페이지 (주소 `/p/{페이지}`). 메인 · 말씀 묵상 · 중보기도 요청 등.
+  page('p'),
+
   /// 내 기도제목.
   mine('mine'),
 
-  /// 메인 페이지 편집 (교역자·교회 운영자).
+  /// 페이지 편집 (교역자·교회 운영자): 메뉴 대분류와 페이지 구성.
   content('content'),
 
-  /// 교회 관리 (교역자·교회 운영자).
-  manage('manage');
+  /// 콘텐츠 관리 (교회 운영자만): 공지·일정 같은 글을 종류별로 올리고 고친다.
+  contents('contents'),
+
+  /// 게시글 관리 (교역자·교회 운영자): 회원이 쓴 글을 확인하고 고치거나 지운다.
+  posts('posts'),
+
+  /// 인원 관리 (교역자·교회 운영자): 새로 등록된 인원 승인, 등록 인원 조회.
+  members('members'),
+
+  /// 부서 관리 (교역자·교회 운영자): 부서 목록과 부서별 인원 (주소 `/departments/{부서}`).
+  departments('departments');
 
   const ChurchSection(this.path);
 
@@ -55,7 +67,6 @@ class Routes {
   static const loading = '/loading';
   static const login = '/login';
   static const signUp = '/sign-up';
-  static const verifyEmail = '/verify-email';
   static const profile = '/profile';
 
   // 회원
@@ -75,6 +86,12 @@ class Routes {
 
   static String home(String churchId) => section(churchId, ChurchSection.home);
 
+  /// 교역자가 구성한 페이지. [dept]가 있으면 그 부서 전용 공간으로 본다.
+  static String page(String churchId, String pageId, {String? dept}) {
+    final base = '/churches/$churchId/p/$pageId';
+    return dept == null ? base : '$base?dept=$dept';
+  }
+
   /// 메인 콘텐츠 목록 (공지·일정·사진첩·설교영상·말씀묵상의 "더보기").
   static String contentList(String churchId, ContentKind kind) =>
       '/churches/$churchId/c/${kind.collection}';
@@ -82,9 +99,21 @@ class Routes {
   static String contentDetail(String churchId, ContentKind kind, String id) =>
       '${contentList(churchId, kind)}/$id';
 
-  /// 메인 페이지 편집 화면. [kind]를 주면 그 종류의 탭이 열린다.
+  /// 한 페이지의 구성(구조·디자인)을 고치는 화면.
+  static String pageEdit(String churchId, String pageId) =>
+      '${section(churchId, ChurchSection.content)}/p/$pageId';
+
+  /// 한 부서의 인원 관리 화면.
+  static String department(String churchId, String deptId) =>
+      '${section(churchId, ChurchSection.departments)}/$deptId';
+
+  /// 페이지 편집 화면 (페이지 목록).
+  static String pageList(String churchId) =>
+      section(churchId, ChurchSection.content);
+
+  /// 콘텐츠 관리 화면. [kind]를 주면 그 종류(공지·일정 …)의 글 관리 화면이 열린다.
   static String contentEdit(String churchId, {ContentKind? kind}) {
-    final base = section(churchId, ChurchSection.content);
+    final base = section(churchId, ChurchSection.contents);
     return kind == null ? base : '$base?kind=${kind.collection}';
   }
 
@@ -110,5 +139,5 @@ class Routes {
   static const publicPaths = {login, signUp};
 
   /// 로그인 상태가 정해지기 전이나 정보 입력 중에만 보이는 화면 주소들.
-  static const gatePaths = {loading, login, signUp, verifyEmail, profile};
+  static const gatePaths = {loading, login, signUp, profile};
 }

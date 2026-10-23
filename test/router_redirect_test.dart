@@ -28,12 +28,7 @@ void main() {
       expect(go(SessionStatus.signedOut, '/'), Routes.login);
     });
 
-    test('이메일 인증/가입 정보가 필요하면 그 화면에 머문다', () {
-      expect(
-        go(SessionStatus.needsVerification, '/churches'),
-        Routes.verifyEmail,
-      );
-      expect(go(SessionStatus.needsVerification, Routes.verifyEmail), isNull);
+    test('가입 정보가 필요하면 그 화면에 머문다', () {
       expect(go(SessionStatus.needsProfile, '/admin'), Routes.profile);
       expect(go(SessionStatus.needsProfile, Routes.profile), isNull);
     });

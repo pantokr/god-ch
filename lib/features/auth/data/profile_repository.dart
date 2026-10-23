@@ -8,8 +8,10 @@ import 'auth_repository.dart';
 /// ID로 가입한 회원은 가입할 때 함께 만들어지고, Google로 가입한 회원은 첫 로그인 뒤에 만든다.
 class ProfileRepository {
   ProfileRepository(FirebaseFirestore db, this._auth)
-    : _users = db.collection('users');
+    : _db = db,
+      _users = db.collection('users');
 
+  final FirebaseFirestore _db;
   final CollectionReference<Map<String, dynamic>> _users;
   final AuthRepository _auth;
 
@@ -42,10 +44,36 @@ class ProfileRepository {
     return _users.doc(_auth.uid).set({
       'name': name.trim(),
       'phone': phone.trim(),
-      'email': _auth.email.toLowerCase(),
       'consentThirdParty': true,
       'consentAt': FieldValue.serverTimestamp(),
       'createdAt': FieldValue.serverTimestamp(),
     });
+  }
+
+  /// 이름·전화번호를 고친다. 소속 교회의 내 교인 정보에도 같이 반영한다.
+  /// 회원 프로필이 없는 계정(앱 운영자)은 표시 이름만 바뀐다.
+  Future<void> update({required String name, required String phone}) async {
+    final n = name.trim();
+    final p = phone.trim();
+    if (n.isEmpty || n.length > 30) {
+      throw const AppException('이름은 1~30자로 입력해 주세요.');
+    }
+    final hasProfile = (await _users.doc(_auth.uid).get()).exists;
+    if (hasProfile && (p.length < 8 || p.length > 20)) {
+      throw const AppException('전화번호를 8~20자로 입력해 주세요.');
+    }
+    if (hasProfile) {
+      await _users.doc(_auth.uid).update({'name': n, 'phone': p});
+      final mine = await _db
+          .collectionGroup('members')
+          .where('uid', isEqualTo: _auth.uid)
+          .get();
+      final batch = _db.batch();
+      for (final m in mine.docs) {
+        batch.update(m.reference, {'name': n, 'phone': p});
+      }
+      await batch.commit();
+    }
+    await _auth.updateDisplayName(n);
   }
 }

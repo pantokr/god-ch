@@ -2,11 +2,12 @@ import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../app/app_scope.dart';
+import '../../../app/routes.dart';
 import '../../../core/format.dart';
 import '../../../core/layout/app_dialog.dart';
-import '../../../core/layout/page_frame.dart';
 import '../../../core/layout/responsive.dart';
 import '../../../core/mvvm/view_model_builder.dart';
 import '../../../core/theme.dart';
@@ -15,51 +16,47 @@ import '../../../data/models/member.dart';
 import '../view_model/content_list_view_model.dart';
 import 'content_widgets.dart';
 
-/// 메인 페이지 편집: 교역자·교회 운영자 전용. 종류별 탭에서 추가 · 수정 · 삭제한다.
+/// 콘텐츠 관리: 교회 운영자 전용. 한 종류(공지·일정 …)의 글을 추가 · 수정 · 삭제한다.
+/// 콘텐츠 관리 화면에서 들어오며, 왼쪽 위 화살표로 돌아간다.
 class ContentEditPage extends StatelessWidget {
-  const ContentEditPage({super.key, required this.me, this.initialKind});
+  const ContentEditPage({super.key, required this.me, required this.kind});
 
   final Member me;
-
-  /// 처음 열어 둘 탭.
-  final ContentKind? initialKind;
+  final ContentKind kind;
 
   @override
   Widget build(BuildContext context) {
     final pad = pagePadding(context);
-    return DefaultTabController(
-      length: ContentKind.values.length,
-      initialIndex: initialKind?.index ?? 0,
-      child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: kContentWidth),
-          child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: pad),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SizedBox(height: 28),
-                const PageTitle(
-                  title: '메인 페이지 편집',
-                  subtitle: '교회 메인에 보이는 공지, 일정, 사진, 설교영상, 말씀묵상을 관리해요.',
-                ),
-                TabBar(
-                  isScrollable: true,
-                  tabAlignment: TabAlignment.start,
-                  tabs: [
-                    for (final k in ContentKind.values) Tab(text: k.label),
-                  ],
-                ),
-                Expanded(
-                  child: TabBarView(
-                    children: [
-                      for (final k in ContentKind.values)
-                        _KindTab(key: ValueKey(k), me: me, kind: k),
-                    ],
+    final narrow = MediaQuery.sizeOf(context).width < kNarrow;
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: kContentWidth),
+        child: Padding(
+          padding: EdgeInsets.symmetric(horizontal: pad),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(height: narrow ? 8 : 28),
+              Row(
+                children: [
+                  IconButton(
+                    tooltip: '콘텐츠 관리',
+                    icon: const Icon(Icons.arrow_back),
+                    onPressed: () =>
+                        context.go(Routes.contentEdit(me.churchId)),
                   ),
-                ),
-              ],
-            ),
+                  Expanded(
+                    child: Text(
+                      '${kind.label} 관리',
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                  ),
+                ],
+              ),
+              Expanded(
+                child: _KindTab(me: me, kind: kind),
+              ),
+            ],
           ),
         ),
       ),
@@ -68,7 +65,7 @@ class ContentEditPage extends StatelessWidget {
 }
 
 class _KindTab extends StatelessWidget {
-  const _KindTab({super.key, required this.me, required this.kind});
+  const _KindTab({required this.me, required this.kind});
 
   final Member me;
   final ContentKind kind;
@@ -410,9 +407,9 @@ class _ContentFormState extends State<_ContentForm> {
             runSpacing: 16,
             children: [
               _ImageSlot(
-                label: '썸네일 (3:4)',
+                label: '썸네일 (4:3)',
                 aspect: kThumbnailAspect,
-                width: 120,
+                width: 160,
                 url: _thumb,
                 busy: _uploading,
                 onPick: _setThumb,

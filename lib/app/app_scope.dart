@@ -6,6 +6,7 @@ import '../features/church/data/church_repository.dart';
 import '../features/church/data/church_request_repository.dart';
 import '../features/church/data/department_repository.dart';
 import '../features/home/data/content_repository.dart';
+import '../features/home/data/page_layout_repository.dart';
 import '../features/members/data/member_repository.dart';
 import '../features/platform/data/church_registry_repository.dart';
 import '../features/prayers/data/prayer_repository.dart';
@@ -23,6 +24,7 @@ class AppScope extends InheritedWidget {
     required this.churchRegistry,
     required this.departments,
     required this.contents,
+    required this.pageLayouts,
     required this.members,
     required this.prayers,
     required super.child,
@@ -37,6 +39,7 @@ class AppScope extends InheritedWidget {
   final ChurchRegistryRepository churchRegistry;
   final DepartmentRepository departments;
   final ContentRepository contents;
+  final PageLayoutRepository pageLayouts;
   final MemberRepository members;
   final PrayerRepository prayers;
 

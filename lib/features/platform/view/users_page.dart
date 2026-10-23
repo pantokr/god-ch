@@ -99,9 +99,7 @@ class _UserRow extends StatelessWidget {
         ),
       ),
       title: Text(user.name),
-      subtitle: Text(
-        '${user.loginId ?? 'Google 계정'} · ${user.email}\n${user.phone}',
-      ),
+      subtitle: Text('${user.loginId ?? 'Google 계정'}\n${user.phone}'),
       isThreeLine: true,
       trailing: Text(
         fmtDate(user.createdAt),

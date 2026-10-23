@@ -60,13 +60,35 @@ class ChurchRepository {
       .map((s) => s.exists ? Member.fromDoc(s) : null);
 
   /// 교역자가 새 초대 코드를 만든다. 기존 코드는 그대로 두고 만료되게 둔다.
-  Future<String> createInviteCode(String churchId, String churchName) async {
+  /// [role]과 [departmentIds]는 이 코드로 들어오는 사람에게 그대로 적용된다.
+  /// 교역자 역할의 코드는 교회 운영자만 만들 수 있다 (규칙이 막는다).
+  Future<String> createInviteCode(
+    String churchId,
+    String churchName, {
+    Role role = Role.member,
+    List<String> departmentIds = const [],
+    String recipient = '',
+  }) async {
+    if (role == Role.admin) {
+      throw const AppException('교회 운영자는 초대 코드로 지정할 수 없어요.');
+    }
+    if (recipient.trim().length > 30) {
+      throw const AppException('받는 분 이름은 30자까지 쓸 수 있어요.');
+    }
     for (var attempt = 0; attempt < 5; attempt++) {
       final code = _randomCode();
       try {
         await _paths.inviteCodes
             .doc(code)
-            .set(_inviteData(churchId, churchName));
+            .set(
+              _inviteData(
+                churchId,
+                churchName,
+                role: role,
+                departmentIds: departmentIds,
+                recipient: recipient.trim(),
+              ),
+            );
         return code;
       } on FirebaseException catch (e) {
         if (e.code != 'permission-denied' || attempt == 4) rethrow;
@@ -83,7 +105,17 @@ class ChurchRepository {
         (s) => [
           for (final d in s.docs)
             if (toDate(d.data()['expiresAt']) != null)
-              InviteCode(d.id, toDate(d.data()['expiresAt'])!),
+              InviteCode(
+                d.id,
+                toDate(d.data()['expiresAt'])!,
+                role: d.data()['role'] == Role.staff.name
+                    ? Role.staff
+                    : Role.member,
+                departmentIds: List<String>.from(
+                  d.data()['departmentIds'] as List? ?? const [],
+                ),
+                recipient: d.data()['recipient'] as String? ?? '',
+              ),
         ]..sort((a, b) => b.expiresAt.compareTo(a.expiresAt)),
       );
 
@@ -108,14 +140,19 @@ class ChurchRepository {
 
     final churchId = snap.data()!['churchId'] as String;
     final churchName = snap.data()!['churchName'] as String;
+    // 코드를 만들 때 정한 역할과 부서가 그대로 신청에 담긴다. (예전 코드에는 없으므로 교인·부서 없음)
+    final role = snap.data()!['role'] == Role.staff.name
+        ? Role.staff
+        : Role.member;
+    final departmentIds = List<String>.from(
+      snap.data()!['departmentIds'] as List? ?? const [],
+    );
     final ref = _paths.members(churchId).doc(_auth.uid);
     if ((await ref.get()).exists) {
       throw const AppException('이미 이 교회에 가입했거나 신청한 상태입니다.');
     }
     // 가입할 때 받은 이름·전화번호를 교회에 제공한다 (제3자 제공 동의 기반).
     final profile = await _profiles.requireCurrent();
-    // 이메일 인증을 방금 마쳤다면 로그인 토큰이 아직 옛 값일 수 있어 새로 받는다.
-    if (_auth.isEmailVerified) await _auth.refreshToken();
     try {
       await ref.set(
         _memberData(
@@ -123,17 +160,14 @@ class ChurchRepository {
           churchName: churchName,
           name: profile.name,
           phone: profile.phone,
-          role: Role.member,
+          role: role,
           status: MemberStatus.pending,
+          departmentIds: departmentIds,
           inviteCode: code,
         ),
       );
     } on FirebaseException catch (e) {
       if (e.code != 'permission-denied') rethrow;
-      // 코드는 확인됐는데 신청 저장이 거부된 경우다. 코드 문제와 구분해서 알려 준다.
-      if (!_auth.isEmailVerified) {
-        throw const AppException('이메일 인증을 먼저 마쳐 주세요.');
-      }
       // 확인한 직후에 코드가 만료되었거나 폐기된 경우일 수 있다.
       throw const AppException(
         '입장 신청을 저장하지 못했어요. 초대 코드가 방금 만료되었는지 확인하고 다시 시도해 주세요.',
@@ -141,9 +175,18 @@ class ChurchRepository {
     }
   }
 
-  Json _inviteData(String churchId, String churchName) => {
+  Json _inviteData(
+    String churchId,
+    String churchName, {
+    required Role role,
+    required List<String> departmentIds,
+    required String recipient,
+  }) => {
     'churchId': churchId,
     'churchName': churchName,
+    'role': role.name,
+    'departmentIds': departmentIds,
+    'recipient': recipient,
     'createdBy': _auth.uid,
     'expiresAt': Timestamp.fromDate(DateTime.now().add(inviteValidity)),
   };
@@ -155,17 +198,17 @@ class ChurchRepository {
     required String phone,
     required Role role,
     required MemberStatus status,
+    List<String> departmentIds = const [],
     String? inviteCode,
   }) => {
     'uid': _auth.uid,
     'churchId': churchId,
     'churchName': churchName,
     'name': name,
-    'email': _auth.email.toLowerCase(),
     'phone': phone,
     'role': role.name,
     'status': status.name,
-    'departmentIds': <String>[],
+    'departmentIds': departmentIds,
     'createdAt': FieldValue.serverTimestamp(),
     // 입장 신청에 쓴 초대 코드. 규칙이 유효기간을 검사한다.
     'inviteCode': ?inviteCode,

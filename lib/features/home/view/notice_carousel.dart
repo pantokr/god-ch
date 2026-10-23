@@ -20,6 +20,10 @@ class NoticeCarousel extends StatefulWidget {
   final List<ChurchContent> notices;
   final void Function(ChurchContent notice) onOpen;
 
+  /// 캐러셀의 가로:세로 비율. 공지가 없을 때도 같은 높이를 잡는 데 쓴다.
+  static double aspectOf(BuildContext context) =>
+      MediaQuery.sizeOf(context).width < kNarrow ? 16 / 10 : 16 / 6;
+
   @override
   State<NoticeCarousel> createState() => _NoticeCarouselState();
 }
@@ -75,7 +79,7 @@ class _NoticeCarouselState extends State<NoticeCarousel> {
   Widget build(BuildContext context) {
     final narrow = MediaQuery.sizeOf(context).width < kNarrow;
     return AspectRatio(
-      aspectRatio: narrow ? 16 / 10 : 16 / 6,
+      aspectRatio: NoticeCarousel.aspectOf(context),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(AppRadius.card),
         child: Stack(
@@ -160,12 +164,17 @@ class _Slide extends StatelessWidget {
             icon: Icons.campaign_outlined,
           ),
           const ColoredBox(color: Color(0x73000000)),
-          // 왼쪽에 3:4 썸네일, 오른쪽에 날짜와 제목.
+          // 왼쪽에 4:3 썸네일, 오른쪽에 날짜와 제목.
           LayoutBuilder(
             builder: (context, box) {
               const pad = 18.0;
-              final thumbH = box.maxHeight - pad * 2;
-              final thumbW = thumbH * kThumbnailAspect;
+              // 4:3 비율을 지키되, 글자 자리를 위해 폭의 40%를 넘기지 않는다.
+              final maxH = box.maxHeight - pad * 2;
+              final thumbW = (maxH * kThumbnailAspect).clamp(
+                0.0,
+                box.maxWidth * 0.4,
+              );
+              final thumbH = thumbW / kThumbnailAspect;
               return Padding(
                 // 넓은 화면에서는 좌우 화살표 버튼과 겹치지 않게 비운다.
                 padding: EdgeInsets.fromLTRB(narrow ? pad : 64, pad, pad, pad),

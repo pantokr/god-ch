@@ -11,18 +11,16 @@ class ProfileDetail {
   final String value;
 }
 
-/// 이름·이메일과 추가 항목을 보여주는 내 정보 내용.
+/// 이름과 추가 항목을 보여주는 내 정보 내용.
 /// 데스크톱의 "내 정보" 대화상자와 모바일의 내 정보 탭이 함께 쓴다.
 class ProfileSummary extends StatelessWidget {
   const ProfileSummary({
     super.key,
     required this.name,
-    required this.email,
     this.details = const [],
   });
 
   final String name;
-  final String email;
   final List<ProfileDetail> details;
 
   @override
@@ -57,8 +55,6 @@ class ProfileSummary extends StatelessWidget {
                       fontWeight: FontWeight.w700,
                     ),
                   ),
-                  if (email.isNotEmpty)
-                    Text(email, style: TextStyle(color: context.palette.muted)),
                 ],
               ),
             ),
@@ -93,7 +89,6 @@ class ProfileSummary extends StatelessWidget {
 Future<void> showProfileDialog(
   BuildContext context, {
   required String name,
-  required String email,
   List<ProfileDetail> details = const [],
   Widget? extras,
 }) => showAppDialog<void>(
@@ -105,7 +100,7 @@ Future<void> showProfileDialog(
     children: [
       Text('내 정보', style: Theme.of(context).textTheme.titleMedium),
       const SizedBox(height: 16),
-      ProfileSummary(name: name, email: email, details: details),
+      ProfileSummary(name: name, details: details),
       if (extras != null) ...[
         const SizedBox(height: 16),
         const Divider(),
