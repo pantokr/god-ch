@@ -75,7 +75,7 @@ class SiteHeader extends StatelessWidget {
                       // 이름이 길어 오른쪽 메뉴와 겹치지 않도록, 남는 자리만 쓰고 넘치면 줄인다.
                       Expanded(
                         child: Text(
-                          '함께 지어져 가는 공동체',
+                          '같이',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           // 로고 글자는 제목과 같은 명조로 둔다.

@@ -1,6 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <application
-        android:label="함께 지어져 가는 공동체"
+        android:label="같이"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

@@ -1,4 +1,4 @@
-import 'package:built_in_together/data/models/church_content.dart';
+import 'package:god_ch/data/models/church_content.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

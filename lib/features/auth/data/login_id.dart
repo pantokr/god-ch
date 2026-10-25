@@ -12,7 +12,7 @@ class LoginId {
   };
 
   /// 예약 ID 계정의 가상 이메일 도메인. 실제로 메일을 받을 수 없는 주소다.
-  static const aliasDomain = 'id.being-built-together.local';
+  static const aliasDomain = 'id.god-ch.local';
 
   static final _pattern = RegExp(r'^[a-z][a-z0-9_]{3,19}$');
 

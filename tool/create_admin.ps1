@@ -10,14 +10,14 @@
   사용: powershell -File tool\create_admin.ps1 [-Password '직접정한비밀번호']
 #>
 param(
-  [string]$Project = 'being-built-together',
+  [string]$Project = 'god-ch',
   [string]$Password
 )
 
 $ErrorActionPreference = 'Stop'
 
 # 로그인 ID `admin` 의 가상 이메일 (lib/features/auth/data/login_id.dart 의 aliasEmail 과 같아야 한다)
-$email = 'admin@id.being-built-together.local'
+$email = 'admin@id.god-ch.local'
 $localId = 'app-operator-admin'
 
 $rng = [Security.Cryptography.RandomNumberGenerator]::Create()

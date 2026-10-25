@@ -1,6 +1,6 @@
-import 'package:built_in_together/app/router.dart';
-import 'package:built_in_together/app/routes.dart';
-import 'package:built_in_together/app/session.dart';
+import 'package:god_ch/app/router.dart';
+import 'package:god_ch/app/routes.dart';
+import 'package:god_ch/app/session.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 String? go(SessionStatus status, String location) =>

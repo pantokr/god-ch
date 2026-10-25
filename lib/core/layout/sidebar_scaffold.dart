@@ -249,7 +249,7 @@ class _SidebarPanel extends StatelessWidget {
                 const SizedBox(width: 14),
                 Expanded(
                   child: Text(
-                    '함께 지어져\n가는 공동체',
+                    '같이',
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.titleLarge

@@ -96,7 +96,7 @@ class _AppState extends State<App> {
       child: ListenableBuilder(
         listenable: widget.themeMode,
         builder: (context, _) => MaterialApp.router(
-          title: '함께 지어져 가는 공동체',
+          title: '같이',
           debugShowCheckedModeBanner: false,
           theme: _light,
           darkTheme: _dark,

@@ -35,18 +35,18 @@
     "platforms": {
       "android": {
         "default": {
-          "projectId": "being-built-together",
-          "appId": "1:803236883584:android:ff470e40c3f46356b18a65",
+          "projectId": "god-ch",
+          "appId": "1:895180814475:android:3d2b40ae23bde61a34fc8e",
           "fileOutput": "android/app/google-services.json"
         }
       },
       "dart": {
         "lib/firebase_options.dart": {
-          "projectId": "being-built-together",
+          "projectId": "god-ch",
           "configurations": {
-            "android": "1:803236883584:android:ff470e40c3f46356b18a65",
-            "ios": "1:803236883584:ios:bb67220d61912f75b18a65",
-            "web": "1:803236883584:web:aeafb2ccb2709ebdb18a65"
+            "android": "1:895180814475:android:3d2b40ae23bde61a34fc8e",
+            "ios": "1:895180814475:ios:6b4ae66c8fd3745834fc8e",
+            "web": "1:895180814475:web:346a2ff429f64f4634fc8e"
           }
         }
       }

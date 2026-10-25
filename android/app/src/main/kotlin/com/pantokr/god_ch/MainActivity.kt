@@ -1,4 +1,4 @@
-package com.pantokr.built_in_together
+package com.pantokr.god_ch
 
 import io.flutter.embedding.android.FlutterActivity
 

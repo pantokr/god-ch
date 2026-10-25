@@ -1,4 +1,4 @@
-# 함께 지어져 가는 공동체 (built_in_together)
+# 같이 (god-ch)
 
 등록교인이 서로의 기도제목을 안전하게 나누는 앱입니다. 댓글 대신 이모티콘으로 조용히 응원하고,
 교역자에게만 전하고 싶은 기도제목은 비공개로 보관합니다. Flutter(웹 우선) + Firebase로 만들었습니다.
@@ -38,11 +38,11 @@ tool/create_admin.ps1                      앱 운영자 계정 생성/비밀번
 1. **도구 설치**: Flutter SDK(stable), Git, Node.js, Firebase CLI(`npm i -g firebase-tools`). VS Code를 쓰면 Dart/Flutter 확장도 설치합니다.
 2. **받기**
    ```
-   git clone https://github.com/pantokr/built-in-together.git
-   cd built-in-together
+   git clone https://github.com/pantokr/god-ch.git
+   cd god-ch
    flutter pub get
    ```
-3. **Firebase 로그인**: `firebase login` (프로젝트는 `.firebaserc`의 `being-built-together`가 기본값입니다).
+3. **Firebase 로그인**: `firebase login` (프로젝트는 `.firebaserc`의 `god-ch`가 기본값입니다).
 4. **실행**: VS Code에서 `웹 (로그인 유지)` 구성을 선택해 실행하세요(포트 5000, 로그인 유지용 Chrome 프로필 사용).
    터미널이라면 `flutter run -d chrome --web-port=5000`.
 5. **보안 규칙·인덱스 배포**(규칙을 바꾼 경우에만): `firebase deploy --only firestore`

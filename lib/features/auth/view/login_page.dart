@@ -144,7 +144,7 @@ class _Brand extends StatelessWidget {
         Icon(Icons.volunteer_activism, color: context.palette.brand, size: 40),
         SizedBox(height: 12),
         Text(
-          '함께 지어져 가는 공동체',
+          '같이',
           style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800),
         ),
         SizedBox(height: 6),

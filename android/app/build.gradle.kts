@@ -8,7 +8,7 @@ plugins {
 }
 
 android {
-    namespace = "com.pantokr.built_in_together"
+    namespace = "com.pantokr.god_ch"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -19,7 +19,7 @@ android {
 
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.pantokr.built_in_together"
+        applicationId = "com.pantokr.god_ch"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion

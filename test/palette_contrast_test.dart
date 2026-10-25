@@ -1,6 +1,6 @@
 import 'dart:math';
 
-import 'package:built_in_together/core/theme.dart';
+import 'package:god_ch/core/theme.dart';
 import 'package:flutter/painting.dart';
 import 'package:flutter_test/flutter_test.dart';
 
