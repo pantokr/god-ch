@@ -1,12 +1,14 @@
 import 'package:flutter/widgets.dart';
 
 import '../features/auth/data/auth_repository.dart';
+import '../features/bible/data/bible_repository.dart';
 import '../features/auth/data/profile_repository.dart';
 import '../features/church/data/church_repository.dart';
 import '../features/church/data/church_request_repository.dart';
 import '../features/church/data/department_repository.dart';
 import '../features/home/data/content_repository.dart';
 import '../features/home/data/page_layout_repository.dart';
+import '../features/home/data/reflection_repository.dart';
 import '../features/members/data/member_repository.dart';
 import '../features/notifications/data/notification_repository.dart';
 import '../features/platform/data/church_registry_repository.dart';
@@ -25,10 +27,12 @@ class AppScope extends InheritedWidget {
     required this.churchRegistry,
     required this.departments,
     required this.contents,
+    required this.reflections,
     required this.pageLayouts,
     required this.members,
     required this.prayers,
     required this.notifications,
+    required this.bible,
     required super.child,
   });
 
@@ -41,10 +45,12 @@ class AppScope extends InheritedWidget {
   final ChurchRegistryRepository churchRegistry;
   final DepartmentRepository departments;
   final ContentRepository contents;
+  final ReflectionRepository reflections;
   final PageLayoutRepository pageLayouts;
   final MemberRepository members;
   final PrayerRepository prayers;
   final NotificationRepository notifications;
+  final BibleRepository bible;
 
   /// 위젯 상태를 만들 때(initState 등)도 쓸 수 있도록 의존성 등록 없이 읽는다.
   static AppScope read(BuildContext context) {

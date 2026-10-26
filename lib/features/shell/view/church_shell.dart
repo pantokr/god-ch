@@ -48,6 +48,7 @@ class ChurchShell extends StatelessWidget {
   final Widget child;
 
   static const _labels = {
+    ChurchSection.gallery: '갤러리',
     ChurchSection.mine: '내 기도제목',
     ChurchSection.content: '페이지 편집',
     ChurchSection.contents: '콘텐츠 관리',
@@ -57,6 +58,7 @@ class ChurchShell extends StatelessWidget {
   };
 
   static const _icons = {
+    ChurchSection.gallery: (Icons.photo_library_outlined, Icons.photo_library),
     ChurchSection.mine: (Icons.person_outline, Icons.person),
     ChurchSection.content: (Icons.edit_note_outlined, Icons.edit_note),
     ChurchSection.contents: (
@@ -167,6 +169,7 @@ class ChurchShell extends StatelessWidget {
                 SidebarGroup(
                   items: [
                     for (final p in pages) _pageItem(context, pages, p),
+                    _item(context, ChurchSection.gallery),
                     _item(context, ChurchSection.mine),
                   ],
                 ),

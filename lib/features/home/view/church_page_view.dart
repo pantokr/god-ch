@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/layout/page_frame.dart';
+import '../../../core/layout/responsive.dart';
 import '../../../data/models/department.dart';
 import '../../../data/models/member.dart';
 import '../../../data/models/page_layout.dart';
@@ -23,7 +23,8 @@ class ChurchPageView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
-      child: PageFrame(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 28),
         child: ChurchPageBody(page: page, me: me, department: department),
       ),
     );
@@ -46,19 +47,30 @@ class ChurchPageBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        if (page.blocks.isEmpty)
-          EmptyHint(
-            me.isStaff
-                ? '아직 구조가 없어요.\n"페이지 편집"에서 이 페이지에 구조를 쌓아 보세요.'
-                : '아직 준비 중인 페이지예요.',
-          ),
-        for (final b in page.blocks)
-          BlockView(block: b, me: me, department: department),
-        const SizedBox(height: 24),
-      ],
+    // 화면 전체 폭을 쓰되, 글과 일반 구조는 가운데 [kContentWidth] 칸에 맞춘다 (좌우 [inset]).
+    // 옆으로 미는 카드 줄만 [inset]에서 시작해 화면 끝까지 이어져 칸 바깥에서도 스크롤된다.
+    final pad = pagePadding(context);
+    return LayoutBuilder(
+      builder: (context, box) {
+        final inset = pad + ((box.maxWidth - kContentWidth) / 2).clamp(0, 1e9);
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (page.blocks.isEmpty)
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: inset),
+                child: EmptyHint(
+                  me.isStaff
+                      ? '아직 구조가 없어요.\n"페이지 편집"에서 이 페이지에 구조를 쌓아 보세요.'
+                      : '아직 준비 중인 페이지예요.',
+                ),
+              ),
+            for (final b in page.blocks)
+              BlockView(block: b, me: me, department: department, inset: inset),
+            const SizedBox(height: 24),
+          ],
+        );
+      },
     );
   }
 }

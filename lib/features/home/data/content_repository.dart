@@ -175,6 +175,42 @@ class ContentRepository {
     return ref.getDownloadURL();
   }
 
+  /// 썸네일(교회 · 회원 사진)의 한 변 길이(px)와 JPEG 품질. 작고 낮은 화질로 저장한다.
+  static const thumbnailSize = 256;
+  static const thumbnailQuality = 60;
+
+  /// 이미지를 가운데 기준 정사각형으로 잘라 [thumbnailSize]px, 낮은 화질 JPEG로 만들어 [folder]에 올린다.
+  Future<String> uploadThumbnailTo(
+    String folder, {
+    required Uint8List bytes,
+  }) async {
+    if (_imageExtension(bytes, '') == null) {
+      throw const AppException(
+        'JPG, PNG, GIF, WEBP 이미지만 올릴 수 있어요. (아이폰 HEIC 사진은 JPG로 바꿔 주세요.)',
+      );
+    }
+    final image = img.decodeImage(bytes);
+    if (image == null) throw const AppException('이미지를 읽지 못했어요.');
+    final side = image.width < image.height ? image.width : image.height;
+    final square = img.copyCrop(
+      image,
+      x: (image.width - side) ~/ 2,
+      y: (image.height - side) ~/ 2,
+      width: side,
+      height: side,
+    );
+    final small = side > thumbnailSize
+        ? img.copyResize(square, width: thumbnailSize, height: thumbnailSize)
+        : square;
+    final data = Uint8List.fromList(
+      img.encodeJpg(small, quality: thumbnailQuality),
+    );
+    final name = '${DateTime.now().microsecondsSinceEpoch}.jpg';
+    final ref = _storage.ref('$folder/$name');
+    await ref.putData(data, SettableMetadata(contentType: 'image/jpeg'));
+    return ref.getDownloadURL();
+  }
+
   /// 이 크기를 넘는 이미지는 올리기 전에 줄인다.
   static const resizeAboveBytes = 2 * 1024 * 1024;
 

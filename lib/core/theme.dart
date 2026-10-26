@@ -1,24 +1,90 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-/// 앱 전체의 모서리 둥글기. 아주 약하게만 둥글린다.
+/// 앱 전체의 모서리 둥글기. 부드럽고 넉넉하게 둥글린다.
 class AppRadius {
   AppRadius._();
 
   /// 버튼·입력창·칩·배지 등 작은 요소.
-  static const control = 4.0;
+  static const control = 12.0;
 
-  /// 로그인·회원가입 패널처럼 각지게 보이는 큰 틀 (둥글지 않다).
-  static const panel = 0.0;
+  /// 로그인·회원가입 패널 같은 큰 틀.
+  static const panel = 24.0;
 
   /// 카드·팝업 메뉴.
-  static const card = 6.0;
+  static const card = 16.0;
 
   /// 대화상자.
-  static const dialog = 8.0;
+  static const dialog = 24.0;
 }
 
-/// 앱의 색 팔레트. 라이트("따뜻한 종이")와 다크("따뜻한 밤") 두 벌이 있고,
+/// 면을 살짝 띄우는 부드러운 그림자 (두 겹: 넓고 옅은 것 + 가깝고 또렷한 것).
+class AppShadow {
+  AppShadow._();
+
+  static List<BoxShadow> soft(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final c = dark ? Colors.black : const Color(0xFF2A2F6B);
+    return [
+      BoxShadow(
+        color: c.withValues(alpha: dark ? 0.35 : 0.07),
+        blurRadius: 24,
+        offset: const Offset(0, 8),
+      ),
+      BoxShadow(
+        color: c.withValues(alpha: dark ? 0.25 : 0.05),
+        blurRadius: 4,
+        offset: const Offset(0, 1),
+      ),
+    ];
+  }
+}
+
+/// 입체감을 주는 도구: 겹친 그림자([raised])와 포인트색 그라데이션([brand]).
+class AppDepth {
+  AppDepth._();
+
+  /// 떠 있는 느낌의 그림자. 넓고 옅은 그림자 위에 가까운 진한 그림자를 겹친다.
+  static List<BoxShadow> raised(BuildContext context, {Color? tint}) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final c = tint ?? (dark ? Colors.black : const Color(0xFF2A2F6B));
+    return [
+      BoxShadow(
+        color: c.withValues(alpha: dark ? 0.45 : 0.14),
+        blurRadius: 28,
+        spreadRadius: -4,
+        offset: const Offset(0, 14),
+      ),
+      BoxShadow(
+        color: c.withValues(alpha: dark ? 0.35 : 0.10),
+        blurRadius: 8,
+        offset: const Offset(0, 3),
+      ),
+      BoxShadow(
+        color: Colors.white.withValues(alpha: dark ? 0.04 : 0.9),
+        blurRadius: 2,
+        offset: const Offset(0, -1),
+      ),
+    ];
+  }
+
+  /// 포인트색이 살짝 밝아졌다 어두워지는 대각선 그라데이션.
+  static LinearGradient brand(BuildContext context) {
+    final b = context.palette.brand;
+    return LinearGradient(
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+      colors: [
+        Color.lerp(b, Colors.white, 0.22)!,
+        b,
+        Color.lerp(b, Colors.black, 0.18)!,
+      ],
+      stops: const [0, 0.5, 1],
+    );
+  }
+}
+
+/// 앱의 색 팔레트. 라이트("소프트 인디고")와 다크("딥 인디고") 두 벌이 있고,
 /// 화면에서는 `context.palette`로 꺼내 쓴다 (고정 색 대신 이것을 써야 다크 모드를 따라간다).
 @immutable
 class AppPalette extends ThemeExtension<AppPalette> {
@@ -48,37 +114,37 @@ class AppPalette extends ThemeExtension<AppPalette> {
   /// 얇은 테두리와 구분선.
   final Color border;
 
-  /// 주 포인트 색 (숲 녹색).
+  /// 주 포인트 색 (인디고).
   final Color brand;
 
   /// [brand] 위에 올리는 글자색.
   final Color onBrand;
 
-  /// 보조 포인트 색 (금빛). 응원 같은 따뜻한 강조에 쓴다.
+  /// 보조 포인트 색 (코랄). 응원 같은 따뜻한 강조에 쓴다.
   final Color accent;
 
-  /// 따뜻한 종이: 아이보리 바탕에 숲 녹색과 금빛.
+  /// 소프트 인디고: 연한 라벤더 바탕에 흰 카드, 인디고 포인트와 코랄 강조.
   static const light = AppPalette(
-    ink: Color(0xFF2B2622),
-    muted: Color(0xFF6F665D),
-    bg: Color(0xFFFAF7F2),
-    surface: Color(0xFFFFFDFA),
-    border: Color(0xFFE7E0D5),
-    brand: Color(0xFF2F5D50),
+    ink: Color(0xFF191B2E),
+    muted: Color(0xFF6B6F8D),
+    bg: Color(0xFFF3F4FB),
+    surface: Color(0xFFFFFFFF),
+    border: Color(0xFFE3E5F2),
+    brand: Color(0xFF5B5FEF),
     onBrand: Color(0xFFFFFFFF),
-    accent: Color(0xFFB8863B),
+    accent: Color(0xFFFF7A6B),
   );
 
-  /// 따뜻한 밤: 따뜻한 먹색 바탕에 밝은 녹색과 금빛.
+  /// 딥 인디고: 남색에 가까운 먹색 바탕에 밝은 인디고와 코랄.
   static const dark = AppPalette(
-    ink: Color(0xFFF2ECE3),
-    muted: Color(0xFFAFA699),
-    bg: Color(0xFF171513),
-    surface: Color(0xFF211E1B),
-    border: Color(0xFF3B352F),
-    brand: Color(0xFF86BBA9),
-    onBrand: Color(0xFF0F1F1A),
-    accent: Color(0xFFD9A85A),
+    ink: Color(0xFFECEDF8),
+    muted: Color(0xFF9A9EBD),
+    bg: Color(0xFF0E1020),
+    surface: Color(0xFF181B30),
+    border: Color(0xFF2B2F4D),
+    brand: Color(0xFF8E92FF),
+    onBrand: Color(0xFF0E1020),
+    accent: Color(0xFFFF9A8C),
   );
 
   @override
@@ -156,12 +222,11 @@ ThemeData buildTheme(Brightness brightness) {
   final radius = BorderRadius.circular(AppRadius.control);
   final shape = RoundedRectangleBorder(borderRadius: radius);
 
-  // 제목은 명조, 본문과 UI 글자는 산세리프로 둔다 (입력창·목록은 산세리프를 그대로 쓴다).
+  // 제목은 굵고 촘촘한 산세리프로, 본문과 UI 글자는 그대로 둔다 (긴 글만 [readingStyle]의 명조).
   final base = ThemeData(brightness: brightness).textTheme
       .apply(bodyColor: p.ink, displayColor: p.ink);
-  TextStyle? serif(TextStyle? style) => GoogleFonts.notoSerifKr(
-    textStyle: style?.copyWith(fontWeight: FontWeight.w700),
-  );
+  TextStyle? serif(TextStyle? style) =>
+      style?.copyWith(fontWeight: FontWeight.w800, letterSpacing: -0.4);
   final textTheme = base.copyWith(
     displayLarge: serif(base.displayLarge),
     displayMedium: serif(base.displayMedium),
@@ -170,6 +235,7 @@ ThemeData buildTheme(Brightness brightness) {
     headlineMedium: serif(base.headlineMedium),
     headlineSmall: serif(base.headlineSmall),
     titleLarge: serif(base.titleLarge),
+    titleMedium: base.titleMedium?.copyWith(fontWeight: FontWeight.w700),
   );
 
   return ThemeData(
@@ -188,7 +254,7 @@ ThemeData buildTheme(Brightness brightness) {
     textTheme: textTheme,
     // 눌렀을 때 물결 대신 hover 색으로 반응한다.
     splashFactory: NoSplash.splashFactory,
-    hoverColor: p.brand.withValues(alpha: 0.07),
+    hoverColor: p.brand.withValues(alpha: 0.08),
     highlightColor: Colors.transparent,
     pageTransitionsTheme: PageTransitionsTheme(
       builders: {
@@ -198,32 +264,57 @@ ThemeData buildTheme(Brightness brightness) {
     ),
     dividerTheme: DividerThemeData(color: p.border, space: 1, thickness: 1),
     cardTheme: CardThemeData(
-      elevation: 0,
+      elevation: 3,
+      shadowColor:
+          (brightness == Brightness.dark
+                  ? Colors.black
+                  : const Color(0xFF2A2F6B))
+              .withValues(alpha: 0.12),
+      surfaceTintColor: Colors.transparent,
       color: p.surface,
       margin: EdgeInsets.zero,
       clipBehavior: Clip.antiAlias,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppRadius.card),
-        side: BorderSide(color: p.border),
+        side: BorderSide(color: p.border.withValues(alpha: 0.7)),
       ),
     ),
-    // 입력란은 둥근 테두리 없이 밑줄만 쓴다. 글자 수 표시는 입력란 아래 줄을 차지하므로 숨기고,
+    // 입력란은 연하게 채운 둥근 칸이다. 글자 수 표시는 입력란 아래 줄을 차지하므로 숨기고,
     // 안내 문구는 각 입력란의 suffixText·hintText 안에 넣는다 (한도는 maxLength가 그대로 막는다).
     inputDecorationTheme: InputDecorationTheme(
-      filled: false,
+      filled: true,
+      fillColor: Color.alphaBlend(
+        p.brand.withValues(alpha: brightness == Brightness.dark ? 0.08 : 0.04),
+        p.bg,
+      ),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       counterStyle: const TextStyle(fontSize: 0, height: 0),
-      border: UnderlineInputBorder(borderSide: BorderSide(color: p.border)),
+      // 제목이 테두리에 걸쳐지지 않도록, 윤곽선 대신 채운 칸(밑줄형)을 쓴다.
+      // 제목은 칸 안에 있다가 입력하면 칸 안쪽 위로 올라간다.
+      border: UnderlineInputBorder(
+        borderRadius: radius,
+        borderSide: BorderSide.none,
+      ),
       enabledBorder: UnderlineInputBorder(
-        borderSide: BorderSide(color: p.border),
+        borderRadius: radius,
+        borderSide: BorderSide.none,
       ),
       focusedBorder: UnderlineInputBorder(
+        borderRadius: radius,
         borderSide: BorderSide(color: p.brand, width: 2),
+      ),
+      errorBorder: UnderlineInputBorder(
+        borderRadius: radius,
+        borderSide: BorderSide(color: scheme.error, width: 1.5),
+      ),
+      focusedErrorBorder: UnderlineInputBorder(
+        borderRadius: radius,
+        borderSide: BorderSide(color: scheme.error, width: 2),
       ),
       suffixStyle: TextStyle(color: p.muted, fontSize: 12),
       // 힌트(예시 글자)는 아주 옅게 해서 입력한 값과 확실히 구별되게 한다.
-      hintStyle: TextStyle(color: p.muted.withValues(alpha: 0.35)),
-      // 입력란 안에 들어가 있는 제목(비어 있을 때)도 옅게, 값이 있거나 선택되어 위로 올라가면 보통 색.
-      labelStyle: TextStyle(color: p.muted.withValues(alpha: 0.35)),
+      hintStyle: TextStyle(color: p.muted.withValues(alpha: 0.45)),
+      labelStyle: TextStyle(color: p.muted.withValues(alpha: 0.6)),
       floatingLabelStyle: WidgetStateTextStyle.resolveWith(
         (states) => TextStyle(
           color: states.contains(WidgetState.error)
@@ -235,16 +326,19 @@ ThemeData buildTheme(Brightness brightness) {
     filledButtonTheme: FilledButtonThemeData(
       style: FilledButton.styleFrom(
         shape: shape,
-        minimumSize: const Size(0, 44),
-        padding: const EdgeInsets.symmetric(horizontal: 20),
+        minimumSize: const Size(0, 48),
+        padding: const EdgeInsets.symmetric(horizontal: 22),
+        textStyle: const TextStyle(fontWeight: FontWeight.w700),
+        elevation: 0,
       ),
     ),
     outlinedButtonTheme: OutlinedButtonThemeData(
       style: OutlinedButton.styleFrom(
         shape: shape,
-        minimumSize: const Size(0, 44),
-        padding: const EdgeInsets.symmetric(horizontal: 20),
-        side: BorderSide(color: p.border),
+        minimumSize: const Size(0, 48),
+        padding: const EdgeInsets.symmetric(horizontal: 22),
+        textStyle: const TextStyle(fontWeight: FontWeight.w700),
+        side: BorderSide(color: p.border, width: 1.5),
         foregroundColor: p.ink,
       ),
     ),
@@ -252,21 +346,26 @@ ThemeData buildTheme(Brightness brightness) {
       style: TextButton.styleFrom(
         shape: shape,
         minimumSize: const Size(0, 40),
-        foregroundColor: p.ink,
+        textStyle: const TextStyle(fontWeight: FontWeight.w600),
+        foregroundColor: p.brand,
       ),
     ),
     dialogTheme: DialogThemeData(
       backgroundColor: p.surface,
       surfaceTintColor: Colors.transparent,
+      elevation: 12,
+      shadowColor: Colors.black.withValues(alpha: 0.25),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppRadius.dialog),
       ),
     ),
     chipTheme: ChipThemeData(
       side: BorderSide(color: p.border),
-      shape: shape,
+      shape: const StadiumBorder(),
       backgroundColor: p.surface,
-      labelStyle: TextStyle(color: p.ink),
+      selectedColor: p.brand.withValues(alpha: 0.16),
+      checkmarkColor: p.brand,
+      labelStyle: TextStyle(color: p.ink, fontWeight: FontWeight.w600),
     ),
     popupMenuTheme: PopupMenuThemeData(
       color: p.surface,
@@ -293,17 +392,19 @@ ThemeData buildTheme(Brightness brightness) {
     ),
     snackBarTheme: SnackBarThemeData(
       shape: shape,
+      behavior: SnackBarBehavior.floating,
       backgroundColor: p.ink,
       contentTextStyle: TextStyle(color: p.bg),
     ),
-    // 모바일 하단 탭: 그림자 없이 위쪽 테두리만 둔다.
+    // 모바일 하단 탭: 알약 모양 선택 표시.
     navigationBarTheme: NavigationBarThemeData(
       backgroundColor: p.surface,
       surfaceTintColor: Colors.transparent,
-      elevation: 0,
-      height: 64,
-      indicatorColor: p.brand.withValues(alpha: 0.14),
-      indicatorShape: shape,
+      elevation: 8,
+      shadowColor: Colors.black.withValues(alpha: 0.2),
+      height: 68,
+      indicatorColor: p.brand.withValues(alpha: 0.16),
+      indicatorShape: const StadiumBorder(),
       labelTextStyle: WidgetStateProperty.resolveWith(
         (states) => TextStyle(
           fontSize: 12,

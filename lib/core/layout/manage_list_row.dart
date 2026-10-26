@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../theme.dart';
+import '../widgets/thumbnail_avatar.dart';
 
 /// 관리 목록(교회 · 회원 · 인원 · 부서)의 한 줄. 모든 목록이 같은 모양과 같은 높이를 쓴다.
 /// 제목 아래에 정해진 두 줄([line1], [line2])이 항상 자리를 차지하므로, 정보가 없으면
@@ -36,19 +37,7 @@ class ManageListRow extends StatelessWidget {
     BuildContext context,
     String name, {
     String imageUrl = '',
-  }) => CircleAvatar(
-    backgroundColor: context.palette.brand.withValues(alpha: 0.12),
-    backgroundImage: imageUrl.isEmpty ? null : NetworkImage(imageUrl),
-    child: imageUrl.isEmpty
-        ? Text(
-            name.isEmpty ? '?' : name.characters.first,
-            style: TextStyle(
-              color: context.palette.brand,
-              fontWeight: FontWeight.w700,
-            ),
-          )
-        : null,
-  );
+  }) => ThumbnailAvatar(name: name, url: imageUrl);
 
   Widget _line(BuildContext context, String text) => Text(
     // 비어 있어도 한 줄 높이를 지키도록 보이지 않는 글자를 둔다.

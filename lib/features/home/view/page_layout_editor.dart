@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
+
+import '../../../core/back_navigation.dart';
 
 import '../../../app/app_scope.dart';
 import '../../../app/routes.dart';
@@ -40,8 +41,6 @@ class _PageLayoutEditorState extends State<PageLayoutEditor> {
   late final int _index = _pages.indexWhere((p) => p.id == widget.pageId);
   bool _dirty = false;
 
-  /// 좁은 화면에서 편집 대신 미리보기를 보는 중인가 (넓은 화면은 옆에 같이 보여준다).
-  bool _showPreview = false;
   int _serial = 0;
 
   PageConfig get _page => _pages[_index];
@@ -115,161 +114,188 @@ class _PageLayoutEditorState extends State<PageLayoutEditor> {
         widget.me.churchId,
       ),
       builder: (context, vm) {
-        final editor = SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(vertical: 20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
-                children: [
-                  IconButton(
-                    tooltip: '페이지 목록',
-                    icon: const Icon(Icons.arrow_back),
-                    onPressed: () =>
-                        context.go(Routes.pageList(widget.me.churchId)),
-                  ),
-                  Expanded(
-                    child: Text(
-                      '${_page.title} 편집',
-                      style: Theme.of(context).textTheme.titleLarge,
+        final pad = pagePadding(context);
+        final narrow = MediaQuery.sizeOf(context).width < kNarrow;
+        final editor = LayoutBuilder(
+          // 스크롤 영역은 전체 폭이고, 안쪽 여백으로 글 칸을 가운데 [kContentWidth]에 맞춘다.
+          builder: (context, box) => SingleChildScrollView(
+            padding: EdgeInsets.fromLTRB(
+              pad + ((box.maxWidth - kContentWidth) / 2).clamp(0, 1e9),
+              narrow ? 8 : 20,
+              pad + ((box.maxWidth - kContentWidth) / 2).clamp(0, 1e9),
+              20,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    IconButton(
+                      tooltip: '페이지 목록',
+                      icon: const Icon(Icons.arrow_back),
+                      onPressed: () =>
+                          context.goBack(Routes.pageList(widget.me.churchId)),
                     ),
+                    Expanded(
+                      child: Text(
+                        '${_page.title} 편집',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.titleLarge,
+                      ),
+                    ),
+                    TextButton.icon(
+                      onPressed: () => Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          fullscreenDialog: true,
+                          builder: (_) =>
+                              _PagePreview(page: _page, me: widget.me),
+                        ),
+                      ),
+                      icon: const Icon(Icons.visibility_outlined, size: 18),
+                      label: const Text('미리보기'),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                const Divider(height: 1),
+                const SizedBox(height: 20),
+                // 메뉴 개요 구역만 배경색을 달리해 페이지 구성과 구분한다.
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  // 비비드한 포인트색 면에 그림자를 깔고, 모서리는 각지게 둔다.
+                  decoration: BoxDecoration(
+                    color: palette.brand,
+                    boxShadow: [
+                      BoxShadow(
+                        color: palette.brand.withValues(alpha: 0.45),
+                        blurRadius: 28,
+                        offset: const Offset(0, 12),
+                      ),
+                      ...AppShadow.soft(context),
+                    ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const _SectionHeader(
+                        icon: Icons.menu_open_outlined,
+                        title: '메뉴 개요',
+                        onColor: true,
+                      ),
+                      _pageCard(context),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24),
+                const Divider(height: 1),
+                const SizedBox(height: 20),
+                const _SectionHeader(
+                  icon: Icons.view_agenda_outlined,
+                  title: '페이지 구성',
+                ),
+                // 구조 사이사이의 "+"를 눌러 원하는 위치에 새 구조를 끼워 넣는다.
+                _InsertSlot(
+                  onTap: _page.blocks.length >= 20 ? null : () => _addBlock(0),
+                  label: _page.blocks.isEmpty ? '구조 추가' : '맨 위에 구조 추가',
+                ),
+                for (var i = 0; i < _page.blocks.length; i++) ...[
+                  _BlockEditor(
+                    key: ValueKey(_page.blocks[i].id),
+                    block: _page.blocks[i],
+                    first: i == 0,
+                    last: i == _page.blocks.length - 1,
+                    onChanged: (b) => _setBlock(i, b),
+                    onMove: (d) => _moveBlock(i, d),
+                    onRemove: () => _removeBlock(i),
+                  ),
+                  _InsertSlot(
+                    onTap: _page.blocks.length >= 20
+                        ? null
+                        : () => _addBlock(i + 1),
+                    label: i == _page.blocks.length - 1
+                        ? '맨 아래에 구조 추가'
+                        : '여기에 구조 추가',
                   ),
                 ],
-              ),
-              Text(
-                '이름과 아이콘을 고치고, 구조를 위아래로 쌓아 디자인을 골라요.',
-                style: TextStyle(color: palette.muted),
-              ),
-              const SizedBox(height: 16),
-              _pageCard(context),
-              const SizedBox(height: 12),
-              // 구조 사이사이의 "+"를 눌러 원하는 위치에 새 구조를 끼워 넣는다.
-              _InsertSlot(
-                onTap: _page.blocks.length >= 20 ? null : () => _addBlock(0),
-                label: _page.blocks.isEmpty ? '구조 추가' : '맨 위에 구조 추가',
-              ),
-              for (var i = 0; i < _page.blocks.length; i++) ...[
-                _BlockEditor(
-                  key: ValueKey(_page.blocks[i].id),
-                  block: _page.blocks[i],
-                  first: i == 0,
-                  last: i == _page.blocks.length - 1,
-                  onChanged: (b) => _setBlock(i, b),
-                  onMove: (d) => _moveBlock(i, d),
-                  onRemove: () => _removeBlock(i),
-                ),
-                _InsertSlot(
-                  onTap: _page.blocks.length >= 20
-                      ? null
-                      : () => _addBlock(i + 1),
-                  label: i == _page.blocks.length - 1
-                      ? '맨 아래에 구조 추가'
-                      : '여기에 구조 추가',
+                const SizedBox(height: 24),
+                if (vm.error != null)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Text(
+                      vm.error!,
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.error,
+                      ),
+                    ),
+                  ),
+                FilledButton.icon(
+                  onPressed: vm.busy || !_dirty ? null : () => _save(vm),
+                  icon: const Icon(Icons.check, size: 18),
+                  label: Text(_dirty ? '저장' : '저장됨'),
                 ),
               ],
-              const SizedBox(height: 24),
-              if (vm.error != null)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: Text(
-                    vm.error!,
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.error,
-                    ),
-                  ),
-                ),
-              FilledButton.icon(
-                onPressed: vm.busy || !_dirty ? null : () => _save(vm),
-                icon: const Icon(Icons.check, size: 18),
-                label: Text(_dirty ? '저장' : '저장됨'),
-              ),
-            ],
+            ),
           ),
         );
-        final preview = _PagePreview(page: _page, me: widget.me);
-        if (MediaQuery.sizeOf(context).width >= kNarrow) {
-          // 넓은 화면: 편집과 미리보기를 나란히 보여준다. 각자 따로 스크롤된다.
-          return Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(flex: 5, child: editor),
-              const SizedBox(width: 20),
-              Expanded(flex: 4, child: preview),
-            ],
-          );
-        }
-        // 좁은 화면: 위의 스위치로 편집과 미리보기를 오간다.
-        return Column(
-          children: [
-            const SizedBox(height: 12),
-            SizedBox(
-              width: double.infinity,
-              child: SegmentedButton<bool>(
-                showSelectedIcon: false,
-                segments: const [
-                  ButtonSegment(
-                    value: false,
-                    icon: Icon(Icons.edit_outlined, size: 18),
-                    label: Text('편집'),
-                  ),
-                  ButtonSegment(
-                    value: true,
-                    icon: Icon(Icons.visibility_outlined, size: 18),
-                    label: Text('미리보기'),
-                  ),
-                ],
-                selected: {_showPreview},
-                onSelectionChanged: (s) =>
-                    setState(() => _showPreview = s.first),
-              ),
-            ),
-            Expanded(child: _showPreview ? preview : editor),
-          ],
-        );
+        return editor;
       },
     );
   }
 
   Widget _pageCard(BuildContext context) {
     final page = _page;
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+    // 바깥 구역의 색 면이 곧 배경이다 (안쪽에 따로 카드를 깔지 않는다).
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        TextFormField(
+          key: ValueKey('title/${page.id}'),
+          initialValue: page.title,
+          maxLength: 30,
+          buildCounter: noCounter,
+          decoration: const InputDecoration(labelText: '페이지 이름'),
+          onChanged: (v) => _setPage(page.copyWith(title: v)),
+        ),
+        const SizedBox(height: 20),
+        Text(
+          '메뉴 아이콘',
+          style: Theme.of(context).textTheme.titleSmall
+              ?.copyWith(color: context.palette.onBrand),
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 10,
           children: [
-            TextFormField(
-              key: ValueKey('title/${page.id}'),
-              initialValue: page.title,
-              maxLength: 30,
-              decoration: const InputDecoration(labelText: '페이지 이름 (메뉴에 보여요)'),
-              onChanged: (v) => _setPage(page.copyWith(title: v)),
-            ),
-            const SizedBox(height: 4),
-            Text('메뉴 아이콘', style: Theme.of(context).textTheme.titleSmall),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                for (final e in pageIcons.entries)
-                  ChoiceChip(
-                    avatar: Icon(e.value.outlined, size: 18),
-                    label: Text(e.value.label),
-                    selected: page.icon == e.key,
-                    onSelected: (_) => _setPage(page.copyWith(icon: e.key)),
-                  ),
-              ],
-            ),
+            for (final e in pageIcons.entries)
+              ChoiceChip(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 8,
+                  vertical: 12,
+                ),
+                materialTapTargetSize: MaterialTapTargetSize.padded,
+                avatar: Icon(e.value.outlined, size: 18),
+                label: Text(e.value.label),
+                selected: page.icon == e.key,
+                onSelected: (_) => _setPage(page.copyWith(icon: e.key)),
+              ),
           ],
         ),
-      ),
+      ],
     );
   }
 }
 
-/// 고치는 중인 페이지(저장 전)를 실제 자료로 그려 보여주는 미리보기.
+/// 고치는 중인 페이지(저장 전)를 실제 화면 폭 그대로, 실제 자료로 보여주는 전체 화면 미리보기.
 /// 눌러도 이동하지 않는다.
+Widget? noCounter(
+  BuildContext context, {
+  required int currentLength,
+  required bool isFocused,
+  required int? maxLength,
+}) => null;
+
 class _PagePreview extends StatelessWidget {
   const _PagePreview({required this.page, required this.me});
 
@@ -278,40 +304,53 @@ class _PagePreview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text('미리보기 · ${page.title}')),
+      body: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 28),
+          child: AbsorbPointer(
+            child: ChurchPageBody(page: page, me: me),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// 편집 화면의 큰 구역(메뉴 개요 · 페이지 구성)을 나누는 제목.
+class _SectionHeader extends StatelessWidget {
+  const _SectionHeader({
+    required this.icon,
+    required this.title,
+    this.onColor = false,
+  });
+
+  final IconData icon;
+  final String title;
+
+  /// 포인트색 면 위에 놓일 때 true: 글자와 아이콘을 [AppPalette.onBrand]로 쓴다.
+  final bool onColor;
+
+  @override
+  Widget build(BuildContext context) {
     final palette = context.palette;
-    return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(vertical: 20),
+    final fg = onColor ? palette.onBrand : null;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              const Icon(Icons.visibility_outlined, size: 18),
+              Icon(icon, size: 20, color: fg),
               const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  '미리보기 · ${page.title}',
-                  style: Theme.of(context).textTheme.titleSmall,
-                ),
+              Text(
+                title,
+                style: Theme.of(context).textTheme.titleMedium
+                    ?.copyWith(color: fg),
               ),
             ],
-          ),
-          const SizedBox(height: 4),
-          Text(
-            '저장하기 전 모습이에요. 실제 등록된 자료로 보여줘요.',
-            style: TextStyle(color: palette.muted, fontSize: 12),
-          ),
-          const SizedBox(height: 12),
-          Container(
-            decoration: BoxDecoration(
-              color: palette.bg,
-              border: Border.all(color: palette.border),
-              borderRadius: BorderRadius.circular(AppRadius.card),
-            ),
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: AbsorbPointer(
-              child: ChurchPageBody(page: page, me: me),
-            ),
           ),
         ],
       ),
@@ -329,11 +368,13 @@ class _InsertSlot extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: TextButton.icon(
-        onPressed: onTap,
-        icon: const Icon(Icons.add_circle_outline, size: 18),
-        label: Text(label),
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Center(
+        child: TextButton.icon(
+          onPressed: onTap,
+          icon: const Icon(Icons.add_circle_outline, size: 18),
+          label: Text(label),
+        ),
       ),
     );
   }
@@ -367,24 +408,40 @@ class _BlockEditor extends StatelessWidget {
     if (c != null) onChanged(block.copyWith(type: c.type, variant: c.variant));
   }
 
+  /// 분류(구조)를 바꾼다. 지금 보여주던 자료를 새 분류도 쓸 수 있으면 그대로 두고, 아니면 그 분류의 기본 자료로 맞춘다.
+  /// 구역 제목은 바꾸지 않는다.
+  void _changeCategory(String typeId) {
+    final t = BlockType.fromId(typeId);
+    final s = t.sources.firstWhere(
+      (x) => x.id == block.source.id,
+      orElse: () => t.sources.first,
+    );
+    onChanged(
+      block.copyWith(
+        type: t,
+        source: s,
+        limit: t == BlockType.messenger
+            ? 20
+            : block.type == BlockType.messenger
+            ? 5
+            : block.limit,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final type = block.type;
     return Card(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: const EdgeInsets.only(bottom: 4),
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 8, 8, 16),
+        padding: const EdgeInsets.fromLTRB(16, 8, 8, 20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Row(
               children: [
-                Expanded(
-                  child: Text(
-                    '${type.label} · ${block.variantInfo.label}',
-                    style: Theme.of(context).textTheme.titleSmall,
-                  ),
-                ),
+                const Spacer(),
                 IconButton(
                   tooltip: '위로',
                   onPressed: first ? null : () => onMove(-1),
@@ -402,80 +459,79 @@ class _BlockEditor extends StatelessWidget {
                 ),
               ],
             ),
+            // 구역에서 정하는 것은 분류(고르기)와 제목(쓰기) 둘뿐이다. 같은 모양의 칸이지만 이름표와 아이콘이 다르다.
             Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  TextFormField(
+              padding: const EdgeInsets.fromLTRB(0, 4, 8, 16),
+              child: LayoutBuilder(
+                builder: (context, box) {
+                  final category = DropdownButtonFormField<String>(
+                    initialValue: type.id,
+                    isExpanded: true,
+                    borderRadius: BorderRadius.circular(AppRadius.control),
+                    decoration: const InputDecoration(
+                      labelText: '분류',
+                      prefixIcon: Icon(Icons.folder_open_outlined),
+                    ),
+                    items: [
+                      for (final t in BlockType.values)
+                        DropdownMenuItem(value: t.id, child: Text(t.label)),
+                    ],
+                    onChanged: (v) {
+                      if (v != null) _changeCategory(v);
+                    },
+                  );
+                  final title = TextFormField(
                     initialValue: block.title,
                     maxLength: 30,
+                    buildCounter: noCounter,
                     decoration: const InputDecoration(
-                      labelText: '구역 제목 (비우면 제목 없이)',
+                      labelText: '제목',
+                      prefixIcon: Icon(Icons.edit_outlined),
                     ),
                     onChanged: (v) => onChanged(block.copyWith(title: v)),
-                  ),
-                  const SizedBox(height: 4),
-                  // 지금 쓰는 디자인의 실제 모습. 누르면 갤러리에서 다른 디자인으로 바꾼다.
-                  InkWell(
-                    onTap: () => _changeDesign(context),
-                    child: DesignThumbnail(
-                      type: type,
-                      variant: block.variant,
-                      height: 130,
-                    ),
-                  ),
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: TextButton.icon(
-                      onPressed: () => _changeDesign(context),
-                      icon: const Icon(Icons.palette_outlined, size: 18),
-                      label: const Text('디자인 바꾸기'),
-                    ),
-                  ),
-                  if (type.sources.length > 1) ...[
-                    const SizedBox(height: 12),
-                    DropdownButtonFormField<String>(
-                      initialValue: block.source.id,
-                      decoration: const InputDecoration(labelText: '보여줄 자료'),
-                      items: [
-                        for (final s in type.sources)
-                          DropdownMenuItem(value: s.id, child: Text(s.label)),
-                      ],
-                      onChanged: (id) {
-                        if (id == null) return;
-                        onChanged(
-                          block.copyWith(
-                            source: type.sources.firstWhere((s) => s.id == id),
-                          ),
-                        );
-                      },
-                    ),
-                  ],
-                  const SizedBox(height: 12),
-                  if (type != BlockType.schedule) ...[
-                    const SizedBox(height: 12),
-                    Row(
+                  );
+                  if (box.maxWidth >= 560) {
+                    return Row(
                       children: [
-                        Text(
-                          '보여줄 개수  ${block.limit}개',
-                          style: Theme.of(context).textTheme.labelLarge,
-                        ),
-                        Expanded(
-                          child: Slider(
-                            value: block.limit.toDouble(),
-                            min: 1,
-                            max: 20,
-                            divisions: 19,
-                            label: '${block.limit}개',
-                            onChanged: (v) =>
-                                onChanged(block.copyWith(limit: v.round())),
-                          ),
-                        ),
+                        Expanded(flex: 2, child: category),
+                        const SizedBox(width: 12),
+                        Expanded(flex: 3, child: title),
                       ],
-                    ),
-                  ],
-                ],
+                    );
+                  }
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [category, const SizedBox(height: 12), title],
+                  );
+                },
+              ),
+            ),
+            // 지금 쓰는 디자인의 실제 모습. 누르면 갤러리에서 같은 구조의 다른 디자인으로 바꾼다.
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 440),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      InkWell(
+                        onTap: () => _changeDesign(context),
+                        child: DesignThumbnail(
+                          type: type,
+                          variant: block.variant,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      FilledButton.tonalIcon(
+                        onPressed: () => _changeDesign(context),
+                        icon: const Icon(Icons.palette_outlined, size: 18),
+                        label: const Text('디자인 바꾸기'),
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ),
           ],

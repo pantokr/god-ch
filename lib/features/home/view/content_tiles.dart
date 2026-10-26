@@ -7,8 +7,9 @@ import 'content_widgets.dart';
 
 BoxDecoration _cardBox(BuildContext context) => BoxDecoration(
   color: context.palette.surface,
-  border: Border.all(color: context.palette.border),
+  border: Border.all(color: context.palette.border.withValues(alpha: 0.7)),
   borderRadius: BorderRadius.circular(AppRadius.card),
+  boxShadow: AppShadow.soft(context),
 );
 
 /// 일정 한 줄: 날짜 배지 + 제목 + 설명 첫 줄.
@@ -26,7 +27,12 @@ class EventTile extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(AppRadius.card),
       child: Ink(
-        decoration: _cardBox(context),
+        // 일정표 카드는 달력과 같은 떠 있는 그림자를 쓴다.
+        decoration: BoxDecoration(
+          color: context.palette.surface,
+          borderRadius: BorderRadius.circular(AppRadius.card + 2),
+          boxShadow: AppDepth.raised(context),
+        ),
         padding: const EdgeInsets.all(12),
         child: Row(
           children: [
@@ -269,6 +275,75 @@ class NoticeRow extends StatelessWidget {
                 child: ContentImage(
                   content.thumbnail,
                   icon: Icons.campaign_outlined,
+                ),
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    content.title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    fmtDate(content.date),
+                    style: TextStyle(
+                      color: context.palette.muted,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// 유튜브 영상 한 줄: 16:9 썸네일(재생 표시) + 제목 · 날짜.
+class VideoRow extends StatelessWidget {
+  const VideoRow({super.key, required this.content, required this.onTap});
+
+  final ChurchContent content;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(AppRadius.card),
+      child: Ink(
+        decoration: _cardBox(context),
+        padding: const EdgeInsets.all(12),
+        child: Row(
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(AppRadius.control),
+              child: SizedBox(
+                width: 120,
+                height: 120 * 9 / 16,
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    ContentImage(
+                      content.thumbnail,
+                      icon: Icons.smart_display_outlined,
+                    ),
+                    const Center(
+                      child: Icon(
+                        Icons.play_circle_fill,
+                        size: 32,
+                        color: Colors.white70,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),

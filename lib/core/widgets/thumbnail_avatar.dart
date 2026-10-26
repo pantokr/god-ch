@@ -1,0 +1,58 @@
+import 'package:flutter/material.dart';
+
+import '../theme.dart';
+
+/// 둥근 썸네일. [url]이 있으면 그 이미지를, 없거나 불러오지 못하면 [name]의 머리글자를 보여준다.
+/// 웹에서 Firebase Storage 이미지는 CORS 때문에 일반 방식으로는 그려지지 않으므로,
+/// 실패하면 HTML 이미지 요소로 대신 그리도록 한다 (메인 페이지 이미지와 같은 방식).
+class ThumbnailAvatar extends StatelessWidget {
+  const ThumbnailAvatar({
+    super.key,
+    required this.name,
+    this.url = '',
+    this.radius = 20,
+  });
+
+  final String name;
+  final String url;
+  final double radius;
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = context.palette;
+    final initial = Center(
+      child: Text(
+        name.isEmpty ? '?' : name.characters.first,
+        style: TextStyle(
+          color: palette.brand,
+          fontSize: radius * 0.8,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+    return SizedBox(
+      width: radius * 2,
+      height: radius * 2,
+      child: ClipOval(
+        child: ColoredBox(
+          color: palette.brand.withValues(alpha: 0.12),
+          child: url.isEmpty
+              ? initial
+              : Image.network(
+                  url,
+                  key: ValueKey(url),
+                  fit: BoxFit.cover,
+                  webHtmlElementStrategy: WebHtmlElementStrategy.fallback,
+                  errorBuilder: (_, error, _) {
+                    // 불러오지 못한 이유를 브라우저 콘솔에서 볼 수 있게 남긴다.
+                    debugPrint('썸네일을 불러오지 못했어요: $url ($error)');
+                    return initial;
+                  },
+                  loadingBuilder: (_, child, progress) =>
+                      progress == null ? child : initial,
+                ),
+        ),
+      ),
+    );
+  }
+}

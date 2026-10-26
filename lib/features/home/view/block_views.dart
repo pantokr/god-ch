@@ -13,9 +13,12 @@ import '../../../data/models/page_layout.dart';
 import '../../../data/models/prayer.dart';
 import '../../prayers/view/prayer_list.dart';
 import '../view_model/block_view_model.dart';
+import 'board_tiles.dart';
 import 'content_tiles.dart';
+import 'devotion_designs.dart';
 import 'content_widgets.dart';
 import 'month_calendar.dart';
+import 'neon_blocks.dart';
 import 'notice_carousel.dart';
 
 /// 페이지의 구조(블록) 하나를 고른 디자인으로 그린다.
@@ -26,11 +29,18 @@ class BlockView extends StatelessWidget {
     required this.block,
     required this.me,
     this.department,
+    this.inset = 0,
   });
 
   final BlockConfig block;
   final Member me;
   final Department? department;
+
+  /// 구조를 놓는 칸의 좌우 안쪽 여백. 카드 슬라이드는 이 여백에서 시작해 화면 끝까지 이어진다.
+  final double inset;
+
+  /// 옆으로 미는 카드 줄: 칸 바깥(화면 끝)까지 스크롤 영역을 넓힌다.
+  bool get _bleeds => block.type == BlockType.board && block.variant == 'cards';
 
   @override
   Widget build(BuildContext context) {
@@ -53,16 +63,26 @@ class BlockView extends StatelessWidget {
       builder: (context, vm) => Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (block.title.trim().isNotEmpty)
-            SectionHeader(
-              title: block.title.trim(),
-              onMore: kind == null || block.type == BlockType.schedule
-                  ? null
-                  : () => context.push(Routes.contentList(me.churchId, kind)),
-            )
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: inset),
+            child: block.title.trim().isNotEmpty
+                ? SectionHeader(
+                    title: block.title.trim(),
+                    onMore: kind == null || block.type == BlockType.schedule
+                        ? null
+                        : () => context.push(
+                            Routes.contentList(me.churchId, kind),
+                          ),
+                  )
+                : const SizedBox(height: 24),
+          ),
+          if (_bleeds)
+            _body(context, vm)
           else
-            const SizedBox(height: 24),
-          _body(context, vm),
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: inset),
+              child: _body(context, vm),
+            ),
         ],
       ),
     );
@@ -86,24 +106,32 @@ class BlockView extends StatelessWidget {
     // 자료가 없거나 불러오는 중에도, 자료가 들어왔을 때와 같은 높이(이미지 4:3 기준)를 잡는다.
     return LayoutBuilder(
       builder: (context, box) {
-        final reserved = _reservedHeight(context, box.maxWidth);
+        final reserved = _reservedHeight(context, box.maxWidth - inset * 2);
         return ContentStream(
           stream: vm.content!,
           loadingHeight: reserved ?? 120,
           builder: (context, items) {
             if (items.isEmpty) {
-              return EmptyHint(
+              final empty = EmptyHint(
                 block.type == BlockType.schedule
                     ? '이번 달 일정이 없어요.$hint'
                     : '등록된 ${block.source.label}이(가) 없어요.$hint',
                 height: reserved,
               );
+              return _bleeds
+                  ? Padding(
+                      padding: EdgeInsets.symmetric(horizontal: inset),
+                      child: empty,
+                    )
+                  : empty;
             }
             return BlockContentBody(
               block: block,
               items: items,
               onOpen: open,
               hint: hint,
+              me: me,
+              bleedInset: inset,
             );
           },
         );
@@ -113,23 +141,22 @@ class BlockView extends StatelessWidget {
 
   /// 이 구조가 이미지 한 줄(또는 한 장)을 그릴 때의 높이. 이미지 칸이 없는 구조는 null.
   double? _reservedHeight(BuildContext context, double width) {
-    switch (block.type) {
-      case BlockType.carousel:
-        return block.variant == 'cards'
-            ? BlockContentBody.cardWidth / kThumbnailAspect
-            : width / NoticeCarousel.aspectOf(context);
-      case BlockType.board:
-        final photos =
-            block.variant == 'grid' ||
-            (block.variant == 'list' && block.source.kind == ContentKind.photo);
-        if (!photos) return null;
-        // ColumnWrap(narrow: 2, wide: 3)의 한 줄 높이.
-        final cols = width < 560 ? 2 : 3;
-        final tile = (width - 12 * (cols - 1)) / cols;
-        return tile / kThumbnailAspect;
-      default:
-        return null;
+    if (block.type != BlockType.board) return null;
+    // ColumnWrap(narrow: 2, wide: 3)의 한 줄 높이.
+    double gridRow() {
+      final cols = width < 560 ? 2 : 3;
+      final tile = (width - 12 * (cols - 1)) / cols;
+      return tile / kThumbnailAspect;
     }
+
+    return switch (block.variant) {
+      'banner' => width / NoticeCarousel.aspectOf(context),
+      'cards' => BlockContentBody.cardWidth / kThumbnailAspect,
+      'feature' => width * 9 / 16,
+      'tiles' => gridRow(),
+      'list' when block.source.kind == ContentKind.photo => gridRow(),
+      _ => null,
+    };
   }
 }
 
@@ -162,7 +189,8 @@ class _Messenger extends StatelessWidget {
     );
     const empty = '아직 나눠진 기도제목이 없어요.\n첫 기도제목을 나눠 보세요.';
 
-    if (variant != 'bubbles') {
+    final neon = NeonScheme.of(variant);
+    if (neonShape(variant) != 'bubbles') {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -198,7 +226,18 @@ class _Messenger extends StatelessWidget {
               children: [
                 // 오래된 글이 위, 최근 글이 아래로 가는 대화 순서로 보여준다.
                 for (final p in items.take(limit).toList().reversed)
-                  PrayerBubble(prayer: p, me: me),
+                  if (neon != null)
+                    NeonPrayerBubble(
+                      scheme: neon,
+                      prayer: p,
+                      mine: p.authorId == me.id,
+                      onTap: () => context.push(
+                        Routes.prayer(me.churchId, p.id),
+                        extra: p,
+                      ),
+                    )
+                  else
+                    PrayerBubble(prayer: p, me: me),
               ],
             );
           },
@@ -286,7 +325,15 @@ class BlockContentBody extends StatelessWidget {
     required this.items,
     required this.onOpen,
     this.hint = '',
+    this.me,
+    this.bleedInset = 0,
   });
+
+  /// 카드 슬라이드 줄의 앞뒤 여백. 줄은 화면 끝까지 이어지고 카드는 이 여백에서 시작한다.
+  final double bleedInset;
+
+  /// 지금 보는 교인. 디자인 견본에서는 null이라 저장소를 읽지 않는 견본 글로 그린다.
+  final Member? me;
 
   final BlockConfig block;
   final List<ChurchContent> items;
@@ -300,7 +347,28 @@ class BlockContentBody extends StatelessWidget {
   Widget build(BuildContext context) {
     final open = onOpen;
     return switch (block.type) {
-      BlockType.carousel => _carousel(items, open),
+      BlockType.video => _video(items, open),
+      BlockType.devotion => Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (final c in items)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: me == null
+                  ? DevotionDesign(
+                      variant: block.variant,
+                      content: c,
+                      reflections: sampleReflections,
+                    )
+                  : DevotionBlockItem(
+                      variant: block.variant,
+                      content: c,
+                      me: me!,
+                      onOpen: () => open(c),
+                    ),
+            ),
+        ],
+      ),
       BlockType.schedule =>
         block.variant == 'agenda'
             ? ColumnWrap(
@@ -310,31 +378,49 @@ class BlockContentBody extends StatelessWidget {
                     EventTile(content: e, onTap: () => open(e)),
                 ],
               )
-            : MonthCalendar(events: items, onOpen: open, hint: hint),
+            : MonthCalendar(
+                events: items,
+                onOpen: open,
+                hint: hint,
+                variant: block.variant,
+              ),
       _ => _board(context, items, open),
     };
   }
 
-  Widget _carousel(
-    List<ChurchContent> items,
-    void Function(ChurchContent) open,
-  ) {
-    if (block.variant == 'cards') {
-      // 옆으로 밀어 넘기는 카드: 4:3 썸네일과 제목.
-      return SizedBox(
-        height: cardWidth / kThumbnailAspect,
-        child: ListView.separated(
-          scrollDirection: Axis.horizontal,
-          itemCount: items.length,
-          separatorBuilder: (_, _) => const SizedBox(width: 12),
-          itemBuilder: (context, i) => SizedBox(
-            width: cardWidth,
-            child: PhotoTile(content: items[i], onTap: () => open(items[i])),
-          ),
-        ),
-      );
+  /// 유튜브 링크: 영상 카드 · 영상 목록 · 큰 영상 하나 + 나머지 목록.
+  Widget _video(List<ChurchContent> items, void Function(ChurchContent) open) {
+    switch (block.variant) {
+      case 'list':
+        return Column(
+          children: [
+            for (final c in items)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: VideoRow(content: c, onTap: () => open(c)),
+              ),
+          ],
+        );
+      case 'featured':
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            SermonCard(content: items.first, onTap: () => open(items.first)),
+            for (final c in items.skip(1))
+              Padding(
+                padding: const EdgeInsets.only(top: 10),
+                child: VideoRow(content: c, onTap: () => open(c)),
+              ),
+          ],
+        );
+      default:
+        return ColumnWrap(
+          wide: 3,
+          children: [
+            for (final c in items) SermonCard(content: c, onTap: () => open(c)),
+          ],
+        );
     }
-    return NoticeCarousel(notices: items, onOpen: open);
   }
 
   Widget _board(
@@ -343,16 +429,81 @@ class BlockContentBody extends StatelessWidget {
     void Function(ChurchContent) open,
   ) {
     switch (block.variant) {
-      case 'grid':
+      // ---- 사진 + 글 ----
+      case 'banner':
+        return NoticeCarousel(notices: items, onOpen: open);
+      case 'cards':
+        // 옆으로 미는 카드: 4:3 사진 위에 제목.
+        return SizedBox(
+          height: cardWidth / kThumbnailAspect,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            padding: EdgeInsets.symmetric(horizontal: bleedInset),
+            itemCount: items.length,
+            separatorBuilder: (_, _) => const SizedBox(width: 12),
+            itemBuilder: (context, i) => SizedBox(
+              width: cardWidth,
+              child: PhotoTile(content: items[i], onTap: () => open(items[i])),
+            ),
+          ),
+        );
+      case 'tiles':
         return ColumnWrap(
           narrow: 2,
           children: [
+            for (final c in items) PostTile(content: c, onTap: () => open(c)),
+          ],
+        );
+      case 'feature':
+        return Column(
+          children: [
             for (final c in items)
-              AspectRatio(
-                aspectRatio: kThumbnailAspect,
-                child: PhotoTile(content: c, onTap: () => open(c)),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 14),
+                child: PostTile(
+                  content: c,
+                  aspect: 16 / 9,
+                  onTap: () => open(c),
+                ),
               ),
           ],
+        );
+      // ---- 글만 ----
+      case 'table':
+        return PostTable(items: items, onOpen: open);
+      case 'text':
+        // 사진 없이 제목 · 첫 줄 · 날짜만.
+        return Card(
+          child: Column(
+            children: [
+              for (var i = 0; i < items.length; i++) ...[
+                if (i > 0) const Divider(height: 1),
+                ListTile(
+                  onTap: () => open(items[i]),
+                  title: Text(
+                    items[i].title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                  subtitle: items[i].body.trim().isEmpty
+                      ? null
+                      : Text(
+                          items[i].body.split('\n').first,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                  trailing: Text(
+                    fmtDate(items[i].date),
+                    style: TextStyle(
+                      color: context.palette.muted,
+                      fontSize: 13,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
         );
       case 'compact':
         return Card(

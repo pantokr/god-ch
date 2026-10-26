@@ -57,11 +57,7 @@ class ProfileRepository {
   /// 주소·생년월일(선택 정보)을 저장한다. 교회가 입장 때 필수로 요청한 정보를 채울 때 쓴다.
   /// 내 프로필 사진을 올리고 주소를 돌려준다. 저장(update)은 따로 한다.
   Future<String> uploadPhoto(String fileName, Uint8List bytes) =>
-      _contents.uploadImageTo(
-        'users/${_auth.uid}/avatar',
-        fileName: fileName,
-        bytes: bytes,
-      );
+      _contents.uploadThumbnailTo('users/${_auth.uid}/avatar', bytes: bytes);
 
   Future<void> saveExtra({String? address, String? birthDate}) {
     final data = _extra(address, birthDate);

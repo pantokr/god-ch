@@ -110,6 +110,7 @@ GoRouter buildRouter(SessionNotifier session) {
             ),
           ),
           _sectionRoute(ChurchSection.feed, const FeedSectionPage()),
+          _sectionRoute(ChurchSection.gallery, const GallerySectionPage()),
           _sectionRoute(ChurchSection.mine, const MineSectionPage()),
           _sectionRoute(ChurchSection.posts, const PostManageSectionPage()),
           _sectionRoute(ChurchSection.members, const MemberManageSectionPage()),

@@ -11,6 +11,7 @@ import '../../home/view/content_detail_page.dart';
 import '../../home/view/content_edit_page.dart';
 import '../../home/view/content_list_page.dart';
 import '../../home/view/content_manage_page.dart';
+import '../../home/view/gallery_page.dart';
 import '../../home/view/page_edit_page.dart';
 import '../../home/view/page_list_page.dart';
 import '../../home/view/church_page_view.dart';
@@ -47,6 +48,15 @@ class FeedSectionPage extends StatelessWidget {
       ),
     );
   }
+}
+
+/// 갤러리 탭: 사진첩의 사진만 모아 본다.
+class GallerySectionPage extends StatelessWidget {
+  const GallerySectionPage({super.key});
+
+  @override
+  Widget build(BuildContext context) =>
+      GalleryPage(me: ChurchScope.of(context).me);
 }
 
 class MineSectionPage extends StatelessWidget {
@@ -88,7 +98,7 @@ class DepartmentManageSectionPage extends StatelessWidget {
     final me = ChurchScope.of(context).me;
     return DepartmentManagePage(
       me: me,
-      onOpen: (d) => context.go(Routes.department(me.churchId, d.id)),
+      onOpen: (d) => context.push(Routes.department(me.churchId, d.id)),
     );
   }
 }

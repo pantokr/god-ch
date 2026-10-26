@@ -129,3 +129,6 @@ app.*.symbols
 
 # 글꼴 원본 묶음 (필요한 굵기만 assets/fonts에 복사해 씀)
 /Pretendard-1.3.9/
+
+# 성경 원본 파일 (앱 운영자가 대시보드에서 Storage로 올린다)
+/data/bible/*.csv

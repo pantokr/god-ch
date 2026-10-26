@@ -5,22 +5,47 @@ import 'church_content.dart';
 
 /// 페이지에 쌓을 수 있는 구조(블록)의 종류. 구조마다 쓸 수 있는 자료와 디자인이 정해져 있다.
 enum BlockType {
-  carousel('carousel', '캐러셀', '큰 이미지가 자동으로 넘어가요.', [
-    BlockVariant('banner', '배너'),
-    BlockVariant('cards', '카드 슬라이드'),
+  board('board', '게시판', '사진과 글, 또는 글만 보여줘요.', [
+    // 사진 + 글
+    BlockVariant('list', '사진+글 · 목록'),
+    BlockVariant('tiles', '사진+글 · 카드 격자'),
+    BlockVariant('cards', '사진+글 · 카드 슬라이드'),
+    BlockVariant('banner', '사진+글 · 배너'),
+    BlockVariant('feature', '사진+글 · 큰 사진'),
+    // 글만
+    BlockVariant('text', '글만 · 목록'),
+    BlockVariant('compact', '글만 · 간단히'),
+    BlockVariant('table', '글만 · 표'),
   ]),
-  board('board', '게시판', '글을 목록이나 격자로 보여줘요.', [
-    BlockVariant('list', '목록'),
-    BlockVariant('grid', '사진 격자'),
-    BlockVariant('compact', '간단히'),
+  devotion('devotion', '말씀묵상', '말씀 구절과 묵상 본문을 보여줘요.', [
+    // 한 카드 디자인 세 가지와, 각각에 대응하는 두 카드(말씀 | 내 묵상) 디자인 세 가지.
+    BlockVariant('card', '카드'),
+    BlockVariant('quote', '인용형'),
+    BlockVariant('note', '줄 노트형'),
+    BlockVariant('twin', '두 카드 · 카드'),
+    BlockVariant('twin_quote', '두 카드 · 인용형'),
+    BlockVariant('twin_note', '두 카드 · 줄 노트형'),
+  ]),
+  video('video', '유튜브 링크', '유튜브 영상 링크를 카드로 보여줘요.', [
+    BlockVariant('cards', '영상 카드'),
+    BlockVariant('list', '영상 목록'),
+    BlockVariant('featured', '큰 영상 + 목록'),
   ]),
   schedule('schedule', '일정', '이번 달 일정을 보여줘요.', [
-    BlockVariant('calendar', '달력'),
+    // 첫째가 기본 디자인이다: 새로 만드는 일정 블록은 흑백 포스터로 시작한다.
+    BlockVariant('calendar_mono', '달력 · 흑백 포스터'),
+    BlockVariant('calendar', '달력 · 네온'),
+    BlockVariant('calendar_paper', '달력 · 기본'),
+    BlockVariant('calendar_sunset', '달력 · 노을'),
+    BlockVariant('calendar_pastel', '달력 · 파스텔'),
     BlockVariant('agenda', '일정표'),
   ]),
   messenger('messenger', '메신저', '중보기도 요청을 대화처럼 보여줘요.', [
     BlockVariant('cards', '카드'),
     BlockVariant('bubbles', '말풍선'),
+    BlockVariant('neon_bubbles', '말풍선 · 네온'),
+    BlockVariant('cyber_bubbles', '말풍선 · 사이버'),
+    BlockVariant('flare_bubbles', '말풍선 · 플레어'),
   ]);
 
   const BlockType(this.id, this.label, this.description, this.variants);
@@ -35,11 +60,17 @@ enum BlockType {
   static BlockType fromId(String? id) =>
       values.firstWhere((t) => t.id == id, orElse: () => board);
 
-  /// 이 구조가 보여줄 수 있는 자료. 메신저는 기도제목, 일정은 일정만, 나머지는 모든 콘텐츠.
+  /// 이 구조가 보여줄 수 있는 자료. 메신저는 기도제목, 일정은 일정, 유튜브 링크는 설교영상,
+  /// 말씀묵상은 말씀묵상, 게시판은 공지·사진첩.
   List<BlockSource> get sources => switch (this) {
     messenger => [BlockSource.prayers],
     schedule => [BlockSource.events],
-    _ => [for (final k in ContentKind.values) BlockSource.fromKind(k)],
+    video => [BlockSource.fromKind(ContentKind.sermon)],
+    devotion => [BlockSource.fromKind(ContentKind.devotion)],
+    board => [
+      BlockSource.fromKind(ContentKind.notice),
+      BlockSource.fromKind(ContentKind.photo),
+    ],
   };
 }
 
@@ -142,12 +173,25 @@ class BlockConfig {
   };
 
   factory BlockConfig.fromMap(Map<String, dynamic> m) {
-    final type = BlockType.fromId(m['type'] as String?);
+    var type = BlockType.fromId(m['type'] as String?);
     var source = BlockSource.fromId(m['source'] as String?);
+    var variant = m['variant'] as String?;
+    // 예전 구성: 게시판·캐러셀로 보여주던 설교영상은 유튜브 링크로, 말씀묵상은 말씀묵상 구조로, 일정은 일정 구조로 옮긴다.
+    // (예전의 "캐러셀" 구조는 게시판에 합쳐졌다: 'carousel' id는 게시판으로 읽힌다.)
+    if (type == BlockType.board) {
+      if (source.kind == ContentKind.sermon) {
+        type = BlockType.video;
+      } else if (source.kind == ContentKind.devotion) {
+        type = BlockType.devotion;
+        variant = 'card';
+      } else if (source.kind == ContentKind.event) {
+        type = BlockType.schedule;
+        variant = 'agenda';
+      }
+    }
     if (!type.sources.any((s) => s.id == source.id)) {
       source = type.sources.first;
     }
-    final variant = m['variant'] as String?;
     return BlockConfig(
       id: m['id'] as String? ?? '',
       type: type,
@@ -212,20 +256,20 @@ class PageConfig {
       blocks: [
         BlockConfig(
           id: 'main-notices',
-          type: BlockType.carousel,
+          type: BlockType.board,
           variant: 'banner',
           source: BlockSource._('notices', '공지사항', ContentKind.notice),
         ),
         BlockConfig(
           id: 'main-events',
           type: BlockType.schedule,
-          variant: 'calendar',
+          variant: 'calendar_mono',
           source: BlockSource._('events', '일정', ContentKind.event),
           title: '일정',
         ),
         BlockConfig(
           id: 'main-photos',
-          type: BlockType.carousel,
+          type: BlockType.board,
           variant: 'cards',
           source: BlockSource._('photos', '사진첩', ContentKind.photo),
           title: '사진첩',
@@ -233,16 +277,16 @@ class PageConfig {
         ),
         BlockConfig(
           id: 'main-sermons',
-          type: BlockType.board,
-          variant: 'list',
+          type: BlockType.video,
+          variant: 'cards',
           source: BlockSource._('sermons', '설교영상', ContentKind.sermon),
           title: '설교영상',
           limit: 3,
         ),
         BlockConfig(
           id: 'main-devotions',
-          type: BlockType.board,
-          variant: 'list',
+          type: BlockType.devotion,
+          variant: 'card',
           source: BlockSource._('devotions', '말씀묵상', ContentKind.devotion),
           title: '말씀묵상',
           limit: 1,
@@ -256,8 +300,8 @@ class PageConfig {
       blocks: [
         BlockConfig(
           id: 'devotion-list',
-          type: BlockType.board,
-          variant: 'list',
+          type: BlockType.devotion,
+          variant: 'card',
           source: BlockSource._('devotions', '말씀묵상', ContentKind.devotion),
           title: '말씀묵상',
           limit: 10,

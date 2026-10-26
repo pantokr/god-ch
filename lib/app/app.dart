@@ -1,3 +1,4 @@
+import '../features/bible/data/bible_repository.dart';
 import '../features/notifications/data/notification_repository.dart';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -13,6 +14,7 @@ import '../features/church/data/church_request_repository.dart';
 import '../features/church/data/department_repository.dart';
 import '../features/home/data/content_repository.dart';
 import '../features/home/data/page_layout_repository.dart';
+import '../features/home/data/reflection_repository.dart';
 import '../features/members/data/member_repository.dart';
 import '../features/platform/data/church_registry_repository.dart';
 import '../features/prayers/data/prayer_repository.dart';
@@ -61,9 +63,14 @@ class _AppState extends State<App> {
     FirebaseStorage.instance,
     _auth,
   );
+  late final ReflectionRepository _reflections = ReflectionRepository(
+    _db,
+    _auth,
+  );
   late final PageLayoutRepository _pageLayouts = PageLayoutRepository(_db);
   late final MemberRepository _members = MemberRepository(_db, _auth);
   late final PrayerRepository _prayers = PrayerRepository(_db, _auth);
+  late final BibleRepository _bible = BibleRepository(FirebaseStorage.instance);
   late final NotificationRepository _notifications = NotificationRepository(
     _db,
     _auth,
@@ -99,10 +106,12 @@ class _AppState extends State<App> {
       churchRegistry: _churchRegistry,
       departments: _departments,
       contents: _contents,
+      reflections: _reflections,
       pageLayouts: _pageLayouts,
       members: _members,
       prayers: _prayers,
       notifications: _notifications,
+      bible: _bible,
       // 화면 모드가 바뀌면 앱 전체가 새 테마로 다시 그려진다.
       child: ListenableBuilder(
         listenable: widget.themeMode,
@@ -113,6 +122,13 @@ class _AppState extends State<App> {
           darkTheme: _dark,
           themeMode: widget.themeMode.mode,
           routerConfig: _router,
+          // 설정에서 고른 글자 크기를 앱 전체에 적용한다.
+          builder: (context, child) => MediaQuery(
+            data: MediaQuery.of(context).copyWith(
+              textScaler: TextScaler.linear(widget.themeMode.textScale),
+            ),
+            child: child!,
+          ),
         ),
       ),
     );

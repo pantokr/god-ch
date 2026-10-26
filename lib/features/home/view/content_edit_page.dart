@@ -2,7 +2,8 @@ import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
+
+import '../../../core/back_navigation.dart';
 
 import '../../../app/app_scope.dart';
 import '../../../app/routes.dart';
@@ -13,6 +14,7 @@ import '../../../core/mvvm/view_model_builder.dart';
 import '../../../core/theme.dart';
 import '../../../data/models/church_content.dart';
 import '../../../data/models/member.dart';
+import '../../bible/view/bible_picker_dialog.dart';
 import '../view_model/content_list_view_model.dart';
 import 'content_widgets.dart';
 
@@ -43,7 +45,7 @@ class ContentEditPage extends StatelessWidget {
                     tooltip: '콘텐츠 관리',
                     icon: const Icon(Icons.arrow_back),
                     onPressed: () =>
-                        context.go(Routes.contentEdit(me.churchId)),
+                        context.goBack(Routes.contentEdit(me.churchId)),
                   ),
                   Expanded(
                     child: Text(
@@ -293,6 +295,20 @@ class _ContentFormState extends State<_ContentForm> {
     super.dispose();
   }
 
+  /// 성경 구절을 골라 제목(구절)과 본문에 넣는다. 본문에 이미 쓴 글이 있으면 그 앞에 구절을 둔다.
+  Future<void> _pickVerse() async {
+    final pick = await showAppDialog<BiblePick>(
+      context,
+      child: const BiblePickerDialog(),
+    );
+    if (pick == null) return;
+    setState(() {
+      _title.text = pick.title;
+      final written = _body.text.trim();
+      _body.text = written.isEmpty ? pick.body : '${pick.body}\n\n$written';
+    });
+  }
+
   Future<void> _pickDate() async {
     final picked = await showDatePicker(
       context: context,
@@ -381,6 +397,17 @@ class _ContentFormState extends State<_ContentForm> {
           maxLength: 100,
           decoration: InputDecoration(labelText: _titleLabel),
         ),
+        if (_kind == ContentKind.devotion) ...[
+          const SizedBox(height: 4),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton.icon(
+              onPressed: _pickVerse,
+              icon: const Icon(Icons.menu_book_outlined, size: 18),
+              label: const Text('성경 구절 불러오기'),
+            ),
+          ),
+        ],
         if (_hasDate) ...[
           const SizedBox(height: 4),
           OutlinedButton.icon(

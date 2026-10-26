@@ -4,6 +4,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
 import '../theme.dart';
+import 'thumbnail_avatar.dart';
 
 /// 썸네일 이미지 입력란. [controller]의 글자가 이미지 주소다 (비어 있으면 이미지가 없는 것).
 /// 이미지를 고르면 [upload]로 올리고, 돌려받은 주소를 [controller]에 넣는다.
@@ -70,21 +71,7 @@ class _ThumbnailFieldState extends State<ThumbnailField> {
         const SizedBox(height: 8),
         Row(
           children: [
-            CircleAvatar(
-              radius: 36,
-              backgroundColor: palette.brand.withValues(alpha: 0.12),
-              backgroundImage: url.isEmpty ? null : NetworkImage(url),
-              child: url.isEmpty
-                  ? Text(
-                      widget.name.isEmpty ? '?' : widget.name.characters.first,
-                      style: TextStyle(
-                        color: palette.brand,
-                        fontSize: 26,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    )
-                  : null,
-            ),
+            ThumbnailAvatar(name: widget.name, url: url, radius: 36),
             const SizedBox(width: 16),
             if (_uploading)
               const SizedBox(

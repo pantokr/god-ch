@@ -26,6 +26,15 @@ service firebase.storage {
         && request.resource.contentType.matches('image/.*');
     }
 
+    // 성경 본문: bible/verse.csv. 로그인한 회원이 읽고 앱 운영자만 올린다 (말씀 묵상에서 구절을 가져올 때 쓴다).
+    match /bible/{fileName} {
+      allow read: if request.auth != null;
+      allow create, update: if isPlatformAdmin()
+        && request.resource.size < 60 * 1024 * 1024
+        && fileName == 'verse.csv';
+      allow delete: if isPlatformAdmin();
+    }
+
     // 교회 썸네일: churches/{교회}/thumbnail/{파일}. 로그인한 회원이 볼 수 있고 앱 운영자만 올리고 지운다.
     match /churches/{churchId}/thumbnail/{fileName} {
       allow read: if request.auth != null;

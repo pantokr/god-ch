@@ -488,6 +488,21 @@ service cloud.firestore {
           && isAdmin(churchId);
       }
 
+      // ---- 말씀묵상에 교인이 남기는 자기 글: 한 사람이 한 편에 한 개 (문서 ID가 본인 uid) ----
+      // 승인된 교인이 읽고 본인 글만 쓴다. 지우는 것은 본인과 교회의 교역자·운영자. 글 길이는 DevotionReflection.maxLength와 같다.
+      match /devotions/{devotionId}/reflections/{authorId} {
+        allow read: if isActive(churchId);
+        allow create, update: if isActive(churchId)
+          && request.auth.uid == authorId
+          && request.resource.data.keys().hasOnly(['authorId', 'authorName', 'text', 'updatedAt'])
+          && request.resource.data.authorId == request.auth.uid
+          && request.resource.data.authorName is string && request.resource.data.authorName.size() <= 40
+          && request.resource.data.text is string
+          && request.resource.data.text.size() > 0 && request.resource.data.text.size() <= 1000;
+        allow delete: if isActive(churchId)
+          && (request.auth.uid == authorId || isStaff(churchId));
+      }
+
       // ---- 비공개 글 접근 기록: 교역자가 기록하고 관리자만 열람, 수정·삭제 불가 ----
       match /accessLogs/{logId} {
         allow create: if isStaff(churchId)

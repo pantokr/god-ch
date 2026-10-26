@@ -8,6 +8,7 @@ import '../../../data/models/page_layout.dart';
 import '../../../data/models/prayer.dart';
 import 'block_views.dart';
 import 'content_widgets.dart';
+import 'neon_blocks.dart';
 
 /// 갤러리에서 고른 구조와 디자인.
 class DesignChoice {
@@ -45,7 +46,8 @@ class _GalleryState extends State<_Gallery> {
   late BlockType? _type = widget.only;
 
   static const _typeIcons = {
-    BlockType.carousel: Icons.view_carousel_outlined,
+    BlockType.video: Icons.smart_display_outlined,
+    BlockType.devotion: Icons.menu_book_outlined,
     BlockType.board: Icons.dashboard_outlined,
     BlockType.schedule: Icons.event_outlined,
     BlockType.messenger: Icons.forum_outlined,
@@ -235,20 +237,24 @@ class _DesignCard extends StatelessWidget {
 }
 
 /// 디자인의 실제 모습을 줄여서 보여주는 견본. 실제 페이지와 같은 위젯을 견본 자료로 그린다.
-/// 눌러도 반응하지 않고, 폭 [_virtualWidth]로 그린 뒤 칸 폭에 맞춰 줄이며 [height]만큼만 보여준다.
+/// 눌러도 반응하지 않고, 폭 [_virtualWidth]로 그린 뒤 칸 폭에 맞춰 줄이며, 칸은 항상 4:3 비율이다.
 class DesignThumbnail extends StatelessWidget {
-  const DesignThumbnail({
-    super.key,
-    required this.type,
-    required this.variant,
-    this.height = 150,
-  });
+  const DesignThumbnail({super.key, required this.type, required this.variant});
 
   final BlockType type;
   final String variant;
-  final double height;
 
   static const _virtualWidth = 440.0;
+
+  /// 사진을 쓰는 게시판 디자인(견본 자료가 사진첩이다).
+  static const _photoVariants = {'tiles', 'cards', 'feature'};
+
+  /// 줄이 짧아 견본에 자료를 다 보여줘도 칸을 넘지 않는 게시판 디자인.
+  static const _wideSamples = {'banner', 'cards'};
+
+  /// 카드 슬라이드는 카드 한 장(220px)이 칸에 크게 보이도록 더 좁은 폭으로 그린다.
+  double get _width =>
+      type == BlockType.board && variant == 'cards' ? 300.0 : _virtualWidth;
 
   /// 견본에 쓰는 자료 종류: 캐러셀 카드와 사진 격자는 사진, 일정은 일정, 나머지는 공지.
   static ContentKind _kind() => ContentKind.notice;
@@ -259,8 +265,10 @@ class DesignThumbnail extends StatelessWidget {
     final mq = MediaQuery.of(context);
     final kind = switch ((type, variant)) {
       (BlockType.schedule, _) => ContentKind.event,
-      (BlockType.carousel, 'cards') => ContentKind.photo,
-      (BlockType.board, 'grid') => ContentKind.photo,
+      (BlockType.board, _) when _photoVariants.contains(variant) =>
+        ContentKind.photo,
+      (BlockType.video, _) => ContentKind.sermon,
+      (BlockType.devotion, _) => ContentKind.devotion,
       _ => _kind(),
     };
     final Widget body = type == BlockType.messenger
@@ -272,32 +280,49 @@ class DesignThumbnail extends StatelessWidget {
               variant: variant,
               source: BlockSource.fromKind(kind),
             ),
-            items: _sampleContents(kind),
+            // 목록·간단히는 줄이 길어 견본 높이를 넘으므로 두 줄만 보여 잘려 보이지 않게 한다.
+            items:
+                (type == BlockType.board && !_wideSamples.contains(variant)) ||
+                    type == BlockType.devotion
+                ? _sampleContents(kind)
+                      .take(type == BlockType.devotion ? 1 : 2)
+                      .toList()
+                : _sampleContents(kind),
             onOpen: (_) {},
           );
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(AppRadius.control),
-      child: ColoredBox(
-        color: palette.bg,
-        child: SizedBox(
-          height: height,
-          width: double.infinity,
-          child: ExcludeSemantics(
-            child: IgnorePointer(
-              child: FittedBox(
-                fit: BoxFit.fitWidth,
-                alignment: Alignment.topCenter,
-                clipBehavior: Clip.hardEdge,
-                child: SizedBox(
-                  width: _virtualWidth,
-                  // 모바일 폭으로 그려서 실제 휴대폰 화면과 같은 배치를 보여준다.
-                  child: MediaQuery(
-                    data: mq.copyWith(
-                      size: Size(_virtualWidth, mq.size.height),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: body,
+    // 바깥과 확실히 구분되도록 뚜렷한 테두리로 감싼다.
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        border: Border.all(color: palette.muted, width: 1.5),
+        borderRadius: BorderRadius.circular(AppRadius.control + 2),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(AppRadius.control),
+        child: ColoredBox(
+          color: palette.bg,
+          child: AspectRatio(
+            aspectRatio: 4 / 3,
+            child: ExcludeSemantics(
+              child: IgnorePointer(
+                child: FittedBox(
+                  // 4:3 칸 안에 내용 전체가 비율 그대로 들어가고, 칸이 커지면 내용도 함께 커진다.
+                  fit: BoxFit.contain,
+                  alignment: Alignment.center,
+                  clipBehavior: Clip.hardEdge,
+                  child: SizedBox(
+                    width: _width,
+                    // 모바일 폭으로 그려서 실제 휴대폰 화면과 같은 배치를 보여준다.
+                    child: MediaQuery(
+                      data: mq.copyWith(size: Size(_width, mq.size.height)),
+                      // Ink 배경은 가장 가까운 Material에 그려지므로, 견본 안에 따로 둬서
+                      // 줄이고 잘라낸 견본 밖으로 새어 나오지 않게 한다.
+                      child: Material(
+                        type: MaterialType.transparency,
+                        child: Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: body,
+                        ),
+                      ),
                     ),
                   ),
                 ),
@@ -309,6 +334,12 @@ class DesignThumbnail extends StatelessWidget {
     );
   }
 }
+
+/// 말씀묵상 견본의 구절 본문 (견본 제목의 순서와 맞춘다).
+const devotionVerses = [
+  '여호와는 나의 목자시니 내가 부족함이 없으리로다. 그가 나를 푸른 풀밭에 누이시며 쉴 만한 물가로 인도하시는도다.',
+  '아무 것도 염려하지 말고 다만 모든 일에 기도와 간구로, 너희 구할 것을 감사함으로 하나님께 아뢰라.',
+];
 
 List<ChurchContent> _sampleContents(ContentKind kind) {
   final now = DateTime.now();
@@ -332,10 +363,19 @@ List<ChurchContent> _sampleContents(ContentKind kind) {
         id: 'sample$i',
         kind: kind,
         title: names[i],
-        body: '장소: 본당\n함께 모여 말씀을 나눠요.',
+        body: kind == ContentKind.devotion
+            ? devotionVerses[i % devotionVerses.length]
+            : '장소: 본당\n함께 모여 말씀을 나눠요.',
         date: kind == ContentKind.event
             ? day(days[i])
             : now.subtract(Duration(days: i * 2)),
+        // 사진·영상(·공지) 견본은 이미지 아이콘 대신 대체 이미지를 보여준다.
+        imageUrls: switch (kind) {
+          ContentKind.photo ||
+          ContentKind.sermon ||
+          ContentKind.notice => [kSampleImages[i % kSampleImages.length]],
+          _ => const [],
+        },
       ),
   ];
 }
@@ -388,10 +428,20 @@ class _SampleMessenger extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final prayers = _samplePrayers();
-    if (variant == 'bubbles') {
+    if (neonShape(variant) == 'bubbles') {
+      final neon = NeonScheme.of(variant);
       return Column(
         children: [
-          for (final p in prayers) PrayerBubble(prayer: p, me: _sampleMe),
+          for (final p in prayers)
+            if (neon != null)
+              NeonPrayerBubble(
+                scheme: neon,
+                prayer: p,
+                mine: p.authorId == _sampleMe.id,
+                onTap: () {},
+              )
+            else
+              PrayerBubble(prayer: p, me: _sampleMe),
         ],
       );
     }

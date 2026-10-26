@@ -41,7 +41,7 @@ class ContentListPage extends StatelessWidget {
                     children: [
                       if (me.isAdmin)
                         OutlinedButton.icon(
-                          onPressed: () => context.go(
+                          onPressed: () => context.push(
                             Routes.contentEdit(me.churchId, kind: kind),
                           ),
                           icon: const Icon(Icons.edit_outlined, size: 18),

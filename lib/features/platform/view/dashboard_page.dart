@@ -8,6 +8,7 @@ import '../../../core/layout/page_frame.dart';
 import '../../../core/mvvm/view_model_builder.dart';
 import '../../../core/theme.dart';
 import '../view_model/platform_dashboard_view_model.dart';
+import 'bible_upload_card.dart';
 
 /// 앱 운영자 대시보드: 교회·요청·회원 현황.
 class DashboardPage extends StatelessWidget {
@@ -51,6 +52,8 @@ class DashboardPage extends StatelessWidget {
                   ),
                 ],
               ),
+              const SizedBox(height: 16),
+              const BibleUploadCard(),
             ],
           ),
         ),

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/layout/responsive.dart';
 import '../../../data/models/member.dart';
 import '../../../data/models/page_layout.dart';
 import 'page_layout_editor.dart';
@@ -20,22 +19,13 @@ class PageEditPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final pad = pagePadding(context);
-    final narrow = MediaQuery.sizeOf(context).width < kNarrow;
-    return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: kContentWidth),
-        child: Padding(
-          padding: EdgeInsets.fromLTRB(pad, narrow ? 8 : 20, pad, 0),
-          // 다른 페이지로 바뀌면 편집 상태를 새로 시작한다.
-          child: PageLayoutEditor(
-            key: ValueKey(pageId),
-            me: me,
-            pages: pages,
-            pageId: pageId,
-          ),
-        ),
-      ),
+    // 스크롤 영역은 왼쪽 메뉴와 오른쪽 계정 띠를 뺀 폭 전체를 쓰고, 글 칸의 가운데 정렬은 편집기 안에서 한다.
+    // 다른 페이지로 바뀌면 편집 상태를 새로 시작한다.
+    return PageLayoutEditor(
+      key: ValueKey(pageId),
+      me: me,
+      pages: pages,
+      pageId: pageId,
     );
   }
 }

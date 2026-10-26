@@ -56,7 +56,7 @@ class PageListPage extends StatelessWidget {
               _ReorderablePages(
                 pages: pages,
                 busy: vm.busy,
-                onEdit: (p) => context.go(Routes.pageEdit(me.churchId, p.id)),
+                onEdit: (p) => context.push(Routes.pageEdit(me.churchId, p.id)),
                 onReorder: (next) => vm.save(next, const []),
                 onMove: (i, d) => _move(context, vm, i, d),
                 onDelete: (p) => _delete(context, vm, p),
@@ -93,7 +93,7 @@ class PageListPage extends StatelessWidget {
       ...pages,
       PageConfig(id: id, title: '새 페이지', icon: 'star'),
     ], const []);
-    if (ok) router.go(Routes.pageEdit(me.churchId, id));
+    if (ok) router.push(Routes.pageEdit(me.churchId, id));
   }
 
   Future<void> _move(
@@ -192,37 +192,41 @@ class _ReorderablePagesState extends State<_ReorderablePages> {
         borderRadius: BorderRadius.circular(AppRadius.card),
       ),
       clipBehavior: Clip.antiAlias,
-      child: ReorderableListView.builder(
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        // 손잡이로만 끌 수 있게 기본 손잡이는 끈다.
-        buildDefaultDragHandles: false,
-        itemCount: _items.length,
-        onReorderItem: widget.busy ? (_, _) {} : _reorder,
-        proxyDecorator: (child, _, _) =>
-            Material(elevation: 4, color: palette.surface, child: child),
-        itemBuilder: (context, i) {
-          final page = _items[i];
-          return Container(
-            key: ValueKey(page.id),
-            decoration: BoxDecoration(
-              border: i == 0
-                  ? null
-                  : Border(top: BorderSide(color: palette.border)),
-            ),
-            child: _PageRow(
-              index: i,
-              page: page,
-              first: i == 0,
-              last: i == _items.length - 1,
-              canDelete: _items.length > 1,
-              busy: widget.busy,
-              onEdit: () => widget.onEdit(page),
-              onMove: (d) => widget.onMove(i, d),
-              onDelete: () => widget.onDelete(page),
-            ),
-          );
-        },
+      // 배경색이 있는 바깥 틀 안에서도 ListTile의 눌림 효과가 보이도록 투명한 Material을 둔다.
+      child: Material(
+        type: MaterialType.transparency,
+        child: ReorderableListView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          // 손잡이로만 끌 수 있게 기본 손잡이는 끈다.
+          buildDefaultDragHandles: false,
+          itemCount: _items.length,
+          onReorderItem: widget.busy ? (_, _) {} : _reorder,
+          proxyDecorator: (child, _, _) =>
+              Material(elevation: 4, color: palette.surface, child: child),
+          itemBuilder: (context, i) {
+            final page = _items[i];
+            return Container(
+              key: ValueKey(page.id),
+              decoration: BoxDecoration(
+                border: i == 0
+                    ? null
+                    : Border(top: BorderSide(color: palette.border)),
+              ),
+              child: _PageRow(
+                index: i,
+                page: page,
+                first: i == 0,
+                last: i == _items.length - 1,
+                canDelete: _items.length > 1,
+                busy: widget.busy,
+                onEdit: () => widget.onEdit(page),
+                onMove: (d) => widget.onMove(i, d),
+                onDelete: () => widget.onDelete(page),
+              ),
+            );
+          },
+        ),
       ),
     );
   }

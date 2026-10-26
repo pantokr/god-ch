@@ -3,6 +3,16 @@ import 'package:flutter/material.dart';
 import '../../../core/theme.dart';
 import '../../../data/models/church_content.dart';
 
+/// [ContentImage]에서 앱에 들어 있는 이미지를 가리키는 주소의 앞부분.
+const kAssetImagePrefix = 'asset:';
+
+/// 디자인 견본의 사진·영상 칸에 쓰는 대체 이미지들. 견본의 항목마다 돌아가며 쓴다.
+const kSampleImages = [
+  '${kAssetImagePrefix}assets/images/placeholder.jpg',
+  '${kAssetImagePrefix}assets/images/sample_butterfly.jpg',
+  '${kAssetImagePrefix}assets/images/sample_sphere.jpg',
+];
+
 /// 주소로 불러오는 이미지. 불러오지 못하면 빈 면을 보여준다.
 /// 다른 사이트의 이미지가 막혀도(CORS) 웹에서는 `<img>`로 한 번 더 시도한다.
 class ContentImage extends StatelessWidget {
@@ -21,6 +31,16 @@ class ContentImage extends StatelessWidget {
     );
     final u = url;
     if (u == null || u.isEmpty) return placeholder;
+    // 'asset:경로'는 앱에 들어 있는 이미지다 (디자인 견본의 대체 이미지).
+    if (u.startsWith(kAssetImagePrefix)) {
+      return Image.asset(
+        u.substring(kAssetImagePrefix.length),
+        fit: BoxFit.cover,
+        width: double.infinity,
+        height: double.infinity,
+        errorBuilder: (_, _, _) => placeholder,
+      );
+    }
     return Image.network(
       u,
       fit: BoxFit.cover,
@@ -133,7 +153,7 @@ class ContentStream extends StatelessWidget {
   }
 }
 
-/// 일정 등에서 쓰는 월/일 배지.
+/// 일정 등에서 쓰는 월/일 배지. 포인트색 그라데이션과 그림자로 떠 있는 달력 한 장처럼 보인다.
 class DateBadge extends StatelessWidget {
   const DateBadge(this.date, {super.key});
 
@@ -142,30 +162,52 @@ class DateBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final palette = context.palette;
+    final radius = BorderRadius.circular(AppRadius.card + 2);
     return Container(
-      width: 52,
-      padding: const EdgeInsets.symmetric(vertical: 6),
+      width: 54,
       decoration: BoxDecoration(
-        color: palette.brand.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(AppRadius.card),
+        borderRadius: radius,
+        gradient: AppDepth.brand(context),
+        boxShadow: [
+          BoxShadow(
+            color: palette.brand.withValues(alpha: 0.38),
+            blurRadius: 14,
+            offset: const Offset(0, 6),
+          ),
+        ],
       ),
       child: Column(
         children: [
-          Text(
-            '${date.month}월',
-            style: TextStyle(
-              color: palette.brand,
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 3),
+            decoration: BoxDecoration(
+              color: Colors.black.withValues(alpha: 0.16),
+              borderRadius: BorderRadius.vertical(
+                top: Radius.circular(AppRadius.card + 2),
+              ),
+            ),
+            child: Text(
+              '${date.month}월',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: palette.onBrand.withValues(alpha: 0.9),
+                fontSize: 11.5,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.4,
+              ),
             ),
           ),
-          Text(
-            '${date.day}',
-            style: TextStyle(
-              color: palette.brand,
-              fontSize: 20,
-              fontWeight: FontWeight.w800,
-              height: 1.1,
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 5),
+            child: Text(
+              '${date.day}',
+              style: TextStyle(
+                color: palette.onBrand,
+                fontSize: 22,
+                fontWeight: FontWeight.w800,
+                height: 1.1,
+              ),
             ),
           ),
         ],

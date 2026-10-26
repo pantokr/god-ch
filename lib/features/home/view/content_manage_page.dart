@@ -41,7 +41,7 @@ class ContentManagePage extends StatelessWidget {
                 for (final k in ContentKind.values)
                   InkWell(
                     onTap: () =>
-                        context.go(Routes.contentEdit(me.churchId, kind: k)),
+                        context.push(Routes.contentEdit(me.churchId, kind: k)),
                     borderRadius: BorderRadius.circular(AppRadius.card),
                     child: Ink(
                       padding: const EdgeInsets.symmetric(vertical: 24),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
+
+import '../../../core/back_navigation.dart';
 
 import '../../../app/app_scope.dart';
 import '../../../app/routes.dart';
@@ -41,7 +42,7 @@ class ChurchDetailRoute extends StatelessWidget {
                     const Text('찾을 수 없는 교회입니다.'),
                     const SizedBox(height: 16),
                     OutlinedButton(
-                      onPressed: () => context.go(Routes.adminChurches),
+                      onPressed: () => context.goBack(Routes.adminChurches),
                       child: const Text('교회 목록으로'),
                     ),
                   ],

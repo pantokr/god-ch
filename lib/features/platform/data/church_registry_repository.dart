@@ -108,22 +108,15 @@ class ChurchRegistryRepository {
     String churchId,
     String fileName,
     Uint8List bytes,
-  ) => _contents.uploadImageTo(
-    'churches/$churchId/thumbnail',
-    fileName: fileName,
-    bytes: bytes,
-  );
+  ) =>
+      _contents.uploadThumbnailTo('churches/$churchId/thumbnail', bytes: bytes);
 
   /// 회원의 프로필 사진을 올리고 주소를 돌려준다. 저장([updateUser])은 따로 한다.
   Future<String> uploadUserPhoto(
     String uid,
     String fileName,
     Uint8List bytes,
-  ) => _contents.uploadImageTo(
-    'users/$uid/avatar',
-    fileName: fileName,
-    bytes: bytes,
-  );
+  ) => _contents.uploadThumbnailTo('users/$uid/avatar', bytes: bytes);
 
   /// 교회 정보(이름·전화번호·주소·썸네일)를 고친다. 이름이 바뀌면 교인 정보와 초대 코드에 담긴
   /// 교회 이름도 같이 고쳐서, 어디서나 같은 이름이 보이게 한다.
