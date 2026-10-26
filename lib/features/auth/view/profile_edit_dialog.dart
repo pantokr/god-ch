@@ -4,7 +4,10 @@ import '../../../app/app_scope.dart';
 import '../../../core/layout/profile_summary.dart';
 import '../../../core/mvvm/view_model_builder.dart';
 import '../../../core/theme.dart';
+import '../../../core/widgets/thumbnail_field.dart';
+import '../../../core/widgets/required_label.dart';
 import '../view_model/profile_edit_view_model.dart';
+import 'profile_extra_fields.dart';
 
 /// 내 정보를 보고 이름·전화번호를 고치는 대화상자 내용.
 class ProfileEditDialog extends StatefulWidget {
@@ -24,19 +27,31 @@ class ProfileEditDialog extends StatefulWidget {
 class _ProfileEditDialogState extends State<ProfileEditDialog> {
   late final _name = TextEditingController(text: widget.name);
   final _phone = TextEditingController();
+  final _address = TextEditingController();
+  final _birthDate = TextEditingController();
+  final _photo = TextEditingController();
   bool _filled = false;
 
   @override
   void dispose() {
     _name.dispose();
     _phone.dispose();
+    _address.dispose();
+    _birthDate.dispose();
+    _photo.dispose();
     super.dispose();
   }
 
   Future<void> _save(ProfileEditViewModel vm) async {
     final messenger = ScaffoldMessenger.of(context);
     final navigator = Navigator.of(context);
-    if (await vm.save(_name.text, _phone.text)) {
+    if (await vm.save(
+      _name.text,
+      _phone.text,
+      address: _address.text,
+      birthDate: _birthDate.text,
+      photoUrl: _photo.text,
+    )) {
       navigator.pop();
       messenger.showSnackBar(const SnackBar(content: Text('내 정보를 저장했어요.')));
     }
@@ -52,6 +67,9 @@ class _ProfileEditDialogState extends State<ProfileEditDialog> {
         if (vm.loaded && !_filled) {
           _filled = true;
           _phone.text = vm.profile?.phone ?? '';
+          _address.text = vm.profile?.address ?? '';
+          _birthDate.text = vm.profile?.birthDate ?? '';
+          _photo.text = vm.profile?.photoUrl ?? '';
         }
         final hasProfile = vm.profile != null;
         return Column(
@@ -60,10 +78,19 @@ class _ProfileEditDialogState extends State<ProfileEditDialog> {
           children: [
             Text('내 정보', style: theme.textTheme.titleLarge),
             const SizedBox(height: 16),
+            if (hasProfile) ...[
+              ThumbnailField(
+                controller: _photo,
+                name: widget.name,
+                label: '썸네일(프로필 사진)',
+                upload: vm.uploadPhoto,
+              ),
+              const SizedBox(height: 12),
+            ],
             TextField(
               controller: _name,
               maxLength: 30,
-              decoration: const InputDecoration(labelText: '이름'),
+              decoration: InputDecoration(label: const RequiredLabel('이름')),
             ),
             if (hasProfile) ...[
               const SizedBox(height: 4),
@@ -71,9 +98,11 @@ class _ProfileEditDialogState extends State<ProfileEditDialog> {
                 controller: _phone,
                 keyboardType: TextInputType.phone,
                 maxLength: 20,
-                decoration: const InputDecoration(labelText: '전화번호'),
+                decoration: InputDecoration(label: const RequiredLabel('전화번호')),
                 onSubmitted: (_) => _save(vm),
               ),
+              const SizedBox(height: 4),
+              ProfileExtraFields(address: _address, birthDate: _birthDate),
             ],
             for (final d in widget.details)
               Padding(

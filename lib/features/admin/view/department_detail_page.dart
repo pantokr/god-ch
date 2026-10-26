@@ -3,8 +3,8 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/app_scope.dart';
 import '../../../app/routes.dart';
-import '../../../core/format.dart';
 import '../../../core/layout/app_dialog.dart';
+import '../../../core/layout/manage_list_row.dart';
 import '../../../core/layout/page_frame.dart';
 import '../../../core/mvvm/view_model_builder.dart';
 import '../../../core/theme.dart';
@@ -169,27 +169,19 @@ class _PersonRow extends StatelessWidget {
   final bool busy;
   final VoidCallback onRemove;
 
-  static const _roleLabel = {
-    Role.member: '교인',
-    Role.staff: '교역자',
-    Role.admin: '교회 운영자',
-  };
-
   @override
   Widget build(BuildContext context) {
-    return ListTile(
-      title: Text(member.name, maxLines: 1, overflow: TextOverflow.ellipsis),
-      subtitle: Text(
-        [
-          _roleLabel[member.role]!,
-          if (member.phone.isNotEmpty) member.phone,
-          if (member.createdAt != null) '가입 ${fmtDate(member.createdAt)}',
-        ].join(' · '),
-      ),
-      trailing: TextButton(
-        onPressed: busy ? null : onRemove,
-        child: const Text('빼기'),
-      ),
+    // 다른 관리 목록과 같은 줄 모양: 이름 · 소속 교회 · 소속 부서(이 부서) · [빼기].
+    return ManageListRow(
+      leading: ManageListRow.avatar(context, member.name),
+      title: member.loginId.isEmpty
+          ? member.name
+          : '${member.name}  (${member.loginId})',
+      line1: member.churchName,
+      line2: member.phone,
+      trailing: [
+        TextButton(onPressed: busy ? null : onRemove, child: const Text('빼기')),
+      ],
     );
   }
 }

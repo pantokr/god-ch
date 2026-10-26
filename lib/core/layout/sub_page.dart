@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-import '../theme.dart';
 import 'page_frame.dart';
 import 'responsive.dart';
 
-/// 상세·작성처럼 한 건을 보는 화면의 공통 틀: 상단 바 + 가운데 카드 영역.
+/// 상세·작성처럼 한 건을 보는 화면의 공통 틀: 가운데 영역.
+/// 상단 바는 없다. 뒤로가기 버튼과 [actions]는 내용 맨 위(내용과 함께 스크롤)에 놓인다.
 class SubPage extends StatelessWidget {
   const SubPage({
     super.key,
@@ -28,54 +28,36 @@ class SubPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final pad = pagePadding(context);
     return Scaffold(
-      body: Column(
-        children: [
-          Container(
-            decoration: BoxDecoration(
-              color: context.palette.surface,
-              border: Border(bottom: BorderSide(color: context.palette.border)),
-            ),
-            child: Center(
-              child: ConstrainedBox(
-                constraints: BoxConstraints(maxWidth: maxWidth + pad * 2),
-                child: Padding(
-                  padding: EdgeInsets.symmetric(horizontal: pad - 8),
-                  child: SizedBox(
-                    height: 56,
-                    child: Row(
-                      children: [
-                        IconButton(
-                          tooltip: '돌아가기',
-                          onPressed: () => context.canPop()
-                              ? context.pop()
-                              : context.go(fallbackLocation),
-                          icon: const Icon(Icons.arrow_back),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            title,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w700,
-                              fontSize: 16,
-                            ),
-                          ),
-                        ),
-                        ...actions,
-                      ],
-                    ),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          child: PageFrame(
+            maxWidth: maxWidth,
+            verticalPadding: 12,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Transform.translate(
+                  offset: Offset(-(pad > 8 ? 8.0 : pad), 0),
+                  child: Row(
+                    children: [
+                      IconButton(
+                        tooltip: '돌아가기',
+                        onPressed: () => context.canPop()
+                            ? context.pop()
+                            : context.go(fallbackLocation),
+                        icon: const Icon(Icons.arrow_back),
+                      ),
+                      const Spacer(),
+                      ...actions,
+                    ],
                   ),
                 ),
-              ),
+                const SizedBox(height: 8),
+                child,
+              ],
             ),
           ),
-          Expanded(
-            child: SingleChildScrollView(
-              child: PageFrame(maxWidth: maxWidth, child: child),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }

@@ -57,6 +57,10 @@ class _LoginPageState extends State<LoginPage> {
             const _Brand(),
             const SizedBox(height: 24),
             Card(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppRadius.panel),
+                side: BorderSide(color: context.palette.border),
+              ),
               child: Padding(
                 padding: const EdgeInsets.all(28),
                 child: Form(
@@ -70,11 +74,6 @@ class _LoginPageState extends State<LoginPage> {
                         style: theme.textTheme.headlineSmall?.copyWith(
                           fontWeight: FontWeight.w700,
                         ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        ' 오신 것을 환영해요.',
-                        style: TextStyle(color: context.palette.muted),
                       ),
                       const SizedBox(height: 24),
                       TextFormField(
@@ -143,10 +142,7 @@ class _Brand extends StatelessWidget {
       children: [
         Icon(Icons.volunteer_activism, color: context.palette.brand, size: 40),
         SizedBox(height: 12),
-        Text(
-          '같이',
-          style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800),
-        ),
+        Text('같이', style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800)),
         SizedBox(height: 6),
         Text(
           '서로의 기도제목을 조용히 나누는 공간',

@@ -30,7 +30,7 @@ class SidebarGroup {
 
 /// 파이어베이스 콘솔처럼 왼쪽에 앱 이름과 메뉴를 두는 화면 틀.
 /// - 넓은 화면: 왼쪽에 메뉴가 항상 보인다.
-/// - 좁은 화면: 왼쪽 위 상단 탭(바탕 없음)의 ☰ 버튼으로 같은 메뉴를 서랍(드로어)으로 연다.
+/// - 좁은 화면: 상단 바 없이, 내용 위 왼쪽에 뜬 ☰ 버튼으로 같은 메뉴를 서랍(드로어)으로 연다.
 /// 오른쪽에는 열 필요 없는 얇은 띠가 있다: 프로필 · 로그아웃, 맨 아래에 설정.
 class SidebarScaffold extends StatelessWidget {
   const SidebarScaffold({
@@ -42,12 +42,16 @@ class SidebarScaffold extends StatelessWidget {
     required this.onSignOut,
     required this.child,
     this.sidebarHeader,
+    this.railActions = const [],
   });
 
   final List<SidebarGroup> groups;
 
   /// 앱 이름 아래에 놓는 위젯 (예: 지금 보는 교회와 교회 바꾸기).
   final Widget? sidebarHeader;
+
+  /// 오른쪽 계정 띠에서 프로필 아래에 놓는 버튼들 (예: 알림).
+  final List<Widget> railActions;
   final String userName;
   final VoidCallback onProfile;
   final VoidCallback onSettings;
@@ -56,7 +60,6 @@ class SidebarScaffold extends StatelessWidget {
 
   static const sidebarWidth = 248.0;
   static const railWidth = 56.0;
-  static const menuBarHeight = 48.0;
 
   @override
   Widget build(BuildContext context) {
@@ -78,6 +81,7 @@ class SidebarScaffold extends StatelessWidget {
           children: [
             const SizedBox(height: 8),
             _AvatarButton(name: userName, onTap: onProfile),
+            ...railActions,
             _LogoutButton(onSignOut: onSignOut),
             const Spacer(),
             IconButton(
@@ -103,27 +107,28 @@ class SidebarScaffold extends StatelessWidget {
         body: Row(
           children: [
             Expanded(
-              child: Column(
+              // 상단 띠 없이 내용을 전체 높이로 쓰고, 서랍을 여는 버튼만 왼쪽 위에 띄운다.
+              child: Stack(
                 children: [
-                  // 서랍을 여는 버튼: 바탕 없이 왼쪽 위에 얹힌 얇은 상단 탭.
+                  Positioned.fill(child: child),
                   SafeArea(
-                    bottom: false,
                     right: false,
-                    child: SizedBox(
-                      height: menuBarHeight,
-                      child: Align(
-                        alignment: Alignment.centerLeft,
-                        child: Builder(
-                          builder: (context) => IconButton(
-                            tooltip: '메뉴',
-                            icon: const Icon(Icons.menu),
-                            onPressed: () => Scaffold.of(context).openDrawer(),
+                    child: Align(
+                      alignment: Alignment.topLeft,
+                      child: Builder(
+                        builder: (context) => IconButton(
+                          tooltip: '메뉴',
+                          icon: const Icon(Icons.menu),
+                          style: IconButton.styleFrom(
+                            backgroundColor: context.palette.surface.withValues(
+                              alpha: 0.85,
+                            ),
                           ),
+                          onPressed: () => Scaffold.of(context).openDrawer(),
                         ),
                       ),
                     ),
                   ),
-                  Expanded(child: child),
                 ],
               ),
             ),

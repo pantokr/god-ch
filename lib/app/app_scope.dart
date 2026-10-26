@@ -8,6 +8,7 @@ import '../features/church/data/department_repository.dart';
 import '../features/home/data/content_repository.dart';
 import '../features/home/data/page_layout_repository.dart';
 import '../features/members/data/member_repository.dart';
+import '../features/notifications/data/notification_repository.dart';
 import '../features/platform/data/church_registry_repository.dart';
 import '../features/prayers/data/prayer_repository.dart';
 import 'theme_mode_controller.dart';
@@ -27,6 +28,7 @@ class AppScope extends InheritedWidget {
     required this.pageLayouts,
     required this.members,
     required this.prayers,
+    required this.notifications,
     required super.child,
   });
 
@@ -42,6 +44,7 @@ class AppScope extends InheritedWidget {
   final PageLayoutRepository pageLayouts;
   final MemberRepository members;
   final PrayerRepository prayers;
+  final NotificationRepository notifications;
 
   /// 위젯 상태를 만들 때(initState 등)도 쓸 수 있도록 의존성 등록 없이 읽는다.
   static AppScope read(BuildContext context) {

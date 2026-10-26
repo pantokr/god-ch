@@ -8,6 +8,7 @@ import '../../../data/firestore_codec.dart';
 import '../../../data/firestore_paths.dart';
 import '../../../data/models/invite_code.dart';
 import '../../../data/models/member.dart';
+import '../../../data/models/profile_field.dart';
 import '../../auth/data/auth_repository.dart';
 import '../../auth/data/profile_repository.dart';
 
@@ -68,6 +69,7 @@ class ChurchRepository {
     Role role = Role.member,
     List<String> departmentIds = const [],
     String recipient = '',
+    Set<ProfileField> requiredFields = const {},
   }) async {
     if (role == Role.admin) {
       throw const AppException('교회 운영자는 초대 코드로 지정할 수 없어요.');
@@ -87,6 +89,7 @@ class ChurchRepository {
                 role: role,
                 departmentIds: departmentIds,
                 recipient: recipient.trim(),
+                requiredFields: requiredFields,
               ),
             );
         return code;
@@ -115,6 +118,9 @@ class ChurchRepository {
                   d.data()['departmentIds'] as List? ?? const [],
                 ),
                 recipient: d.data()['recipient'] as String? ?? '',
+                requiredFields: ProfileField.fromNames(
+                  d.data()['requiredFields'] as List? ?? const [],
+                ),
               ),
         ]..sort((a, b) => b.expiresAt.compareTo(a.expiresAt)),
       );
@@ -123,7 +129,14 @@ class ChurchRepository {
       _paths.inviteCodes.doc(code).delete();
 
   /// 초대 코드로 입장을 신청한다. 만료되었거나 없는 코드는 같은 메시지로 거부한다.
-  Future<void> requestJoinByCode(String input) async {
+  ///
+  /// 초대 코드가 주소·생년월일을 필수로 요청하는데 회원 정보에 없으면 [MissingProfileFields]를 던진다.
+  /// 그때 [address]·[birthDate]를 채워서 다시 부르면 회원 정보에 저장하고 신청한다.
+  Future<void> requestJoinByCode(
+    String input, {
+    String address = '',
+    String birthDate = '',
+  }) async {
     final code = input.trim().toUpperCase();
     if (code.isEmpty) throw const AppException('초대 코드를 입력해 주세요.');
 
@@ -153,6 +166,26 @@ class ChurchRepository {
     }
     // 가입할 때 받은 이름·전화번호를 교회에 제공한다 (제3자 제공 동의 기반).
     final profile = await _profiles.requireCurrent();
+    final required = ProfileField.fromNames(
+      snap.data()!['requiredFields'] as List? ?? const [],
+    );
+    final nextAddress = address.trim().isNotEmpty
+        ? address.trim()
+        : profile.address;
+    final nextBirthDate = birthDate.trim().isNotEmpty
+        ? birthDate.trim()
+        : profile.birthDate;
+    final missing = {
+      if (required.contains(ProfileField.address) && nextAddress.isEmpty)
+        ProfileField.address,
+      if (required.contains(ProfileField.birthDate) && nextBirthDate.isEmpty)
+        ProfileField.birthDate,
+    };
+    if (missing.isNotEmpty) throw MissingProfileFields(churchName, missing);
+    // 새로 입력한 정보는 회원 정보에도 저장해 다른 교회에서 다시 묻지 않게 한다.
+    if (nextAddress != profile.address || nextBirthDate != profile.birthDate) {
+      await _profiles.saveExtra(address: nextAddress, birthDate: nextBirthDate);
+    }
     try {
       await ref.set(
         _memberData(
@@ -160,6 +193,10 @@ class ChurchRepository {
           churchName: churchName,
           name: profile.name,
           phone: profile.phone,
+          loginId: profile.loginId ?? '',
+          photoUrl: profile.photoUrl,
+          address: nextAddress,
+          birthDate: nextBirthDate,
           role: role,
           status: MemberStatus.pending,
           departmentIds: departmentIds,
@@ -181,12 +218,14 @@ class ChurchRepository {
     required Role role,
     required List<String> departmentIds,
     required String recipient,
+    required Set<ProfileField> requiredFields,
   }) => {
     'churchId': churchId,
     'churchName': churchName,
     'role': role.name,
     'departmentIds': departmentIds,
     'recipient': recipient,
+    'requiredFields': [for (final f in requiredFields) f.name],
     'createdBy': _auth.uid,
     'expiresAt': Timestamp.fromDate(DateTime.now().add(inviteValidity)),
   };
@@ -196,6 +235,10 @@ class ChurchRepository {
     required String churchName,
     required String name,
     required String phone,
+    String loginId = '',
+    String photoUrl = '',
+    String address = '',
+    String birthDate = '',
     required Role role,
     required MemberStatus status,
     List<String> departmentIds = const [],
@@ -206,6 +249,10 @@ class ChurchRepository {
     'churchName': churchName,
     'name': name,
     'phone': phone,
+    if (loginId.isNotEmpty) 'loginId': loginId,
+    if (photoUrl.isNotEmpty) 'photoUrl': photoUrl,
+    if (address.isNotEmpty) 'address': address,
+    if (birthDate.isNotEmpty) 'birthDate': birthDate,
     'role': role.name,
     'status': status.name,
     'departmentIds': departmentIds,
@@ -220,4 +267,13 @@ class ChurchRepository {
     final rnd = Random.secure();
     return List.generate(8, (_) => chars[rnd.nextInt(chars.length)]).join();
   }
+}
+
+/// 초대 코드가 필수로 요청한 회원 정보가 비어 있다. 화면에서 [fields]를 입력받아 다시 신청한다.
+class MissingProfileFields extends AppException {
+  MissingProfileFields(this.churchName, this.fields)
+    : super('$churchName에서 ${fields.map((f) => f.label).join('·')} 입력을 요청했어요.');
+
+  final String churchName;
+  final Set<ProfileField> fields;
 }

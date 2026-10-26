@@ -8,6 +8,9 @@ class AppRadius {
   /// 버튼·입력창·칩·배지 등 작은 요소.
   static const control = 4.0;
 
+  /// 로그인·회원가입 패널처럼 각지게 보이는 큰 틀 (둥글지 않다).
+  static const panel = 0.0;
+
   /// 카드·팝업 메뉴.
   static const card = 6.0;
 
@@ -175,8 +178,8 @@ ThemeData buildTheme(Brightness brightness) {
     colorScheme: scheme,
     extensions: [p],
     scaffoldBackgroundColor: p.bg,
+    fontFamily: 'Pretendard',
     fontFamilyFallback: const [
-      'Pretendard',
       'Noto Sans KR',
       'Apple SD Gothic Neo',
       'Malgun Gothic',
@@ -204,20 +207,29 @@ ThemeData buildTheme(Brightness brightness) {
         side: BorderSide(color: p.border),
       ),
     ),
+    // 입력란은 둥근 테두리 없이 밑줄만 쓴다. 글자 수 표시는 입력란 아래 줄을 차지하므로 숨기고,
+    // 안내 문구는 각 입력란의 suffixText·hintText 안에 넣는다 (한도는 maxLength가 그대로 막는다).
     inputDecorationTheme: InputDecorationTheme(
-      filled: true,
-      fillColor: p.surface,
-      border: OutlineInputBorder(
-        borderRadius: radius,
+      filled: false,
+      counterStyle: const TextStyle(fontSize: 0, height: 0),
+      border: UnderlineInputBorder(borderSide: BorderSide(color: p.border)),
+      enabledBorder: UnderlineInputBorder(
         borderSide: BorderSide(color: p.border),
       ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: radius,
-        borderSide: BorderSide(color: p.border),
+      focusedBorder: UnderlineInputBorder(
+        borderSide: BorderSide(color: p.brand, width: 2),
       ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: radius,
-        borderSide: BorderSide(color: p.brand, width: 1.5),
+      suffixStyle: TextStyle(color: p.muted, fontSize: 12),
+      // 힌트(예시 글자)는 아주 옅게 해서 입력한 값과 확실히 구별되게 한다.
+      hintStyle: TextStyle(color: p.muted.withValues(alpha: 0.35)),
+      // 입력란 안에 들어가 있는 제목(비어 있을 때)도 옅게, 값이 있거나 선택되어 위로 올라가면 보통 색.
+      labelStyle: TextStyle(color: p.muted.withValues(alpha: 0.35)),
+      floatingLabelStyle: WidgetStateTextStyle.resolveWith(
+        (states) => TextStyle(
+          color: states.contains(WidgetState.error)
+              ? null
+              : (states.contains(WidgetState.focused) ? p.brand : p.muted),
+        ),
       ),
     ),
     filledButtonTheme: FilledButtonThemeData(

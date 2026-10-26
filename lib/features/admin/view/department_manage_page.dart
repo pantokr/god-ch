@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../app/app_scope.dart';
 import '../../../core/layout/app_dialog.dart';
+import '../../../core/layout/manage_list_row.dart';
 import '../../../core/layout/page_frame.dart';
 import '../../../core/mvvm/view_model_builder.dart';
 import '../../../data/models/department.dart';
@@ -24,8 +25,24 @@ class DepartmentManagePage extends StatelessWidget {
     Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (_) => Scaffold(
-          appBar: AppBar(title: Text(d.name)),
-          body: DepartmentDetailBody(me: me, departmentId: d.id),
+          // 상단 바 없이 뒤로가기 버튼만 내용 위에 둔다.
+          body: SafeArea(
+            child: Column(
+              children: [
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: IconButton(
+                    tooltip: '돌아가기',
+                    icon: const Icon(Icons.arrow_back),
+                    onPressed: () => Navigator.of(context).maybePop(),
+                  ),
+                ),
+                Expanded(
+                  child: DepartmentDetailBody(me: me, departmentId: d.id),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );
@@ -78,31 +95,30 @@ class DepartmentManagePage extends StatelessWidget {
                           children: [
                             for (var i = 0; i < items.length; i++) ...[
                               if (i > 0) const Divider(),
-                              ListTile(
-                                leading: const Icon(Icons.groups_outlined),
-                                title: Text(items[i].name),
-                                subtitle: Text(
-                                  '${vm.inDepartment(all, items[i].id).length}명',
+                              ManageListRow(
+                                leading: const CircleAvatar(
+                                  child: Icon(Icons.groups_outlined),
                                 ),
+                                title: items[i].name,
+                                line1:
+                                    '${vm.inDepartment(all, items[i].id).length}명',
                                 onTap: () => _open(context, items[i]),
-                                trailing: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    IconButton(
-                                      tooltip: '이름 변경',
-                                      icon: const Icon(
-                                        Icons.edit_outlined,
-                                        size: 20,
-                                      ),
-                                      onPressed: () => _edit(
-                                        context,
-                                        vm,
-                                        department: items[i],
-                                      ),
+                                trailing: [
+                                  IconButton(
+                                    tooltip: '이름 변경',
+                                    icon: const Icon(
+                                      Icons.edit_outlined,
+                                      size: 20,
                                     ),
-                                    const Icon(Icons.chevron_right),
-                                  ],
-                                ),
+                                    onPressed: () => _edit(
+                                      context,
+                                      vm,
+                                      department: items[i],
+                                    ),
+                                  ),
+                                  const Icon(Icons.chevron_right),
+                                  const SizedBox(width: 8),
+                                ],
                               ),
                             ],
                           ],

@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../../../core/app_exception.dart';
 import '../../../data/firestore_paths.dart';
+import '../../../data/models/app_notification.dart';
 import '../../../data/models/church_request.dart';
 import '../../../data/models/member.dart';
 import '../../auth/data/auth_repository.dart';
@@ -102,13 +103,32 @@ class ChurchRequestRepository {
     return batch.commit();
   }
 
-  Future<void> reject(ChurchRequest r, String reason) =>
-      _paths.churchRequests.doc(r.id).update({
-        'status': RequestStatus.rejected.name,
-        'rejectReason': reason.trim(),
-        'reviewedBy': _auth.uid,
-        'reviewedAt': FieldValue.serverTimestamp(),
-      });
+  /// 요청을 거절하고, 요청자의 알림 탭에 거절 알림을 남긴다.
+  Future<void> reject(ChurchRequest r, String reason) {
+    final why = reason.trim();
+    final batch = _db.batch();
+    batch.update(_paths.churchRequests.doc(r.id), {
+      'status': RequestStatus.rejected.name,
+      'rejectReason': why,
+      'reviewedBy': _auth.uid,
+      'reviewedAt': FieldValue.serverTimestamp(),
+    });
+    batch.set(
+      _db
+          .collection('users')
+          .doc(r.requesterId)
+          .collection('notifications')
+          .doc(),
+      {
+        'type': NotificationType.churchRejected.name,
+        'title': '${r.name} 교회 생성 요청이 거절되었어요',
+        'body': why.isEmpty ? '운영자가 요청을 거절했어요.' : '사유: $why',
+        'read': false,
+        'createdAt': FieldValue.serverTimestamp(),
+      },
+    );
+    return batch.commit();
+  }
 
   List<ChurchRequest> _newestFirst(Iterable<ChurchRequest> items) {
     final list = items.toList();

@@ -3,6 +3,7 @@ import '../../../data/models/department.dart';
 import '../../../data/models/member.dart';
 import '../../church/data/department_repository.dart';
 import '../../members/data/member_repository.dart';
+import '../view/member_detail_dialog.dart';
 
 enum MemberSort {
   newest('가입 최근 순'),
@@ -73,6 +74,9 @@ class MemberAdminViewModel extends ViewModel {
 
   bool canChangeRole(Member m) => m.id != me.id && me.isAdmin;
 
+  /// 이름·전화번호는 교회 운영자만 고친다 (본인 정보는 '내 정보'에서). 소속 부서는 교역자도 고친다.
+  bool canEditProfile(Member m) => m.id != me.id && me.isAdmin;
+
   // ---- 목록 만들기 ----
   /// 승인을 기다리거나 최근에 가입한 인원.
   bool isNewcomer(Member m) {
@@ -94,9 +98,17 @@ class MemberAdminViewModel extends ViewModel {
     return list;
   }
 
+  /// 검색어(이름·아이디·전화번호)에 맞는가. 검색어가 없으면 모두 맞다.
+  bool matchesQuery(Member m) {
+    final q = _query.toLowerCase();
+    if (q.isEmpty) return true;
+    return m.name.toLowerCase().contains(q) ||
+        m.loginId.toLowerCase().contains(q) ||
+        m.phone.replaceAll('-', '').contains(q.replaceAll('-', ''));
+  }
+
   /// 이미 등록된 인원: 새로 등록된 인원을 뺀 나머지에서 조건에 맞는 사람을 정렬해서.
   List<Member> existing(List<Member> all) {
-    final q = _query.toLowerCase();
     final list = all.where((m) {
       if (isNewcomer(m)) return false;
       if (_role != null && m.role != _role) return false;
@@ -104,9 +116,7 @@ class MemberAdminViewModel extends ViewModel {
       if (_departmentId != null && !m.departmentIds.contains(_departmentId)) {
         return false;
       }
-      if (q.isEmpty) return true;
-      return m.name.toLowerCase().contains(q) ||
-          m.phone.replaceAll('-', '').contains(q.replaceAll('-', ''));
+      return matchesQuery(m);
     }).toList();
     list.sort(switch (_sort) {
       MemberSort.newest => (a, b) => _byJoined(b, a),
@@ -133,4 +143,24 @@ class MemberAdminViewModel extends ViewModel {
 
   Future<void> setRole(Member m, Role role) =>
       run(() => _members.setRole(me.churchId, m.id, role));
+
+  /// 상세 관리 저장: 바뀐 항목만 쓴다.
+  Future<bool> saveDetail(Member m, MemberDetailResult r) {
+    final change = r.changes.isEmpty ? null : r.changes.first;
+    final profile = canEditProfile(m);
+    return run(
+      () => _members.saveMember(
+        m,
+        name: profile && r.name.trim() != m.name ? r.name : null,
+        phone: profile && r.phone.trim() != m.phone ? r.phone : null,
+        address: profile && r.address.trim() != m.address ? r.address : null,
+        birthDate: profile && r.birthDate.trim() != m.birthDate
+            ? r.birthDate
+            : null,
+        departmentIds: change?.departmentIds,
+        role: change?.role,
+        status: change?.status,
+      ),
+    );
+  }
 }

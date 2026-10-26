@@ -19,8 +19,13 @@ abstract class ViewModel extends ChangeNotifier {
   }
 
   /// [action]을 실행하면서 busy/error를 갱신한다. 성공하면 true.
-  Future<bool> run(Future<void> Function() action) async {
-    _busy = true;
+  /// [blocking]이 false면 busy를 켜지 않는다 (사용자가 중간에 닫을 수 있는 팝업 로그인처럼,
+  /// 끝나기를 기다리는 동안에도 버튼이 눌려야 하는 동작).
+  Future<bool> run(
+    Future<void> Function() action, {
+    bool blocking = true,
+  }) async {
+    if (blocking) _busy = true;
     _error = null;
     notifyListeners();
     try {
@@ -30,7 +35,7 @@ abstract class ViewModel extends ChangeNotifier {
       _error = e is AppException ? e.message : '$e';
       return false;
     } finally {
-      _busy = false;
+      if (blocking) _busy = false;
       notifyListeners();
     }
   }

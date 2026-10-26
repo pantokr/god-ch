@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import '../../../core/mvvm/view_model.dart';
 import '../../../data/models/user_profile.dart';
 import '../data/profile_repository.dart';
@@ -24,6 +26,26 @@ class ProfileEditViewModel extends ViewModel {
     notifyListeners();
   }
 
-  Future<bool> save(String name, String phone) =>
-      run(() => _profiles.update(name: name, phone: phone));
+  Future<bool> save(
+    String name,
+    String phone, {
+    String? address,
+    String? birthDate,
+    String? photoUrl,
+  }) => run(
+    () => _profiles.update(
+      name: name,
+      phone: phone,
+      address: address,
+      birthDate: birthDate,
+      photoUrl: photoUrl,
+    ),
+  );
+
+  /// 프로필 사진을 올린다. 성공하면 주소, 실패하면 null ([error]에 이유).
+  Future<String?> uploadPhoto(String fileName, Uint8List bytes) async {
+    String? url;
+    await run(() async => url = await _profiles.uploadPhoto(fileName, bytes));
+    return url;
+  }
 }

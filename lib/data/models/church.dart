@@ -9,6 +9,7 @@ class Church {
     required this.name,
     required this.phone,
     required this.address,
+    this.thumbnailUrl = '',
     this.createdAt,
   });
 
@@ -20,6 +21,9 @@ class Church {
 
   /// 도로명 주소.
   final String address;
+
+  /// 교회 썸네일 이미지 주소. 없으면 빈 문자열.
+  final String thumbnailUrl;
   final DateTime? createdAt;
 
   factory Church.fromDoc(DocumentSnapshot<Json> doc) {
@@ -29,6 +33,7 @@ class Church {
       name: d['name'] as String? ?? '',
       phone: d['phone'] as String? ?? '',
       address: d['address'] as String? ?? '',
+      thumbnailUrl: d['thumbnailUrl'] as String? ?? '',
       createdAt: toDate(d['createdAt']),
     );
   }

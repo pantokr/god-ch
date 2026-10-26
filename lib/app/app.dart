@@ -1,3 +1,5 @@
+import '../features/notifications/data/notification_repository.dart';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
@@ -33,7 +35,11 @@ class _AppState extends State<App> {
   // 저장소는 앱이 살아있는 동안 한 번만 만든다.
   late final _db = FirebaseFirestore.instance;
   late final AuthRepository _auth = AuthRepository(FirebaseAuth.instance, _db);
-  late final ProfileRepository _profiles = ProfileRepository(_db, _auth);
+  late final ProfileRepository _profiles = ProfileRepository(
+    _db,
+    _auth,
+    _contents,
+  );
   late final ChurchRepository _churches = ChurchRepository(
     _db,
     _auth,
@@ -45,7 +51,7 @@ class _AppState extends State<App> {
     _profiles,
   );
   late final ChurchRegistryRepository _churchRegistry =
-      ChurchRegistryRepository(_db, _auth);
+      ChurchRegistryRepository(_db, _auth, _contents);
   late final DepartmentRepository _departments = DepartmentRepository(
     _db,
     _auth,
@@ -58,6 +64,10 @@ class _AppState extends State<App> {
   late final PageLayoutRepository _pageLayouts = PageLayoutRepository(_db);
   late final MemberRepository _members = MemberRepository(_db, _auth);
   late final PrayerRepository _prayers = PrayerRepository(_db, _auth);
+  late final NotificationRepository _notifications = NotificationRepository(
+    _db,
+    _auth,
+  );
 
   // 테마는 한 번만 만들어 둔다 (글꼴 설정까지 포함해 만드는 비용이 있다).
   final _light = buildTheme(Brightness.light);
@@ -92,6 +102,7 @@ class _AppState extends State<App> {
       pageLayouts: _pageLayouts,
       members: _members,
       prayers: _prayers,
+      notifications: _notifications,
       // 화면 모드가 바뀌면 앱 전체가 새 테마로 다시 그려진다.
       child: ListenableBuilder(
         listenable: widget.themeMode,

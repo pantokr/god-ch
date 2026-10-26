@@ -2,6 +2,7 @@ import '../../../core/mvvm/view_model.dart';
 import '../../../data/models/department.dart';
 import '../../../data/models/invite_code.dart';
 import '../../../data/models/member.dart';
+import '../../../data/models/profile_field.dart';
 import '../../church/data/church_repository.dart';
 import '../../church/data/department_repository.dart';
 
@@ -26,6 +27,7 @@ class InviteCodesViewModel extends ViewModel {
     Role role = Role.member,
     List<String> departmentIds = const [],
     String recipient = '',
+    Set<ProfileField> requiredFields = const {},
   }) => run(
     () => _churches.createInviteCode(
       me.churchId,
@@ -33,6 +35,7 @@ class InviteCodesViewModel extends ViewModel {
       role: role,
       departmentIds: departmentIds,
       recipient: recipient,
+      requiredFields: requiredFields,
     ),
   );
 

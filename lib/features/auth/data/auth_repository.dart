@@ -13,12 +13,20 @@ class SignUpData {
     required this.name,
     required this.phone,
     required this.consentThirdParty,
+    this.address = '',
+    this.birthDate = '',
   });
 
   final String loginId;
   final String password;
   final String name;
   final String phone;
+
+  /// 선택 입력. 비워 두면 저장하지 않는다.
+  final String address;
+
+  /// YYYY-MM-DD. 선택 입력.
+  final String birthDate;
 
   /// 개인정보 제3자(소속 교회) 제공 동의.
   final bool consentThirdParty;
@@ -125,6 +133,9 @@ class AuthRepository {
         'loginId': id,
         'name': data.name.trim(),
         'phone': data.phone.trim(),
+        if (data.address.trim().isNotEmpty) 'address': data.address.trim(),
+        if (data.birthDate.trim().isNotEmpty)
+          'birthDate': data.birthDate.trim(),
         'consentThirdParty': true,
         'consentAt': FieldValue.serverTimestamp(),
         'createdAt': FieldValue.serverTimestamp(),
@@ -153,7 +164,9 @@ class AuthRepository {
     'user-not-found' => 'ID 또는 비밀번호가 올바르지 않습니다.',
     'weak-password' => '비밀번호는 6자 이상이어야 합니다.',
     'too-many-requests' => '요청이 너무 많아요. 잠시 후 다시 시도해 주세요.',
-    'popup-closed-by-user' || 'canceled' => '로그인이 취소되었습니다.',
+    'popup-closed-by-user' ||
+    'canceled' ||
+    'cancelled-popup-request' => '로그인이 취소되었습니다.',
     _ => e.message ?? e.code,
   };
 }

@@ -16,6 +16,10 @@ class Member {
     required this.role,
     required this.status,
     this.phone = '',
+    this.loginId = '',
+    this.address = '',
+    this.birthDate = '',
+    this.photoUrl = '',
     this.departmentIds = const [],
     this.createdAt,
   });
@@ -28,6 +32,16 @@ class Member {
 
   /// 가입할 때 받은 전화번호 (교회에 제공하는 것에 동의한 정보).
   final String phone;
+
+  /// 로그인 아이디. 입장을 신청할 때 회원 프로필에서 가져온다 (Google 계정은 없다).
+  final String loginId;
+
+  /// 입장을 신청할 때 회원 프로필에서 가져온 정보 (선택 입력).
+  final String address;
+  final String birthDate;
+
+  /// 프로필 사진 주소 (회원 정보에서 복사).
+  final String photoUrl;
   final Role role;
   final MemberStatus status;
 
@@ -47,6 +61,10 @@ class Member {
       churchName: d['churchName'] as String? ?? '',
       name: d['name'] as String? ?? '',
       phone: d['phone'] as String? ?? '',
+      loginId: d['loginId'] as String? ?? '',
+      address: d['address'] as String? ?? '',
+      birthDate: d['birthDate'] as String? ?? '',
+      photoUrl: d['photoUrl'] as String? ?? '',
       role: enumByName(Role.values, d['role'], Role.member),
       status: enumByName(
         MemberStatus.values,

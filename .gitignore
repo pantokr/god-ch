@@ -126,3 +126,6 @@ app.*.symbols
 
 # Firebase 호스팅 배포 캐시
 .firebase/
+
+# 글꼴 원본 묶음 (필요한 굵기만 assets/fonts에 복사해 씀)
+/Pretendard-1.3.9/

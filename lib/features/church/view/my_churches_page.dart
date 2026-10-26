@@ -3,17 +3,20 @@ import 'package:flutter/material.dart';
 import '../../../core/layout/app_dialog.dart';
 import '../../../core/layout/card_grid.dart';
 import '../../../core/layout/page_frame.dart';
-import '../../../core/layout/site_header.dart';
+import '../../../core/layout/sidebar_scaffold.dart';
 import '../../../core/theme.dart';
 import '../../../data/models/church_request.dart';
 import '../../../data/models/department.dart';
 import '../../../data/models/member.dart';
-import '../../settings/view/theme_mode_selector.dart';
+import '../../auth/view/profile_edit_dialog.dart';
+import '../../notifications/view/notifications_button.dart';
+import '../../settings/view/settings_dialog.dart';
 import 'church_card.dart';
 import 'church_request_dialog.dart';
 import 'join_church_dialog.dart';
 
-/// 일반 회원의 "내 교회" 화면: 상단 바 + [MyChurchesBody].
+/// 일반 회원의 "내 교회" 화면: 교회 안 화면과 같은 틀(왼쪽 메뉴·서랍, 오른쪽 계정 띠) + [MyChurchesBody].
+/// 상단 바는 없다.
 class MyChurchesPage extends StatelessWidget {
   const MyChurchesPage({
     super.key,
@@ -34,26 +37,71 @@ class MyChurchesPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Column(
-        children: [
-          SiteHeader(
-            userName: userName,
-            onSignOut: onSignOut,
-            profileExtras: const ThemeModeSelector(),
-          ),
-          Expanded(
-            child: MyChurchesBody(
-              approved: approved,
-              others: others,
-              requests: requests,
-              onOpen: onOpen,
+    return SidebarScaffold(
+      userName: userName,
+      onProfile: () => showAppDialog<void>(
+        context,
+        maxWidth: 420,
+        child: ProfileEditDialog(name: userName),
+      ),
+      onSettings: () => showSettingsDialog(context),
+      onSignOut: onSignOut,
+      railActions: const [NotificationsButton()],
+      groups: [
+        SidebarGroup(
+          items: [
+            const SidebarItem(
+              label: '내 교회',
+              icon: Icons.church_outlined,
+              selectedIcon: Icons.church,
+              selected: true,
+              onTap: _noop,
             ),
+            SidebarItem(
+              label: '초대 코드로 입장',
+              icon: Icons.vpn_key_outlined,
+              selectedIcon: Icons.vpn_key,
+              selected: false,
+              onTap: () =>
+                  showAppDialog<void>(context, child: const JoinChurchDialog()),
+            ),
+            SidebarItem(
+              label: '교회 생성 요청',
+              icon: Icons.add_circle_outline,
+              selectedIcon: Icons.add_circle,
+              selected: false,
+              onTap: () => showAppDialog<void>(
+                context,
+                child: const ChurchRequestDialog(),
+              ),
+            ),
+          ],
+        ),
+        if (approved.isNotEmpty)
+          SidebarGroup(
+            title: '바로 가기',
+            items: [
+              for (final m in approved)
+                SidebarItem(
+                  label: m.churchName,
+                  icon: Icons.chevron_right,
+                  selectedIcon: Icons.chevron_right,
+                  selected: false,
+                  onTap: () => onOpen(m, null),
+                ),
+            ],
           ),
-        ],
+      ],
+      child: MyChurchesBody(
+        approved: approved,
+        others: others,
+        requests: requests,
+        onOpen: onOpen,
       ),
     );
   }
+
+  static void _noop() {}
 }
 
 /// 내가 속한 교회와 소속 부서. 속한 교회가 없으면 큰 안내 영역을 보여준다.

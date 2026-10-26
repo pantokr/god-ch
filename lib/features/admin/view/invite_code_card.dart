@@ -12,6 +12,7 @@ import '../../../core/theme.dart';
 import '../../../data/models/department.dart';
 import '../../../data/models/invite_code.dart';
 import '../../../data/models/member.dart';
+import '../../../data/models/profile_field.dart';
 import '../../church/data/church_repository.dart';
 import '../view_model/invite_codes_view_model.dart';
 
@@ -129,16 +130,23 @@ class InviteCodeCard extends StatelessWidget {
       role: form.role,
       departmentIds: form.departmentIds,
       recipient: form.recipient,
+      requiredFields: form.requiredFields,
     );
   }
 }
 
 class _InviteForm {
-  const _InviteForm(this.recipient, this.role, this.departmentIds);
+  const _InviteForm(
+    this.recipient,
+    this.role,
+    this.departmentIds,
+    this.requiredFields,
+  );
 
   final String recipient;
   final Role role;
   final List<String> departmentIds;
+  final Set<ProfileField> requiredFields;
 }
 
 /// 새 초대 코드: 받는 분(선택) · 역할 · 부서를 고른다.
@@ -155,6 +163,7 @@ class _NewInviteFormState extends State<_NewInviteForm> {
   final _recipient = TextEditingController();
   Role _role = Role.member;
   final _departments = <String>{};
+  final _requiredFields = <ProfileField>{};
 
   @override
   void dispose() {
@@ -239,6 +248,27 @@ class _NewInviteFormState extends State<_NewInviteForm> {
             );
           },
         ),
+        const SizedBox(height: 16),
+        Text('입장할 때 필수로 받을 정보', style: theme.textTheme.titleSmall),
+        const SizedBox(height: 4),
+        Text(
+          '가입할 때는 선택이에요. 선택한 정보가 회원 정보에 없으면 이 코드로 입장을 신청할 때 입력해야 해요.',
+          style: TextStyle(color: context.palette.muted, fontSize: 12),
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          children: [
+            for (final f in ProfileField.values)
+              FilterChip(
+                label: Text(f.label),
+                selected: _requiredFields.contains(f),
+                onSelected: (on) => setState(
+                  () => on ? _requiredFields.add(f) : _requiredFields.remove(f),
+                ),
+              ),
+          ],
+        ),
         const SizedBox(height: 20),
         Row(
           mainAxisAlignment: MainAxisAlignment.end,
@@ -255,6 +285,7 @@ class _NewInviteFormState extends State<_NewInviteForm> {
                   _recipient.text.trim(),
                   _role,
                   _departments.toList(),
+                  {..._requiredFields},
                 ),
               ),
               child: const Text('코드 만들기'),
@@ -285,6 +316,8 @@ class _CodeRow extends StatelessWidget {
     if (code.recipient.isNotEmpty) code.recipient,
     _roleLabel,
     if (departmentNames.isNotEmpty) departmentNames.join(', '),
+    if (code.requiredFields.isNotEmpty)
+      '필수 입력: ${code.requiredFields.map((f) => f.label).join(', ')}',
   ].join(' · ');
 
   /// "3일 남음" / "5시간 남음" 처럼 남은 유효기간을 보여준다.
@@ -303,6 +336,8 @@ class _CodeRow extends StatelessWidget {
     return [
       '$greeting$churchName에 초대합니다.',
       '역할: $_roleLabel${departmentNames.isEmpty ? '' : ' · 부서: ${departmentNames.join(', ')}'}',
+      if (code.requiredFields.isNotEmpty)
+        '입장할 때 ${code.requiredFields.map((f) => f.label).join('·')} 입력이 필요해요.',
       '초대 코드: ${code.code} (${fmtDate(code.expiresAt)}까지)',
       '앱에서 "초대 코드로 입장"을 눌러 이 코드를 입력해 주세요.',
       if (kIsWeb) Uri.base.origin,

@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 
 import '../../../core/address/address_search.dart';
 import '../../../core/formatters/korean_phone.dart';
+import '../../../core/widgets/blur_validated_field.dart';
+import '../../../core/widgets/required_label.dart';
 
 /// 교회 이름 · 전화번호(형식 자동) · 주소(도로명 주소 검색) 입력란.
 /// 교회 생성 요청과 앱 운영자의 교회 직접 등록이 함께 쓴다. 바깥 [Form] 안에 놓아야 한다.
@@ -13,6 +15,7 @@ class ChurchInfoFields extends StatefulWidget {
     required this.phone,
     required this.address,
     this.phoneRequired = true,
+    this.autofocus = true,
   });
 
   final TextEditingController name;
@@ -21,6 +24,9 @@ class ChurchInfoFields extends StatefulWidget {
 
   /// false면 전화번호를 비워 둘 수 있다 (입력했다면 형식은 검사한다).
   final bool phoneRequired;
+
+  /// 처음 열릴 때 이름 입력란에 커서를 둔다 (수정 창에서는 끈다).
+  final bool autofocus;
 
   @override
   State<ChurchInfoFields> createState() => _ChurchInfoFieldsState();
@@ -55,21 +61,25 @@ class _ChurchInfoFieldsState extends State<ChurchInfoFields> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        TextFormField(
+        // 이름·전화번호는 입력란을 벗어날 때 그 칸만 검사해서 오류를 보여준다.
+        BlurValidatedField(
           controller: widget.name,
-          autofocus: true,
           maxLength: 50,
-          decoration: const InputDecoration(labelText: '교회 이름'),
-          validator: (v) =>
-              (v == null || v.trim().isEmpty) ? '교회 이름을 입력해 주세요' : null,
+          decoration: const InputDecoration(label: RequiredLabel('교회 이름')),
+          validator: (v) {
+            final text = (v ?? '').trim();
+            if (text.isEmpty) return '교회 이름을 입력해 주세요';
+            if (text.length < 2) return '교회 이름은 2자 이상 입력해 주세요';
+            return null;
+          },
         ),
         const SizedBox(height: 4),
-        TextFormField(
+        BlurValidatedField(
           controller: widget.phone,
           keyboardType: TextInputType.phone,
           inputFormatters: const [KoreanPhoneFormatter()],
           decoration: InputDecoration(
-            labelText: widget.phoneRequired ? '교회 전화번호' : '교회 전화번호 (선택)',
+            label: RequiredLabel('교회 전화번호', required: widget.phoneRequired),
             hintText: '02-1234-5678',
           ),
           validator: _validatePhone,
@@ -104,7 +114,7 @@ class _ChurchInfoFieldsState extends State<ChurchInfoFields> {
                           LengthLimitingTextInputFormatter(200),
                         ],
                         decoration: InputDecoration(
-                          labelText: '교회 주소',
+                          label: const RequiredLabel('교회 주소'),
                           hintText: isAddressSearchSupported
                               ? '주소 검색을 눌러 도로명 주소를 선택하세요'
                               : '도로명 주소를 입력하세요',

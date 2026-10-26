@@ -50,6 +50,16 @@ service cloud.firestore {
     function inviteDepartments(code) {
       return get(/databases/$(database)/documents/inviteCodes/$(code)).data.get('departmentIds', []);
     }
+    // 주소·생년월일은 가입할 때 선택이고, 있으면 형식만 검사한다 (생년월일 YYYY-MM-DD).
+    function extraValid(d) {
+      return d.get('address', '') is string && d.get('address', '').size() <= 200
+        && d.get('birthDate', '') is string && d.get('birthDate', '').size() <= 10
+        && d.get('photoUrl', '') is string && d.get('photoUrl', '').size() <= 600;
+    }
+    // 초대 코드가 입장 신청에 필수로 요청한 정보.
+    function inviteRequires(code, field) {
+      return field in get(/databases/$(database)/documents/inviteCodes/$(code)).data.get('requiredFields', []);
+    }
     function changed() {
       return request.resource.data.diff(resource.data).affectedKeys();
     }
@@ -73,6 +83,22 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/churchRequests/$(requestId)).data;
     }
 
+    // 내 알림: 본인만 읽고 읽음 처리·삭제한다. 알림은 앱 운영자가 만든다 (예: 교회 생성 요청 거절).
+    match /users/{userId}/notifications/{notificationId} {
+      allow read: if signedIn() && request.auth.uid == userId;
+      allow create: if isPlatformAdmin()
+        && request.resource.data.keys().hasOnly(['type', 'title', 'body', 'read', 'createdAt'])
+        && request.resource.data.type in ['churchRejected', 'general']
+        && request.resource.data.title is string
+        && request.resource.data.title.size() > 0 && request.resource.data.title.size() <= 200
+        && request.resource.data.body is string && request.resource.data.body.size() <= 500
+        && request.resource.data.read == false;
+      allow update: if signedIn() && request.auth.uid == userId
+        && changed().hasOnly(['read'])
+        && request.resource.data.read is bool;
+      allow delete: if signedIn() && request.auth.uid == userId;
+    }
+
     // 로그인 ID → 이메일 조회. 로그인 전에 읽어야 하므로 get은 누구나 가능하고 목록은 볼 수 없다.
     // ID는 한 번 만들면 바꾸거나 지울 수 없고, 예약된 ID(admin 등)는 만들 수 없다.
     match /loginIds/{loginId} {
@@ -94,16 +120,18 @@ service cloud.firestore {
       allow create: if signedIn()
         && request.auth.uid == userId
         && request.resource.data.keys().hasOnly(
-             ['loginId', 'name', 'phone', 'consentThirdParty', 'consentAt', 'createdAt'])
+             ['loginId', 'name', 'phone', 'address', 'birthDate', 'photoUrl', 'consentThirdParty', 'consentAt', 'createdAt'])
+        && extraValid(request.resource.data)
         && request.resource.data.consentThirdParty == true
         && request.resource.data.name is string
         && request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 30
         && request.resource.data.phone is string
         && request.resource.data.phone.size() >= 8 && request.resource.data.phone.size() <= 20;
-      // 본인은 이름·전화번호만 고칠 수 있다.
+      // 본인과 앱 운영자는 이름·전화번호만 고칠 수 있다.
       allow update: if signedIn()
-        && request.auth.uid == userId
-        && changed().hasOnly(['name', 'phone'])
+        && (request.auth.uid == userId || isPlatformAdmin())
+        && changed().hasOnly(['name', 'phone', 'address', 'birthDate', 'photoUrl'])
+        && extraValid(request.resource.data)
         && request.resource.data.name is string
         && request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 30
         && request.resource.data.phone is string
@@ -154,7 +182,11 @@ service cloud.firestore {
       // 그 교회의 교역자만 코드를 만들 수 있다. 유효기간은 최대 31일.
       allow create: if signedIn()
         && request.resource.data.keys().hasOnly(
-             ['churchId', 'churchName', 'expiresAt', 'createdBy', 'role', 'departmentIds', 'recipient'])
+             ['churchId', 'churchName', 'expiresAt', 'createdBy', 'role', 'departmentIds', 'recipient',
+              'requiredFields'])
+        && request.resource.data.get('requiredFields', []) is list
+        && request.resource.data.get('requiredFields', []).size() <= 2
+        && request.resource.data.get('requiredFields', []).hasOnly(['address', 'birthDate'])
         // 코드로 들어오는 사람의 역할: 교인, 또는 (교회 운영자만 만들 수 있는) 교역자.
         && request.resource.data.role in ['member', 'staff']
         && (request.resource.data.role == 'member' || isOwner(request.resource.data.churchId))
@@ -167,12 +199,22 @@ service cloud.firestore {
         && request.resource.data.expiresAt > request.time
         && request.resource.data.expiresAt <= request.time + duration.value(31, 'd')
         && isManager(request.resource.data.churchId);
-      allow update: if false;
+      // 교회 이름이 바뀌면 앱 운영자가 코드에 담긴 교회 이름만 맞춰 고친다.
+      allow update: if isPlatformAdmin()
+        && changed().hasOnly(['churchName'])
+        && request.resource.data.churchName is string
+        && request.resource.data.churchName.size() > 0 && request.resource.data.churchName.size() <= 50;
       allow delete: if signedIn() && isManager(resource.data.churchId);
     }
     // 내 소속 교회 목록(collection group 쿼리): 본인 문서만 읽을 수 있다.
     match /{path=**}/members/{memberId} {
-      allow read: if signedIn() && resource.data.uid == request.auth.uid;
+      // 앱 운영자는 회원 이름·전화번호를 고칠 때 그 회원의 모든 교회 정보를 찾는다.
+      allow read: if signedIn() && (resource.data.uid == request.auth.uid || isPlatformAdmin());
+    }
+
+    // 앱 운영자가 회원 관리에서 회원의 소속 부서 이름을 보여주기 위한 collection group 조회.
+    match /{path=**}/departments/{deptId} {
+      allow read: if isPlatformAdmin();
     }
 
     match /churches/{churchId} {
@@ -199,7 +241,17 @@ service cloud.firestore {
       // 등록된 모든 교회 목록은 앱 운영자만 볼 수 있다.
       allow list: if isPlatformAdmin();
       allow get: if isManager(churchId);
-      allow update, delete: if false;
+      // 앱 운영자만 교회 정보(이름·전화번호·주소·썸네일)를 고칠 수 있다.
+      allow update: if isPlatformAdmin()
+        && changed().hasOnly(['name', 'phone', 'address', 'thumbnailUrl'])
+        && request.resource.data.get('thumbnailUrl', '') is string
+        && request.resource.data.get('thumbnailUrl', '').size() <= 600
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 50
+        && request.resource.data.phone is string && request.resource.data.phone.size() <= 20
+        && request.resource.data.address is string
+        && request.resource.data.address.size() > 0 && request.resource.data.address.size() <= 200;
+      allow delete: if false;
 
       // ---- 교회별 교인 / 입장 신청 ----
       match /members/{memberId} {
@@ -208,8 +260,11 @@ service cloud.firestore {
 
         allow create: if signedIn()
           && request.resource.data.keys().hasOnly(
-               ['uid', 'churchId', 'churchName', 'name', 'phone', 'role', 'status',
-                'createdAt', 'departmentIds', 'inviteCode'])
+               ['uid', 'churchId', 'churchName', 'name', 'phone', 'loginId', 'address', 'birthDate', 'photoUrl',
+                'role', 'status', 'createdAt', 'departmentIds', 'inviteCode'])
+          && extraValid(request.resource.data)
+          && request.resource.data.get('loginId', '') is string
+          && request.resource.data.get('loginId', '').size() <= 20
           && (!('phone' in request.resource.data) || request.resource.data.phone.size() <= 20)
           && request.resource.data.uid == memberId
           && request.resource.data.churchId == churchId
@@ -221,6 +276,11 @@ service cloud.firestore {
                 && request.resource.data.status == 'pending'
                 && request.resource.data.inviteCode is string
                 && inviteOk(churchId, request.resource.data.inviteCode)
+                // 초대 코드가 필수로 요청한 정보는 비워 둘 수 없다.
+                && (!inviteRequires(request.resource.data.inviteCode, 'address')
+                    || request.resource.data.get('address', '').size() > 0)
+                && (!inviteRequires(request.resource.data.inviteCode, 'birthDate')
+                    || request.resource.data.get('birthDate', '').size() > 0)
                 && request.resource.data.role == inviteRole(request.resource.data.inviteCode)
                 && request.resource.data.departmentIds == inviteDepartments(request.resource.data.inviteCode))
 
@@ -241,11 +301,27 @@ service cloud.firestore {
                 && changed().hasOnly(['status']))
           // 본인: 이름·전화번호 수정 (users/{uid}와 같은 값으로 맞춘다)
           || (request.auth.uid == memberId
-                && changed().hasOnly(['name', 'phone'])
+                && changed().hasOnly(['name', 'phone', 'address', 'birthDate', 'photoUrl'])
+                && extraValid(request.resource.data)
                 && request.resource.data.name is string
                 && request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 30
                 && request.resource.data.phone is string
                 && request.resource.data.phone.size() <= 20)
+          // 앱 운영자: 교회 이름이 바뀌면 교인 정보에 담긴 교회 이름만 맞춰 고친다.
+          || (isPlatformAdmin() && changed().hasOnly(['churchName'])
+                && request.resource.data.churchName is string
+                && request.resource.data.churchName.size() > 0
+                && request.resource.data.churchName.size() <= 50)
+          // 교회 운영자·앱 운영자: 교인의 이름·전화번호·소속 부서 수정 (본인 계정은 내 정보에서)
+          || (isOwner(churchId) && request.auth.uid != memberId
+                && changed().hasOnly(['name', 'phone', 'address', 'birthDate', 'photoUrl', 'departmentIds'])
+                && extraValid(request.resource.data)
+                && request.resource.data.name is string
+                && request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 30
+                && request.resource.data.get('phone', '') is string
+                && request.resource.data.get('phone', '').size() <= 20
+                && request.resource.data.departmentIds is list
+                && request.resource.data.departmentIds.size() <= 20)
           // 교역자·교회 운영자: 교인을 부서에 넣고 빼기
           || (isManager(churchId)
                 && changed().hasOnly(['departmentIds'])

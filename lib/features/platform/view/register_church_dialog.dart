@@ -69,12 +69,7 @@ class _RegisterChurchDialogState extends State<RegisterChurchDialog> {
             style: TextStyle(color: context.palette.muted),
           ),
           const SizedBox(height: 20),
-          ChurchInfoFields(
-            name: _name,
-            phone: _phone,
-            address: _address,
-            phoneRequired: false,
-          ),
+          ChurchInfoFields(name: _name, phone: _phone, address: _address),
           if (_error != null) ...[
             const SizedBox(height: 12),
             Text(_error!, style: TextStyle(color: theme.colorScheme.error)),

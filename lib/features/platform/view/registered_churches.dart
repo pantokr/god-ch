@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/layout/responsive.dart';
+import '../../../core/layout/manage_list_row.dart';
 import '../../../core/theme.dart';
 import '../../../data/models/church.dart';
 import '../view_model/church_registry_view_model.dart';
@@ -18,18 +18,34 @@ class RegisteredChurches extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    return ListenableBuilder(
+      listenable: vm,
+      builder: (context, _) => _list(context),
+    );
+  }
+
+  Widget _list(BuildContext context) {
     return StreamBuilder<List<Church>>(
       stream: vm.churches,
       builder: (context, snap) {
-        final churches = snap.data ?? const <Church>[];
-        final hasSample = churches.any(
+        final all = snap.data ?? const <Church>[];
+        final churches = all.where(vm.matches).toList();
+        final hasSample = all.any(
           (c) => c.name == ChurchRegistryViewModel.sampleName,
         );
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            TextField(
+              onChanged: vm.setQuery,
+              decoration: const InputDecoration(
+                prefixIcon: Icon(Icons.search),
+                hintText: '교회 이름, 주소, 전화번호 검색',
+              ),
+            ),
+            const SizedBox(height: 16),
             Text(
-              '등록된 교회 (${churches.length})',
+              '등록된 교회 (${all.length})',
               style: Theme.of(context).textTheme.titleMedium,
             ),
             const SizedBox(height: 8),
@@ -46,7 +62,7 @@ class RegisteredChurches extends StatelessWidget {
                   padding: EdgeInsets.all(32),
                   child: Center(
                     child: Text(
-                      '아직 등록된 교회가 없어요.',
+                      all.isEmpty ? '아직 등록된 교회가 없어요.' : '해당하는 교회가 없어요.',
                       style: TextStyle(color: context.palette.muted),
                     ),
                   ),
@@ -102,21 +118,18 @@ class _ChurchRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final details = [
-      church.address,
-      if (church.phone.isNotEmpty) church.phone,
-    ].join('\n');
-    // 좁은 화면에서는 "관리" 버튼 대신 줄 전체를 눌러 열고, 글자가 쓸 폭을 넓힌다.
-    final narrow = MediaQuery.sizeOf(context).width < kNarrow;
-    return ListTile(
-      onTap: narrow ? onManage : null,
-      leading: const Icon(Icons.church_outlined),
-      title: Text(church.name),
-      subtitle: Text(details),
-      isThreeLine: church.phone.isNotEmpty,
-      trailing: narrow
-          ? const Icon(Icons.chevron_right)
-          : OutlinedButton(onPressed: onManage, child: const Text('관리')),
+    // 회원 관리·인원 관리와 같은 줄 모양: 이름 · 주소 · 전화번호 · [관리].
+    return ManageListRow(
+      leading: ManageListRow.avatar(
+        context,
+        church.name,
+        imageUrl: church.thumbnailUrl,
+      ),
+      title: church.name,
+      line1: church.address,
+      line2: church.phone,
+      onTap: onManage,
+      trailing: [TextButton(onPressed: onManage, child: const Text('관리'))],
     );
   }
 }

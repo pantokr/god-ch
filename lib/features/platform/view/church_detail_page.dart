@@ -3,7 +3,6 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/routes.dart';
 import '../../../core/layout/responsive.dart';
-import '../../../core/theme.dart';
 import '../../../data/models/church.dart';
 import 'church_detail_view.dart';
 
@@ -17,59 +16,29 @@ class ChurchDetailPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final pad = pagePadding(context);
     return Scaffold(
-      body: Column(
-        children: [
-          Container(
-            decoration: BoxDecoration(
-              color: context.palette.surface,
-              border: Border(bottom: BorderSide(color: context.palette.border)),
-            ),
-            child: Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: kContentWidth),
-                child: Padding(
-                  padding: EdgeInsets.symmetric(horizontal: pad - 8),
-                  child: SizedBox(
-                    height: 56,
-                    child: Row(
-                      children: [
-                        IconButton(
-                          tooltip: '교회 목록',
-                          onPressed: () => context.canPop()
-                              ? context.pop()
-                              : context.go(Routes.adminChurches),
-                          icon: const Icon(Icons.arrow_back),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            church.name,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w700,
-                              fontSize: 16,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
+      body: SafeArea(
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: kContentWidth),
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(pad, 0, pad, 0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // 상단 바 없이 뒤로가기 버튼만 내용 위에 둔다.
+                  IconButton(
+                    tooltip: '교회 목록',
+                    onPressed: () => context.canPop()
+                        ? context.pop()
+                        : context.go(Routes.adminChurches),
+                    icon: const Icon(Icons.arrow_back),
                   ),
-                ),
+                  Expanded(child: ChurchDetailView(church: church)),
+                ],
               ),
             ),
           ),
-          Expanded(
-            child: Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: kContentWidth),
-                child: Padding(
-                  padding: EdgeInsets.fromLTRB(pad, 20, pad, 0),
-                  child: ChurchDetailView(church: church),
-                ),
-              ),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }

@@ -14,6 +14,7 @@ import '../../../data/models/page_layout.dart';
 import '../../auth/view/profile_edit_dialog.dart';
 import '../../home/view/page_icons.dart';
 import '../../home/view_model/church_pages_view_model.dart';
+import '../../notifications/view/notifications_button.dart';
 import '../../settings/view/settings_dialog.dart';
 import 'church_scope.dart';
 
@@ -156,6 +157,7 @@ class ChurchShell extends StatelessWidget {
               ),
               onSettings: () => showSettingsDialog(context),
               onSignOut: onSignOut,
+              railActions: const [NotificationsButton()],
               sidebarHeader: _ChurchCard(
                 name: me.churchName,
                 department: department?.name,

@@ -133,6 +133,17 @@ class ContentRepository {
     ContentKind kind, {
     required String fileName,
     required Uint8List bytes,
+  }) => uploadImageTo(
+    'churches/$churchId/${kind.collection}',
+    fileName: fileName,
+    bytes: bytes,
+  );
+
+  /// [folder] 아래에 이미지를 올린다 (교회 썸네일 · 회원 사진 등). 검사와 줄이기는 [uploadImage]와 같다.
+  Future<String> uploadImageTo(
+    String folder, {
+    required String fileName,
+    required Uint8List bytes,
   }) async {
     var data = bytes;
     var ext = _imageExtension(bytes, fileName);
@@ -159,7 +170,7 @@ class ContentRepository {
     };
     // 파일 이름이 겹치지 않도록 시각을 붙인다. 한글 이름은 쓰지 않는다.
     final name = '${DateTime.now().microsecondsSinceEpoch}.$ext';
-    final ref = _storage.ref('churches/$churchId/${kind.collection}/$name');
+    final ref = _storage.ref('$folder/$name');
     await ref.putData(data, SettableMetadata(contentType: contentType));
     return ref.getDownloadURL();
   }

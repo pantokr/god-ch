@@ -6,6 +6,7 @@ import '../../../core/layout/profile_summary.dart';
 import '../../../core/layout/sidebar_scaffold.dart';
 import '../../../core/layout/app_dialog.dart';
 import '../../auth/view/profile_edit_dialog.dart';
+import '../../notifications/view/notifications_button.dart';
 import '../../settings/view/settings_dialog.dart';
 
 /// 앱 운영자 전용 관리자 패널의 틀. 교회에 소속되지 않고, 이 패널 안에서만 움직인다.
@@ -52,6 +53,7 @@ class PlatformShell extends StatelessWidget {
       ),
       onSettings: () => showSettingsDialog(context),
       onSignOut: onSignOut,
+      railActions: const [NotificationsButton()],
       groups: [
         SidebarGroup(
           title: '앱 운영',
