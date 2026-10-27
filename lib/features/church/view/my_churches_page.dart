@@ -11,7 +11,6 @@ import '../../../core/theme.dart';
 import '../../../data/models/church_request.dart';
 import '../../../data/models/department.dart';
 import '../../../data/models/member.dart';
-import '../../auth/view/profile_dialog.dart';
 import '../../notifications/view/notifications_button.dart';
 import '../../settings/view/settings_dialog.dart';
 import 'church_card.dart';
@@ -77,7 +76,7 @@ class MyChurchesPage extends StatelessWidget {
           ),
           AccountRail(
             userName: userName,
-            onProfile: () => showAccountDialog(context, name: userName),
+            onProfile: () => context.push(Routes.account),
             onSettings: () => showSettingsDialog(context),
             onSignOut: onSignOut,
             actions: const [NotificationsButton()],

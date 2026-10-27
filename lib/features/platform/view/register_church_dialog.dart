@@ -65,7 +65,7 @@ class _RegisterChurchDialogState extends State<RegisterChurchDialog> {
           const SizedBox(height: 4),
           Text(
             '등록하면 바로 교회가 만들어져요. 앱 운영자는 교회에 소속되지 않으므로, '
-            '교회 관리에서 초대 코드를 만들어 교회 운영자가 될 분을 초대하고 "교회 운영자로 지정"해 주세요.',
+            '교회 관리에서 초대 코드를 만들어 교회 관리자가 될 분을 초대하고 "교회 관리자로 지정"해 주세요.',
             style: TextStyle(color: context.palette.muted),
           ),
           const SizedBox(height: 20),

@@ -1,3 +1,7 @@
+import '../core/exit_guard.dart';
+import '../core/layout/profile_summary.dart';
+import '../core/splash_page.dart';
+import '../features/auth/view/account_page.dart';
 import '../data/models/page_layout.dart';
 
 import 'package:flutter/material.dart';
@@ -10,7 +14,6 @@ import '../features/auth/view/profile_completion_page.dart';
 import '../features/auth/view/sign_up_page.dart';
 import '../features/church/view/church_explore_page.dart';
 import '../features/church/view/my_churches_route.dart';
-import '../features/platform/view/church_detail_route.dart';
 import '../features/platform/view/church_registry_page.dart';
 import '../features/platform/view/dashboard_page.dart';
 import '../features/platform/view/platform_shell_route.dart';
@@ -29,7 +32,15 @@ GoRouter buildRouter(SessionNotifier session) {
     redirect: (context, state) => sessionRedirect(session.status, state.uri),
     errorBuilder: (context, state) => const _NotFoundPage(),
     routes: [
-      GoRoute(path: '/', builder: (context, state) => const _LoadingPage()),
+      GoRoute(path: '/', builder: (context, state) => const SplashPage()),
+      GoRoute(
+        path: Routes.account,
+        builder: (context, state) => AccountPage(
+          details: state.extra is List<ProfileDetail>
+              ? state.extra as List<ProfileDetail>
+              : const [],
+        ),
+      ),
       GoRoute(
         path: Routes.explore,
         builder: (context, state) => const ChurchExplorePage(),
@@ -38,11 +49,11 @@ GoRouter buildRouter(SessionNotifier session) {
       // ---- 로그인 전후의 안내 화면 ----
       GoRoute(
         path: Routes.loading,
-        builder: (context, state) => const _LoadingPage(),
+        builder: (context, state) => const SplashPage(),
       ),
       GoRoute(
         path: Routes.login,
-        builder: (context, state) => const LoginPage(),
+        builder: (context, state) => const ExitGuard(child: LoginPage()),
       ),
       GoRoute(
         path: Routes.signUp,
@@ -56,8 +67,11 @@ GoRouter buildRouter(SessionNotifier session) {
       // ---- 회원 ----
       GoRoute(
         path: Routes.churches,
-        builder: (context, state) =>
-            MyChurchesRoute(showList: state.uri.queryParameters['list'] == '1'),
+        builder: (context, state) => ExitGuard(
+          child: MyChurchesRoute(
+            showList: state.uri.queryParameters['list'] == '1',
+          ),
+        ),
       ),
       GoRoute(
         path: '/churches/:cid',
@@ -91,20 +105,22 @@ GoRouter buildRouter(SessionNotifier session) {
         builder: (context, state, child) {
           // /churches/{교회}/{메뉴} 에서 교회와 메뉴를 읽는다.
           final segments = state.uri.pathSegments;
-          return ChurchShellRoute(
-            key: ValueKey(segments[1]),
-            churchId: segments[1],
-            section:
-                ChurchSection.fromPath(
-                  segments.length > 2 ? segments[2] : '',
-                ) ??
-                ChurchSection.home,
-            pageId:
-                segments.length > 3 && segments[2] == ChurchSection.page.path
-                ? segments[3]
-                : null,
-            departmentId: state.uri.queryParameters['dept'],
-            child: child,
+          return ExitGuard(
+            child: ChurchShellRoute(
+              key: ValueKey(segments[1]),
+              churchId: segments[1],
+              section:
+                  ChurchSection.fromPath(
+                    segments.length > 2 ? segments[2] : '',
+                  ) ??
+                  ChurchSection.home,
+              pageId:
+                  segments.length > 3 && segments[2] == ChurchSection.page.path
+                  ? segments[3]
+                  : null,
+              departmentId: state.uri.queryParameters['dept'],
+              child: child,
+            ),
           );
         },
         routes: [
@@ -214,15 +230,12 @@ GoRouter buildRouter(SessionNotifier session) {
       ),
 
       // ---- 앱 운영자 ----
-      GoRoute(
-        path: '/admin/churches/:cid',
-        builder: (context, state) =>
-            ChurchDetailRoute(churchId: state.pathParameters['cid']!),
-      ),
       ShellRoute(
-        builder: (context, state, child) => PlatformShellRoute(
-          section: PlatformSection.fromPath(state.uri.path),
-          child: child,
+        builder: (context, state, child) => ExitGuard(
+          child: PlatformShellRoute(
+            section: PlatformSection.fromPath(state.uri.path),
+            child: child,
+          ),
         ),
         routes: [
           _platformRoute(Routes.admin, const DashboardPage()),
@@ -290,8 +303,10 @@ String? sessionRedirect(SessionStatus status, Uri uri) {
       if (path == '/' || Routes.gatePaths.contains(path)) {
         return _validFrom(from, '/admin') ?? Routes.admin;
       }
-      // 앱 운영자는 교회에 소속되지 않으므로 교회 안 화면이 없다.
-      if (path.startsWith('/churches')) return Routes.admin;
+      // 앱 개발자는 회원이 아니어도 교회를 열 수 있다. 다만 "내 교회 목록"은 없다.
+      if (path == Routes.churches || path == '${Routes.churches}/') {
+        return Routes.admin;
+      }
       return null;
   }
 }
@@ -299,14 +314,6 @@ String? sessionRedirect(SessionStatus status, Uri uri) {
 /// 돌아갈 주소가 이 영역 안의 내부 주소일 때만 쓴다 (다른 사이트로 보내지 않기 위해).
 String? _validFrom(String? from, String prefix) =>
     from != null && from.startsWith(prefix) ? from : null;
-
-class _LoadingPage extends StatelessWidget {
-  const _LoadingPage();
-
-  @override
-  Widget build(BuildContext context) =>
-      const Scaffold(body: Center(child: CircularProgressIndicator()));
-}
 
 class _NotFoundPage extends StatelessWidget {
   const _NotFoundPage();

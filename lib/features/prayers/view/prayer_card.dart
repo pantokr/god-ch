@@ -15,6 +15,7 @@ class PrayerCard extends StatelessWidget {
     required this.me,
     required this.showReactions,
     this.subtitle,
+    this.flat = false,
   });
 
   final Prayer prayer;
@@ -24,82 +25,84 @@ class PrayerCard extends StatelessWidget {
   /// 날짜 옆에 덧붙일 문구 (예: 교역자 화면의 작성자 이름).
   final String? subtitle;
 
+  /// 카드 틀 없이 화면 전체 폭의 한 줄로 그린다.
+  final bool flat;
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final hasBadge =
         prayer.departmentId != null || !prayer.isPublic || prayer.deleted;
-    return Card(
-      child: InkWell(
-        // 주소로 이동하므로 브라우저 뒤로가기로 목록에 돌아온다. 이미 가진 글은 함께 넘겨 바로 보여준다.
-        onTap: () =>
-            context.push(Routes.prayer(me.churchId, prayer.id), extra: prayer),
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (hasBadge) ...[
-                Wrap(
-                  spacing: 6,
-                  runSpacing: 6,
-                  children: [
-                    if (prayer.departmentId != null)
-                      const _Badge(icon: Icons.groups_outlined, label: '부서'),
-                    if (!prayer.isPublic)
-                      const _Badge(icon: Icons.lock_outline, label: '교역자 전용'),
-                    if (prayer.deleted)
-                      const _Badge(icon: Icons.delete_outline, label: '삭제됨'),
-                  ],
-                ),
-                const SizedBox(height: 8),
-              ],
-              Text(
-                prayer.title,
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
+    final body = InkWell(
+      // 주소로 이동하므로 브라우저 뒤로가기로 목록에 돌아온다. 이미 가진 글은 함께 넘겨 바로 보여준다.
+      onTap: () =>
+          context.push(Routes.prayer(me.churchId, prayer.id), extra: prayer),
+      child: Padding(
+        padding: EdgeInsets.all(flat ? 16 : 20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (hasBadge) ...[
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: [
+                  if (prayer.departmentId != null)
+                    const _Badge(icon: Icons.groups_outlined, label: '부서'),
+                  if (!prayer.isPublic)
+                    const _Badge(icon: Icons.lock_outline, label: '교역자 전용'),
+                  if (prayer.deleted)
+                    const _Badge(icon: Icons.delete_outline, label: '삭제됨'),
+                ],
               ),
-              const SizedBox(height: 4),
-              Text(
-                [fmtDate(prayer.createdAt), ?subtitle].join(' · '),
-                style: TextStyle(color: context.palette.muted, fontSize: 13),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                prayer.content,
-                maxLines: 4,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(height: 1.55),
-              ),
-              if (prayer.hasUnreadResponse && prayer.authorId == me.id) ...[
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Icon(
-                      Icons.mark_email_unread_outlined,
-                      size: 18,
-                      color: theme.colorScheme.primary,
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      '교역자의 답변이 도착했어요',
-                      style: TextStyle(color: theme.colorScheme.primary),
-                    ),
-                  ],
-                ),
-              ],
-              if (showReactions) ...[
-                const SizedBox(height: 16),
-                ReactionBar(churchId: me.churchId, prayerId: prayer.id),
-              ],
+              const SizedBox(height: 8),
             ],
-          ),
+            Text(
+              prayer.title,
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              [fmtDate(prayer.createdAt), ?subtitle].join(' · '),
+              style: TextStyle(color: context.palette.muted, fontSize: 13),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              prayer.content,
+              maxLines: 4,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(height: 1.55),
+            ),
+            if (prayer.hasUnreadResponse && prayer.authorId == me.id) ...[
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Icon(
+                    Icons.mark_email_unread_outlined,
+                    size: 18,
+                    color: theme.colorScheme.primary,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    '교역자의 답변이 도착했어요',
+                    style: TextStyle(color: theme.colorScheme.primary),
+                  ),
+                ],
+              ),
+            ],
+            if (showReactions) ...[
+              const SizedBox(height: 16),
+              ReactionBar(churchId: me.churchId, prayerId: prayer.id),
+            ],
+          ],
         ),
       ),
     );
+    return flat ? body : Card(child: body);
   }
 }
 

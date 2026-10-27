@@ -38,7 +38,9 @@ class _ChurchInfoManagePageState extends State<ChurchInfoManagePage> {
           key: ValueKey(church.id),
           church: church,
           title: '교회 정보 관리',
-          footer: ChurchClosureCard(me: widget.me),
+          footer: widget.me.isOperatorView
+              ? null
+              : ChurchClosureCard(me: widget.me),
         );
       },
     );

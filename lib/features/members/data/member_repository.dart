@@ -6,6 +6,7 @@ import '../../../data/models/app_notification.dart';
 import '../../../data/models/blocked_user.dart';
 import '../../../data/models/member.dart';
 import '../../auth/data/auth_repository.dart';
+import '../../church/data/admin_departments.dart' as admin_depts;
 
 /// 교회별 교인 목록과 승인·역할·소속 부서 변경.
 class MemberRepository {
@@ -15,16 +16,26 @@ class MemberRepository {
   final FirestorePaths _paths;
   final AuthRepository _auth;
 
-  Stream<List<Member>> members(String churchId) => _paths
-      .members(churchId)
-      .orderBy('createdAt', descending: true)
-      .snapshots()
-      .map(
-        (s) => s.docs
-            .map(Member.fromDoc)
-            .where((m) => m.status != MemberStatus.removed)
-            .toList(),
-      );
+  /// 이 교회의 교인들. 추방된 사람과 앱 운영자(admin 계정)는 교인이 아니므로 뺀다.
+  Stream<List<Member>> members(String churchId) async* {
+    // 앱 운영자로 로그인한 사람은 자기 문서가 남아 있어도 교인으로 보이지 않는다.
+    final operatorUid = await _auth.hasOperatorClaim() ? _auth.uid : null;
+    yield* _paths
+        .members(churchId)
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .map(
+          (s) => s.docs
+              .map(Member.fromDoc)
+              .where(
+                (m) =>
+                    m.status != MemberStatus.removed &&
+                    !m.isAppOperator &&
+                    m.id != operatorUid,
+              )
+              .toList(),
+        );
+  }
 
   /// 승인을 기다리는 입장 요청 수.
   Stream<int> pendingCount(String churchId) => _paths
@@ -193,9 +204,19 @@ class MemberRepository {
     if (departmentIds != null) info['departmentIds'] = departmentIds;
     final doc = _paths.members(m.churchId).doc(m.id);
     if (info.isNotEmpty) await doc.update(info);
-    if (role != null) await doc.update({'role': role.name});
+    if (role != null) {
+      await doc.update({'role': role.name});
+      // 교회 운영자가 되면 모든 부서에 자동으로 속한다.
+      if (role == Role.admin) {
+        await admin_depts.syncAdminDepartments(_paths, m.churchId);
+      }
+    }
     if (status != null) await doc.update({'status': status.name});
   }
+
+  /// 교회 운영자가 모든 부서에 속해 있게 맞춘다 (이미 맞으면 아무것도 쓰지 않는다).
+  Future<void> syncAdminDepartments(String churchId) =>
+      admin_depts.syncAdminDepartments(_paths, churchId);
 
   /// 교역자가 교인을 부서에 넣는다 (이미 있으면 그대로).
   Future<void> addToDepartment(String churchId, String userId, String deptId) =>

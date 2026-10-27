@@ -11,6 +11,9 @@ service firebase.storage {
         && firestore.exists(memberDoc(cid))
         && firestore.get(memberDoc(cid)).data.status == 'approved';
     }
+    function isStaff(cid) {
+      return isActive(cid) && firestore.get(memberDoc(cid)).data.role in ['staff', 'admin'];
+    }
     function isAdmin(cid) {
       return isActive(cid) && firestore.get(memberDoc(cid)).data.role == 'admin';
     }
@@ -53,8 +56,8 @@ service firebase.storage {
     // 승인된 교인이 읽고, 교회 운영자만 올리고 지운다. 이미지 10MB 이하만.
     // 종류 목록은 firestore.rules의 콘텐츠 컬렉션과 같아야 한다.
     match /churches/{churchId}/{kind}/{fileName} {
-      allow read: if isActive(churchId);
-      allow create, update: if isAdmin(churchId)
+      allow read: if isActive(churchId) || isPlatformAdmin();
+      allow create, update: if (isPlatformAdmin() || isStaff(churchId))
         && kind in ['notices', 'events', 'photos', 'sermons', 'devotions']
         && request.resource.size < 10 * 1024 * 1024
         && request.resource.contentType.matches('image/.*');

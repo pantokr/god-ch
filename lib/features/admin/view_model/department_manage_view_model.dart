@@ -1,3 +1,4 @@
+import '../../../core/app_exception.dart';
 import '../../../core/mvvm/view_model.dart';
 import '../../../data/models/church_features.dart';
 import '../../../data/models/department.dart';
@@ -12,7 +13,10 @@ class DepartmentManageViewModel extends ViewModel {
   DepartmentManageViewModel(this._departments, this._members, this.churchId)
     : departments = _departments.departments(churchId),
       members = _members.members(churchId),
-      features = _departments.features(churchId);
+      features = _departments.features(churchId) {
+    // 교회 운영자가 모든 부서에 속해 있게 맞춘다 (예전 데이터 포함, 이미 맞으면 쓰지 않는다).
+    _members.syncAdminDepartments(churchId).catchError((_) {});
+  }
 
   final DepartmentRepository _departments;
   final MemberRepository _members;
@@ -62,6 +66,11 @@ class DepartmentManageViewModel extends ViewModel {
         }
       });
 
-  Future<bool> remove(String departmentId, Member m) =>
-      run(() => _members.removeFromDepartment(churchId, m.id, departmentId));
+  /// 교회 운영자는 모든 부서에 자동으로 속하므로 부서에서 뺄 수 없다.
+  Future<bool> remove(String departmentId, Member m) => run(() {
+    if (m.role == Role.admin) {
+      throw const AppException('교회 운영자는 모든 부서에 자동으로 속해요.');
+    }
+    return _members.removeFromDepartment(churchId, m.id, departmentId);
+  });
 }

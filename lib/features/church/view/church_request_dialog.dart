@@ -51,7 +51,7 @@ class _ChurchRequestDialogState extends State<ChurchRequestDialog> {
               Text('교회 생성 요청', style: theme.textTheme.titleLarge),
               const SizedBox(height: 4),
               Text(
-                '요청을 보내면 앱 운영자가 확인한 뒤 교회를 만들어 드려요. 승인되면 요청한 분이 교회 운영자가 됩니다.',
+                '요청을 보내면 앱 운영자가 확인한 뒤 교회를 만들어 드려요. 승인되면 요청한 분이 교회 관리자가 됩니다.',
                 style: TextStyle(color: context.palette.muted),
               ),
               const SizedBox(height: 20),

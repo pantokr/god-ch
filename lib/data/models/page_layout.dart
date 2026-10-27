@@ -443,6 +443,7 @@ class PageConfig {
         type: BlockType.board,
         variant: 'banner',
         source: BlockSource._('notices', '공지사항', ContentKind.notice),
+        title: '공지사항',
       ),
     ),
     const PageConfig(

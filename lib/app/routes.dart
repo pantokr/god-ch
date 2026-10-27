@@ -88,6 +88,9 @@ class Routes {
   /// 교회 탐색: 공개 탐색에 노출된 교회를 찾아 입장을 요청한다.
   static const explore = '/explore';
 
+  /// 내 정보 페이지 (프로필 사진을 누르면 열린다).
+  static const account = '/account';
+
   static String church(String churchId) => '/churches/$churchId';
 
   /// 교회 안의 메뉴. [dept]가 있으면 그 부서 전용 공간으로 본다.
@@ -144,8 +147,6 @@ class Routes {
   static const admin = '/admin';
   static const adminChurches = '/admin/churches';
   static const adminUsers = '/admin/users';
-
-  static String adminChurch(String churchId) => '/admin/churches/$churchId';
 
   /// 로그인 전 화면 주소들.
   static const publicPaths = {login, signUp};

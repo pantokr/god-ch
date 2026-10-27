@@ -180,7 +180,14 @@ class _PersonRow extends StatelessWidget {
       line1: member.churchName,
       line2: member.phone,
       trailing: [
-        TextButton(onPressed: busy ? null : onRemove, child: const Text('빼기')),
+        // 교회 운영자는 모든 부서에 자동으로 속하므로 뺄 수 없다.
+        if (member.role == Role.admin)
+          Text('자동 소속', style: TextStyle(color: context.palette.muted))
+        else
+          TextButton(
+            onPressed: busy ? null : onRemove,
+            child: const Text('빼기'),
+          ),
       ],
     );
   }

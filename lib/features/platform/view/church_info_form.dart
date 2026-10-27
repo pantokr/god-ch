@@ -156,11 +156,11 @@ class _Summary extends StatelessWidget {
               _Row('교인', snap.hasData ? '$approved명' : '-'),
               _Row('승인 대기', snap.hasData ? '$pending명' : '-'),
               _Row(
-                '교회 운영자',
+                '교회 관리자',
                 !snap.hasData
                     ? '-'
                     : (owners.isEmpty
-                          ? '아직 없어요 (초대 코드로 들어온 교인을 교회 운영자로 지정하세요)'
+                          ? '아직 없어요 (초대 코드로 들어온 교인을 교회 관리자로 지정하세요)'
                           : owners),
               ),
             ],

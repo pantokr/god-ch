@@ -7,6 +7,7 @@ import '../../../data/models/department.dart';
 import '../../auth/view_model/account_view_model.dart';
 import '../../church/view/member_gate.dart';
 import '../../church/view_model/departments_view_model.dart';
+import '../../home/view_model/department_choice.dart';
 import 'church_shell.dart';
 
 /// 주소 `/churches/:cid/...`의 틀. 승인된 교인인지 확인하고, 주소의 `dept`(부서)를 찾은 뒤
@@ -37,17 +38,22 @@ class ChurchShellRoute extends StatelessWidget {
       churchId: churchId,
       builder: (context, me) => ViewModelBuilder<AccountViewModel>(
         create: (context) => AccountViewModel(AppScope.read(context).auth),
-        builder: (context, account) => _WithDepartment(
-          churchId: churchId,
-          departmentId: departmentId,
-          builder: (context, department) => ChurchShell(
-            me: me,
-            section: section,
-            pageId: pageId,
-            department: department,
-            userName: account.userName,
-            onSignOut: account.signOut,
-            child: child,
+        // 기도 · 말씀 탭에서 고른 부서는 탭을 오가도 유지된다.
+        builder: (context, account) => ViewModelBuilder<DepartmentChoice>(
+          create: (context) => DepartmentChoice(),
+          builder: (context, choice) => _WithDepartment(
+            churchId: churchId,
+            departmentId: departmentId,
+            builder: (context, department) => ChurchShell(
+              me: me,
+              section: section,
+              pageId: pageId,
+              department: department,
+              departmentChoice: choice,
+              userName: account.userName,
+              onSignOut: account.signOut,
+              child: child,
+            ),
           ),
         ),
       ),

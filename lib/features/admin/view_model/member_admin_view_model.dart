@@ -21,7 +21,12 @@ enum MemberSort {
 class MemberAdminViewModel extends ViewModel {
   MemberAdminViewModel(this._members, DepartmentRepository departments, this.me)
     : members = _members.members(me.churchId),
-      departments = departments.departments(me.churchId);
+      departments = departments.departments(me.churchId) {
+    // 교회 운영자는 모든 부서에 자동으로 속한다 (예전 데이터도 여기서 맞춘다).
+    if (me.isStaff) {
+      _members.syncAdminDepartments(me.churchId).catchError((_) {});
+    }
+  }
 
   /// 이 기간 안에 가입했으면 "새로 등록된 인원"으로 본다.
   static const newcomerDays = 7;

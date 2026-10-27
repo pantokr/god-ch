@@ -23,6 +23,7 @@ class Member {
     this.photoUrl = '',
     this.departmentIds = const [],
     this.createdAt,
+    this.isOperatorView = false,
   });
 
   /// 사용자(uid)와 같다.
@@ -49,6 +50,14 @@ class Member {
   /// 내가 소속을 선택한 부서 (선택 사항, 비어 있어도 된다).
   final List<String> departmentIds;
   final DateTime? createdAt;
+
+  /// 앱 개발자가 교회를 열었을 때 화면용으로 만든 정보인가. 저장되지 않으며 소속을 뜻하지 않는다.
+  /// 교회 관리자와 같은 화면과 권한을 보지만 회원은 아니다.
+  final bool isOperatorView;
+
+  /// 앱 개발자(admin 계정)의 교인 문서인가. 앱 운영자는 교회 회원이 아니므로 교인 목록에 나오지 않는다.
+  /// (admin 계정은 uid `app-operator-admin`, 로그인 ID `admin`.)
+  bool get isAppOperator => id == 'app-operator-admin' || loginId == 'admin';
 
   bool get isApproved => status == MemberStatus.approved;
   bool get isStaff => isApproved && role != Role.member;

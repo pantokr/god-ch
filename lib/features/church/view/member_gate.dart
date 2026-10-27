@@ -18,8 +18,12 @@ class MemberGate extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ViewModelBuilder<MemberGateViewModel>(
-      create: (context) =>
-          MemberGateViewModel(AppScope.read(context).churches, churchId),
+      create: (context) => MemberGateViewModel(
+        AppScope.read(context).churches,
+        AppScope.read(context).churchRequests,
+        AppScope.read(context).churchRegistry,
+        churchId,
+      ),
       builder: (context, vm) => StreamBuilder<Member?>(
         stream: vm.member,
         builder: (context, snap) {
@@ -45,7 +49,9 @@ class MemberGate extends StatelessWidget {
           }
           return StreamBuilder<bool>(
             stream: vm.closed,
-            builder: (context, closed) => closed.data == true
+            // 폐쇄된 교회도 앱 개발자는 열 수 있다.
+            builder: (context, closed) =>
+                closed.data == true && !me.isOperatorView
                 ? const _ClosedChurch()
                 : builder(context, me),
           );

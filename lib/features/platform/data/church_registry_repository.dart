@@ -36,6 +36,17 @@ class ChurchRegistryRepository {
       .snapshots()
       .map((s) => s.exists ? Church.fromDoc(s) : null);
 
+  /// 앱 운영자는 교회 회원이 아니므로, 예전에 잘못 남은 내 교인 문서를 모두 지운다.
+  /// 앱 운영자는 회원이 아니어도 교회의 정보 · 인원 · 입장 · 부서 · 콘텐츠를 고칠 수 있다 (보안 규칙이 허용한다).
+  Future<void> removeOwnMemberships() async {
+    final mine = await _paths.allMembers
+        .where('uid', isEqualTo: _auth.uid)
+        .get();
+    for (final d in mine.docs) {
+      await d.reference.delete();
+    }
+  }
+
   /// 가입한 모든 회원 (앱 운영자 전용, 최근 가입 순).
   Stream<List<UserProfile>> users() => _db
       .collection('users')
@@ -45,7 +56,10 @@ class ChurchRegistryRepository {
 
   /// 모든 교회의 교인 정보 (앱 운영자 전용). 회원이 어느 교회·부서에 속하는지 보여줄 때 쓴다.
   Stream<List<Member>> allMembers() => _paths.allMembers.snapshots().map(
-    (s) => s.docs.map(Member.fromDoc).toList(),
+    (s) => s.docs
+        .map(Member.fromDoc)
+        .where((m) => !m.isAppOperator && m.status != MemberStatus.removed)
+        .toList(),
   );
 
   /// 모든 교회의 부서 (앱 운영자 전용).
@@ -196,5 +210,6 @@ class ChurchRegistryRepository {
     name: _auth.displayName,
     role: Role.admin,
     status: MemberStatus.approved,
+    isOperatorView: true,
   );
 }

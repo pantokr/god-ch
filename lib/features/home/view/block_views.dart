@@ -33,11 +33,15 @@ class BlockView extends StatelessWidget {
     required this.me,
     this.department,
     this.inset = 0,
+    this.fullScreen = false,
   });
 
   final BlockConfig block;
   final Member me;
   final Department? department;
+
+  /// 제목도 카드도 없이 화면 전체를 쓴다 (기도 · 말씀 탭).
+  final bool fullScreen;
 
   /// 구조를 놓는 칸의 좌우 안쪽 여백. 카드 슬라이드는 이 여백에서 시작해 화면 끝까지 이어진다.
   final double inset;
@@ -68,7 +72,9 @@ class BlockView extends StatelessWidget {
         children: [
           Padding(
             padding: EdgeInsets.symmetric(horizontal: inset),
-            child: block.title.trim().isNotEmpty
+            child: fullScreen
+                ? const SizedBox.shrink()
+                : block.title.trim().isNotEmpty
                 ? SectionHeader(
                     title: block.title.trim(),
                     onMore: kind == null || block.type == BlockType.schedule
@@ -93,7 +99,7 @@ class BlockView extends StatelessWidget {
 
   Widget _body(BuildContext context, BlockViewModel vm) {
     if (block.type == BlockType.prayer) return _prayers(context, vm);
-    if (block.type == BlockType.devotion && me.isAdmin) {
+    if (block.type == BlockType.devotion && me.isStaff) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -118,7 +124,7 @@ class BlockView extends StatelessWidget {
   }
 
   Widget _contentBody(BuildContext context, BlockViewModel vm) {
-    final hint = me.isAdmin ? '\n"콘텐츠 관리"에서 추가할 수 있어요.' : '';
+    final hint = me.isStaff ? '\n"콘텐츠 관리"에서 추가할 수 있어요.' : '';
     void open(ChurchContent c) =>
         context.push(Routes.contentDetail(me.churchId, c.kind, c.id));
 
@@ -201,6 +207,7 @@ class BlockView extends StatelessWidget {
           me: me,
           emptyText: '기도제목 없음',
           showReactions: true,
+          flat: fullScreen,
         ),
     ],
   );

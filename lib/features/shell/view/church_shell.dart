@@ -11,8 +11,9 @@ import '../../../data/models/department.dart';
 import '../../../data/models/member.dart';
 import '../../../data/models/page_layout.dart';
 import '../../admin/view_model/pending_members_view_model.dart';
-import '../../auth/view/profile_dialog.dart';
 import '../../home/view_model/church_pages_view_model.dart';
+import '../../home/view/department_select.dart';
+import '../../home/view_model/department_choice.dart';
 import '../../notifications/view/notifications_button.dart';
 import '../../settings/view/settings_dialog.dart';
 import 'church_scope.dart';
@@ -28,6 +29,7 @@ class ChurchShell extends StatelessWidget {
     required this.userName,
     required this.onSignOut,
     required this.child,
+    required this.departmentChoice,
     this.pageId,
     this.department,
   });
@@ -42,6 +44,9 @@ class ChurchShell extends StatelessWidget {
 
   /// 보고 있는 부서 전용 공간. null이면 교회 전체.
   final Department? department;
+
+  /// 기도 · 말씀 탭에서 지금 고른 부서.
+  final DepartmentChoice departmentChoice;
   final String userName;
   final VoidCallback onSignOut;
   final Widget child;
@@ -71,15 +76,16 @@ class ChurchShell extends StatelessWidget {
     ChurchSection.departments: (Icons.groups_outlined, Icons.groups),
   };
 
+  /// 교역자 이상에게 보이는 메뉴: 인원 · 입장 · 글 게시(콘텐츠) · 부서 (조회와 교역자 업무).
   static const _staffOnly = [
-    ChurchSection.content,
     ChurchSection.members,
     ChurchSection.join,
+    ChurchSection.contents,
     ChurchSection.departments,
   ];
 
-  /// 교회 운영자에게만 보이는 메뉴. 콘텐츠 관리는 교역자가 신경 쓸 일이 아니다.
-  static const _adminOnly = [ChurchSection.contents, ChurchSection.info];
+  /// 교회 관리자에게만 보이는 메뉴: 앱을 고치는 일 (페이지 편집 · 교회 정보).
+  static const _adminOnly = [ChurchSection.content, ChurchSection.info];
 
   SidebarItem _item(BuildContext context, ChurchSection s, {int badge = 0}) =>
       SidebarItem(
@@ -129,13 +135,22 @@ class ChurchShell extends StatelessWidget {
           final pages = snap.data ?? PageConfig.defaults;
           Widget frame(int pending) => SidebarScaffold(
             userName: userName,
-            onProfile: () => showAccountDialog(
-              context,
-              name: userName,
-              details: profileDetailsOf(me),
-            ),
+            onProfile: () =>
+                context.push(Routes.account, extra: profileDetailsOf(me)),
             onSettings: () => showSettingsDialog(context),
             onSignOut: onSignOut,
+            // 위쪽 탭(서랍 버튼 줄) 오른쪽: 기도 · 말씀 탭에서는 볼 부서를 고른다.
+            topBarTrailing:
+                section == ChurchSection.intercession ||
+                    section == ChurchSection.word
+                ? DepartmentSelect(
+                    group: section == ChurchSection.intercession
+                        ? PageGroup.prayer
+                        : PageGroup.word,
+                    me: me,
+                    choice: departmentChoice,
+                  )
+                : null,
             railActions: [
               NotificationsButton(
                 pendingRequests: pending,
@@ -153,7 +168,8 @@ class ChurchShell extends StatelessWidget {
                   Padding(
                     padding: const EdgeInsets.only(left: 4, bottom: 6),
                     child: Text(
-                      '내가 속한 교회',
+                      // 앱 개발자가 연 교회는 "내가 속한"이 아니다.
+                      me.isOperatorView ? '교회' : '내가 속한 교회',
                       style: TextStyle(
                         color: context.palette.muted,
                         fontSize: 12,
@@ -164,7 +180,9 @@ class ChurchShell extends StatelessWidget {
                   _ChurchCard(
                     name: me.churchName,
                     department: department?.name,
-                    onSwitch: () => context.push(Routes.churchList),
+                    onSwitch: () => me.isOperatorView
+                        ? context.go(Routes.adminChurches)
+                        : context.push(Routes.churchList),
                   ),
                 ],
               ),
@@ -196,16 +214,27 @@ class ChurchShell extends StatelessWidget {
             // 서랍: 내 활동 · 교회 탐색, 교역자에게는 관리 메뉴가 더해진다.
             groups: [
               SidebarGroup(
-                items: [
-                  _item(context, ChurchSection.mine),
-                  SidebarItem(
-                    label: '교회 탐색',
-                    icon: Icons.explore_outlined,
-                    selectedIcon: Icons.explore,
-                    selected: false,
-                    onTap: () => context.push(Routes.explore),
-                  ),
-                ],
+                items: me.isOperatorView
+                    // 앱 개발자: 회원이 아니라 내 활동 · 교회 탐색이 없고, 앱 개발자 화면으로 돌아가는 길이 있다.
+                    ? [
+                        SidebarItem(
+                          label: '앱 개발자 화면',
+                          icon: Icons.admin_panel_settings_outlined,
+                          selectedIcon: Icons.admin_panel_settings,
+                          selected: false,
+                          onTap: () => context.go(Routes.admin),
+                        ),
+                      ]
+                    : [
+                        _item(context, ChurchSection.mine),
+                        SidebarItem(
+                          label: '교회 탐색',
+                          icon: Icons.explore_outlined,
+                          selectedIcon: Icons.explore,
+                          selected: false,
+                          onTap: () => context.push(Routes.explore),
+                        ),
+                      ],
               ),
               if (me.isStaff)
                 SidebarGroup(
@@ -214,9 +243,11 @@ class ChurchShell extends StatelessWidget {
                     // 인원 관리가 관리 메뉴의 첫째다. 입장 요청이 있으면 오른쪽에 숫자가 나온다.
                     _item(context, ChurchSection.members, badge: pending),
                     _item(context, ChurchSection.join),
-                    _item(context, ChurchSection.content),
-                    if (me.isAdmin) _item(context, ChurchSection.contents),
+                    // 교역자 업무: 글 게시(콘텐츠 관리)와 부서 조회.
+                    _item(context, ChurchSection.contents),
                     _item(context, ChurchSection.departments),
+                    // 앱을 고치는 일은 교회 관리자만: 페이지 편집 · 교회 정보.
+                    if (me.isAdmin) _item(context, ChurchSection.content),
                     if (me.isAdmin) _item(context, ChurchSection.info),
                   ],
                 ),
@@ -230,6 +261,7 @@ class ChurchShell extends StatelessWidget {
             userName: userName,
             onSignOut: onSignOut,
             pages: pages,
+            departmentChoice: departmentChoice,
             child: me.isStaff
                 ? ViewModelBuilder<PendingMembersViewModel>(
                     create: (context) => PendingMembersViewModel(
@@ -309,9 +341,14 @@ class _ChurchCard extends StatelessWidget {
 /// 내 정보에 보여줄 교회 / 역할 항목.
 List<ProfileDetail> profileDetailsOf(Member me) => [
   ProfileDetail('교회', me.churchName),
-  ProfileDetail('역할', switch (me.role) {
-    Role.admin => '교회 운영자',
-    Role.staff => '교역자',
-    Role.member => '교인',
-  }),
+  ProfileDetail(
+    '역할',
+    me.isOperatorView
+        ? '앱 개발자'
+        : switch (me.role) {
+            Role.admin => '교회 관리자',
+            Role.staff => '교역자',
+            Role.member => '교인',
+          },
+  ),
 ];

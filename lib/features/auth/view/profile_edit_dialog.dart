@@ -76,12 +76,14 @@ class _ProfileEditDialogState extends State<ProfileEditDialog> {
           _photo.text = vm.profile?.photoUrl ?? '';
         }
         final hasProfile = vm.profile != null;
+        // 페이지에 놓일 때(embedded)는 칸 사이를 넉넉하게 띄운다.
+        final gap = SizedBox(height: widget.embedded ? 22 : AppField.gap);
         return Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text('내 정보', style: theme.textTheme.titleLarge),
-            const SizedBox(height: 16),
+            SizedBox(height: widget.embedded ? 24 : 16),
             if (hasProfile) ...[
               ThumbnailField(
                 controller: _photo,
@@ -89,7 +91,7 @@ class _ProfileEditDialogState extends State<ProfileEditDialog> {
                 label: '썸네일(프로필 사진)',
                 upload: vm.uploadPhoto,
               ),
-              const SizedBox(height: 12),
+              gap,
             ],
             TextField(
               controller: _name,
@@ -97,7 +99,7 @@ class _ProfileEditDialogState extends State<ProfileEditDialog> {
               decoration: InputDecoration(label: const RequiredLabel('이름')),
             ),
             if (hasProfile) ...[
-              AppField.spacer,
+              gap,
               TextField(
                 controller: _phone,
                 keyboardType: TextInputType.phone,
@@ -105,7 +107,7 @@ class _ProfileEditDialogState extends State<ProfileEditDialog> {
                 decoration: InputDecoration(label: const RequiredLabel('전화번호')),
                 onSubmitted: (_) => _save(vm),
               ),
-              AppField.spacer,
+              gap,
               ProfileExtraFields(address: _address, birthDate: _birthDate),
             ],
             for (final d in widget.details)
@@ -120,7 +122,7 @@ class _ProfileEditDialogState extends State<ProfileEditDialog> {
               const SizedBox(height: 12),
               Text(vm.error!, style: TextStyle(color: theme.colorScheme.error)),
             ],
-            const SizedBox(height: 20),
+            SizedBox(height: widget.embedded ? 28 : 20),
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [

@@ -39,7 +39,7 @@ class ContentListPage extends StatelessWidget {
                   action: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      if (me.isAdmin)
+                      if (me.isStaff)
                         OutlinedButton.icon(
                           onPressed: () => context.push(
                             Routes.contentEdit(me.churchId, kind: kind),

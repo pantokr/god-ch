@@ -8,7 +8,9 @@ import '../../../data/models/church_features.dart';
 import '../../../data/models/department.dart';
 import '../../../data/models/member.dart';
 import '../../../data/models/page_layout.dart';
+import '../view_model/department_choice.dart';
 import '../view_model/group_access_view_model.dart';
+import 'department_select.dart';
 import 'church_page_view.dart';
 import 'content_widgets.dart';
 import 'page_icons.dart';
@@ -18,13 +20,14 @@ import 'page_icons.dart';
 ///
 /// 기도 · 말씀은 교역자가 부서별로 켜고 끈다 ([ChurchFeatures]).
 /// - 소속 부서가 모두 꺼져 있으면 서비스가 허용되지 않았다는 안내만 보인다.
-/// - 쓸 수 있는 부서가 여럿이면 기도 탭에서 부서를 골라 그 부서의 기도제목을 본다.
+/// - 소속 부서 중 쓸 수 있는 부서가 여럿이면 위쪽 탭(서랍 버튼 줄) 오른쪽에서 부서를 고른다 ([DepartmentSelect]).
 class GroupHubPage extends StatefulWidget {
   const GroupHubPage({
     super.key,
     required this.group,
     required this.pages,
     required this.me,
+    required this.choice,
     this.department,
   });
 
@@ -33,6 +36,9 @@ class GroupHubPage extends StatefulWidget {
   /// 교회의 모든 페이지. 이 중 [group]에 속한 것만 보인다.
   final List<PageConfig> pages;
   final Member me;
+
+  /// 지금 고른 부서 (위쪽 탭의 부서 선택과 함께 쓴다).
+  final DepartmentChoice choice;
   final Department? department;
 
   @override
@@ -42,13 +48,14 @@ class GroupHubPage extends StatefulWidget {
 class _GroupHubPageState extends State<GroupHubPage> {
   String? _selected;
 
-  /// 고른 부서 ID. null이면 처음 선택지(교인) 또는 교회 전체(교역자).
-  String? _deptId;
-
   @override
   Widget build(BuildContext context) {
     if (widget.group == PageGroup.home) {
-      return _content(widget.department, const []);
+      return _content(widget.department);
+    }
+    // 앱 개발자는 교회를 고칠 수 있어도 기도제목 내용은 볼 수 없다.
+    if (widget.me.isOperatorView && widget.group == PageGroup.prayer) {
+      return const _OperatorNotice();
     }
     return ViewModelBuilder<GroupAccessViewModel>(
       key: ValueKey('access/${widget.me.churchId}'),
@@ -77,36 +84,12 @@ class _GroupHubPageState extends State<GroupHubPage> {
     );
   }
 
-  /// 부서 선택(기도 탭만)을 붙여 페이지 내용을 보여준다.
-  Widget _withDepartment(TabAccess access) {
-    // 기도제목은 부서별로 나뉘므로 기도 탭에서만 부서를 고른다. 말씀은 허용 여부만 가린다.
-    final scoped =
-        widget.group == PageGroup.prayer && access.options.isNotEmpty;
-    if (!scoped) return _content(widget.department, const []);
-
-    final staff = widget.me.isStaff;
-    final options = access.options;
-    // 교인은 늘 부서 하나가 골라져 있고, 교역자는 "전체"(교회 전체)도 고를 수 있다.
-    final chosen = options.where((d) => d.id == _deptId).firstOrNull;
-    final department = staff ? chosen : (chosen ?? options.first);
-    final chips = options.length > 1 || staff
-        ? <Widget>[
-            if (staff)
-              _chip(
-                label: '전체',
-                selected: department == null,
-                onTap: () => setState(() => _deptId = null),
-              ),
-            for (final d in options)
-              _chip(
-                label: d.name,
-                selected: department?.id == d.id,
-                onTap: () => setState(() => _deptId = d.id),
-              ),
-          ]
-        : const <Widget>[];
-    return _content(department ?? widget.department, chips);
-  }
+  /// 고른 부서의 내용을 보여준다. 부서는 위쪽 탭(서랍 버튼 줄) 오른쪽에서 고르고, 소속 부서가 없으면 교회 전체다.
+  Widget _withDepartment(TabAccess access) => ListenableBuilder(
+    listenable: widget.choice,
+    builder: (context, _) =>
+        _content(chosenDepartment(access, widget.choice) ?? widget.department),
+  );
 
   Widget _chip({
     required String label,
@@ -132,7 +115,7 @@ class _GroupHubPageState extends State<GroupHubPage> {
     ),
   );
 
-  Widget _content(Department? department, List<Widget> departmentChips) {
+  Widget _content(Department? department) {
     final items = [
       for (final p in widget.pages)
         if (p.group == widget.group) p,
@@ -142,6 +125,26 @@ class _GroupHubPageState extends State<GroupHubPage> {
         child: EmptyHint(widget.me.isStaff ? '페이지 편집에서 추가' : '준비 중'),
       );
     }
+    // 홈은 탭으로 나누지 않고 페이지들을 한 화면에 위에서 아래로 이어 붙인다 (순서는 페이지 편집에서 정한다).
+    if (widget.group == PageGroup.home) {
+      return SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 28),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              for (final p in items)
+                ChurchPageBody(
+                  key: ValueKey('home/${p.id}/${department?.id}'),
+                  page: p,
+                  me: widget.me,
+                  department: department,
+                ),
+            ],
+          ),
+        ),
+      );
+    }
     final page = items.firstWhere(
       (p) => p.id == _selected,
       orElse: () => items.first,
@@ -149,7 +152,7 @@ class _GroupHubPageState extends State<GroupHubPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (departmentChips.isNotEmpty) _chipRow(departmentChips),
+        // 한 그룹에 페이지가 여럿이면 칩으로 고른다.
         if (items.length > 1)
           _chipRow([
             for (final p in items)
@@ -166,6 +169,8 @@ class _GroupHubPageState extends State<GroupHubPage> {
             page: page,
             me: widget.me,
             department: department,
+            // 기도 · 말씀은 페이지 제목도 카드도 없이 화면 전체를 쓴다.
+            fullScreen: true,
           ),
         ),
       ],
@@ -206,4 +211,21 @@ class _NotAllowed extends StatelessWidget {
       ),
     );
   }
+}
+
+/// 앱 개발자에게 기도 탭 대신 보이는 안내.
+class _OperatorNotice extends StatelessWidget {
+  const _OperatorNotice();
+
+  @override
+  Widget build(BuildContext context) => Center(
+    child: Padding(
+      padding: const EdgeInsets.all(32),
+      child: Text(
+        '앱 개발자는 기도제목을 볼 수 없습니다',
+        textAlign: TextAlign.center,
+        style: TextStyle(color: context.palette.muted),
+      ),
+    ),
+  );
 }

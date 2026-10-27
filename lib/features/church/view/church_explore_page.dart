@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../app/app_scope.dart';
 import '../../../app/routes.dart';
@@ -14,7 +15,6 @@ import '../../../data/models/church.dart';
 import '../../../data/models/member.dart';
 import '../../../data/models/profile_field.dart';
 import '../../auth/view/profile_extra_fields.dart';
-import '../../auth/view/profile_dialog.dart';
 import '../../auth/view_model/account_view_model.dart';
 import '../../home/view/content_widgets.dart';
 import '../../notifications/view/notifications_button.dart';
@@ -37,8 +37,7 @@ class ChurchExplorePage extends StatelessWidget {
             create: (context) => AccountViewModel(AppScope.read(context).auth),
             builder: (context, account) => AccountRail(
               userName: account.userName,
-              onProfile: () =>
-                  showAccountDialog(context, name: account.userName),
+              onProfile: () => context.push(Routes.account),
               onSettings: () => showSettingsDialog(context),
               onSignOut: account.signOut,
               actions: const [NotificationsButton()],

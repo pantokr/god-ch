@@ -69,16 +69,17 @@ class ChurchFeatures {
   }
 
   /// 내가 [group] 탭을 쓸 수 있는지와, 쓸 수 있는 부서 선택지.
-  /// - 교역자 · 운영자는 막히지 않고, 허용된 부서 전체가 선택지다.
+  /// - 교역자 · 운영자는 막히지 않고, 자기 소속 부서가 선택지다.
   /// - 소속 부서가 없으면 막히지 않는다 (교회 전체).
   /// - 소속 부서가 있는데 하나도 허용되지 않았으면 막힌다.
   TabAccess accessFor(PageGroup group, Member me, List<Department> all) {
     if (group == PageGroup.home) return const TabAccess();
+    // 교역자 · 운영자는 막히지 않지만, 보고 쓰는 부서는 자기 소속 부서 중에서 고른다 ("전체"는 없다).
     if (me.isStaff) {
       return TabAccess(
         options: [
           for (final d in all)
-            if (allows(group, d.id)) d,
+            if (me.departmentIds.contains(d.id)) d,
         ],
       );
     }

@@ -64,6 +64,7 @@ class PrayerGrid extends StatelessWidget {
     this.showReactions = false,
     this.authorNames = const {},
     this.where,
+    this.flat = false,
   });
 
   final Stream<List<Prayer>> prayers;
@@ -76,6 +77,9 @@ class PrayerGrid extends StatelessWidget {
 
   /// 교역자 화면에서 카드에 작성자 이름을 덧붙일 때 쓴다 (uid → 이름).
   final Map<String, String> authorNames;
+
+  /// 카드 없이 화면 전체 폭에 구분선으로 이어지는 목록으로 그린다.
+  final bool flat;
 
   @override
   Widget build(BuildContext context) {
@@ -92,6 +96,18 @@ class PrayerGrid extends StatelessWidget {
         final items = where == null
             ? snap.data!
             : snap.data!.where(where!).toList();
+        if (items.isEmpty && flat) {
+          return Padding(
+            padding: const EdgeInsets.all(48),
+            child: Center(
+              child: Text(
+                emptyText,
+                textAlign: TextAlign.center,
+                style: TextStyle(color: context.palette.muted),
+              ),
+            ),
+          );
+        }
         if (items.isEmpty) {
           return Card(
             child: Padding(
@@ -104,6 +120,24 @@ class PrayerGrid extends StatelessWidget {
                 ),
               ),
             ),
+          );
+        }
+        if (flat) {
+          return Column(
+            children: [
+              for (var i = 0; i < items.length; i++) ...[
+                if (i > 0) const Divider(height: 1),
+                PrayerCard(
+                  prayer: items[i],
+                  me: me,
+                  flat: true,
+                  showReactions: showReactions && items[i].isPublic,
+                  subtitle: authorNames.isEmpty
+                      ? null
+                      : (authorNames[items[i].authorId] ?? '알 수 없음'),
+                ),
+              ],
+            ],
           );
         }
         return CardGrid(

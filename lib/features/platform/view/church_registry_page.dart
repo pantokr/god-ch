@@ -20,9 +20,9 @@ import 'registered_churches.dart';
 class ChurchRegistryPage extends StatelessWidget {
   const ChurchRegistryPage({super.key});
 
-  /// 교회 상세 관리를 주소로 연다. 브라우저 뒤로가기로 목록에 돌아온다.
+  /// 교회를 고르면 교회 관리자와 같은 교회 화면이 열린다. 뒤로 가면 목록에 돌아온다.
   void _openChurch(BuildContext context, Church church) =>
-      context.push(Routes.adminChurch(church.id));
+      context.push(Routes.home(church.id));
 
   @override
   Widget build(BuildContext context) {

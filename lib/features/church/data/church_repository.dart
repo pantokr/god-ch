@@ -68,7 +68,7 @@ class ChurchRepository {
 
   /// 교역자가 새 초대 코드를 만든다. 기존 코드는 그대로 두고 만료되게 둔다.
   /// [role]과 [departmentIds]는 이 코드로 들어오는 사람에게 그대로 적용된다.
-  /// 교역자 역할의 코드는 교회 운영자만 만들 수 있다 (규칙이 막는다).
+  /// 교역자 역할의 코드는 교회 관리자만 만들 수 있다 (규칙이 막는다).
   Future<String> createInviteCode(
     String churchId,
     String churchName, {
@@ -77,7 +77,7 @@ class ChurchRepository {
     bool singleUse = false,
   }) async {
     if (role == Role.admin) {
-      throw const AppException('교회 운영자는 초대 코드로 지정할 수 없어요.');
+      throw const AppException('교회 관리자는 초대 코드로 지정할 수 없어요.');
     }
     for (var attempt = 0; attempt < 5; attempt++) {
       final code = _randomCode();

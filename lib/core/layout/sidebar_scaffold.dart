@@ -61,6 +61,7 @@ class SidebarScaffold extends StatelessWidget {
     this.sidebarHeader,
     this.railActions = const [],
     this.bottomItems = const [],
+    this.topBarTrailing,
   });
 
   final List<SidebarGroup> groups;
@@ -73,6 +74,9 @@ class SidebarScaffold extends StatelessWidget {
 
   /// 하단 탭: 왼쪽 · 가운데(원형 버튼) · 오른쪽 셋. 좁은 화면에서만 아래에 뜨고, 넓은 화면에서는 왼쪽 메뉴 맨 위에 함께 놓인다.
   final List<SidebarItem> bottomItems;
+
+  /// 위쪽 탭(서랍 버튼이 있는 줄) 오른쪽에 놓는 위젯 (예: 기도 · 말씀 탭의 부서 선택).
+  final Widget? topBarTrailing;
   final String userName;
   final VoidCallback onProfile;
   final VoidCallback onSettings;
@@ -110,10 +114,16 @@ class SidebarScaffold extends StatelessWidget {
         ),
         rail: rail,
         bottomBar: bottomItems.isEmpty ? null : _PillTabBar(items: bottomItems),
+        topBarTrailing: topBarTrailing,
         child: child,
       );
     }
-    return _WideFrame(sidebar: panel, rail: rail, child: child);
+    return _WideFrame(
+      sidebar: panel,
+      rail: rail,
+      topBarTrailing: topBarTrailing,
+      child: child,
+    );
   }
 }
 
@@ -584,11 +594,13 @@ class _TopBar extends StatelessWidget {
     required this.icon,
     required this.tooltip,
     required this.onTap,
+    this.trailing,
   });
 
   final IconData icon;
   final String tooltip;
   final VoidCallback onTap;
+  final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
@@ -599,13 +611,12 @@ class _TopBar extends StatelessWidget {
         right: false,
         child: SizedBox(
           height: SidebarScaffold.menuBarHeight,
-          child: Align(
-            alignment: Alignment.centerLeft,
-            child: IconButton(
-              tooltip: tooltip,
-              icon: Icon(icon),
-              onPressed: onTap,
-            ),
+          child: Row(
+            children: [
+              IconButton(tooltip: tooltip, icon: Icon(icon), onPressed: onTap),
+              const Spacer(),
+              ?trailing,
+            ],
           ),
         ),
       ),
@@ -621,12 +632,14 @@ class _NarrowFrame extends StatefulWidget {
     required this.rail,
     required this.child,
     this.bottomBar,
+    this.topBarTrailing,
   });
 
   final Widget panel;
   final Widget rail;
   final Widget child;
   final Widget? bottomBar;
+  final Widget? topBarTrailing;
 
   @override
   State<_NarrowFrame> createState() => _NarrowFrameState();
@@ -656,6 +669,7 @@ class _NarrowFrameState extends State<_NarrowFrame> {
                   icon: Icons.view_sidebar_outlined,
                   tooltip: '메뉴',
                   onTap: () => _setOpen(true),
+                  trailing: widget.topBarTrailing,
                 ),
                 Expanded(child: widget.child),
                 ?widget.bottomBar,
@@ -713,11 +727,13 @@ class _WideFrame extends StatefulWidget {
     required this.sidebar,
     required this.rail,
     required this.child,
+    this.topBarTrailing,
   });
 
   final Widget sidebar;
   final Widget rail;
   final Widget child;
+  final Widget? topBarTrailing;
 
   @override
   State<_WideFrame> createState() => _WideFrameState();
@@ -759,6 +775,7 @@ class _WideFrameState extends State<_WideFrame> {
                       : Icons.view_sidebar_outlined,
                   tooltip: _open ? '메뉴 접기' : '메뉴 펼치기',
                   onTap: () => setState(() => _open = !_open),
+                  trailing: widget.topBarTrailing,
                 ),
                 Expanded(child: widget.child),
               ],

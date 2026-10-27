@@ -20,7 +20,12 @@ class PlatformShellRoute extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ViewModelBuilder<AccountViewModel>(
-      create: (context) => AccountViewModel(AppScope.read(context).auth),
+      create: (context) {
+        final scope = AppScope.read(context);
+        // 앱 운영자는 교회 회원이 될 수 없다: 예전에 잘못 남은 내 교인 문서를 지운다.
+        scope.churchRegistry.removeOwnMemberships().ignore();
+        return AccountViewModel(scope.auth);
+      },
       builder: (context, account) => PlatformShell(
         section: section,
         userName: account.userName,

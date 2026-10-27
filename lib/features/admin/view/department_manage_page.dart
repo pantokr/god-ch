@@ -69,15 +69,18 @@ class DepartmentManagePage extends StatelessWidget {
             children: [
               PageTitle(title: '부서 관리'),
               // 제목 옆이 아니라 다음 줄에 둔다.
-              Align(
-                alignment: Alignment.centerLeft,
-                child: FilledButton.icon(
-                  onPressed: () => _edit(context, vm),
-                  icon: const Icon(Icons.add, size: 18),
-                  label: const Text('부서 만들기'),
+              // 부서를 만들고 고치는 것은 앱을 고치는 일이라 교회 관리자만 한다 (교역자는 조회와 인원 배치).
+              if (me.isAdmin) ...[
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: FilledButton.icon(
+                    onPressed: () => _edit(context, vm),
+                    icon: const Icon(Icons.add, size: 18),
+                    label: const Text('부서 만들기'),
+                  ),
                 ),
-              ),
-              const SizedBox(height: 16),
+                const SizedBox(height: 16),
+              ],
               StreamBuilder<List<Department>>(
                 stream: vm.departments,
                 builder: (context, depts) {
@@ -110,6 +113,7 @@ class DepartmentManagePage extends StatelessWidget {
                                   department: d,
                                   count: vm.inDepartment(all, d.id).length,
                                   features: features,
+                                  canEdit: me.isAdmin,
                                   onOpen: () => _open(context, d),
                                   onRename: () =>
                                       _edit(context, vm, department: d),
@@ -184,6 +188,7 @@ class _DepartmentCard extends StatelessWidget {
     required this.department,
     required this.count,
     required this.features,
+    required this.canEdit,
     required this.onOpen,
     required this.onRename,
     required this.onFeature,
@@ -192,6 +197,9 @@ class _DepartmentCard extends StatelessWidget {
   final Department department;
   final int count;
   final ChurchFeatures features;
+
+  /// 이름 변경과 기도 · 말씀 켜기/끄기는 교회 관리자만 한다. 교역자는 보기만 한다.
+  final bool canEdit;
   final VoidCallback onOpen;
   final VoidCallback onRename;
 
@@ -266,22 +274,25 @@ class _DepartmentCard extends StatelessWidget {
                               visualDensity: VisualDensity.compact,
                               label: Text(g.label),
                               selected: features.allows(g, department.id),
-                              onSelected: (on) => onFeature(g, on),
+                              onSelected: canEdit
+                                  ? (on) => onFeature(g, on)
+                                  : null,
                             ),
                         ],
                       ),
                     ],
                   ),
                 ),
-                Positioned(
-                  top: 4,
-                  right: 4,
-                  child: IconButton(
-                    tooltip: '이름 변경',
-                    icon: const Icon(Icons.edit_outlined, size: 20),
-                    onPressed: onRename,
+                if (canEdit)
+                  Positioned(
+                    top: 4,
+                    right: 4,
+                    child: IconButton(
+                      tooltip: '이름 변경',
+                      icon: const Icon(Icons.edit_outlined, size: 20),
+                      onPressed: onRename,
+                    ),
                   ),
-                ),
               ],
             ),
           ),

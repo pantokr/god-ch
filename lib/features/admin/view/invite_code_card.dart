@@ -184,7 +184,7 @@ class _NewInviteFormState extends State<_NewInviteForm> {
           Padding(
             padding: const EdgeInsets.only(top: 6),
             child: Text(
-              '교역자 코드는 교회 운영자만 만들 수 있어요.',
+              '교역자 코드는 교회 관리자만 만들 수 있어요.',
               style: TextStyle(color: context.palette.muted, fontSize: 12),
             ),
           ),

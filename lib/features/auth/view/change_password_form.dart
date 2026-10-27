@@ -7,10 +7,13 @@ import '../../../core/widgets/required_label.dart';
 import '../data/password_rule.dart';
 import '../view_model/change_password_view_model.dart';
 
-/// 설정 탭의 비밀번호 변경: 현재 비밀번호를 확인하고 새 비밀번호를 두 번 입력한다.
+/// 비밀번호 수정 팝업: 현재 비밀번호를 확인하고 새 비밀번호를 두 번 입력한다.
 /// 새 비밀번호는 회원가입과 같은 규칙([PasswordRule])과 같은 입력 검사(입력칸을 벗어날 때)를 쓴다.
 class ChangePasswordForm extends StatefulWidget {
-  const ChangePasswordForm({super.key});
+  const ChangePasswordForm({super.key, this.onDone});
+
+  /// 비밀번호를 바꾼 뒤 부른다 (팝업이면 닫는다).
+  final VoidCallback? onDone;
 
   @override
   State<ChangePasswordForm> createState() => _ChangePasswordFormState();
@@ -39,6 +42,7 @@ class _ChangePasswordFormState extends State<ChangePasswordForm> {
       _next.clear();
       _confirm.clear();
       messenger.showSnackBar(const SnackBar(content: Text('비밀번호를 바꿨어요.')));
+      widget.onDone?.call();
     }
   }
 
@@ -52,7 +56,7 @@ class _ChangePasswordFormState extends State<ChangePasswordForm> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text('비밀번호 변경', style: theme.textTheme.titleLarge),
+            Text('비밀번호 수정', style: theme.textTheme.titleLarge),
             const SizedBox(height: 16),
             BlurValidatedField(
               controller: _current,

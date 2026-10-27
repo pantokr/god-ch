@@ -48,11 +48,11 @@ void main() {
       expect(go(SessionStatus.member, '/admin/users'), Routes.churches);
     });
 
-    test('앱 운영자: 패널로 가고, 교회 안 화면에는 들어갈 수 없다', () {
+    test('앱 운영자: 패널로 가고, 내 교회 목록은 없지만 교회 화면은 열 수 있다', () {
       expect(go(SessionStatus.operator, '/'), Routes.admin);
       expect(go(SessionStatus.operator, Routes.login), Routes.admin);
       expect(go(SessionStatus.operator, '/churches'), Routes.admin);
-      expect(go(SessionStatus.operator, '/churches/abc/home'), Routes.admin);
+      expect(go(SessionStatus.operator, '/churches/abc/home'), isNull);
       expect(go(SessionStatus.operator, '/admin/churches/abc'), isNull);
     });
 

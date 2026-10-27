@@ -50,7 +50,7 @@ class ChurchCard extends StatelessWidget {
                           ),
                         ),
                         Text(switch (member.role) {
-                          Role.admin => '교회 운영자',
+                          Role.admin => '교회 관리자',
                           Role.staff => '교역자',
                           Role.member => '교인',
                         }, style: TextStyle(color: context.palette.muted)),

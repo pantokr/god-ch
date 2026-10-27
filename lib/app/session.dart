@@ -40,7 +40,14 @@ class SessionNotifier extends ChangeNotifier {
   late final StreamSubscription<User?> _userSub;
   StreamSubscription<UserProfile?>? _profileSub;
 
+  /// 앱을 켤 때 스플래시가 적어도 이만큼은 보이도록, 첫 판단은 이 시간이 지난 뒤에 알린다.
+  static const minSplash = Duration(seconds: 1);
+
   SessionStatus _status = SessionStatus.loading;
+  final _started = DateTime.now();
+  bool _splashDone = false;
+  SessionStatus? _pending;
+  Timer? _splashTimer;
 
   // 같은 계정의 토큰 갱신 등으로 값이 다시 나와도 화면이 깜빡이지 않게,
   // 계정이 실제로 바뀔 때만 다시 판단한다.
@@ -92,6 +99,21 @@ class SessionNotifier extends ChangeNotifier {
   }
 
   void _set(SessionStatus status) {
+    // 처음 켤 때만: 스플래시를 최소 시간 동안 보여 준 뒤 가장 최근 판단을 알린다.
+    if (!_splashDone && _status == SessionStatus.loading) {
+      final left = minSplash - DateTime.now().difference(_started);
+      if (left > Duration.zero) {
+        _pending = status;
+        _splashTimer ??= Timer(left, () {
+          _splashDone = true;
+          final next = _pending;
+          _pending = null;
+          if (next != null) _set(next);
+        });
+        return;
+      }
+      _splashDone = true;
+    }
     if (_status == status) return;
     _status = status;
     notifyListeners();
@@ -99,6 +121,7 @@ class SessionNotifier extends ChangeNotifier {
 
   @override
   void dispose() {
+    _splashTimer?.cancel();
     _userSub.cancel();
     _profileSub?.cancel();
     super.dispose();

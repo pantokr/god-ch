@@ -29,7 +29,7 @@ service cloud.firestore {
       return isPlatformAdmin() || isAdmin(cid);
     }
     function prayer(cid, pid) {
-      return get(/databases/$(database)/documents/churches/$(cid)/prayers/$(pid)).data;
+      return get(/databases/$(database)/documents/churches/$(cid)/prayerPosts/$(pid)).data;
     }
     // 부서 전용 글(departmentId != null)은 그 부서에 소속된 교인에게만 보인다.
     function inDept(cid, deptId) {
@@ -323,10 +323,10 @@ service cloud.firestore {
         || (signedIn() && resource.data.get('listed', false) == true)
         // 소속 교인(폐쇄된 뒤에도)은 교회 문서를 읽어 폐쇄 여부를 안다.
         || (signedIn() && exists(memberPath(churchId)));
-      // 교역자 · 교회 운영자는 공개 탐색 노출 여부(listed)만 바꾼다.
+      // 교회 관리자는 공개 탐색 노출 여부(listed)를 바꾼다.
       // 교회 정보(이름·전화번호·주소·썸네일)는 교회 운영자와 앱 운영자가 고친다.
       // 폐쇄(closed)는 앱 운영자가 폐쇄 요청을 승인할 때만 표시한다 (교회는 지우지 않는다).
-      allow update: if (isManager(churchId)
+      allow update: if (isOwner(churchId)
           && changed().hasOnly(['listed'])
           && request.resource.data.listed is bool)
         || (isPlatformAdmin()
@@ -475,10 +475,10 @@ service cloud.firestore {
         allow delete: if false;
       }
 
-      // ---- 입장 시 필수 정보: 입장을 신청하는 사람도 읽어야 하므로 로그인한 누구나 읽고, 교역자·교회 운영자가 정한다 ----
+      // ---- 입장 시 필수 정보: 입장을 신청하는 사람도 읽어야 하므로 로그인한 누구나 읽고, 교회 관리자가 정한다 ----
       match /settings/join {
         allow get: if signedIn();
-        allow create, update: if isManager(churchId)
+        allow create, update: if isOwner(churchId)
           && request.resource.data.keys().hasOnly(['requiredFields'])
           && request.resource.data.requiredFields is list
           && request.resource.data.requiredFields.size() <= 2
@@ -487,8 +487,8 @@ service cloud.firestore {
 
       // ---- 부서별 기능: 기도 · 말씀 탭을 쓸 수 있는 부서. 교인이 읽고 교역자 · 교회 운영자가 정한다 ----
       match /settings/features {
-        allow get: if isActive(churchId);
-        allow create, update: if isManager(churchId)
+        allow get: if isActive(churchId) || isPlatformAdmin();
+        allow create, update: if isOwner(churchId)
           && request.resource.data.keys().hasOnly(['prayerDepartments', 'wordDepartments'])
           && request.resource.data.get('prayerDepartments', []) is list
           && request.resource.data.get('prayerDepartments', []).size() <= 100
@@ -498,8 +498,8 @@ service cloud.firestore {
 
       // ---- 기도 요청 운영 설정: 교인이 읽고 교역자 · 교회 운영자가 정한다 ----
       match /settings/prayer {
-        allow get: if isActive(churchId);
-        allow create, update: if isManager(churchId)
+        allow get: if isActive(churchId) || isPlatformAdmin();
+        allow create, update: if isOwner(churchId)
           && request.resource.data.keys().hasOnly(['writers', 'allowPrivate', 'defaultVisibility', 'reactions',
                'showCounts', 'memberDelete', 'requireDeleteReason', 'staffComments', 'privateResponses',
                'logPrivateAccess'])
@@ -519,12 +519,12 @@ service cloud.firestore {
       // ---- 부서: 교역자가 만들고, 교인이 스스로 소속을 선택한다 ----
       match /departments/{deptId} {
         allow read: if isActive(churchId) || isPlatformAdmin();
-        allow create: if isManager(churchId)
+        allow create: if isOwner(churchId)
           && request.resource.data.keys().hasOnly(['name', 'createdBy', 'createdAt'])
           && request.resource.data.createdBy == request.auth.uid
           && request.resource.data.name is string
           && request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 30;
-        allow update: if isManager(churchId)
+        allow update: if isOwner(churchId)
           && changed().hasOnly(['name'])
           && request.resource.data.name is string
           && request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 30;
@@ -532,7 +532,7 @@ service cloud.firestore {
       }
 
       // ---- 기도제목 ----
-      match /prayers/{prayerId} {
+      match /prayerPosts/{prayerId} {
         // 일반 교인은 '공개 + 미삭제' 글과 본인의 미삭제 글만 읽을 수 있다.
         // 비공개 글은 쿼리 결과에도 포함되지 않는다.
         allow read: if isActive(churchId) && (
@@ -650,10 +650,10 @@ service cloud.firestore {
       }
 
       // ---- 페이지 구성: 메뉴에 보이는 페이지와 각 페이지에 쌓인 구조 ----
-      // 승인된 교인이 읽고, 교역자·교회 운영자가 만들고 고치고 지운다.
+      // 승인된 교인이 읽고, 앱의 구성을 고치는 일이므로 교회 관리자(와 앱 개발자)만 만들고 고치고 지운다.
       match /pages/{pageId} {
-        allow read: if isActive(churchId);
-        allow create, update: if isManager(churchId)
+        allow read: if isActive(churchId) || isPlatformAdmin();
+        allow create, update: if isOwner(churchId)
           && request.resource.data.keys().hasOnly(['title', 'icon', 'order', 'group', 'layout', 'updatedAt', 'deleted', 'deletedAt', 'deletedBy'])
           && request.resource.data.title is string
           && request.resource.data.title.size() > 0 && request.resource.data.title.size() <= 30
@@ -666,18 +666,18 @@ service cloud.firestore {
       }
 
       // ---- 교회 메인 페이지 콘텐츠: 공지·일정·사진첩·설교영상·말씀묵상 ----
-      // 승인된 교인이 읽고, 교회 운영자만 만들고 고친다 (교역자는 콘텐츠 관리를 하지 않는다). 종류가 늘면 아래 목록도 함께 고친다.
+      // 승인된 교인이 읽고, 교역자 · 교회 관리자(와 앱 개발자)가 글을 게시한다. 종류가 늘면 아래 목록도 함께 고친다.
       match /{kind}/{contentId} {
         allow read: if kind in ['notices', 'events', 'photos', 'sermons', 'devotions']
-          && isActive(churchId);
+          && (isActive(churchId) || isPlatformAdmin());
         allow create: if kind in ['notices', 'events', 'photos', 'sermons', 'devotions']
-          && isAdmin(churchId)
+          && isManager(churchId)
           && request.resource.data.keys().hasOnly(
                ['title', 'body', 'date', 'imageUrls', 'videoUrl', 'createdBy', 'createdAt'])
           && request.resource.data.createdBy == request.auth.uid
           && contentValid(request.resource.data);
         allow update: if kind in ['notices', 'events', 'photos', 'sermons', 'devotions']
-          && isAdmin(churchId)
+          && isManager(churchId)
           && changed().hasOnly(['title', 'body', 'date', 'imageUrls', 'videoUrl', 'updatedAt', 'deleted', 'deletedAt', 'deletedBy'])
           && contentValid(request.resource.data);
         // 글은 지우지 않고 deleted 표시만 남긴다 (이미지 파일도 그대로 둔다).
@@ -687,7 +687,7 @@ service cloud.firestore {
       // ---- 말씀묵상에 교인이 남기는 자기 글: 한 사람이 한 편에 한 개 (문서 ID가 본인 uid) ----
       // 승인된 교인이 읽고 본인 글만 쓴다. 지우는 것은 본인과 교회의 교역자·운영자. 글 길이는 DevotionReflection.maxLength와 같다.
       match /devotions/{devotionId}/reflections/{authorId} {
-        allow read: if isActive(churchId);
+        allow read: if isActive(churchId) || isPlatformAdmin();
         allow create, update: if isActive(churchId)
           && featureAllowed(churchId, 'wordDepartments')
           && request.auth.uid == authorId

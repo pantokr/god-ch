@@ -5,6 +5,7 @@ import '../../../data/firestore_paths.dart';
 import '../../../data/models/church_features.dart';
 import '../../../data/models/department.dart';
 import '../../auth/data/auth_repository.dart';
+import 'admin_departments.dart';
 
 /// 부서 목록 / 만들기 / 이름 변경. 소속 선택은 [MemberRepository]에서 한다.
 class DepartmentRepository {
@@ -37,11 +38,15 @@ class DepartmentRepository {
   Future<void> create(String churchId, String name) {
     final trimmed = name.trim();
     if (trimmed.isEmpty) throw const AppException('부서 이름을 입력해 주세요.');
-    return _paths.departments(churchId).add({
-      'name': trimmed,
-      'createdBy': _auth.uid,
-      'createdAt': FieldValue.serverTimestamp(),
-    });
+    // 새 부서에도 교회 운영자가 자동으로 속한다.
+    return _paths
+        .departments(churchId)
+        .add({
+          'name': trimmed,
+          'createdBy': _auth.uid,
+          'createdAt': FieldValue.serverTimestamp(),
+        })
+        .then((_) => syncAdminDepartments(_paths, churchId));
   }
 
   Future<void> rename(String churchId, String id, String name) {

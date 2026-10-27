@@ -14,18 +14,27 @@ class ChurchPageView extends StatelessWidget {
     required this.page,
     required this.me,
     this.department,
+    this.fullScreen = false,
   });
 
   final PageConfig page;
   final Member me;
   final Department? department;
 
+  /// 페이지 제목도 바깥 여백도 없이 화면 전체를 쓴다 (기도 · 말씀 탭).
+  final bool fullScreen;
+
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 28),
-        child: ChurchPageBody(page: page, me: me, department: department),
+        padding: EdgeInsets.symmetric(vertical: fullScreen ? 0 : 28),
+        child: ChurchPageBody(
+          page: page,
+          me: me,
+          department: department,
+          fullScreen: fullScreen,
+        ),
       ),
     );
   }
@@ -39,11 +48,13 @@ class ChurchPageBody extends StatelessWidget {
     required this.page,
     required this.me,
     this.department,
+    this.fullScreen = false,
   });
 
   final PageConfig page;
   final Member me;
   final Department? department;
+  final bool fullScreen;
 
   @override
   Widget build(BuildContext context) {
@@ -52,7 +63,9 @@ class ChurchPageBody extends StatelessWidget {
     final pad = pagePadding(context);
     return LayoutBuilder(
       builder: (context, box) {
-        final inset = pad + ((box.maxWidth - kContentWidth) / 2).clamp(0, 1e9);
+        final inset = fullScreen
+            ? 0.0
+            : pad + ((box.maxWidth - kContentWidth) / 2).clamp(0, 1e9);
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -71,8 +84,9 @@ class ChurchPageBody extends StatelessWidget {
                 me: me,
                 department: department,
                 inset: inset,
+                fullScreen: fullScreen,
               ),
-            const SizedBox(height: 24),
+            SizedBox(height: fullScreen ? 0 : 24),
           ],
         );
       },

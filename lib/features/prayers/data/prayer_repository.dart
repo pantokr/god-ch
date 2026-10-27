@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../../../data/firestore_codec.dart';
@@ -35,33 +37,53 @@ class PrayerRepository {
       _settings(churchId).set(settings.toMap());
 
   // ---- 조회 ----
+  //
+  // 복합 색인이 필요 없게 설계했다: 조회는 같음(==) 조건만 쓰고 orderBy를 붙이지 않는다.
+  // 같음 조건만 있는 조회는 단일 필드 색인(자동)만으로 되고, 결과는 문서 ID 순서로 나온다.
+  // 글의 문서 ID를 시간 역순으로 만들기 때문에([newId]) 그 순서가 곧 최신순이다.
+  // 새 조회를 더할 때도 orderBy와 where를 함께 쓰지 말 것 (test/no_composite_query_test.dart가 막는다).
+
+  /// 글 ID: 시간이 지날수록 이름순으로 앞에 오도록 (9999999999999 - 지금 밀리초)를 앞에 붙인다.
+  static String newId() {
+    final reversed = (9999999999999 - DateTime.now().millisecondsSinceEpoch)
+        .toString()
+        .padLeft(13, '0');
+    final rnd = Random.secure();
+    const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+    final tail = List.generate(6, (_) => chars[rnd.nextInt(chars.length)]);
+    return '${reversed}_${tail.join()}';
+  }
+
+  /// 한 번에 읽는 글 수의 기본값.
+  static const pageSize = 100;
 
   /// 반드시 visibility/deleted 조건을 쿼리에 포함해야 규칙을 통과한다.
-  /// [departmentId]가 null이면 교회 전체 글, 값이 있으면 그 부서 전용 글만 가져온다.
-  Stream<List<Prayer>> publicFeed(String churchId, {String? departmentId}) =>
+  /// [departmentId]가 null이면 교회 전체 글, 값이 있으면 그 부서 전용 글만 가져온다. 최신 글부터.
+  Stream<List<Prayer>> publicFeed(
+    String churchId, {
+    String? departmentId,
+    int limit = pageSize,
+  }) => _paths
+      .prayers(churchId)
+      .where('visibility', isEqualTo: PrayerVisibility.public.name)
+      .where('deleted', isEqualTo: false)
+      .where('departmentId', isEqualTo: departmentId)
+      .limit(limit)
+      .snapshots()
+      .map(_toPrayers);
+
+  Stream<List<Prayer>> myPrayers(String churchId, {int limit = pageSize}) =>
       _paths
           .prayers(churchId)
-          .where('visibility', isEqualTo: PrayerVisibility.public.name)
+          .where('authorId', isEqualTo: _auth.uid)
           .where('deleted', isEqualTo: false)
-          .where('departmentId', isEqualTo: departmentId)
-          .orderBy('createdAt', descending: true)
+          .limit(limit)
           .snapshots()
           .map(_toPrayers);
 
-  Stream<List<Prayer>> myPrayers(String churchId) => _paths
-      .prayers(churchId)
-      .where('authorId', isEqualTo: _auth.uid)
-      .where('deleted', isEqualTo: false)
-      .orderBy('createdAt', descending: true)
-      .snapshots()
-      .map(_toPrayers);
-
   /// 교역자 전용: 비공개·삭제된 글 포함 전체.
-  Stream<List<Prayer>> allPrayers(String churchId) => _paths
-      .prayers(churchId)
-      .orderBy('createdAt', descending: true)
-      .snapshots()
-      .map(_toPrayers);
+  Stream<List<Prayer>> allPrayers(String churchId, {int limit = pageSize}) =>
+      _paths.prayers(churchId).limit(limit).snapshots().map(_toPrayers);
 
   Stream<Prayer?> prayer(String churchId, String id) => _paths
       .prayers(churchId)
@@ -69,8 +91,16 @@ class PrayerRepository {
       .snapshots()
       .map((s) => s.exists ? Prayer.fromDoc(s) : null);
 
-  List<Prayer> _toPrayers(QuerySnapshot<Json> s) =>
-      s.docs.map(Prayer.fromDoc).toList();
+  /// 문서 ID 순서(= 최신순)를 그대로 쓴다. 혹시 섞여 있어도 만든 시각으로 한 번 더 맞춘다.
+  List<Prayer> _toPrayers(QuerySnapshot<Json> s) {
+    final list = s.docs.map(Prayer.fromDoc).toList();
+    list.sort(
+      (a, b) => (b.createdAt ?? DateTime.now()).compareTo(
+        a.createdAt ?? DateTime.now(),
+      ),
+    );
+    return list;
+  }
 
   // ---- 쓰기 ----
 
@@ -80,7 +110,7 @@ class PrayerRepository {
     required String content,
     required PrayerVisibility visibility,
     String? departmentId,
-  }) => _paths.prayers(churchId).add({
+  }) => _paths.prayers(churchId).doc(newId()).set({
     'authorId': _auth.uid,
     'departmentId': departmentId,
     'title': title,
@@ -206,23 +236,25 @@ class PrayerRepository {
     String churchId,
     String prayerId,
     String sub,
-  ) => _paths
-      .prayers(churchId)
-      .doc(prayerId)
-      .collection(sub)
-      .orderBy('createdAt')
-      .snapshots()
-      .map(
-        (s) => s.docs
-            .map(
-              (d) => TextEntry(
-                d.id,
-                d.data()['content'] as String? ?? '',
-                toDate(d.data()['createdAt']),
-              ),
-            )
-            .toList(),
-      );
+  ) => _paths.prayers(churchId).doc(prayerId).collection(sub).snapshots().map((
+    s,
+  ) {
+    final list = [
+      for (final d in s.docs)
+        TextEntry(
+          d.id,
+          d.data()['content'] as String? ?? '',
+          toDate(d.data()['createdAt']),
+        ),
+    ];
+    // 오래된 순. 서버가 시각을 확정하기 전의 글은 맨 뒤.
+    list.sort(
+      (a, b) => (a.createdAt ?? DateTime(9999)).compareTo(
+        b.createdAt ?? DateTime(9999),
+      ),
+    );
+    return list;
+  });
 
   Future<void> addComment(String churchId, String prayerId, String content) =>
       _paths.prayers(churchId).doc(prayerId).collection('comments').add({

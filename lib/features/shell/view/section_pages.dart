@@ -85,6 +85,7 @@ class HomeSectionPage extends StatelessWidget {
       group: PageGroup.home,
       pages: scope.pages,
       me: scope.me,
+      choice: scope.departmentChoice,
       department: scope.department,
     );
   }
@@ -101,6 +102,7 @@ class IntercessionSectionPage extends StatelessWidget {
       group: PageGroup.prayer,
       pages: scope.pages,
       me: scope.me,
+      choice: scope.departmentChoice,
       department: scope.department,
     );
   }
@@ -117,6 +119,7 @@ class WordSectionPage extends StatelessWidget {
       group: PageGroup.word,
       pages: scope.pages,
       me: scope.me,
+      choice: scope.departmentChoice,
       department: scope.department,
     );
   }

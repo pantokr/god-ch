@@ -117,12 +117,13 @@ class MemberDetailDialog extends StatefulWidget {
   static const roleLabel = {
     Role.member: '교인',
     Role.staff: '교역자',
-    Role.admin: '교회 운영자',
+    Role.admin: '교회 관리자',
   };
   static const statusLabel = {
     MemberStatus.pending: '승인 대기',
     MemberStatus.approved: '승인됨',
     MemberStatus.disabled: '비활성',
+    MemberStatus.removed: '추방됨',
   };
 
   @override
@@ -301,11 +302,16 @@ class _MemberDetailDialogState extends State<MemberDetailDialog> {
                           value: _statuses[i],
                           label: '상태',
                           items: [
+                            // 추방은 따로 있는 추방 버튼으로 한다. 이미 추방된 사람일 때만 현재 상태로 보인다.
                             for (final s in MemberStatus.values)
-                              DropdownMenuItem(
-                                value: s,
-                                child: Text(MemberDetailDialog.statusLabel[s]!),
-                              ),
+                              if (s != MemberStatus.removed ||
+                                  _statuses[i] == MemberStatus.removed)
+                                DropdownMenuItem(
+                                  value: s,
+                                  child: Text(
+                                    MemberDetailDialog.statusLabel[s] ?? s.name,
+                                  ),
+                                ),
                           ],
                           onChanged: (v) => setState(() => _statuses[i] = v!),
                         ),
@@ -326,14 +332,17 @@ class _MemberDetailDialogState extends State<MemberDetailDialog> {
                 contentPadding: EdgeInsets.zero,
                 controlAffinity: ListTileControlAffinity.leading,
                 title: Text(d.name),
-                value: _depts[i].contains(d.id),
-                onChanged: (v) => setState(() {
-                  if (v ?? false) {
-                    _depts[i].add(d.id);
-                  } else {
-                    _depts[i].remove(d.id);
-                  }
-                }),
+                // 교회 운영자는 모든 부서에 자동으로 속한다.
+                value: _roles[i] == Role.admin || _depts[i].contains(d.id),
+                onChanged: _roles[i] == Role.admin
+                    ? null
+                    : (v) => setState(() {
+                        if (v ?? false) {
+                          _depts[i].add(d.id);
+                        } else {
+                          _depts[i].remove(d.id);
+                        }
+                      }),
               ),
           ],
           if (widget.vm.error != null) ...[

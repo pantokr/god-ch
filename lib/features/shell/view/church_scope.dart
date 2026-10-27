@@ -3,6 +3,7 @@ import 'package:flutter/widgets.dart';
 import '../../../data/models/department.dart';
 import '../../../data/models/member.dart';
 import '../../../data/models/page_layout.dart';
+import '../../home/view_model/department_choice.dart';
 
 /// 교회 안의 화면들이 공유하는 정보: 내 교인 정보, 보고 있는 부서, 계정 정보.
 /// 교회 틀([ChurchShell])이 만들고, 안쪽 페이지들이 [of]로 꺼내 쓴다.
@@ -13,6 +14,7 @@ class ChurchScope extends InheritedWidget {
     required this.userName,
     required this.onSignOut,
     required this.pages,
+    required this.departmentChoice,
     required super.child,
     this.department,
   });
@@ -26,6 +28,9 @@ class ChurchScope extends InheritedWidget {
 
   /// 교역자가 구성한 페이지들 (메뉴 순서).
   final List<PageConfig> pages;
+
+  /// 기도 · 말씀 탭에서 지금 고른 부서.
+  final DepartmentChoice departmentChoice;
 
   static ChurchScope of(BuildContext context) {
     final scope = context.dependOnInheritedWidgetOfExactType<ChurchScope>();
