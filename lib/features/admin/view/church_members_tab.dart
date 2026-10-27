@@ -8,6 +8,7 @@ import '../../../data/models/department.dart';
 import '../../../data/models/member.dart';
 import '../view_model/member_admin_view_model.dart';
 import 'member_tile.dart';
+import '../../../core/widgets/app_inputs.dart';
 
 /// 교회 회원 관리: 앱 운영자의 "회원 관리"와 같은 구성 (제목 → 검색 → 개수 머리글 → 목록).
 /// 새로 들어온 인원(승인 대기 · 최근 가입)이 맨 위에 NEW로 나오고, 줄의 "관리"로 상세 관리 창을 연다.
@@ -29,17 +30,8 @@ class ChurchMembersTab extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const PageTitle(
-                title: '교회 회원 관리',
-                subtitle: '교회에 속한 회원을 확인하고 수정해요. 개인정보이므로 외부에 공유하지 마세요.',
-              ),
-              TextField(
-                onChanged: vm.setQuery,
-                decoration: const InputDecoration(
-                  prefixIcon: Icon(Icons.search),
-                  hintText: '이름, 아이디, 전화번호 검색',
-                ),
-              ),
+              const PageTitle(title: '교회 회원 관리'),
+              AppSearchField(hint: '이름, 아이디, 전화번호 검색', onChanged: vm.setQuery),
               const SizedBox(height: 16),
               StreamBuilder<List<Member>>(
                 stream: vm.members,
@@ -84,7 +76,15 @@ class _List extends StatelessWidget {
     // 검색은 새로 들어온 인원과 등록된 인원에 똑같이 적용한다.
     final newcomers = vm.newcomers(all).where(vm.matchesQuery).toList();
     final existing = vm.existing(all);
-    final rows = [...newcomers, ...existing];
+    // 승인을 기다리는 신규 입장 요청은 맨 위 따로, 나머지(최근 가입 포함)는 교회 회원 목록에.
+    final requests = newcomers
+        .where((m) => m.status == MemberStatus.pending)
+        .toList();
+    final rows = [
+      ...newcomers.where((m) => m.status != MemberStatus.pending),
+      ...existing,
+    ];
+    final recent = rows.length - existing.length;
     final names = {for (final d in departments) d.id: d.name};
 
     return ListenableBuilder(
@@ -92,6 +92,44 @@ class _List extends StatelessWidget {
       builder: (context, _) => Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Text(
+            '신규 입장 요청 (${requests.length})',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+          const SizedBox(height: 8),
+          if (requests.isEmpty)
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Center(
+                  child: Text(
+                    '신규 요청 회원이 없어요.',
+                    style: TextStyle(color: context.palette.muted),
+                  ),
+                ),
+              ),
+            )
+          else
+            Card(
+              child: Column(
+                children: [
+                  for (var i = 0; i < requests.length; i++) ...[
+                    if (i > 0) const Divider(),
+                    MemberTile(
+                      member: requests[i],
+                      vm: vm,
+                      isNew: true,
+                      departments: departments,
+                      departmentNames: [
+                        for (final id in requests[i].departmentIds)
+                          if (names[id] != null) names[id]!,
+                      ],
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          const SizedBox(height: 24),
           Text(
             '교회 회원 (${all.length})',
             style: Theme.of(context).textTheme.titleMedium,
@@ -118,7 +156,7 @@ class _List extends StatelessWidget {
                     MemberTile(
                       member: rows[i],
                       vm: vm,
-                      isNew: i < newcomers.length,
+                      isNew: i < recent,
                       departments: departments,
                       departmentNames: [
                         for (final id in rows[i].departmentIds)

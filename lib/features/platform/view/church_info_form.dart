@@ -14,9 +14,20 @@ import '../view_model/church_summary_view_model.dart';
 
 /// 교회 정보 탭: 교회의 모든 정보가 입력란에 들어 있고, 맨 아래 저장 버튼으로 한 번에 저장한다.
 class ChurchInfoForm extends StatefulWidget {
-  const ChurchInfoForm({super.key, required this.church});
+  const ChurchInfoForm({
+    super.key,
+    required this.church,
+    this.title = '교회 정보',
+    this.footer,
+  });
 
   final Church church;
+
+  /// 화면 제목.
+  final String title;
+
+  /// 저장 버튼 아래에 덧붙이는 구역 (예: 교회 폐쇄 요청).
+  final Widget? footer;
 
   @override
   State<ChurchInfoForm> createState() => _ChurchInfoFormState();
@@ -68,10 +79,7 @@ class _ChurchInfoFormState extends State<ChurchInfoForm> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const PageTitle(
-                  title: '교회 정보',
-                  subtitle: '교회의 정보를 고치고 아래의 저장을 눌러요.',
-                ),
+                PageTitle(title: widget.title),
                 ThumbnailField(
                   controller: _thumbnail,
                   name: widget.church.name,
@@ -79,7 +87,7 @@ class _ChurchInfoFormState extends State<ChurchInfoForm> {
                   upload: (fileName, bytes) =>
                       vm.uploadThumbnail(widget.church.id, fileName, bytes),
                 ),
-                const SizedBox(height: 16),
+                AppField.spacer,
                 ChurchInfoFields(
                   name: _name,
                   phone: _phone,
@@ -105,6 +113,10 @@ class _ChurchInfoFormState extends State<ChurchInfoForm> {
                     child: const Text('저장'),
                   ),
                 ),
+                if (widget.footer != null) ...[
+                  const SizedBox(height: 32),
+                  widget.footer!,
+                ],
                 const SizedBox(height: 32),
               ],
             ),

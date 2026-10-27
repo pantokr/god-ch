@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import '../core/theme.dart';
 import '../features/auth/data/auth_repository.dart';
 import '../features/auth/data/profile_repository.dart';
+import '../features/church/data/church_closure_repository.dart';
 import '../features/church/data/church_repository.dart';
 import '../features/church/data/church_request_repository.dart';
 import '../features/church/data/department_repository.dart';
@@ -48,6 +49,11 @@ class _AppState extends State<App> {
     _profiles,
   );
   late final ChurchRequestRepository _churchRequests = ChurchRequestRepository(
+    _db,
+    _auth,
+    _profiles,
+  );
+  late final ChurchClosureRepository _churchClosures = ChurchClosureRepository(
     _db,
     _auth,
     _profiles,
@@ -104,6 +110,7 @@ class _AppState extends State<App> {
       churches: _churches,
       churchRequests: _churchRequests,
       churchRegistry: _churchRegistry,
+      churchClosures: _churchClosures,
       departments: _departments,
       contents: _contents,
       reflections: _reflections,
@@ -122,12 +129,18 @@ class _AppState extends State<App> {
           darkTheme: _dark,
           themeMode: widget.themeMode.mode,
           routerConfig: _router,
-          // 설정에서 고른 글자 크기를 앱 전체에 적용한다.
           builder: (context, child) => MediaQuery(
-            data: MediaQuery.of(context).copyWith(
-              textScaler: TextScaler.linear(widget.themeMode.textScale),
+            data: MediaQuery.of(context),
+            // 모든 페이지가 아래쪽 시스템 내비게이션 바(제스처 바·버튼)에 가리지 않도록 그만큼 비워 둔다.
+            child: ColoredBox(
+              color: Theme.of(context).scaffoldBackgroundColor,
+              child: SafeArea(
+                top: false,
+                left: false,
+                right: false,
+                child: child!,
+              ),
             ),
-            child: child!,
           ),
         ),
       ),

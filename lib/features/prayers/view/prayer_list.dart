@@ -17,13 +17,11 @@ class PrayerList extends StatelessWidget {
     required this.emptyText,
     required this.showReactions,
     required this.onWrite,
-    this.subtitle,
   });
 
   final Stream<List<Prayer>> prayers;
   final Member me;
   final String title;
-  final String? subtitle;
   final String emptyText;
   final bool showReactions;
   final VoidCallback onWrite;
@@ -37,7 +35,6 @@ class PrayerList extends StatelessWidget {
           children: [
             PageTitle(
               title: title,
-              subtitle: subtitle,
               action: FilledButton.icon(
                 onPressed: onWrite,
                 icon: const Icon(Icons.edit_outlined, size: 18),

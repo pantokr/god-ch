@@ -5,6 +5,7 @@ import '../../../core/address/address_search.dart';
 import '../../../core/formatters/korean_phone.dart';
 import '../../../core/widgets/blur_validated_field.dart';
 import '../../../core/widgets/required_label.dart';
+import '../../../core/theme.dart';
 
 /// 교회 이름 · 전화번호(형식 자동) · 주소(도로명 주소 검색) 입력란.
 /// 교회 생성 요청과 앱 운영자의 교회 직접 등록이 함께 쓴다. 바깥 [Form] 안에 놓아야 한다.
@@ -73,7 +74,7 @@ class _ChurchInfoFieldsState extends State<ChurchInfoFields> {
             return null;
           },
         ),
-        const SizedBox(height: 4),
+        AppField.spacer,
         BlurValidatedField(
           controller: widget.phone,
           keyboardType: TextInputType.phone,

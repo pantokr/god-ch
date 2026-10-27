@@ -15,10 +15,14 @@ class ProfileEditDialog extends StatefulWidget {
     super.key,
     required this.name,
     this.details = const [],
+    this.embedded = false,
   });
 
   final String name;
   final List<ProfileDetail> details;
+
+  /// 설정 탭 안에 놓일 때 true: 저장해도 닫지 않고, 취소 버튼이 없다.
+  final bool embedded;
 
   @override
   State<ProfileEditDialog> createState() => _ProfileEditDialogState();
@@ -52,7 +56,7 @@ class _ProfileEditDialogState extends State<ProfileEditDialog> {
       birthDate: _birthDate.text,
       photoUrl: _photo.text,
     )) {
-      navigator.pop();
+      if (!widget.embedded) navigator.pop();
       messenger.showSnackBar(const SnackBar(content: Text('내 정보를 저장했어요.')));
     }
   }
@@ -93,7 +97,7 @@ class _ProfileEditDialogState extends State<ProfileEditDialog> {
               decoration: InputDecoration(label: const RequiredLabel('이름')),
             ),
             if (hasProfile) ...[
-              const SizedBox(height: 4),
+              AppField.spacer,
               TextField(
                 controller: _phone,
                 keyboardType: TextInputType.phone,
@@ -101,7 +105,7 @@ class _ProfileEditDialogState extends State<ProfileEditDialog> {
                 decoration: InputDecoration(label: const RequiredLabel('전화번호')),
                 onSubmitted: (_) => _save(vm),
               ),
-              const SizedBox(height: 4),
+              AppField.spacer,
               ProfileExtraFields(address: _address, birthDate: _birthDate),
             ],
             for (final d in widget.details)
@@ -120,11 +124,13 @@ class _ProfileEditDialogState extends State<ProfileEditDialog> {
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('취소'),
-                ),
-                const SizedBox(width: 8),
+                if (!widget.embedded) ...[
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('취소'),
+                  ),
+                  const SizedBox(width: 8),
+                ],
                 FilledButton(
                   onPressed: vm.busy || !vm.loaded ? null : () => _save(vm),
                   child: const Text('저장'),

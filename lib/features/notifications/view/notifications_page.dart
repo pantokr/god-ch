@@ -10,7 +10,15 @@ import '../view_model/notifications_view_model.dart';
 
 /// 알림 탭: 내 알림 내역. 상단 바 없이 뒤로가기 버튼만 내용 위에 있다.
 class NotificationsPage extends StatelessWidget {
-  const NotificationsPage({super.key});
+  const NotificationsPage({
+    super.key,
+    this.pendingRequests = 0,
+    this.onOpenRequests,
+  });
+
+  /// 승인을 기다리는 입장 요청 수. 0보다 크면 목록 맨 위에 안내가 나온다.
+  final int pendingRequests;
+  final VoidCallback? onOpenRequests;
 
   @override
   Widget build(BuildContext context) {
@@ -39,7 +47,6 @@ class NotificationsPage extends StatelessWidget {
                       ),
                       PageTitle(
                         title: '알림',
-                        subtitle: '내게 온 알림 내역이에요.',
                         action: items.any((n) => !n.read)
                             ? TextButton(
                                 onPressed: vm.busy
@@ -49,6 +56,25 @@ class NotificationsPage extends StatelessWidget {
                               )
                             : null,
                       ),
+                      if (pendingRequests > 0)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: Card(
+                            child: ListTile(
+                              leading: Icon(
+                                Icons.person_add_alt_1_outlined,
+                                color: context.palette.brand,
+                              ),
+                              title: Text('입장 요청 $pendingRequests건'),
+                              subtitle: const Text('인원 관리에서 승인해 주세요.'),
+                              trailing: const Icon(Icons.chevron_right),
+                              onTap: () {
+                                Navigator.of(context).maybePop();
+                                onOpenRequests?.call();
+                              },
+                            ),
+                          ),
+                        ),
                       if (snap.hasError)
                         Text('불러오지 못했습니다\n${snap.error}')
                       else if (!snap.hasData)

@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../data/firestore_codec.dart';
 import '../../../data/firestore_paths.dart';
 import '../../../data/models/prayer.dart';
+import '../../../data/models/prayer_settings.dart';
 import '../../../data/models/reaction.dart';
 import '../../../data/models/text_entry.dart';
 import '../../auth/data/auth_repository.dart';
@@ -17,6 +18,21 @@ class PrayerRepository {
   final FirebaseFirestore _db;
   final FirestorePaths _paths;
   final AuthRepository _auth;
+
+  // ---- 운영 설정 ----
+
+  DocumentReference<Json> _settings(String churchId) =>
+      _paths.church(churchId).collection('settings').doc('prayer');
+
+  /// 교회가 정한 기도 요청 운영 설정. 정한 적 없으면 표준 설정이다.
+  Stream<PrayerSettings> settings(String churchId) =>
+      _settings(churchId).snapshots().map(PrayerSettings.fromDoc);
+
+  Future<PrayerSettings> loadSettings(String churchId) async =>
+      PrayerSettings.fromDoc(await _settings(churchId).get());
+
+  Future<void> saveSettings(String churchId, PrayerSettings settings) =>
+      _settings(churchId).set(settings.toMap());
 
   // ---- 조회 ----
 
@@ -141,6 +157,8 @@ class PrayerRepository {
         final counts = <String, int>{};
         final mine = <String>{};
         for (final d in s.docs) {
+          // 취소한 반응(active: false)은 기록으로만 남고 세지 않는다.
+          if (d.data()['active'] == false) continue;
           final type = d.data()['type'] as String? ?? '';
           counts[type] = (counts[type] ?? 0) + 1;
           if (d.data()['uid'] == _auth.uid) mine.add(type);
@@ -159,13 +177,21 @@ class PrayerRepository {
         .doc(prayerId)
         .collection('reactions')
         .doc('${_auth.uid}_$type');
-    return currentlyOn
-        ? ref.delete()
-        : ref.set({
-            'uid': _auth.uid,
-            'type': type,
-            'createdAt': FieldValue.serverTimestamp(),
-          });
+    // 반응은 지우지 않고 켜고 끄는 표시(active)만 바꾼다.
+    return ref.get().then((snap) {
+      if (snap.exists) {
+        return ref.update({
+          'active': !currentlyOn,
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+      }
+      return ref.set({
+        'uid': _auth.uid,
+        'type': type,
+        'active': true,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+    });
   }
 
   // ---- 교역자 댓글 / 비공개 글 답변 ----

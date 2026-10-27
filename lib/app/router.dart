@@ -1,3 +1,5 @@
+import '../data/models/page_layout.dart';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -6,6 +8,7 @@ import '../data/models/prayer.dart';
 import '../features/auth/view/login_page.dart';
 import '../features/auth/view/profile_completion_page.dart';
 import '../features/auth/view/sign_up_page.dart';
+import '../features/church/view/church_explore_page.dart';
 import '../features/church/view/my_churches_route.dart';
 import '../features/platform/view/church_detail_route.dart';
 import '../features/platform/view/church_registry_page.dart';
@@ -27,6 +30,10 @@ GoRouter buildRouter(SessionNotifier session) {
     errorBuilder: (context, state) => const _NotFoundPage(),
     routes: [
       GoRoute(path: '/', builder: (context, state) => const _LoadingPage()),
+      GoRoute(
+        path: Routes.explore,
+        builder: (context, state) => const ChurchExplorePage(),
+      ),
 
       // ---- 로그인 전후의 안내 화면 ----
       GoRoute(
@@ -109,11 +116,16 @@ GoRouter buildRouter(SessionNotifier session) {
               child: PageSectionPage(pageId: state.pathParameters['pid']!),
             ),
           ),
-          _sectionRoute(ChurchSection.feed, const FeedSectionPage()),
-          _sectionRoute(ChurchSection.gallery, const GallerySectionPage()),
+          _sectionRoute(
+            ChurchSection.intercession,
+            const IntercessionSectionPage(),
+          ),
+          _sectionRoute(ChurchSection.word, const WordSectionPage()),
           _sectionRoute(ChurchSection.mine, const MineSectionPage()),
-          _sectionRoute(ChurchSection.posts, const PostManageSectionPage()),
+          _sectionRoute(ChurchSection.gallery, const GallerySectionPage()),
           _sectionRoute(ChurchSection.members, const MemberManageSectionPage()),
+          _sectionRoute(ChurchSection.join, const JoinManageSectionPage()),
+          _sectionRoute(ChurchSection.info, const ChurchInfoSectionPage()),
           // 예전 "교회 관리" 주소는 인원 관리로 보낸다.
           GoRoute(
             path: '/churches/:cid/manage',
@@ -146,7 +158,12 @@ GoRouter buildRouter(SessionNotifier session) {
             path: '/churches/:cid/${ChurchSection.content.path}/p/:pid',
             pageBuilder: (context, state) => NoTransitionPage(
               key: ValueKey(state.uri.path),
-              child: PageEditSectionPage(pageId: state.pathParameters['pid']!),
+              child: PageEditSectionPage(
+                pageId: state.pathParameters['pid']!,
+                draft: state.extra is PageConfig
+                    ? state.extra as PageConfig
+                    : null,
+              ),
             ),
           ),
           GoRoute(

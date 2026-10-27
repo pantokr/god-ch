@@ -1,14 +1,13 @@
+import 'package:flutter/gestures.dart' show PointerDeviceKind;
 import 'package:flutter/material.dart';
 
 import '../../../core/layout/app_dialog.dart';
 import '../../../core/theme.dart';
+import '../../../data/models/block_style.dart';
 import '../../../data/models/church_content.dart';
-import '../../../data/models/member.dart';
 import '../../../data/models/page_layout.dart';
-import '../../../data/models/prayer.dart';
 import 'block_views.dart';
 import 'content_widgets.dart';
-import 'neon_blocks.dart';
 
 /// 갤러리에서 고른 구조와 디자인.
 class DesignChoice {
@@ -50,7 +49,8 @@ class _GalleryState extends State<_Gallery> {
     BlockType.devotion: Icons.menu_book_outlined,
     BlockType.board: Icons.dashboard_outlined,
     BlockType.schedule: Icons.event_outlined,
-    BlockType.messenger: Icons.forum_outlined,
+    BlockType.gallery: Icons.photo_library_outlined,
+    BlockType.prayer: Icons.favorite_border,
   };
 
   @override
@@ -73,61 +73,73 @@ class _GalleryState extends State<_Gallery> {
     );
   }
 
-  /// 1단계: 어떤 구조를 쌓을지 고른다. 디자인은 다음 단계에서 그 구조 것만 보인다.
+  /// 1단계: 어떤 구조를 쓸지 고른다. 디자인은 다음 단계에서 그 구조 것만 보인다.
   Widget _typeStep(BuildContext context) {
     final palette = context.palette;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text('구조를 골라요', style: Theme.of(context).textTheme.titleLarge),
-        const SizedBox(height: 4),
-        Text('고르면 그 구조의 디자인만 보여줘요.', style: TextStyle(color: palette.muted)),
+        Text('구조 선택', style: Theme.of(context).textTheme.titleLarge),
         const SizedBox(height: 16),
-        ColumnWrap(
-          wide: 2,
-          children: [
-            for (final t in BlockType.values)
-              InkWell(
-                borderRadius: BorderRadius.circular(AppRadius.card),
-                onTap: () => setState(() => _type = t),
-                child: Ink(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: palette.surface,
-                    border: Border.all(color: palette.border),
-                    borderRadius: BorderRadius.circular(AppRadius.card),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(_typeIcons[t], color: palette.brand),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              t.label,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w700,
+        // 성격별로 묶어 늘어놓는다 (열람 / 참여).
+        for (final (title, types) in BlockType.sections) ...[
+          Padding(
+            padding: const EdgeInsets.only(top: 4, bottom: 8),
+            child: Text(
+              title,
+              style: TextStyle(
+                color: palette.muted,
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+          ColumnWrap(
+            wide: 2,
+            children: [
+              for (final t in types)
+                InkWell(
+                  borderRadius: BorderRadius.circular(AppRadius.card),
+                  onTap: () => setState(() => _type = t),
+                  child: Ink(
+                    // 모든 구조 카드가 같은 크기가 되도록 높이를 고정한다.
+                    height: 76,
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    decoration: BoxDecoration(
+                      color: palette.surface,
+                      border: Border.all(color: palette.border),
+                      borderRadius: BorderRadius.circular(AppRadius.card),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(_typeIcons[t], color: palette.brand),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          // 글자는 카드 안에서 상하 중앙에 놓는다.
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                t.label,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                ),
                               ),
-                            ),
-                            Text(
-                              t.description,
-                              style: TextStyle(
-                                color: palette.muted,
-                                fontSize: 13,
-                              ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
-                      ),
-                      Icon(Icons.chevron_right, color: palette.muted),
-                    ],
+                        Icon(Icons.chevron_right, color: palette.muted),
+                      ],
+                    ),
                   ),
                 ),
-              ),
-          ],
-        ),
+            ],
+          ),
+          const SizedBox(height: 12),
+        ],
       ],
     );
   }
@@ -149,29 +161,50 @@ class _GalleryState extends State<_Gallery> {
               ),
             Expanded(
               child: Text(
-                '${type.label} 디자인을 골라요',
+                '디자인 선택',
                 style: Theme.of(context).textTheme.titleLarge,
               ),
             ),
           ],
         ),
-        const SizedBox(height: 4),
-        Text(
-          '아래는 실제 모습이에요. 마음에 드는 디자인을 누르면 선택돼요.',
-          style: TextStyle(color: context.palette.muted),
-        ),
         const SizedBox(height: 16),
-        ColumnWrap(
-          wide: 2,
-          children: [
-            for (final v in type.variants)
-              _DesignCard(
-                type: type,
-                variant: v,
-                selected: current?.type == type && current?.variant == v.id,
-              ),
-          ],
-        ),
+        // 세로(y)는 디자인의 성격, 가로(x)는 그 성격 안의 디자인들. 줄마다 옆으로 밀어 볼 수 있다.
+        for (final entry in type.variantGroups.entries) ...[
+          Padding(
+            padding: const EdgeInsets.only(top: 8, bottom: 8),
+            child: Row(
+              children: [
+                Text(
+                  entry.key,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 15,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  '${entry.value.length}가지',
+                  style: TextStyle(color: context.palette.muted, fontSize: 12),
+                ),
+                const SizedBox(width: 12),
+                Expanded(child: Divider(color: context.palette.border)),
+              ],
+            ),
+          ),
+          _DesignRow(
+            children: [
+              for (final v in entry.value)
+                SizedBox(
+                  width: 280,
+                  child: _DesignCard(
+                    type: type,
+                    variant: v,
+                    selected: current?.type == type && current?.variant == v.id,
+                  ),
+                ),
+            ],
+          ),
+        ],
       ],
     );
   }
@@ -219,7 +252,7 @@ class _DesignCard extends StatelessWidget {
                   children: [
                     Expanded(
                       child: Text(
-                        variant.label,
+                        variant.shortLabel,
                         style: const TextStyle(fontWeight: FontWeight.w700),
                       ),
                     ),
@@ -239,10 +272,20 @@ class _DesignCard extends StatelessWidget {
 /// 디자인의 실제 모습을 줄여서 보여주는 견본. 실제 페이지와 같은 위젯을 견본 자료로 그린다.
 /// 눌러도 반응하지 않고, 폭 [_virtualWidth]로 그린 뒤 칸 폭에 맞춰 줄이며, 칸은 항상 4:3 비율이다.
 class DesignThumbnail extends StatelessWidget {
-  const DesignThumbnail({super.key, required this.type, required this.variant});
+  const DesignThumbnail({
+    super.key,
+    required this.type,
+    required this.variant,
+    this.style = BlockStyle.simple,
+    this.paletteId = BlockPalette.defaultId,
+  });
 
   final BlockType type;
   final String variant;
+
+  /// 색이 달라지는 구조의 견본에 적용할 스타일과 팔레트.
+  final BlockStyle style;
+  final String paletteId;
 
   static const _virtualWidth = 440.0;
 
@@ -268,24 +311,31 @@ class DesignThumbnail extends StatelessWidget {
       (BlockType.board, _) when _photoVariants.contains(variant) =>
         ContentKind.photo,
       (BlockType.video, _) => ContentKind.sermon,
+      (BlockType.gallery, _) => ContentKind.photo,
       (BlockType.devotion, _) => ContentKind.devotion,
       _ => _kind(),
     };
-    final Widget body = type == BlockType.messenger
-        ? _SampleMessenger(variant: variant)
+    final Widget body = type == BlockType.prayer
+        ? const _SamplePrayers()
         : BlockContentBody(
             block: BlockConfig(
               id: 'sample',
               type: type,
               variant: variant,
               source: BlockSource.fromKind(kind),
+              style: style,
+              paletteId: paletteId,
             ),
             // 목록·간단히는 줄이 길어 견본 높이를 넘으므로 두 줄만 보여 잘려 보이지 않게 한다.
             items:
                 (type == BlockType.board && !_wideSamples.contains(variant)) ||
                     type == BlockType.devotion
                 ? _sampleContents(kind)
-                      .take(type == BlockType.devotion ? 1 : 2)
+                      .take(
+                        type == BlockType.devotion
+                            ? (variant == 'carousel' ? 3 : 1)
+                            : 2,
+                      )
                       .toList()
                 : _sampleContents(kind),
             onOpen: (_) {},
@@ -371,7 +421,11 @@ List<ChurchContent> _sampleContents(ContentKind kind) {
             : now.subtract(Duration(days: i * 2)),
         // 사진·영상(·공지) 견본은 이미지 아이콘 대신 대체 이미지를 보여준다.
         imageUrls: switch (kind) {
-          ContentKind.photo ||
+          // 사진 견본은 여러 장이라 겹겹이 쌓인 모양도 보인다.
+          ContentKind.photo => [
+            for (var j = 0; j < 3; j++)
+              kSampleImages[(i + j) % kSampleImages.length],
+          ],
           ContentKind.sermon ||
           ContentKind.notice => [kSampleImages[i % kSampleImages.length]],
           _ => const [],
@@ -380,113 +434,155 @@ List<ChurchContent> _sampleContents(ContentKind kind) {
   ];
 }
 
-const _sampleMe = Member(
-  id: 'me',
-  churchId: '',
-  churchName: '',
-  name: '',
-  role: Role.member,
-  status: MemberStatus.approved,
-);
+/// 같은 성격의 디자인을 가로로 늘어놓은 줄. 마우스로도 밀 수 있고(끌기), 양끝의 화살표로도 넘길 수 있다.
+class _DesignRow extends StatefulWidget {
+  const _DesignRow({required this.children});
 
-List<Prayer> _samplePrayers() => [
-  Prayer(
-    id: 's1',
-    authorId: 'other',
-    title: '가정을 위해 기도해 주세요',
-    content: '이번 주 시험을 앞둔 아이를 위해 함께 기도해 주세요.',
-    visibility: PrayerVisibility.public,
-    deleted: false,
-    createdAt: DateTime.now().subtract(const Duration(days: 2)),
-  ),
-  Prayer(
-    id: 's2',
-    authorId: 'me',
-    title: '감사 제목',
-    content: '건강을 회복하게 해 주셔서 감사합니다.',
-    visibility: PrayerVisibility.public,
-    deleted: false,
-    createdAt: DateTime.now().subtract(const Duration(days: 1)),
-  ),
-  Prayer(
-    id: 's3',
-    authorId: 'other',
-    title: '새 직장을 위해',
-    content: '면접을 앞두고 있어요. 평안을 구합니다.',
-    visibility: PrayerVisibility.public,
-    deleted: false,
-    createdAt: DateTime.now(),
-  ),
-];
+  final List<Widget> children;
 
-/// 메신저 구조의 견본. 실제 기도제목 카드는 응원 기록을 읽어 오므로, 견본은 같은 모양의 단순한 카드로 그린다.
-class _SampleMessenger extends StatelessWidget {
-  const _SampleMessenger({required this.variant});
+  @override
+  State<_DesignRow> createState() => _DesignRowState();
+}
 
-  final String variant;
+class _DesignRowState extends State<_DesignRow> {
+  final _controller = ScrollController();
+  bool _canBack = false;
+  bool _canForward = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller.addListener(_update);
+    // 처음 그려진 뒤에 넘길 곳이 있는지 확인한다.
+    WidgetsBinding.instance.addPostFrameCallback((_) => _update());
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _update() {
+    if (!_controller.hasClients || !mounted) return;
+    final p = _controller.position;
+    final back = p.pixels > 1;
+    final forward = p.pixels < p.maxScrollExtent - 1;
+    if (back != _canBack || forward != _canForward) {
+      setState(() {
+        _canBack = back;
+        _canForward = forward;
+      });
+    }
+  }
+
+  void _page(int direction) {
+    final p = _controller.position;
+    _controller.animateTo(
+      (p.pixels + direction * (p.viewportDimension * 0.8)).clamp(
+        0.0,
+        p.maxScrollExtent,
+      ),
+      duration: const Duration(milliseconds: 260),
+      curve: Curves.easeOut,
+    );
+  }
+
+  Widget _arrow(bool left) => Positioned(
+    left: left ? 0 : null,
+    right: left ? null : 0,
+    top: 0,
+    bottom: 0,
+    child: Center(
+      child: Material(
+        color: context.palette.surface,
+        elevation: 4,
+        shape: const CircleBorder(),
+        child: IconButton(
+          tooltip: left ? '이전 디자인' : '다음 디자인',
+          icon: Icon(left ? Icons.chevron_left : Icons.chevron_right),
+          onPressed: () => _page(left ? -1 : 1),
+        ),
+      ),
+    ),
+  );
 
   @override
   Widget build(BuildContext context) {
-    final prayers = _samplePrayers();
-    if (neonShape(variant) == 'bubbles') {
-      final neon = NeonScheme.of(variant);
-      return Column(
+    return NotificationListener<SizeChangedLayoutNotification>(
+      onNotification: (_) {
+        WidgetsBinding.instance.addPostFrameCallback((_) => _update());
+        return false;
+      },
+      child: Stack(
         children: [
-          for (final p in prayers)
-            if (neon != null)
-              NeonPrayerBubble(
-                scheme: neon,
-                prayer: p,
-                mine: p.authorId == _sampleMe.id,
-                onTap: () {},
-              )
-            else
-              PrayerBubble(prayer: p, me: _sampleMe),
-        ],
-      );
-    }
-    final palette = context.palette;
-    return Column(
-      children: [
-        for (final p in prayers)
-          Container(
-            width: double.infinity,
-            margin: const EdgeInsets.only(bottom: 10),
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: palette.surface,
-              border: Border.all(color: palette.border),
-              borderRadius: BorderRadius.circular(AppRadius.card),
+          // 데스크탑에서는 마우스 끌기로는 기본적으로 밀리지 않으므로 모든 입력 장치를 허용한다.
+          ScrollConfiguration(
+            behavior: ScrollConfiguration.of(context).copyWith(
+              dragDevices: PointerDeviceKind.values.toSet(),
+              scrollbars: false,
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  p.title,
-                  style: const TextStyle(fontWeight: FontWeight.w700),
-                ),
-                const SizedBox(height: 4),
-                Text(p.content, maxLines: 2, overflow: TextOverflow.ellipsis),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Icon(
-                      Icons.favorite_border,
-                      size: 16,
-                      color: palette.accent,
+            child: SingleChildScrollView(
+              controller: _controller,
+              scrollDirection: Axis.horizontal,
+              // 선택 표시의 굵은 테두리와 그림자가 잘리지 않도록 위아래에 여백을 둔다.
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  for (final c in widget.children)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 12),
+                      child: c,
                     ),
-                    const SizedBox(width: 12),
-                    Icon(
-                      Icons.volunteer_activism_outlined,
-                      size: 16,
-                      color: palette.brand,
-                    ),
-                  ],
-                ),
-              ],
+                ],
+              ),
             ),
           ),
-      ],
+          if (_canBack) _arrow(true),
+          if (_canForward) _arrow(false),
+        ],
+      ),
+    );
+  }
+}
+
+/// 기도 요청 디자인의 견본: 기도제목 카드 두 장.
+class _SamplePrayers extends StatelessWidget {
+  const _SamplePrayers();
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = context.palette;
+    Widget card(String title, String body) => Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: palette.surface,
+        border: Border.all(color: palette.border),
+        borderRadius: BorderRadius.circular(AppRadius.card),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
+          const SizedBox(height: 4),
+          Text(body, style: TextStyle(color: palette.muted, fontSize: 13)),
+          const SizedBox(height: 8),
+          const Text('🙏 3   💗 5   📣 1'),
+        ],
+      ),
+    );
+    return Padding(
+      padding: const EdgeInsets.all(12),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          card('가족을 위해', '건강하게 지낼 수 있도록 기도해 주세요.'),
+          const SizedBox(height: 8),
+          card('시험을 앞두고', '마음의 평안을 구합니다.'),
+        ],
+      ),
     );
   }
 }

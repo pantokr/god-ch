@@ -89,7 +89,7 @@ class _RequestRow extends StatelessWidget {
     final reason = await showAppDialog<String>(
       context,
       maxWidth: 420,
-      child: const _RejectReasonForm(),
+      child: const RejectReasonForm(),
     );
     if (reason == null) return;
     await vm.reject(request, reason);
@@ -136,14 +136,14 @@ class _RequestRow extends StatelessWidget {
 }
 
 /// 거절 사유 입력. 입력한 사유를 돌려주고, 취소하면 null.
-class _RejectReasonForm extends StatefulWidget {
-  const _RejectReasonForm();
+class RejectReasonForm extends StatefulWidget {
+  const RejectReasonForm({super.key});
 
   @override
-  State<_RejectReasonForm> createState() => _RejectReasonFormState();
+  State<RejectReasonForm> createState() => RejectReasonFormState();
 }
 
-class _RejectReasonFormState extends State<_RejectReasonForm> {
+class RejectReasonFormState extends State<RejectReasonForm> {
   final _reason = TextEditingController();
 
   @override
@@ -159,7 +159,7 @@ class _RejectReasonFormState extends State<_RejectReasonForm> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text('요청을 거절할까요?', style: Theme.of(context).textTheme.titleLarge),
-        const SizedBox(height: 16),
+        AppField.spacer,
         TextField(
           controller: _reason,
           autofocus: true,

@@ -43,8 +43,44 @@ class MemberGate extends StatelessWidget {
               body: Center(child: CircularProgressIndicator()),
             );
           }
-          return builder(context, me);
+          return StreamBuilder<bool>(
+            stream: vm.closed,
+            builder: (context, closed) => closed.data == true
+                ? const _ClosedChurch()
+                : builder(context, me),
+          );
         },
+      ),
+    );
+  }
+}
+
+/// 폐쇄된 교회: 교인은 더 이상 들어갈 수 없다 (기록은 보관된다).
+class _ClosedChurch extends StatelessWidget {
+  const _ClosedChurch();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.lock_outline, size: 40),
+              const SizedBox(height: 16),
+              Text('폐쇄된 교회예요', style: Theme.of(context).textTheme.titleLarge),
+              const SizedBox(height: 8),
+              const Text('이 교회는 더 이상 사용할 수 없어요.'),
+              const SizedBox(height: 20),
+              FilledButton(
+                onPressed: () => context.go(Routes.churchList),
+                child: const Text('내 교회 목록'),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

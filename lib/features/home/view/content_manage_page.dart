@@ -9,7 +9,7 @@ import '../../../data/models/member.dart';
 import 'content_widgets.dart';
 
 /// 콘텐츠 관리: 교회 운영자 전용. 공지·일정 같은 글의 종류를 고르면 그 종류의 글을 관리한다.
-/// 페이지의 구성(메뉴 대분류, 구조)은 "페이지 편집"에서 따로 고친다.
+/// 페이지의 구성(메뉴 페이지, 구조)은 "페이지 편집"에서 따로 고친다.
 class ContentManagePage extends StatelessWidget {
   const ContentManagePage({super.key, required this.me});
 
@@ -30,10 +30,7 @@ class ContentManagePage extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const PageTitle(
-              title: '콘텐츠 관리',
-              subtitle: '페이지에 보여줄 공지·일정 같은 글을 종류별로 올리고 고쳐요.',
-            ),
+            const PageTitle(title: '콘텐츠 관리'),
             ColumnWrap(
               wide: 3,
               narrow: 2,

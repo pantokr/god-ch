@@ -29,7 +29,7 @@ class DashboardPage extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const PageTitle(title: '대시보드', subtitle: '서비스 전체 현황이에요.'),
+              const PageTitle(title: '대시보드'),
               CardGrid(
                 minColumnWidth: 240,
                 children: [

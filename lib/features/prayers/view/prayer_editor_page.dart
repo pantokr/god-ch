@@ -48,7 +48,7 @@ class _PrayerEditorPageState extends State<PrayerEditorPage> {
     if (router.canPop()) {
       router.pop();
     } else {
-      router.go(Routes.section(widget.me.churchId, ChurchSection.feed));
+      router.go(Routes.section(widget.me.churchId, ChurchSection.intercession));
     }
   }
 
@@ -82,62 +82,72 @@ class _PrayerEditorPageState extends State<PrayerEditorPage> {
         title: vm.isEditing ? '기도제목 수정' : '기도제목 쓰기',
         fallbackLocation: Routes.section(
           widget.me.churchId,
-          ChurchSection.feed,
+          ChurchSection.intercession,
         ),
-        child: Card(
-          child: Padding(
-            padding: const EdgeInsets.all(28),
-            child: Form(
-              key: _form,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  TextFormField(
-                    controller: _title,
-                    maxLength: 100,
-                    decoration: const InputDecoration(labelText: '제목'),
-                    validator: (v) =>
-                        (v == null || v.trim().isEmpty) ? '제목을 입력해 주세요' : null,
-                  ),
-                  const SizedBox(height: 12),
-                  TextFormField(
-                    controller: _content,
-                    maxLength: 3000,
-                    minLines: 8,
-                    maxLines: 16,
-                    decoration: const InputDecoration(
-                      labelText: '기도제목',
-                      alignLabelWithHint: true,
+        child: !vm.canWrite
+            ? const Card(
+                child: Padding(
+                  padding: EdgeInsets.all(48),
+                  child: Center(child: Text('교역자만 쓸 수 있습니다')),
+                ),
+              )
+            : Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(28),
+                  child: Form(
+                    key: _form,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        TextFormField(
+                          controller: _title,
+                          maxLength: 100,
+                          decoration: const InputDecoration(labelText: '제목'),
+                          validator: (v) => (v == null || v.trim().isEmpty)
+                              ? '제목을 입력해 주세요'
+                              : null,
+                        ),
+                        const SizedBox(height: 12),
+                        TextFormField(
+                          controller: _content,
+                          maxLength: 3000,
+                          minLines: 8,
+                          maxLines: 16,
+                          decoration: const InputDecoration(
+                            labelText: '기도제목',
+                            alignLabelWithHint: true,
+                          ),
+                          validator: (v) => (v == null || v.trim().isEmpty)
+                              ? '내용을 입력해 주세요'
+                              : null,
+                        ),
+                        const SizedBox(height: 16),
+                        // 게시 범위는 새 글을 쓸 때만 고를 수 있다.
+                        if (!vm.isEditing) _ScopePicker(vm: vm),
+                        // 교회가 비공개를 허용하지 않으면 공개 범위를 고를 수 없다.
+                        if (vm.settings.allowPrivate) _VisibilityPicker(vm: vm),
+                        const SizedBox(height: 24),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            TextButton(
+                              onPressed: vm.busy
+                                  ? null
+                                  : () => _leave(GoRouter.of(context)),
+                              child: const Text('취소'),
+                            ),
+                            const SizedBox(width: 8),
+                            FilledButton(
+                              onPressed: vm.busy ? null : () => _save(vm),
+                              child: const Text('저장'),
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
-                    validator: (v) =>
-                        (v == null || v.trim().isEmpty) ? '내용을 입력해 주세요' : null,
                   ),
-                  const SizedBox(height: 16),
-                  // 게시 범위는 새 글을 쓸 때만 고를 수 있다.
-                  if (!vm.isEditing) _ScopePicker(vm: vm),
-                  _VisibilityPicker(vm: vm),
-                  const SizedBox(height: 24),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      TextButton(
-                        onPressed: vm.busy
-                            ? null
-                            : () => _leave(GoRouter.of(context)),
-                        child: const Text('취소'),
-                      ),
-                      const SizedBox(width: 8),
-                      FilledButton(
-                        onPressed: vm.busy ? null : () => _save(vm),
-                        child: const Text('저장'),
-                      ),
-                    ],
-                  ),
-                ],
+                ),
               ),
-            ),
-          ),
-        ),
       ),
     );
   }

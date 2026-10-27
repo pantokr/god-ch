@@ -4,6 +4,7 @@ import '../../../core/layout/manage_list_row.dart';
 import '../../../core/theme.dart';
 import '../../../data/models/church.dart';
 import '../view_model/church_registry_view_model.dart';
+import '../../../core/widgets/app_inputs.dart';
 
 /// 등록된 교회 목록. 각 교회의 "관리"를 누르면 교회 상세 관리 화면이 열린다.
 class RegisteredChurches extends StatelessWidget {
@@ -36,13 +37,7 @@ class RegisteredChurches extends StatelessWidget {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            TextField(
-              onChanged: vm.setQuery,
-              decoration: const InputDecoration(
-                prefixIcon: Icon(Icons.search),
-                hintText: '교회 이름, 주소, 전화번호 검색',
-              ),
-            ),
+            AppSearchField(hint: '교회 이름, 주소, 전화번호 검색', onChanged: vm.setQuery),
             const SizedBox(height: 16),
             Text(
               '등록된 교회 (${all.length})',

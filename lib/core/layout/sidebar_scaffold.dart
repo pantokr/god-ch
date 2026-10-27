@@ -11,6 +11,7 @@ class SidebarItem {
     required this.selectedIcon,
     required this.selected,
     required this.onTap,
+    this.badge = 0,
   });
 
   final String label;
@@ -18,6 +19,9 @@ class SidebarItem {
   final IconData selectedIcon;
   final bool selected;
   final VoidCallback onTap;
+
+  /// 0보다 크면 메뉴 오른쪽에 숫자가 나타난다 (예: 인원 관리의 입장 요청 수).
+  final int badge;
 }
 
 /// 제목이 붙은 메뉴 묶음 (예: "관리").
@@ -28,10 +32,23 @@ class SidebarGroup {
   final List<SidebarItem> items;
 }
 
+/// 좁은 화면에서 서랍과 계정 띠를 함께 닫는 함수를 안쪽 위젯에 전해 준다.
+class _PanelCloser extends InheritedWidget {
+  const _PanelCloser({required this.close, required super.child});
+
+  final VoidCallback close;
+
+  static VoidCallback? of(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<_PanelCloser>()?.close;
+
+  @override
+  bool updateShouldNotify(_PanelCloser old) => false;
+}
+
 /// 파이어베이스 콘솔처럼 왼쪽에 앱 이름과 메뉴를 두는 화면 틀.
 /// - 넓은 화면: 왼쪽에 메뉴가 항상 보인다.
-/// - 좁은 화면: 상단 바 없이, 내용 위 왼쪽에 뜬 ☰ 버튼으로 같은 메뉴를 서랍(드로어)으로 연다.
-/// 오른쪽에는 열 필요 없는 얇은 띠가 있다: 프로필 · 로그아웃, 맨 아래에 설정.
+/// - 좁은 화면: ☰ 버튼을 누르면 왼쪽 메뉴와 오른쪽 계정 띠(기존과 같은 너비)가 함께 나타나 화면 너비를 나눠 채운다.
+/// 계정 띠: 프로필 · 로그아웃, 맨 아래에 설정. 넓은 화면에서는 오른쪽에 얇은 띠로 항상 보인다.
 class SidebarScaffold extends StatelessWidget {
   const SidebarScaffold({
     super.key,
@@ -43,6 +60,7 @@ class SidebarScaffold extends StatelessWidget {
     required this.child,
     this.sidebarHeader,
     this.railActions = const [],
+    this.bottomItems = const [],
   });
 
   final List<SidebarGroup> groups;
@@ -52,6 +70,9 @@ class SidebarScaffold extends StatelessWidget {
 
   /// 오른쪽 계정 띠에서 프로필 아래에 놓는 버튼들 (예: 알림).
   final List<Widget> railActions;
+
+  /// 하단 탭: 왼쪽 · 가운데(원형 버튼) · 오른쪽 셋. 좁은 화면에서만 아래에 뜨고, 넓은 화면에서는 왼쪽 메뉴 맨 위에 함께 놓인다.
+  final List<SidebarItem> bottomItems;
   final String userName;
   final VoidCallback onProfile;
   final VoidCallback onSettings;
@@ -66,13 +87,60 @@ class SidebarScaffold extends StatelessWidget {
   Widget build(BuildContext context) {
     final narrow = MediaQuery.sizeOf(context).width < kNarrow;
     final panel = _SidebarPanel(
-      groups: groups,
+      groups: narrow || bottomItems.isEmpty
+          ? groups
+          : [SidebarGroup(items: bottomItems), ...groups],
       header: sidebarHeader,
       // 서랍 안에서는 메뉴를 고르면 서랍을 닫는다.
       closeOnTap: narrow,
     );
-    final rail = Container(
-      width: railWidth,
+    final rail = AccountRail(
+      userName: userName,
+      onProfile: onProfile,
+      onSettings: onSettings,
+      onSignOut: onSignOut,
+      actions: railActions,
+    );
+
+    if (narrow) {
+      return _NarrowFrame(
+        panel: Material(
+          color: context.palette.surface,
+          child: SafeArea(child: panel),
+        ),
+        rail: rail,
+        bottomBar: bottomItems.isEmpty ? null : _PillTabBar(items: bottomItems),
+        child: child,
+      );
+    }
+    return _WideFrame(sidebar: panel, rail: rail, child: child);
+  }
+}
+
+/// 오른쪽 계정 띠: 프로필 사진 · 알림 등 · 로그아웃, 맨 아래에 설정.
+/// 교회 안에서는 서랍과 함께 열리고, 교회에 속하지 않았어도(내가 속한 교회 · 교회 탐색) 볼 수 있다.
+class AccountRail extends StatelessWidget {
+  const AccountRail({
+    super.key,
+    required this.userName,
+    required this.onProfile,
+    required this.onSettings,
+    required this.onSignOut,
+    this.actions = const [],
+  });
+
+  final String userName;
+  final VoidCallback onProfile;
+  final VoidCallback onSettings;
+  final VoidCallback onSignOut;
+
+  /// 프로필 아래에 놓는 버튼들 (예: 알림).
+  final List<Widget> actions;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: SidebarScaffold.railWidth,
       decoration: BoxDecoration(
         color: context.palette.surface,
         border: Border(left: BorderSide(color: context.palette.border)),
@@ -88,7 +156,7 @@ class SidebarScaffold extends StatelessWidget {
                   children: [
                     const SizedBox(height: 8),
                     _AvatarButton(name: userName, onTap: onProfile),
-                    ...railActions,
+                    ...actions,
                     _LogoutButton(onSignOut: onSignOut),
                     const Spacer(),
                     IconButton(
@@ -105,21 +173,6 @@ class SidebarScaffold extends StatelessWidget {
         ),
       ),
     );
-
-    if (narrow) {
-      return _NarrowFrame(
-        drawer: Drawer(
-          // 모바일에서는 화면 너비의 70%만 차지하고, 나머지 바깥을 누르면 닫힌다.
-          width: MediaQuery.sizeOf(context).width * 0.7,
-          backgroundColor: context.palette.surface,
-          shape: const RoundedRectangleBorder(),
-          child: SafeArea(child: panel),
-        ),
-        rail: rail,
-        child: child,
-      );
-    }
-    return _WideFrame(sidebar: panel, rail: rail, child: child);
   }
 }
 
@@ -210,7 +263,7 @@ class _SidebarPanel extends StatelessWidget {
                   height: 44,
                   decoration: BoxDecoration(
                     gradient: AppDepth.brand(context),
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: BorderRadius.circular(AppRadius.card),
                     boxShadow: [
                       BoxShadow(
                         color: palette.brand.withValues(alpha: 0.4),
@@ -240,7 +293,7 @@ class _SidebarPanel extends StatelessWidget {
                   IconButton(
                     tooltip: '닫기',
                     icon: const Icon(Icons.close),
-                    onPressed: () => Navigator.maybePop(context),
+                    onPressed: () => _PanelCloser.of(context)?.call(),
                   ),
               ],
             ),
@@ -301,7 +354,7 @@ class _SidebarTile extends StatelessWidget {
       child: InkWell(
         borderRadius: BorderRadius.circular(AppRadius.card + 2),
         onTap: () {
-          if (closeOnTap) Navigator.maybePop(context);
+          if (closeOnTap) _PanelCloser.of(context)?.call();
           item.onTap();
         },
         child: SizedBox(
@@ -326,7 +379,7 @@ class _SidebarTile extends StatelessWidget {
                 width: 38,
                 height: 38,
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(AppRadius.card),
                   gradient: selected ? AppDepth.brand(context) : null,
                   color: selected ? null : palette.ink.withValues(alpha: 0.06),
                   boxShadow: selected
@@ -358,7 +411,166 @@ class _SidebarTile extends StatelessWidget {
                   ),
                 ),
               ),
+              if (item.badge > 0)
+                Padding(
+                  padding: const EdgeInsets.only(right: 14),
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: AppDepth.brand(context),
+                      borderRadius: BorderRadius.circular(AppRadius.control),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 2,
+                      ),
+                      child: Text(
+                        item.badge > 99 ? '99+' : '${item.badge}',
+                        style: TextStyle(
+                          color: palette.onBrand,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// 하단 탭: 내용 아래에 떠 있는 알약 모양 바. [items]는 왼쪽 · 가운데 · 오른쪽 셋이고,
+/// 가운데(홈)는 알약 위로 솟은 원형 버튼이다. 양옆은 아이콘과 이름을 보여준다.
+class _PillTabBar extends StatelessWidget {
+  const _PillTabBar({required this.items}) : assert(items.length == 3);
+
+  final List<SidebarItem> items;
+
+  /// 가운데 원형 버튼의 지름과, 알약 바의 높이.
+  static const _circle = 64.0;
+  static const _bar = 58.0;
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = context.palette;
+    const radius = BorderRadius.all(Radius.circular(999));
+    // 원형 버튼이 알약 위로 솟는 만큼 위쪽을 비워 둔다.
+    const lift = _circle - _bar / 2 - 4;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+      child: SizedBox(
+        height: _bar + lift,
+        child: Stack(
+          alignment: Alignment.topCenter,
+          children: [
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              height: _bar,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: palette.surface,
+                  borderRadius: radius,
+                  border: Border.all(color: palette.border),
+                  boxShadow: AppShadow.soft(context),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(child: _SideTab(item: items[0])),
+                    // 가운데 원형 버튼이 놓일 자리.
+                    const SizedBox(width: _circle + 8),
+                    Expanded(child: _SideTab(item: items[2])),
+                  ],
+                ),
+              ),
+            ),
+            Positioned(top: 0, child: _HomeButton(item: items[1])),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// 양옆 탭: 아이콘 위에 이름. 고른 탭은 포인트색으로 굵게 보인다.
+class _SideTab extends StatelessWidget {
+  const _SideTab({required this.item});
+
+  final SidebarItem item;
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = context.palette;
+    final selected = item.selected;
+    final color = selected ? palette.brand : palette.muted;
+    return InkWell(
+      borderRadius: BorderRadius.circular(999),
+      onTap: item.onTap,
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              selected ? item.selectedIcon : item.icon,
+              size: 22,
+              color: color,
+            ),
+            const SizedBox(height: 2),
+            Text(
+              item.label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: color,
+                fontSize: 12,
+                fontWeight: selected ? FontWeight.w800 : FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// 가운데 원형 홈 버튼. 늘 네온 그라데이션이고, 홈에 있을 때는 빛이 더 강하다.
+class _HomeButton extends StatelessWidget {
+  const _HomeButton({required this.item});
+
+  final SidebarItem item;
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = context.palette;
+    return Tooltip(
+      message: item.label,
+      child: GestureDetector(
+        onTap: item.onTap,
+        child: Container(
+          width: _PillTabBar._circle,
+          height: _PillTabBar._circle,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: AppDepth.brand(context),
+            // 알약과 겹치는 가장자리를 배경색 고리로 갈라 준다.
+            border: Border.all(
+              color: Theme.of(context).scaffoldBackgroundColor,
+              width: 4,
+            ),
+            boxShadow: AppDepth.glow(
+              context,
+              strength: item.selected ? 1.2 : 0.6,
+            ),
+          ),
+          child: Icon(
+            item.selected ? item.selectedIcon : item.icon,
+            size: 30,
+            color: palette.onBrand,
           ),
         ),
       ),
@@ -401,40 +613,94 @@ class _TopBar extends StatelessWidget {
   }
 }
 
-/// 모바일 틀: 위에 메뉴(드로어) 버튼이 있는 상단바, 그 아래에 내용, 오른쪽에 계정 띠.
-class _NarrowFrame extends StatelessWidget {
+/// 모바일 틀: 위에 메뉴 버튼이 있는 상단바와 내용. 메뉴 버튼을 누르면 왼쪽 메뉴와 오른쪽 계정 띠가
+/// 양쪽에서 함께 나타나며, 둘의 너비를 합치면 화면 너비가 된다.
+class _NarrowFrame extends StatefulWidget {
   const _NarrowFrame({
-    required this.drawer,
+    required this.panel,
     required this.rail,
     required this.child,
+    this.bottomBar,
   });
 
-  final Widget drawer;
+  final Widget panel;
   final Widget rail;
   final Widget child;
+  final Widget? bottomBar;
+
+  @override
+  State<_NarrowFrame> createState() => _NarrowFrameState();
+}
+
+class _NarrowFrameState extends State<_NarrowFrame> {
+  static const _duration = Duration(milliseconds: 220);
+
+  bool _open = false;
+
+  void _setOpen(bool v) => setState(() => _open = v);
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      drawer: drawer,
-      body: Row(
-        children: [
-          Expanded(
-            child: Column(
+    return PopScope(
+      // 열려 있을 때 뒤로 가기는 앱을 나가지 않고 메뉴만 닫는다.
+      canPop: !_open,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _setOpen(false);
+      },
+      child: Scaffold(
+        body: Stack(
+          children: [
+            Column(
               children: [
-                Builder(
-                  builder: (context) => _TopBar(
-                    icon: Icons.menu,
-                    tooltip: '메뉴',
-                    onTap: () => Scaffold.of(context).openDrawer(),
-                  ),
+                _TopBar(
+                  icon: Icons.view_sidebar_outlined,
+                  tooltip: '메뉴',
+                  onTap: () => _setOpen(true),
                 ),
-                Expanded(child: child),
+                Expanded(child: widget.child),
+                ?widget.bottomBar,
               ],
             ),
-          ),
-          rail,
-        ],
+            Positioned.fill(
+              child: IgnorePointer(
+                ignoring: !_open,
+                child: LayoutBuilder(
+                  builder: (context, box) {
+                    final width = box.maxWidth;
+                    // 오른쪽 띠는 늘 같은 너비이고, 왼쪽 메뉴가 나머지를 채운다.
+                    const right = SidebarScaffold.railWidth;
+                    final left = width - right;
+                    return _PanelCloser(
+                      close: () => _setOpen(false),
+                      child: Stack(
+                        children: [
+                          AnimatedPositioned(
+                            duration: _duration,
+                            curve: Curves.easeOutCubic,
+                            left: _open ? 0 : -left,
+                            top: 0,
+                            bottom: 0,
+                            width: left,
+                            child: widget.panel,
+                          ),
+                          AnimatedPositioned(
+                            duration: _duration,
+                            curve: Curves.easeOutCubic,
+                            right: _open ? 0 : -right,
+                            top: 0,
+                            bottom: 0,
+                            width: right,
+                            child: widget.rail,
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -488,7 +754,9 @@ class _WideFrameState extends State<_WideFrame> {
             child: Column(
               children: [
                 _TopBar(
-                  icon: _open ? Icons.menu_open : Icons.menu,
+                  icon: _open
+                      ? Icons.view_sidebar
+                      : Icons.view_sidebar_outlined,
                   tooltip: _open ? '메뉴 접기' : '메뉴 펼치기',
                   onTap: () => setState(() => _open = !_open),
                 ),

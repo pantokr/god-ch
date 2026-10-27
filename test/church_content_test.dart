@@ -12,6 +12,6 @@ void main() {
 
   test('주소의 이름으로 콘텐츠 종류를 찾는다', () {
     expect(ContentKind.fromPath('sermons'), ContentKind.sermon);
-    expect(ContentKind.fromPath('prayers'), isNull);
+    expect(ContentKind.fromPath('unknown'), isNull);
   });
 }

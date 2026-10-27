@@ -40,6 +40,7 @@ class ChurchContent {
     this.imageUrls = const [],
     this.videoUrl = '',
     this.createdAt,
+    this.deleted = false,
   });
 
   final String id;
@@ -52,6 +53,9 @@ class ChurchContent {
   final List<String> imageUrls;
   final String videoUrl;
   final DateTime? createdAt;
+
+  /// 지워진 글인가. 글은 지우지 않고 표시만 남기며, 목록에는 나오지 않는다.
+  final bool deleted;
 
   String? get thumbnail {
     if (imageUrls.isNotEmpty) return imageUrls.first;
@@ -73,6 +77,7 @@ class ChurchContent {
       imageUrls: List<String>.from(d['imageUrls'] as List? ?? const []),
       videoUrl: d['videoUrl'] as String? ?? '',
       createdAt: created,
+      deleted: d['deleted'] == true,
     );
   }
 }

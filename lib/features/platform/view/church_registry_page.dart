@@ -1,3 +1,5 @@
+import 'church_closures_admin_card.dart';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -33,10 +35,7 @@ class ChurchRegistryPage extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const PageTitle(
-                title: '교회 관리',
-                subtitle: '교회 생성 요청을 처리하고, 등록된 교회를 관리해요.',
-              ),
+              const PageTitle(title: '교회 관리'),
               // 제목과 다른 줄에 둔다. 좁은 화면에서는 가로로 가득 채운다.
               Align(
                 alignment: narrow ? Alignment.center : Alignment.centerLeft,
@@ -54,6 +53,8 @@ class ChurchRegistryPage extends StatelessWidget {
               ),
               const SizedBox(height: 20),
               const ChurchRequestsAdminCard(),
+              const SizedBox(height: 16),
+              const ChurchClosuresAdminCard(),
               const SizedBox(height: 32),
               RegisteredChurches(
                 vm: vm,

@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
 
-import '../../../app/app_scope.dart';
 import '../../../core/theme.dart';
 import 'theme_mode_selector.dart';
 
-/// 설정 대화상자: 왼쪽에 세로로 내려가는 탭, 오른쪽에 고른 탭의 설정.
+/// 설정 대화상자: **앱 자체에 관한 것**만 있다 (화면 모드 · 앱 정보). 나에 관한 것(내 정보 · 비밀번호)은 프로필 창에 있다.
+/// 왼쪽에 세로로 내려가는 탭, 오른쪽에 고른 탭의 설정.
 Future<void> showSettingsDialog(BuildContext context) => showDialog<void>(
   context: context,
   builder: (_) => Dialog(
     insetPadding: const EdgeInsets.all(16),
     child: ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 680, maxHeight: 460),
+      constraints: const BoxConstraints(maxWidth: 680, maxHeight: 560),
       child: const _SettingsPanel(),
     ),
   ),
@@ -18,7 +18,6 @@ Future<void> showSettingsDialog(BuildContext context) => showDialog<void>(
 
 enum _Tab {
   display('화면', Icons.palette_outlined),
-  text('글자 크기', Icons.text_fields),
   about('앱 정보', Icons.info_outline);
 
   const _Tab(this.label, this.icon);
@@ -76,28 +75,24 @@ class _SettingsPanelState extends State<_SettingsPanel> {
             ],
           ),
         ),
+        // 저장 같은 버튼은 각 탭 안에 있으므로, 창을 닫는 버튼은 오른쪽 위 X 하나만 둔다.
         Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+          child: Stack(
             children: [
-              Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(24),
-                  child: switch (_tab) {
-                    _Tab.display => const ThemeModeSelector(),
-                    _Tab.text => const _TextSizeSetting(),
-                    _Tab.about => const _AboutSetting(),
-                  },
-                ),
+              SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(24, 24, 24, 24),
+                child: switch (_tab) {
+                  _Tab.display => const ThemeModeSelector(),
+                  _Tab.about => const _AboutSetting(),
+                },
               ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(24, 0, 24, 20),
-                child: Align(
-                  alignment: Alignment.centerRight,
-                  child: FilledButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: const Text('닫기'),
-                  ),
+              Positioned(
+                top: 4,
+                right: 4,
+                child: IconButton(
+                  tooltip: '닫기',
+                  icon: const Icon(Icons.close),
+                  onPressed: () => Navigator.pop(context),
                 ),
               ),
             ],
@@ -167,43 +162,6 @@ class _TabTile extends StatelessWidget {
   }
 }
 
-/// 글자 크기: 앱 전체 글자 배율을 고른다.
-class _TextSizeSetting extends StatelessWidget {
-  const _TextSizeSetting();
-
-  static final _labels = {0.9: '작게', 1.0: '보통', 1.15: '크게', 1.3: '아주 크게'};
-
-  @override
-  Widget build(BuildContext context) {
-    final controller = AppScope.read(context).themeMode;
-    final palette = context.palette;
-    return ListenableBuilder(
-      listenable: controller,
-      builder: (context, _) => Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('글자 크기', style: Theme.of(context).textTheme.titleSmall),
-          const SizedBox(height: 8),
-          SegmentedButton<double>(
-            showSelectedIcon: false,
-            segments: [
-              for (final s in const [0.9, 1.0, 1.15, 1.3])
-                ButtonSegment(value: s, label: Text(_labels[s]!)),
-            ],
-            selected: {controller.textScale},
-            onSelectionChanged: (s) => controller.setTextScale(s.first),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            '앱 전체의 글자 크기가 바뀌어요.',
-            style: TextStyle(color: palette.muted, fontSize: 12),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _AboutSetting extends StatelessWidget {
   const _AboutSetting();
 
@@ -215,7 +173,7 @@ class _AboutSetting extends StatelessWidget {
         Text('같이', style: Theme.of(context).textTheme.titleLarge),
         const SizedBox(height: 8),
         Text(
-          '교회가 함께 기도하고 소식을 나누는 공간이에요.',
+          '교회가 함께 말씀과 소식을 나누는 공간이에요.',
           style: TextStyle(color: context.palette.muted),
         ),
       ],

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../app/app_scope.dart';
 import '../../../core/mvvm/view_model_builder.dart';
 import '../../../core/theme.dart';
+import '../../../data/models/prayer_settings.dart';
 import '../../../data/models/reaction.dart';
 import '../view_model/reaction_bar_view_model.dart';
 
@@ -25,37 +26,51 @@ class ReactionBar extends StatelessWidget {
         churchId,
         prayerId,
       ),
-      builder: (context, vm) => StreamBuilder<ReactionSummary>(
-        stream: vm.summary,
-        builder: (context, snap) {
-          final summary = snap.data ?? ReactionSummary.empty;
-          return Row(
-            children: [
-              Expanded(
-                child: Wrap(
-                  spacing: 6,
-                  runSpacing: 6,
-                  children: [
-                    for (final r in reactionTypes)
-                      _ReactionPill(
-                        type: r,
-                        count: summary.counts[r.id] ?? 0,
-                        selected: summary.mine.contains(r.id),
-                        onTap: snap.hasData
-                            ? () => vm.toggle(
-                                r.id,
-                                currentlyOn: summary.mine.contains(r.id),
-                              )
-                            : null,
+      builder: (context, vm) => StreamBuilder<PrayerSettings>(
+        stream: vm.settings,
+        initialData: PrayerSettings.standard,
+        builder: (context, cfg) {
+          final settings = cfg.data ?? PrayerSettings.standard;
+          // 교회가 응원을 끄면 아무것도 보이지 않는다.
+          if (!settings.reactionsOn) return const SizedBox.shrink();
+          return StreamBuilder<ReactionSummary>(
+            stream: vm.summary,
+            builder: (context, snap) {
+              final summary = snap.data ?? ReactionSummary.empty;
+              return Row(
+                children: [
+                  Expanded(
+                    child: Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: [
+                        for (final r in settings.reactionList)
+                          _ReactionPill(
+                            type: r,
+                            count: summary.counts[r.id] ?? 0,
+                            showCount: settings.showCounts,
+                            selected: summary.mine.contains(r.id),
+                            onTap: snap.hasData
+                                ? () => vm.toggle(
+                                    r.id,
+                                    currentlyOn: summary.mine.contains(r.id),
+                                  )
+                                : null,
+                          ),
+                      ],
+                    ),
+                  ),
+                  if (settings.showCounts)
+                    Text(
+                      '응원 ${summary.total}',
+                      style: TextStyle(
+                        color: context.palette.muted,
+                        fontSize: 13,
                       ),
-                  ],
-                ),
-              ),
-              Text(
-                '응원 ${summary.total}',
-                style: TextStyle(color: context.palette.muted, fontSize: 13),
-              ),
-            ],
+                    ),
+                ],
+              );
+            },
           );
         },
       ),
@@ -67,12 +82,14 @@ class _ReactionPill extends StatelessWidget {
   const _ReactionPill({
     required this.type,
     required this.count,
+    required this.showCount,
     required this.selected,
     required this.onTap,
   });
 
   final ReactionType type;
   final int count;
+  final bool showCount;
   final bool selected;
   final VoidCallback? onTap;
 
@@ -98,7 +115,7 @@ class _ReactionPill extends StatelessWidget {
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             child: Text(
-              '${type.emoji} $count',
+              showCount ? '${type.emoji} $count' : type.emoji,
               style: TextStyle(
                 color: selected ? context.palette.accent : context.palette.ink,
                 fontWeight: selected ? FontWeight.w700 : FontWeight.w500,

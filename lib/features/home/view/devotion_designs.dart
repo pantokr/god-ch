@@ -8,6 +8,7 @@ import '../../../data/models/church_content.dart';
 import '../../../data/models/devotion_reflection.dart';
 import '../../../data/models/member.dart';
 import '../view_model/devotion_reflections_view_model.dart';
+import 'block_theme.dart';
 
 /// 디자인 견본에 쓰는 남겨진 글 (실제 저장소를 읽지 않는다).
 const sampleReflections = [
@@ -27,9 +28,11 @@ class DevotionBlockItem extends StatelessWidget {
     required this.content,
     required this.me,
     required this.onOpen,
+    required this.theme,
   });
 
   final String variant;
+  final BlockTheme theme;
   final ChurchContent content;
   final Member me;
   final VoidCallback onOpen;
@@ -47,6 +50,7 @@ class DevotionBlockItem extends StatelessWidget {
         stream: vm.reflections,
         builder: (context, snap) => DevotionDesign(
           variant: variant,
+          theme: theme,
           content: content,
           reflections: snap.data ?? const [],
           myId: me.id,
@@ -75,6 +79,7 @@ class DevotionDesign extends StatefulWidget {
   const DevotionDesign({
     super.key,
     required this.variant,
+    required this.theme,
     required this.content,
     required this.reflections,
     this.myId = '',
@@ -87,6 +92,9 @@ class DevotionDesign extends StatefulWidget {
   });
 
   final String variant;
+
+  /// 스타일·팔레트로 만든 색 구성. 이 디자인 안에서는 앱 팔레트 대신 이것을 쓴다.
+  final BlockTheme theme;
   final ChurchContent content;
   final List<DevotionReflection> reflections;
   final String myId;
@@ -131,19 +139,12 @@ class _DevotionDesignState extends State<DevotionDesign> {
     if (ok && mounted) FocusScope.of(context).unfocus();
   }
 
-  /// 면 하나: 둥근 카드에 그림자.
+  /// 면 하나: 스타일에 맞는 면 · 테두리 · 그림자.
   Widget _card(BuildContext context, Widget child) {
-    final palette = context.palette;
-    final radius = BorderRadius.circular(AppRadius.card);
     return DecoratedBox(
-      decoration: BoxDecoration(
-        color: palette.surface,
-        borderRadius: radius,
-        border: Border.all(color: palette.border.withValues(alpha: 0.7)),
-        boxShadow: AppShadow.soft(context),
-      ),
+      decoration: widget.theme.card(),
       child: ClipRRect(
-        borderRadius: radius,
+        borderRadius: BorderRadius.circular(AppRadius.card),
         child: Material(
           type: MaterialType.transparency,
           child: Padding(padding: const EdgeInsets.all(20), child: child),
@@ -166,8 +167,45 @@ class _DevotionDesignState extends State<DevotionDesign> {
     ..._others(context),
   ];
 
+  /// 이 디자인 안의 글자·입력칸·버튼·구분선이 고른 스타일의 색을 따르도록 테마를 덮어쓴다.
+  ThemeData _themed(BuildContext context) {
+    final t = widget.theme;
+    final base = Theme.of(context);
+    return base.copyWith(
+      extensions: [
+        AppPalette(
+          ink: t.text,
+          muted: t.sub,
+          bg: t.surface,
+          surface: t.surface,
+          border: t.border,
+          brand: t.accent,
+          onBrand: t.onAccent,
+          accent: t.accent2,
+        ),
+      ],
+      textTheme: base.textTheme.apply(bodyColor: t.text, displayColor: t.text),
+      colorScheme: base.colorScheme.copyWith(
+        primary: t.accent,
+        onPrimary: t.onAccent,
+        onSurface: t.text,
+      ),
+      inputDecorationTheme: base.inputDecorationTheme.copyWith(
+        fillColor: t.text.withValues(alpha: 0.07),
+        labelStyle: TextStyle(color: t.sub.withValues(alpha: 0.8)),
+        floatingLabelStyle: TextStyle(color: t.accent),
+        counterStyle: const TextStyle(fontSize: 0, height: 0),
+      ),
+    );
+  }
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => Theme(
+    data: _themed(context),
+    child: Builder(builder: _content),
+  );
+
+  Widget _content(BuildContext context) {
     if (widget.variant.startsWith('twin')) return _twin(context);
     final palette = context.palette;
     return _card(

@@ -3,6 +3,7 @@ import 'package:flutter/widgets.dart';
 import '../features/auth/data/auth_repository.dart';
 import '../features/bible/data/bible_repository.dart';
 import '../features/auth/data/profile_repository.dart';
+import '../features/church/data/church_closure_repository.dart';
 import '../features/church/data/church_repository.dart';
 import '../features/church/data/church_request_repository.dart';
 import '../features/church/data/department_repository.dart';
@@ -25,6 +26,7 @@ class AppScope extends InheritedWidget {
     required this.churches,
     required this.churchRequests,
     required this.churchRegistry,
+    required this.churchClosures,
     required this.departments,
     required this.contents,
     required this.reflections,
@@ -43,6 +45,7 @@ class AppScope extends InheritedWidget {
   final ChurchRepository churches;
   final ChurchRequestRepository churchRequests;
   final ChurchRegistryRepository churchRegistry;
+  final ChurchClosureRepository churchClosures;
   final DepartmentRepository departments;
   final ContentRepository contents;
   final ReflectionRepository reflections;

@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../../../core/app_exception.dart';
 import '../../../data/firestore_paths.dart';
+import '../../../data/models/church_features.dart';
 import '../../../data/models/department.dart';
 import '../../auth/data/auth_repository.dart';
 
@@ -22,6 +23,16 @@ class DepartmentRepository {
             .map((d) => Department(d.id, d.data()['name'] as String? ?? ''))
             .toList(),
       );
+
+  DocumentReference<Map<String, dynamic>> _features(String churchId) =>
+      _paths.church(churchId).collection('settings').doc('features');
+
+  /// 부서별로 기도 · 말씀 탭을 쓸 수 있는지. 설정한 적 없으면 모두 허용.
+  Stream<ChurchFeatures> features(String churchId) =>
+      _features(churchId).snapshots().map(ChurchFeatures.fromDoc);
+
+  Future<void> setFeatures(String churchId, ChurchFeatures features) =>
+      _features(churchId).set(features.toMap());
 
   Future<void> create(String churchId, String name) {
     final trimmed = name.trim();

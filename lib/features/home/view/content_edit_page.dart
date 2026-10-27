@@ -390,7 +390,7 @@ class _ContentFormState extends State<_ContentForm> {
           '${_kind.label} ${editing ? '수정' : '추가'}',
           style: Theme.of(context).textTheme.titleLarge,
         ),
-        const SizedBox(height: 16),
+        AppField.spacer,
         TextField(
           controller: _title,
           autofocus: true,

@@ -1,7 +1,10 @@
+import 'package:flutter/gestures.dart' show PointerDeviceKind;
 import 'package:flutter/material.dart';
 
 import '../../../core/theme.dart';
+import '../../../data/models/block_style.dart';
 import '../../../data/models/church_content.dart';
+import 'block_theme.dart';
 import 'content_widgets.dart';
 
 /// 달력 한 가지 모양의 색 구성. 달력 디자인마다 하나씩 있다.
@@ -62,14 +65,41 @@ class CalendarStyle {
   /// 달력 카드와 말풍선의 테두리 (없으면 그림자만).
   final Color? border;
 
+  /// 블록이 고른 스타일·팔레트([BlockTheme])에서 만든 색 구성.
+  /// 달력(격자 + 옆 카드) · 날짜 띠 · 일정표가 모두 이것을 쓴다.
+  factory CalendarStyle.fromTheme(BlockTheme t) => CalendarStyle(
+    body: t.surfaceGradient,
+    header: t.accentGradient,
+    headerText: t.onAccent,
+    weekday: t.sub,
+    sunday: t.sunday,
+    text: t.text,
+    eventText: t.accent,
+    selected: t.accentGradient,
+    selectedText: t.onAccent,
+    glow: t.accent,
+    today: t.accent2,
+    dot: t.accent2,
+    bubble: t.surface2,
+    bubbleBar: LinearGradient(
+      begin: Alignment.topCenter,
+      end: Alignment.bottomCenter,
+      colors: [t.accent, t.accent2],
+    ),
+    bubbleDate: t.accent,
+    bubbleTitle: t.text,
+    bubbleSub: t.sub,
+    border: t.style == BlockStyle.neon ? null : t.border,
+  );
+
   /// 디자인 id → 색 구성. 모르는 id는 기본(paper)이다.
   static CalendarStyle of(String variant, BuildContext context) =>
       switch (variant) {
-        'calendar' => _neon,
+        'calendar' || 'strip_neon' => _neon,
         'calendar_sunset' => _sunset,
         'calendar_mono' =>
           Theme.of(context).brightness == Brightness.dark ? _monoDark : _mono,
-        'calendar_pastel' =>
+        'calendar_pastel' || 'strip_pastel' =>
           Theme.of(context).brightness == Brightness.dark
               ? _pastelDark
               : _pastel,
@@ -274,13 +304,17 @@ class MonthCalendar extends StatefulWidget {
     required this.events,
     required this.onOpen,
     this.hint = '',
-    this.variant = 'calendar_mono',
+    this.variant = 'calendar',
+    this.theme,
   });
 
   final List<ChurchContent> events;
   final void Function(ChurchContent) onOpen;
   final String hint;
   final String variant;
+
+  /// 블록이 고른 스타일·팔레트. 없으면 [variant]에 묶인 예전 색을 쓴다.
+  final BlockTheme? theme;
 
   @override
   State<MonthCalendar> createState() => _MonthCalendarState();
@@ -308,6 +342,20 @@ class _MonthCalendarState extends State<MonthCalendar> {
   /// 누른 날짜(일). 일정이 없는 날짜도 골라서 그날 일정이 없음을 볼 수 있다.
   int? _selected;
 
+  /// 날짜 띠 배치에서 오늘이 가운데쯤 보이도록 처음 위치를 잡는다.
+  late final ScrollController _strip = ScrollController(
+    initialScrollOffset: ((DateTime.now().day - 3) * _StripLayout.pitch).clamp(
+      0.0,
+      double.infinity,
+    ),
+  );
+
+  @override
+  void dispose() {
+    _strip.dispose();
+    super.dispose();
+  }
+
   /// 이번 달 일정만 달력에 나타낸다.
   List<ChurchContent> get _monthEvents {
     final now = DateTime.now();
@@ -324,7 +372,9 @@ class _MonthCalendarState extends State<MonthCalendar> {
   Widget build(BuildContext context) {
     final onOpen = widget.onOpen;
     final hint = widget.hint;
-    final style = CalendarStyle.of(widget.variant, context);
+    final style = widget.theme != null
+        ? CalendarStyle.fromTheme(widget.theme!)
+        : CalendarStyle.of(widget.variant, context);
     final events = _monthEvents;
     final dated = {for (final e in events) e.date.day};
     final selected = _selected ?? _defaultDay(events);
@@ -339,6 +389,21 @@ class _MonthCalendarState extends State<MonthCalendar> {
     final today = DateTime.now();
     final first = DateTime(today.year, today.month);
     final days = DateUtils.getDaysInMonth(first.year, first.month);
+    if (widget.variant.startsWith('strip')) {
+      return _StripLayout(
+        style: style,
+        controller: _strip,
+        first: first,
+        days: days,
+        today: today.day,
+        selected: selected,
+        dated: dated,
+        shown: shown,
+        emptyText: noEvent,
+        onSelect: (d) => setState(() => _selected = d),
+        onOpen: onOpen,
+      );
+    }
     final lead = first.weekday % 7; // 일요일 시작 (DateTime.weekday: 월=1 … 일=7)
     final rows = ((lead + days) / 7).ceil();
     final calendarHeight = _gridTop + rows * _rowPitch + _pad;
@@ -789,6 +854,212 @@ class _Bubble extends StatelessWidget {
                 ),
               ),
             ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// 날짜 띠 배치: 위에 "n월" 머리글, 가로로 밀어 보는 날짜 띠, 그 아래에 고른 날의 일정 카드.
+/// 격자 달력보다 세로로 낮고, 좁은 화면에서도 한 줄로 넘겨 볼 수 있다.
+class _StripLayout extends StatelessWidget {
+  const _StripLayout({
+    required this.style,
+    required this.controller,
+    required this.first,
+    required this.days,
+    required this.today,
+    required this.selected,
+    required this.dated,
+    required this.shown,
+    required this.emptyText,
+    required this.onSelect,
+    required this.onOpen,
+  });
+
+  /// 날짜 칩 하나의 가로 간격(칩 너비 + 여백).
+  static const pitch = 58.0;
+
+  final CalendarStyle style;
+  final ScrollController controller;
+  final DateTime first;
+  final int days;
+  final int today;
+  final int selected;
+  final Set<int> dated;
+  final List<ChurchContent> shown;
+  final String emptyText;
+  final void Function(int day) onSelect;
+  final void Function(ChurchContent) onOpen;
+
+  @override
+  Widget build(BuildContext context) {
+    final radius = BorderRadius.circular(AppRadius.card + 2);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Container(
+          decoration: BoxDecoration(
+            borderRadius: radius,
+            boxShadow: AppDepth.raised(context, tint: style.glow),
+          ),
+          child: ClipRRect(
+            borderRadius: radius,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: style.body,
+                border: style.border == null
+                    ? null
+                    : Border.all(color: style.border!, width: 2),
+                borderRadius: radius,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 10,
+                    ),
+                    decoration: BoxDecoration(gradient: style.header),
+                    child: Row(
+                      children: [
+                        Text(
+                          '${first.month}월',
+                          style: TextStyle(
+                            color: style.headerText,
+                            fontSize: 20,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          '${first.year}',
+                          style: TextStyle(
+                            color: style.headerText.withValues(alpha: 0.7),
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const Spacer(),
+                        Text(
+                          '${dated.length}일에 일정',
+                          style: TextStyle(
+                            color: style.headerText.withValues(alpha: 0.8),
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  SizedBox(
+                    height: 86,
+                    child: ScrollConfiguration(
+                      // 데스크탑에서도 마우스로 끌어서 밀 수 있게 한다.
+                      behavior: ScrollConfiguration.of(context).copyWith(
+                        dragDevices: PointerDeviceKind.values.toSet(),
+                        scrollbars: false,
+                      ),
+                      child: ListView.builder(
+                        controller: controller,
+                        scrollDirection: Axis.horizontal,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 10,
+                        ),
+                        itemCount: days,
+                        itemBuilder: (context, i) => _chip(context, i + 1),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        if (shown.isEmpty)
+          EmptyHint(emptyText)
+        else
+          for (final e in shown)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: _Bubble(style: style, event: e, onTap: () => onOpen(e)),
+            ),
+      ],
+    );
+  }
+
+  Widget _chip(BuildContext context, int day) {
+    final date = DateTime(first.year, first.month, day);
+    final isSelected = day == selected;
+    final isToday = day == today;
+    final hasEvent = dated.contains(day);
+    final sunday = date.weekday == DateTime.sunday;
+    final color = isSelected
+        ? style.selectedText
+        : sunday
+        ? style.sunday
+        : style.text;
+    return Padding(
+      padding: const EdgeInsets.only(right: pitch - 50),
+      child: InkWell(
+        onTap: () => onSelect(day),
+        borderRadius: BorderRadius.circular(AppRadius.card),
+        child: Container(
+          width: 50,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(AppRadius.card),
+            gradient: isSelected ? style.selected : null,
+            border: isToday && !isSelected
+                ? Border.all(color: style.today, width: 1.5)
+                : null,
+            boxShadow: isSelected
+                ? [
+                    BoxShadow(
+                      color: style.glow.withValues(alpha: 0.5),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
+                  ]
+                : null,
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                MonthCalendar._weekdays[date.weekday % 7],
+                style: TextStyle(
+                  color: isSelected
+                      ? style.selectedText.withValues(alpha: 0.8)
+                      : style.weekday,
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                '$day',
+                style: TextStyle(
+                  color: color,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Container(
+                width: 5,
+                height: 5,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: hasEvent
+                      ? (isSelected ? style.selectedText : style.dot)
+                      : Colors.transparent,
+                ),
+              ),
+            ],
           ),
         ),
       ),

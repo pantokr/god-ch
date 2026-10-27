@@ -61,13 +61,13 @@ class MyChurchesRoute extends StatelessWidget {
                   .toList(),
               userName: vm.userName,
               onSignOut: vm.signOut,
-              // 부서 공간은 그 부서의 중보기도로, 교회 전체는 메인으로 들어간다.
+              // 부서 공간과 교회 전체 모두 메인으로 들어간다 (부서 공간은 주소에 부서가 붙는다).
               onOpen: (church, department) => context.go(
                 department == null
                     ? Routes.home(church.churchId)
                     : Routes.section(
                         church.churchId,
-                        ChurchSection.feed,
+                        ChurchSection.home,
                         dept: department.id,
                       ),
               ),

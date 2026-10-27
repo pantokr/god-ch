@@ -9,11 +9,11 @@ String? go(SessionStatus status, String location) =>
 void main() {
   group('로그인 상태별 주소 이동', () {
     test('확인 중에는 어떤 주소든 /loading으로 가고, 원래 주소를 기억한다', () {
-      final r = go(SessionStatus.loading, '/churches/abc/prayers?dept=d1')!;
+      final r = go(SessionStatus.loading, '/churches/abc/home?dept=d1')!;
       expect(Uri.parse(r).path, Routes.loading);
       expect(
         Uri.parse(r).queryParameters['from'],
-        '/churches/abc/prayers?dept=d1',
+        '/churches/abc/home?dept=d1',
       );
       expect(go(SessionStatus.loading, Routes.loading), isNull);
     });
@@ -21,9 +21,9 @@ void main() {
     test('로그인 전에는 로그인/가입만 볼 수 있다', () {
       expect(go(SessionStatus.signedOut, Routes.login), isNull);
       expect(go(SessionStatus.signedOut, Routes.signUp), isNull);
-      final r = go(SessionStatus.signedOut, '/churches/abc/mine')!;
+      final r = go(SessionStatus.signedOut, '/churches/abc/gallery')!;
       expect(Uri.parse(r).path, Routes.login);
-      expect(Uri.parse(r).queryParameters['from'], '/churches/abc/mine');
+      expect(Uri.parse(r).queryParameters['from'], '/churches/abc/gallery');
       // 기억할 주소가 없으면 from 없이 로그인으로.
       expect(go(SessionStatus.signedOut, '/'), Routes.login);
     });
@@ -37,10 +37,10 @@ void main() {
       expect(go(SessionStatus.member, '/'), Routes.churches);
       expect(go(SessionStatus.member, Routes.login), Routes.churches);
       expect(
-        go(SessionStatus.member, '/loading?from=%2Fchurches%2Fabc%2Fmine'),
-        '/churches/abc/mine',
+        go(SessionStatus.member, '/loading?from=%2Fchurches%2Fabc%2Fgallery'),
+        '/churches/abc/gallery',
       );
-      expect(go(SessionStatus.member, '/churches/abc/prayers'), isNull);
+      expect(go(SessionStatus.member, '/churches/abc/home'), isNull);
     });
 
     test('회원은 운영자 패널에 들어갈 수 없다', () {
@@ -52,7 +52,7 @@ void main() {
       expect(go(SessionStatus.operator, '/'), Routes.admin);
       expect(go(SessionStatus.operator, Routes.login), Routes.admin);
       expect(go(SessionStatus.operator, '/churches'), Routes.admin);
-      expect(go(SessionStatus.operator, '/churches/abc/prayers'), Routes.admin);
+      expect(go(SessionStatus.operator, '/churches/abc/home'), Routes.admin);
       expect(go(SessionStatus.operator, '/admin/churches/abc'), isNull);
     });
 
@@ -75,12 +75,12 @@ void main() {
 
   group('주소 만들기', () {
     test('부서 전용 공간은 dept 쿼리로 구분한다', () {
-      expect(Routes.section('c1', ChurchSection.feed), '/churches/c1/prayers');
+      expect(Routes.section('c1', ChurchSection.home), '/churches/c1/home');
       expect(
-        Routes.section('c1', ChurchSection.feed, dept: 'd1'),
-        '/churches/c1/prayers?dept=d1',
+        Routes.section('c1', ChurchSection.home, dept: 'd1'),
+        '/churches/c1/home?dept=d1',
       );
-      expect(ChurchSection.fromPath('mine'), ChurchSection.mine);
+      expect(ChurchSection.fromPath('gallery'), ChurchSection.gallery);
       expect(ChurchSection.fromPath('nope'), isNull);
     });
 

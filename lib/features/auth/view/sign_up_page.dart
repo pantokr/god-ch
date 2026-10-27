@@ -10,6 +10,7 @@ import '../../../core/widgets/blur_validated_field.dart';
 import '../../../core/widgets/required_label.dart';
 import '../data/auth_repository.dart';
 import '../data/login_id.dart';
+import '../data/password_rule.dart';
 import '../view_model/sign_up_view_model.dart';
 import 'consent_checkbox.dart';
 import 'profile_extra_fields.dart';
@@ -105,9 +106,7 @@ class _SignUpPageState extends State<SignUpPage> {
                                 label: const RequiredLabel('비밀번호'),
                                 suffixText: '8자 이상',
                               ),
-                              validator: (v) => (v == null || v.length < 8)
-                                  ? '8자 이상 입력해 주세요'
-                                  : null,
+                              validator: PasswordRule.validate,
                             ),
                             BlurValidatedField(
                               controller: _passwordConfirm,
@@ -116,7 +115,7 @@ class _SignUpPageState extends State<SignUpPage> {
                                 label: const RequiredLabel('비밀번호 확인'),
                               ),
                               validator: (v) =>
-                                  v != _password.text ? '비밀번호가 일치하지 않아요' : null,
+                                  PasswordRule.confirm(v, _password.text),
                             ),
                           ],
                         ),

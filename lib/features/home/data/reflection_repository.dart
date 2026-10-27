@@ -29,7 +29,20 @@ class ReflectionRepository {
       .orderBy('updatedAt', descending: true)
       .limit(limit)
       .snapshots()
-      .map((s) => s.docs.map(DevotionReflection.fromDoc).toList());
+      .map(
+        (s) => s.docs
+            .map(DevotionReflection.fromDoc)
+            .where((r) => !r.deleted)
+            .toList(),
+      );
+
+  /// 이 말씀묵상 글에 내가 쓴 글. 없으면 null.
+  Future<DevotionReflection?> mine(String churchId, String devotionId) async {
+    final doc = await _col(churchId, devotionId).doc(_auth.uid).get();
+    if (!doc.exists) return null;
+    final r = DevotionReflection.fromDoc(doc);
+    return r.deleted ? null : r;
+  }
 
   /// 내 글을 처음 쓰거나 고친다.
   Future<void> saveMine(
@@ -51,7 +64,11 @@ class ReflectionRepository {
     });
   }
 
-  /// 글을 지운다. 본인 글이거나 교역자·교회 운영자만 가능하다.
+  /// 글을 지운 것으로 표시한다 (문서는 남긴다). 본인 글이거나 교역자·교회 운영자만 가능하다.
   Future<void> delete(String churchId, String devotionId, String authorId) =>
-      _col(churchId, devotionId).doc(authorId).delete();
+      _col(churchId, devotionId).doc(authorId).update({
+        'deleted': true,
+        'deletedAt': FieldValue.serverTimestamp(),
+        'deletedBy': _auth.uid,
+      });
 }

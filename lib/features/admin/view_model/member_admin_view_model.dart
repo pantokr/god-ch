@@ -74,6 +74,9 @@ class MemberAdminViewModel extends ViewModel {
 
   bool canChangeRole(Member m) => m.id != me.id && me.isAdmin;
 
+  /// 교인 삭제는 교회 운영자만, 본인 계정은 제외.
+  bool canDelete(Member m) => m.id != me.id && me.isAdmin;
+
   /// 이름·전화번호는 교회 운영자만 고친다 (본인 정보는 '내 정보'에서). 소속 부서는 교역자도 고친다.
   bool canEditProfile(Member m) => m.id != me.id && me.isAdmin;
 
@@ -137,6 +140,13 @@ class MemberAdminViewModel extends ViewModel {
   // ---- 동작 ----
   Future<void> approve(Member m) =>
       run(() => _members.setStatus(me.churchId, m.id, MemberStatus.approved));
+
+  Future<void> remove(Member m) =>
+      run(() => _members.remove(me.churchId, me.churchName, m.id));
+
+  /// 차단 목록에 올리고 교회에서 내보낸다.
+  Future<void> block(Member m) =>
+      run(() => _members.blockMember(me.churchId, me.churchName, m));
 
   Future<void> disable(Member m) =>
       run(() => _members.setStatus(me.churchId, m.id, MemberStatus.disabled));

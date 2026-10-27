@@ -4,6 +4,7 @@ import '../../../app/app_scope.dart';
 import '../../../core/theme.dart';
 import '../../../data/bible_books.dart';
 import '../data/bible_repository.dart';
+import '../../../core/widgets/app_inputs.dart';
 
 /// 고른 구절: 제목(예: 요한복음 3:16-18 (개역개정))과 절 번호가 붙은 본문.
 class BiblePick {
@@ -88,21 +89,20 @@ class _BiblePickerDialogState extends State<BiblePickerDialog> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text('성경 구절 불러오기', style: theme.textTheme.titleLarge),
-            const SizedBox(height: 12),
-            DropdownButtonFormField<BibleVersion>(
-              initialValue: _version,
-              decoration: const InputDecoration(labelText: '번역'),
+            AppField.spacer,
+            AppDropdown<BibleVersion>(
+              value: _version,
+              label: '번역',
               items: [
                 for (final v in BibleVersion.values)
                   DropdownMenuItem(value: v, child: Text(v.label)),
               ],
               onChanged: (v) => setState(() => _version = v!),
             ),
-            const SizedBox(height: 8),
-            DropdownButtonFormField<int>(
-              initialValue: _book,
-              decoration: const InputDecoration(labelText: '책'),
-              menuMaxHeight: 320,
+            AppField.spacer,
+            AppDropdown<int>(
+              value: _book,
+              label: '책',
               items: [
                 for (var i = 0; i < bibleBooks.length; i++)
                   DropdownMenuItem(value: i, child: Text(bibleBooks[i])),
@@ -113,15 +113,14 @@ class _BiblePickerDialogState extends State<BiblePickerDialog> {
                 _resetRange(bible);
               }),
             ),
-            const SizedBox(height: 8),
+            AppField.spacer,
             Row(
               children: [
                 Expanded(
-                  child: DropdownButtonFormField<int>(
+                  child: AppDropdown<int>(
                     key: ValueKey('c$_book'),
-                    initialValue: _chapter,
-                    decoration: const InputDecoration(labelText: '장'),
-                    menuMaxHeight: 320,
+                    value: _chapter,
+                    label: '장',
                     items: [
                       for (var i = 0; i < chapters; i++)
                         DropdownMenuItem(value: i, child: Text('${i + 1}장')),
@@ -134,11 +133,10 @@ class _BiblePickerDialogState extends State<BiblePickerDialog> {
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: DropdownButtonFormField<int>(
+                  child: AppDropdown<int>(
                     key: ValueKey('f$_book/$_chapter'),
-                    initialValue: _from,
-                    decoration: const InputDecoration(labelText: '시작 절'),
-                    menuMaxHeight: 320,
+                    value: _from,
+                    label: '시작 절',
                     items: [
                       for (var i = 0; i < verses.length; i++)
                         DropdownMenuItem(value: i, child: Text('${i + 1}절')),
@@ -151,11 +149,10 @@ class _BiblePickerDialogState extends State<BiblePickerDialog> {
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: DropdownButtonFormField<int>(
+                  child: AppDropdown<int>(
                     key: ValueKey('t$_book/$_chapter/$_from/$_to'),
-                    initialValue: _to,
-                    decoration: const InputDecoration(labelText: '끝 절'),
-                    menuMaxHeight: 320,
+                    value: _to,
+                    label: '끝 절',
                     items: [
                       for (var i = _from; i < verses.length; i++)
                         DropdownMenuItem(value: i, child: Text('${i + 1}절')),

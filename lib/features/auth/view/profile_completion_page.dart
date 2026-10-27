@@ -84,7 +84,7 @@ class _ProfileCompletionPageState extends State<ProfileCompletionPage> {
                                 ? '이름을 입력해 주세요'
                                 : null,
                           ),
-                          const SizedBox(height: 4),
+                          AppField.spacer,
                           TextFormField(
                             controller: _phone,
                             keyboardType: TextInputType.phone,

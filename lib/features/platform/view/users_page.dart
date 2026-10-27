@@ -11,6 +11,7 @@ import '../../../data/models/member.dart';
 import '../../../data/models/user_profile.dart';
 import '../../admin/view/member_detail_dialog.dart';
 import '../view_model/users_view_model.dart';
+import '../../../core/widgets/app_inputs.dart';
 
 /// 앱 운영자 > 회원 관리: 가입한 전체 회원의 이름과 소속 교회·부서를 보고,
 /// 수정을 누르면 상세 관리 창에서 고친다.
@@ -29,16 +30,10 @@ class UsersPage extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const PageTitle(
-                title: '회원 관리',
-                subtitle: '가입한 회원을 확인하고 수정해요. 개인정보이므로 외부에 공유하지 마세요.',
-              ),
-              TextField(
+              const PageTitle(title: '회원 관리'),
+              AppSearchField(
+                hint: '이름, 아이디, 이메일, 전화번호 검색',
                 onChanged: vm.setQuery,
-                decoration: const InputDecoration(
-                  prefixIcon: Icon(Icons.search),
-                  hintText: '이름, 아이디, 이메일, 전화번호 검색',
-                ),
               ),
               const SizedBox(height: 16),
               StreamBuilder<List<UserProfile>>(

@@ -12,6 +12,7 @@ import '../../../data/models/department.dart';
 import '../../../data/models/member.dart';
 import '../../home/view/content_widgets.dart';
 import '../view_model/department_manage_view_model.dart';
+import '../../../core/widgets/app_inputs.dart';
 
 /// 한 부서의 인원 관리 (주소 `/churches/{교회}/departments/{부서}`). 목록으로 돌아가는 버튼이 있다.
 class DepartmentDetailPage extends StatelessWidget {
@@ -94,7 +95,6 @@ class DepartmentDetailBody extends StatelessWidget {
                         ),
                       PageTitle(
                         title: department.name,
-                        subtitle: '${people.length}명',
                         action: FilledButton.icon(
                           onPressed: vm.busy
                               ? null
@@ -216,14 +216,11 @@ class _AddPeopleFormState extends State<_AddPeopleForm> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text('인원 추가', style: Theme.of(context).textTheme.titleLarge),
-        const SizedBox(height: 12),
-        TextField(
+        AppField.spacer,
+        AppSearchField(
           autofocus: true,
+          hint: '이름이나 전화번호로 찾기',
           onChanged: (v) => setState(() => _query = v.trim()),
-          decoration: const InputDecoration(
-            hintText: '이름이나 전화번호로 찾기',
-            prefixIcon: Icon(Icons.search),
-          ),
         ),
         const SizedBox(height: 8),
         if (shown.isEmpty)

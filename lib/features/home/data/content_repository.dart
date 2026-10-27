@@ -29,8 +29,11 @@ class ContentRepository {
   Query<Json> _query(String churchId, ContentKind kind) =>
       _paths.contents(churchId, kind.collection);
 
-  List<ChurchContent> _map(ContentKind kind, QuerySnapshot<Json> s) =>
-      s.docs.map((d) => ChurchContent.fromDoc(kind, d)).toList();
+  /// 지워진 글(deleted)은 목록에서 뺀다.
+  List<ChurchContent> _map(ContentKind kind, QuerySnapshot<Json> s) => s.docs
+      .map((d) => ChurchContent.fromDoc(kind, d))
+      .where((c) => !c.deleted)
+      .toList();
 
   /// 날짜가 최근인 순. [limit]이 없으면 전부.
   Stream<List<ChurchContent>> latest(
@@ -39,8 +42,12 @@ class ContentRepository {
     int? limit,
   }) {
     var q = _query(churchId, kind).orderBy('date', descending: true);
-    if (limit != null) q = q.limit(limit);
-    return q.snapshots().map((s) => _map(kind, s));
+    // 지워진 글이 섞여 있을 수 있어 조금 더 읽은 뒤 개수를 맞춘다.
+    if (limit != null) q = q.limit(limit + 20);
+    return q.snapshots().map((s) {
+      final items = _map(kind, s);
+      return limit == null ? items : items.take(limit).toList();
+    });
   }
 
   /// [month]가 속한 달의 일정을 날짜순으로.
@@ -56,11 +63,11 @@ class ContentRepository {
   }
 
   Stream<ChurchContent?> one(String churchId, ContentKind kind, String id) =>
-      _paths
-          .contents(churchId, kind.collection)
-          .doc(id)
-          .snapshots()
-          .map((s) => s.exists ? ChurchContent.fromDoc(kind, s) : null);
+      _paths.contents(churchId, kind.collection).doc(id).snapshots().map((s) {
+        if (!s.exists) return null;
+        final c = ChurchContent.fromDoc(kind, s);
+        return c.deleted ? null : c;
+      });
 
   /// [id]가 null이면 새로 만들고, 있으면 고친다.
   Future<void> save(
@@ -110,21 +117,13 @@ class ContentRepository {
     });
   }
 
-  /// 글을 지우고, 함께 올렸던 이미지도 Storage에서 지운다.
-  Future<void> delete(String churchId, ContentKind kind, String id) async {
-    final ref = _paths.contents(churchId, kind.collection).doc(id);
-    final urls = List<String>.from(
-      (await ref.get()).data()?['imageUrls'] as List? ?? const [],
-    );
-    await ref.delete();
-    for (final url in urls) {
-      try {
-        await _storage.refFromURL(url).delete();
-      } catch (_) {
-        // 이미 없거나 이 교회의 파일이 아니면 건너뛴다. 글은 이미 지워졌다.
-      }
-    }
-  }
+  /// 글을 지운 것으로 표시한다. 글과 함께 올린 이미지도 지우지 않고 그대로 둔다 (기록 보관).
+  Future<void> delete(String churchId, ContentKind kind, String id) =>
+      _paths.contents(churchId, kind.collection).doc(id).update({
+        'deleted': true,
+        'deletedAt': FieldValue.serverTimestamp(),
+        'deletedBy': _auth.uid,
+      });
 
   /// 이미지를 Storage에 올리고 다운로드 주소를 돌려준다.
   /// 휴대폰 사진처럼 큰 이미지는 올리기 전에 긴 변 2048px 이하의 JPEG로 줄인다.

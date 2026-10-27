@@ -25,6 +25,10 @@ class FirestorePaths {
   CollectionReference<Json> members(String churchId) =>
       church(churchId).collection('members');
 
+  /// 차단 목록: 문서 ID가 차단된 계정(uid).
+  CollectionReference<Json> blocked(String churchId) =>
+      church(churchId).collection('blocked');
+
   CollectionReference<Json> departments(String churchId) =>
       church(churchId).collection('departments');
 

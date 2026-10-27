@@ -4,7 +4,8 @@ import '../firestore_codec.dart';
 
 enum Role { member, staff, admin }
 
-enum MemberStatus { pending, approved, disabled }
+/// removed: 추방된 교인. 문서는 지우지 않고 남기며(기록 보관), 어디서도 교인으로 보이지 않는다.
+enum MemberStatus { pending, approved, disabled, removed }
 
 /// 한 교회 안에서의 교인 정보. 같은 사람이라도 교회마다 역할·승인 상태가 따로 있다.
 class Member {

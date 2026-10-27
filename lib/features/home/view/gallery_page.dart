@@ -112,6 +112,140 @@ class AlbumCard extends StatelessWidget {
   }
 }
 
+/// 겹겹이 쌓인 사진 카드: 대표 사진(첫 장) 한 장이 앞에 있고, 그 뒤로 다른 사진들이 살짝 비껴 쌓여 있다.
+/// 행사 하나가 한 칸이다. 누르면 사진 열람 팝업이 열린다.
+class StackedAlbumCard extends StatelessWidget {
+  const StackedAlbumCard({super.key, required this.album});
+
+  final ChurchContent album;
+
+  /// 뒤에 깔리는 장 수와 기울기(라디안)·밀림. 사진이 모자라면 빈 종이가 깔린다.
+  static const _behind = [(angle: -0.09, dx: -6.0), (angle: 0.07, dx: 6.0)];
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = context.palette;
+    final urls = album.imageUrls;
+    return Material(
+      type: MaterialType.transparency,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(AppRadius.card),
+        onTap: () => showPhotoViewer(context, urls: urls, title: album.title),
+        child: Padding(
+          padding: const EdgeInsets.all(6),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              AspectRatio(
+                aspectRatio: 4 / 3,
+                child: Padding(
+                  // 기울어진 뒷장이 칸 밖으로 잘리지 않게 안쪽으로 비운다.
+                  padding: const EdgeInsets.fromLTRB(14, 14, 14, 10),
+                  child: Stack(
+                    fit: StackFit.expand,
+                    clipBehavior: Clip.none,
+                    children: [
+                      for (var i = _behind.length; i >= 1; i--)
+                        Transform.translate(
+                          offset: Offset(_behind[i - 1].dx, 0),
+                          child: Transform.rotate(
+                            angle: _behind[i - 1].angle,
+                            child: _Sheet(
+                              url: i < urls.length ? urls[i] : null,
+                            ),
+                          ),
+                        ),
+                      _Sheet(url: urls.first, count: urls.length),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                album.title,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 16,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                fmtDate(album.date),
+                textAlign: TextAlign.center,
+                style: TextStyle(color: palette.muted, fontSize: 12),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// 쌓인 사진 한 장: 흰 테두리를 두른 사진 (사진이 없으면 빈 종이). [count]가 있으면 사진 수를 붙인다.
+class _Sheet extends StatelessWidget {
+  const _Sheet({required this.url, this.count});
+
+  final String? url;
+  final int? count;
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = context.palette;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: palette.surface,
+        borderRadius: BorderRadius.circular(AppRadius.control),
+        border: Border.all(color: palette.border),
+        boxShadow: AppShadow.soft(context),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(4),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(2),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              if (url != null)
+                ContentImage(url!)
+              else
+                ColoredBox(color: palette.border.withValues(alpha: 0.5)),
+              if (count != null && count! > 1)
+                Positioned(
+                  right: 6,
+                  bottom: 6,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: Colors.black54,
+                      borderRadius: BorderRadius.circular(AppRadius.control),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 3,
+                      ),
+                      child: Text(
+                        '$count',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 /// 사진 뭉치: 한 장이면 가득, 두 장이면 반반, 세 장 이상이면 큰 사진 하나와 작은 사진 둘 (남은 수는 "+N").
 class PhotoBundle extends StatelessWidget {
   const PhotoBundle({super.key, required this.urls});

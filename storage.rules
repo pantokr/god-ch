@@ -32,21 +32,21 @@ service firebase.storage {
       allow create, update: if isPlatformAdmin()
         && request.resource.size < 60 * 1024 * 1024
         && fileName == 'verse.csv';
-      allow delete: if isPlatformAdmin();
+      allow delete: if false;
     }
 
     // 교회 썸네일: churches/{교회}/thumbnail/{파일}. 로그인한 회원이 볼 수 있고 앱 운영자만 올리고 지운다.
     match /churches/{churchId}/thumbnail/{fileName} {
       allow read: if request.auth != null;
-      allow create, update: if isPlatformAdmin() && isImage();
-      allow delete: if isPlatformAdmin();
+      allow create, update: if (isPlatformAdmin() || isAdmin(churchId)) && isImage();
+      allow delete: if false;
     }
 
     // 회원 프로필 사진: users/{uid}/avatar/{파일}. 로그인한 회원이 볼 수 있고 본인과 앱 운영자가 올리고 지운다.
     match /users/{userId}/avatar/{fileName} {
       allow read: if request.auth != null;
       allow create, update: if (request.auth.uid == userId || isPlatformAdmin()) && isImage();
-      allow delete: if request.auth.uid == userId || isPlatformAdmin();
+      allow delete: if false;
     }
 
     // 교회 메인 페이지 이미지: churches/{교회}/{종류}/{파일}
@@ -58,7 +58,7 @@ service firebase.storage {
         && kind in ['notices', 'events', 'photos', 'sermons', 'devotions']
         && request.resource.size < 10 * 1024 * 1024
         && request.resource.contentType.matches('image/.*');
-      allow delete: if isAdmin(churchId);
+      allow delete: if false;
     }
   }
 }

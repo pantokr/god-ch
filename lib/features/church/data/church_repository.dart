@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/app_exception.dart';
 import '../../../data/firestore_codec.dart';
 import '../../../data/firestore_paths.dart';
+import '../../../data/models/church.dart';
 import '../../../data/models/invite_code.dart';
 import '../../../data/models/member.dart';
 import '../../../data/models/profile_field.dart';
@@ -28,7 +29,10 @@ class ChurchRepository {
   /// 내가 속하거나 신청한 모든 교회에서의 내 교인 정보.
   Stream<List<Member>> myMemberships() =>
       _paths.allMembers.where('uid', isEqualTo: _auth.uid).snapshots().map((s) {
-        final list = s.docs.map(Member.fromDoc).toList();
+        final list = s.docs
+            .map(Member.fromDoc)
+            .where((m) => m.status != MemberStatus.removed)
+            .toList();
         list.sort((a, b) => a.churchName.compareTo(b.churchName));
         return list;
       });
@@ -54,11 +58,13 @@ class ChurchRepository {
   }
 
   /// 한 교회에서의 내 교인 정보. 입장을 신청한 적이 없으면 null.
-  Stream<Member?> membership(String churchId) => _paths
-      .members(churchId)
-      .doc(_auth.uid)
-      .snapshots()
-      .map((s) => s.exists ? Member.fromDoc(s) : null);
+  Stream<Member?> membership(String churchId) =>
+      _paths.members(churchId).doc(_auth.uid).snapshots().map((s) {
+        if (!s.exists) return null;
+        final m = Member.fromDoc(s);
+        // 추방된 교인은 기록만 남아 있을 뿐 교인이 아니다.
+        return m.status == MemberStatus.removed ? null : m;
+      });
 
   /// 교역자가 새 초대 코드를 만든다. 기존 코드는 그대로 두고 만료되게 둔다.
   /// [role]과 [departmentIds]는 이 코드로 들어오는 사람에게 그대로 적용된다.
@@ -68,14 +74,10 @@ class ChurchRepository {
     String churchName, {
     Role role = Role.member,
     List<String> departmentIds = const [],
-    String recipient = '',
-    Set<ProfileField> requiredFields = const {},
+    bool singleUse = false,
   }) async {
     if (role == Role.admin) {
       throw const AppException('교회 운영자는 초대 코드로 지정할 수 없어요.');
-    }
-    if (recipient.trim().length > 30) {
-      throw const AppException('받는 분 이름은 30자까지 쓸 수 있어요.');
     }
     for (var attempt = 0; attempt < 5; attempt++) {
       final code = _randomCode();
@@ -88,8 +90,7 @@ class ChurchRepository {
                 churchName,
                 role: role,
                 departmentIds: departmentIds,
-                recipient: recipient.trim(),
-                requiredFields: requiredFields,
+                singleUse: singleUse,
               ),
             );
         return code;
@@ -107,7 +108,10 @@ class ChurchRepository {
       .map(
         (s) => [
           for (final d in s.docs)
-            if (toDate(d.data()['expiresAt']) != null)
+            // 폐기되었거나 이미 쓰인 코드는 기록으로만 남는다.
+            if (toDate(d.data()['expiresAt']) != null &&
+                d.data()['revoked'] != true &&
+                (d.data()['usedBy'] as String? ?? '').isEmpty)
               InviteCode(
                 d.id,
                 toDate(d.data()['expiresAt'])!,
@@ -117,20 +121,38 @@ class ChurchRepository {
                 departmentIds: List<String>.from(
                   d.data()['departmentIds'] as List? ?? const [],
                 ),
-                recipient: d.data()['recipient'] as String? ?? '',
-                requiredFields: ProfileField.fromNames(
-                  d.data()['requiredFields'] as List? ?? const [],
-                ),
+                singleUse: d.data()['singleUse'] == true,
               ),
         ]..sort((a, b) => b.expiresAt.compareTo(a.expiresAt)),
       );
 
+  DocumentReference<Json> _joinSettings(String churchId) =>
+      _paths.church(churchId).collection('settings').doc('join');
+
+  /// 이 교회가 입장 신청에 필수로 요청하는 회원 정보.
+  Stream<Set<ProfileField>> joinRequirements(String churchId) =>
+      _joinSettings(churchId).snapshots().map(
+        (s) => ProfileField.fromNames(
+          s.data()?['requiredFields'] as List? ?? const [],
+        ),
+      );
+
+  Future<void> setJoinRequirements(String churchId, Set<ProfileField> fields) =>
+      _joinSettings(churchId).set({
+        'requiredFields': [for (final f in fields) f.name],
+      });
+
+  /// 코드를 폐기한 것으로 표시한다 (문서는 남긴다).
   Future<void> revokeInviteCode(String code) =>
-      _paths.inviteCodes.doc(code).delete();
+      _paths.inviteCodes.doc(code).update({
+        'revoked': true,
+        'revokedAt': FieldValue.serverTimestamp(),
+        'revokedBy': _auth.uid,
+      });
 
   /// 초대 코드로 입장을 신청한다. 만료되었거나 없는 코드는 같은 메시지로 거부한다.
   ///
-  /// 초대 코드가 주소·생년월일을 필수로 요청하는데 회원 정보에 없으면 [MissingProfileFields]를 던진다.
+  /// 교회가 입장 시 주소·생년월일을 필수로 요청하는데 회원 정보에 없으면 [MissingProfileFields]를 던진다.
   /// 그때 [address]·[birthDate]를 채워서 다시 부르면 회원 정보에 저장하고 신청한다.
   Future<void> requestJoinByCode(
     String input, {
@@ -139,6 +161,9 @@ class ChurchRepository {
   }) async {
     final code = input.trim().toUpperCase();
     if (code.isEmpty) throw const AppException('초대 코드를 입력해 주세요.');
+    if (await _auth.hasOperatorClaim()) {
+      throw const AppException('앱 운영자는 교회 회원이 될 수 없어요.');
+    }
 
     const invalid = AppException('유효하지 않거나 만료된 초대 코드입니다.');
     DocumentSnapshot<Json> snap;
@@ -150,6 +175,8 @@ class ChurchRepository {
       rethrow;
     }
     if (!snap.exists) throw invalid;
+    final used = (snap.data()!['usedBy'] as String? ?? '').isNotEmpty;
+    if (used || snap.data()!['revoked'] == true) throw invalid;
 
     final churchId = snap.data()!['churchId'] as String;
     final churchName = snap.data()!['churchName'] as String;
@@ -160,14 +187,108 @@ class ChurchRepository {
     final departmentIds = List<String>.from(
       snap.data()!['departmentIds'] as List? ?? const [],
     );
+    final singleUse = snap.data()!['singleUse'] == true;
+    try {
+      await _submitJoin(
+        churchId: churchId,
+        churchName: churchName,
+        role: role,
+        departmentIds: departmentIds,
+        address: address,
+        birthDate: birthDate,
+        code: code,
+        // 일회용 코드는 신청과 같은 묶음에서 '사용됨'으로 표시한다. 동시에 두 사람이 써도 한 사람만 성공한다.
+        consume: singleUse ? snap.reference : null,
+      );
+    } on _CodeGone {
+      throw invalid;
+    } on FirebaseException catch (e) {
+      if (e.code != 'permission-denied') rethrow;
+      // 확인한 직후에 코드가 만료되었거나 폐기된 경우일 수 있다.
+      throw const AppException(
+        '입장 신청을 저장하지 못했어요. 초대 코드가 방금 만료되었는지 확인하고 다시 시도해 주세요.',
+      );
+    }
+  }
+
+  /// 공개 탐색에 노출된 교회를 찾는다 (이름 순).
+  Stream<List<Church>> publicChurches() => _paths.churches
+      .where('listed', isEqualTo: true)
+      .snapshots()
+      .map(
+        (s) =>
+            s.docs.map(Church.fromDoc).where((c) => !c.closed).toList()
+              ..sort((a, b) => a.name.compareTo(b.name)),
+      );
+
+  /// 노출된 교회에 초대 코드 없이 입장을 요청한다. 승인되면 교인이 된다.
+  /// 필수 정보가 비어 있으면 [MissingProfileFields]를 던지고, 채워서 다시 부르면 된다.
+  Future<void> requestJoinPublic(
+    Church church, {
+    String address = '',
+    String birthDate = '',
+  }) async {
+    if (await _auth.hasOperatorClaim()) {
+      throw const AppException('앱 운영자는 교회 회원이 될 수 없어요.');
+    }
+    try {
+      await _submitJoin(
+        churchId: church.id,
+        churchName: church.name,
+        role: Role.member,
+        departmentIds: const [],
+        address: address,
+        birthDate: birthDate,
+      );
+    } on FirebaseException catch (e) {
+      if (e.code != 'permission-denied') rethrow;
+      throw const AppException('입장 요청을 저장하지 못했어요. 이 교회가 더는 공개 탐색에 없을 수 있어요.');
+    }
+  }
+
+  /// 이 교회가 폐쇄되었는가 (소속 교인이 읽을 수 있다).
+  Stream<bool> isClosed(String churchId) => _paths
+      .church(churchId)
+      .snapshots()
+      .map((s) => s.data()?['closed'] == true);
+
+  /// 이 교회가 공개 탐색에 노출되는가 (교역자가 입장 관리에서 정한다).
+  Stream<bool> isListed(String churchId) => _paths
+      .church(churchId)
+      .snapshots()
+      .map((s) => s.data()?['listed'] == true);
+
+  Future<void> setListed(String churchId, bool listed) =>
+      _paths.church(churchId).update({'listed': listed});
+
+  /// 입장 신청을 저장한다 (초대 코드든 공개 요청이든 같은 절차).
+  /// [consume]이 있으면 그 문서(일회용 초대 코드)를 같은 묶음에서 사용됨으로 표시한다.
+  Future<void> _submitJoin({
+    required String churchId,
+    required String churchName,
+    required Role role,
+    required List<String> departmentIds,
+    required String address,
+    required String birthDate,
+    String? code,
+    DocumentReference<Json>? consume,
+  }) async {
     final ref = _paths.members(churchId).doc(_auth.uid);
-    if ((await ref.get()).exists) {
+    final blocked = await _paths.blocked(churchId).doc(_auth.uid).get();
+    if (blocked.exists && blocked.data()?['revoked'] != true) {
+      throw const AppException('이 교회에 접근할 수 없어요. 차단된 계정입니다.');
+    }
+    final current = await ref.get();
+    // 추방된 사람은 다시 신청할 수 있다 (같은 문서를 새 신청으로 덮는다).
+    if (current.exists &&
+        current.data()?['status'] != MemberStatus.removed.name) {
       throw const AppException('이미 이 교회에 가입했거나 신청한 상태입니다.');
     }
     // 가입할 때 받은 이름·전화번호를 교회에 제공한다 (제3자 제공 동의 기반).
     final profile = await _profiles.requireCurrent();
+    final settings = await _joinSettings(churchId).get();
     final required = ProfileField.fromNames(
-      snap.data()!['requiredFields'] as List? ?? const [],
+      settings.data()?['requiredFields'] as List? ?? const [],
     );
     final nextAddress = address.trim().isNotEmpty
         ? address.trim()
@@ -186,30 +307,35 @@ class ChurchRepository {
     if (nextAddress != profile.address || nextBirthDate != profile.birthDate) {
       await _profiles.saveExtra(address: nextAddress, birthDate: nextBirthDate);
     }
-    try {
-      await ref.set(
-        _memberData(
-          churchId: churchId,
-          churchName: churchName,
-          name: profile.name,
-          phone: profile.phone,
-          loginId: profile.loginId ?? '',
-          photoUrl: profile.photoUrl,
-          address: nextAddress,
-          birthDate: nextBirthDate,
-          role: role,
-          status: MemberStatus.pending,
-          departmentIds: departmentIds,
-          inviteCode: code,
-        ),
-      );
-    } on FirebaseException catch (e) {
-      if (e.code != 'permission-denied') rethrow;
-      // 확인한 직후에 코드가 만료되었거나 폐기된 경우일 수 있다.
-      throw const AppException(
-        '입장 신청을 저장하지 못했어요. 초대 코드가 방금 만료되었는지 확인하고 다시 시도해 주세요.',
-      );
-    }
+    final member = _memberData(
+      churchId: churchId,
+      churchName: churchName,
+      name: profile.name,
+      phone: profile.phone,
+      loginId: profile.loginId ?? '',
+      photoUrl: profile.photoUrl,
+      address: nextAddress,
+      birthDate: nextBirthDate,
+      role: role,
+      status: MemberStatus.pending,
+      departmentIds: departmentIds,
+      inviteCode: code,
+    );
+    await _paths.db.runTransaction((tx) async {
+      if (consume != null) {
+        final code = await tx.get(consume);
+        if (!code.exists ||
+            code.data()?['revoked'] == true ||
+            (code.data()?['usedBy'] as String? ?? '').isNotEmpty) {
+          throw _CodeGone();
+        }
+        tx.update(consume, {
+          'usedBy': _auth.uid,
+          'usedAt': FieldValue.serverTimestamp(),
+        });
+      }
+      tx.set(ref, member);
+    });
   }
 
   Json _inviteData(
@@ -217,15 +343,13 @@ class ChurchRepository {
     String churchName, {
     required Role role,
     required List<String> departmentIds,
-    required String recipient,
-    required Set<ProfileField> requiredFields,
+    required bool singleUse,
   }) => {
     'churchId': churchId,
     'churchName': churchName,
     'role': role.name,
     'departmentIds': departmentIds,
-    'recipient': recipient,
-    'requiredFields': [for (final f in requiredFields) f.name],
+    'singleUse': singleUse,
     'createdBy': _auth.uid,
     'expiresAt': Timestamp.fromDate(DateTime.now().add(inviteValidity)),
   };
@@ -277,3 +401,6 @@ class MissingProfileFields extends AppException {
   final String churchName;
   final Set<ProfileField> fields;
 }
+
+/// 일회용 초대 코드를 다른 사람이 먼저 써서 사라졌다.
+class _CodeGone implements Exception {}

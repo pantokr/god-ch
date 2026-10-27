@@ -62,7 +62,7 @@ class _JoinChurchDialogState extends State<JoinChurchDialog> {
               '교회에서 받은 초대 코드를 입력하세요. 코드는 발급 후 7일 동안만 유효해요.',
               style: TextStyle(color: context.palette.muted),
             ),
-            const SizedBox(height: 16),
+            AppField.spacer,
             TextFormField(
               controller: _code,
               autofocus: true,
@@ -77,7 +77,7 @@ class _JoinChurchDialogState extends State<JoinChurchDialog> {
                 '${vm.missingChurch}에서 ${vm.missing.map((f) => f.label).join('·')} 입력을 요청했어요. 입력하면 회원 정보에도 저장돼요.',
                 style: TextStyle(color: context.palette.muted),
               ),
-              const SizedBox(height: 12),
+              AppField.spacer,
               ProfileExtraFields(
                 address: _address,
                 birthDate: _birthDate,

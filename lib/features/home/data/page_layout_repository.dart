@@ -1,10 +1,11 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 import '../../../core/app_exception.dart';
 import '../../../data/firestore_paths.dart';
 import '../../../data/models/page_layout.dart';
 
-/// 교회 페이지 구성(어떤 페이지가 있고, 각 페이지에 어떤 구조·디자인이 쌓였는지)을 읽고 저장한다.
+/// 교회 페이지 구성(어떤 페이지가 있고, 각 페이지에 어떤 레이아웃(구조·디자인)을 쓰는지)을 읽고 저장한다.
 /// 읽기는 승인된 교인, 쓰기는 교역자·교회 운영자만 가능하다 (`firestore.rules`가 강제한다).
 class PageLayoutRepository {
   PageLayoutRepository(FirebaseFirestore db) : _paths = FirestorePaths(db);
@@ -17,8 +18,11 @@ class PageLayoutRepository {
   /// 순서대로 정렬된 페이지들. 아직 저장된 구성이 없으면 기본 구성([PageConfig.defaults])이다.
   Stream<List<PageConfig>> pages(String churchId) =>
       _col(churchId).orderBy('order').snapshots().map((s) {
-        if (s.docs.isEmpty) return PageConfig.defaults;
-        return s.docs.map(PageConfig.fromDoc).toList();
+        // 지운 페이지(deleted)는 기록으로만 남고 메뉴에는 나오지 않는다.
+        final live = s.docs.where((d) => d.data()['deleted'] != true).toList();
+        if (live.isEmpty) return PageConfig.defaults;
+        final pages = live.map(PageConfig.fromDoc).nonNulls.toList();
+        return pages.isEmpty ? PageConfig.defaults : pages;
       });
 
   /// 구성 전체를 저장한다. [pages]의 순서가 메뉴 순서가 되고, [removedIds]의 페이지는 지운다.
@@ -35,9 +39,6 @@ class PageLayoutRepository {
       if (p.title.trim().length > 30) {
         throw const AppException('페이지 이름은 30자까지 쓸 수 있어요.');
       }
-      if (p.blocks.length > 20) {
-        throw const AppException('한 페이지에는 구조를 20개까지 쌓을 수 있어요.');
-      }
     }
     final batch = _paths.db.batch();
     for (var i = 0; i < pages.length; i++) {
@@ -46,12 +47,21 @@ class PageLayoutRepository {
         'title': p.title.trim(),
         'icon': p.icon,
         'order': i,
-        'blocks': [for (final b in p.blocks) b.toMap()],
+        'group': p.group.id,
+        if (p.layout != null) 'layout': p.layout!.toMap(),
         'updatedAt': FieldValue.serverTimestamp(),
       });
     }
+    // 지운 페이지는 문서를 남기고 deleted 표시만 한다 (저장된 적 없는 기본 페이지는 건너뛴다).
+    final uid = FirebaseAuth.instance.currentUser?.uid;
     for (final id in removedIds) {
-      batch.delete(_col(churchId).doc(id));
+      final ref = _col(churchId).doc(id);
+      if (!(await ref.get()).exists) continue;
+      batch.update(ref, {
+        'deleted': true,
+        'deletedAt': FieldValue.serverTimestamp(),
+        'deletedBy': ?uid,
+      });
     }
     await batch.commit();
   }

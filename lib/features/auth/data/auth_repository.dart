@@ -92,6 +92,31 @@ class AuthRepository {
 
   Future<void> signOut() => _auth.signOut();
 
+  /// 아이디/비밀번호로 만든 계정인가 (구글 등 소셜 로그인 계정은 비밀번호가 없다).
+  bool get hasPassword =>
+      _auth.currentUser?.providerData.any((p) => p.providerId == 'password') ??
+      false;
+
+  /// 비밀번호를 바꾼다. 현재 비밀번호로 다시 확인한 뒤 바꾼다.
+  Future<void> changePassword(String current, String next) async {
+    final user = _auth.currentUser;
+    if (user == null || !hasPassword) {
+      throw const AppException('아이디로 만든 계정만 비밀번호를 바꿀 수 있어요.');
+    }
+    try {
+      await user.reauthenticateWithCredential(
+        EmailAuthProvider.credential(email: user.email!, password: current),
+      );
+      await user.updatePassword(next);
+    } on FirebaseAuthException catch (e) {
+      throw switch (e.code) {
+        'invalid-credential' ||
+        'wrong-password' => const AppException('현재 비밀번호가 올바르지 않습니다.'),
+        _ => AppException(_message(e)),
+      };
+    }
+  }
+
   /// 표시 이름을 바꾼다.
   Future<void> updateDisplayName(String name) async {
     final user = _auth.currentUser!;

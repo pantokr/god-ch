@@ -8,6 +8,7 @@ import '../../../data/models/department.dart';
 import '../../../data/models/member.dart';
 import '../../../core/widgets/thumbnail_field.dart';
 import '../../auth/view/profile_extra_fields.dart';
+import '../../../core/widgets/app_inputs.dart';
 
 /// 한 교회 안에서의 소속 정보를 고치는 칸. 고칠 수 있는 항목은 권한에 따라 다르다.
 class MembershipEditor {
@@ -79,6 +80,8 @@ class MemberDetailDialog extends StatefulWidget {
     required this.onSave,
     this.canEditProfile = true,
     this.showChurchNames = false,
+    this.onRemove,
+    this.onBlock,
   });
 
   /// 저장 중·오류 표시에 쓴다.
@@ -104,6 +107,12 @@ class MemberDetailDialog extends StatefulWidget {
 
   /// 여러 교회에 속할 수 있는 화면(앱 운영자)에서 교회 이름을 제목으로 보여준다.
   final bool showChurchNames;
+
+  /// 회원을 추방한다 (확인까지 거친 뒤 지웠으면 true). null이면 추방 버튼을 보이지 않는다.
+  final Future<bool> Function()? onRemove;
+
+  /// 회원을 차단 목록에 올린다 (추방과 같은 방식). null이면 차단 버튼을 보이지 않는다.
+  final Future<bool> Function()? onBlock;
 
   static const roleLabel = {
     Role.member: '교인',
@@ -196,6 +205,16 @@ class _MemberDetailDialogState extends State<MemberDetailDialog> {
     messenger.showSnackBar(const SnackBar(content: Text('저장했어요.')));
   }
 
+  Future<void> _remove() async {
+    final navigator = Navigator.of(context);
+    if (await widget.onRemove!()) navigator.pop();
+  }
+
+  Future<void> _block() async {
+    final navigator = Navigator.of(context);
+    if (await widget.onBlock!()) navigator.pop();
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -220,14 +239,14 @@ class _MemberDetailDialogState extends State<MemberDetailDialog> {
             enabled: widget.onUploadPhoto != null,
             upload: widget.onUploadPhoto ?? (_, _) async => null,
           ),
-          const SizedBox(height: 12),
+          AppField.spacer,
           TextField(
             controller: _name,
             enabled: widget.canEditProfile,
             maxLength: 30,
             decoration: const InputDecoration(labelText: '이름'),
           ),
-          const SizedBox(height: 4),
+          AppField.spacer,
           TextField(
             controller: _phone,
             enabled: widget.canEditProfile,
@@ -235,7 +254,7 @@ class _MemberDetailDialogState extends State<MemberDetailDialog> {
             maxLength: 20,
             decoration: const InputDecoration(labelText: '전화번호'),
           ),
-          const SizedBox(height: 4),
+          AppField.spacer,
           ProfileExtraFields(
             address: _address,
             birthDate: _birthDate,
@@ -260,9 +279,9 @@ class _MemberDetailDialogState extends State<MemberDetailDialog> {
                   children: [
                     if (widget.memberships[i].canRole)
                       Expanded(
-                        child: DropdownButtonFormField<Role>(
-                          initialValue: _roles[i],
-                          decoration: const InputDecoration(labelText: '역할'),
+                        child: AppDropdown<Role>(
+                          value: _roles[i],
+                          label: '역할',
                           items: [
                             for (final r in Role.values)
                               DropdownMenuItem(
@@ -278,9 +297,9 @@ class _MemberDetailDialogState extends State<MemberDetailDialog> {
                       const SizedBox(width: 12),
                     if (widget.memberships[i].canStatus)
                       Expanded(
-                        child: DropdownButtonFormField<MemberStatus>(
-                          initialValue: _statuses[i],
-                          decoration: const InputDecoration(labelText: '상태'),
+                        child: AppDropdown<MemberStatus>(
+                          value: _statuses[i],
+                          label: '상태',
                           items: [
                             for (final s in MemberStatus.values)
                               DropdownMenuItem(
@@ -328,6 +347,26 @@ class _MemberDetailDialogState extends State<MemberDetailDialog> {
           Row(
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
+              if (widget.onBlock != null)
+                TextButton.icon(
+                  onPressed: widget.vm.busy ? null : _block,
+                  style: TextButton.styleFrom(
+                    foregroundColor: theme.colorScheme.error,
+                  ),
+                  icon: const Icon(Icons.block, size: 18),
+                  label: const Text('차단'),
+                ),
+              if (widget.onRemove != null) ...[
+                TextButton.icon(
+                  onPressed: widget.vm.busy ? null : _remove,
+                  style: TextButton.styleFrom(
+                    foregroundColor: theme.colorScheme.error,
+                  ),
+                  icon: const Icon(Icons.person_remove_outlined, size: 18),
+                  label: const Text('추방'),
+                ),
+                const Spacer(),
+              ],
               TextButton(
                 onPressed: () => Navigator.pop(context),
                 child: const Text('취소'),

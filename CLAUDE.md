@@ -2,6 +2,10 @@
 
 Flutter(웹 우선) + Firebase 앱. 개요와 환경 설정은 [README.md](README.md).
 
+## 문구 원칙
+
+- **서술형 문장을 최대한 쓰지 않는다.** 제목·버튼·라벨은 명사형 단어로 짧게 쓴다 ("디자인 선택", "부서 만들기"). "~를 골라요", "~해 주세요" 같은 안내 문장과 부차적인 설명(부제, 예시)은 두지 않는다. 오류·확인처럼 꼭 필요한 곳만 한 줄로 쓴다.
+
 ## 구조 규칙
 
 - **Feature-first + MVVM**, 추가 상태관리 패키지 없음. 기능 폴더는 `data`(저장소) · `view_model` · `view`.
@@ -13,8 +17,7 @@ Flutter(웹 우선) + Firebase 앱. 개요와 환경 설정은 [README.md](READM
 ## 데이터·권한
 
 - 모든 교회 데이터는 `churches/{churchId}/...` 아래. 권한은 **`firestore.rules`가 강제**한다 (화면에서 숨기는 것만으로는 안 된다).
-- 비공개(교역자 전용) 기도제목은 일반 교인 쿼리에 아예 포함되지 않는다. 피드 쿼리에는 `visibility`/`deleted`/`departmentId` 조건을 반드시 넣어야 규칙을 통과한다.
-- 역할: 앱 운영자(`platformAdmin` 클레임, 교회 소속 아님, 기도제목 내용 열람 불가) / 교회 운영자(`admin`) / 교역자(`staff`) / 교인(`member`).
+- 역할: 앱 운영자(`platformAdmin` 클레임, 교회 소속 아님) / 교회 운영자(`admin`) / 교역자(`staff`) / 교인(`member`).
 - 로그인은 아이디+비밀번호. `loginIds/{id}`가 아이디→이메일을 연결한다. 예약 아이디(`admin` 등)는 가상 이메일(`LoginId.aliasEmail`)로 로그인한다.
 - 교회는 앱 운영자의 승인(`churchRequests`)이나 직접 등록으로만 만들어지고, 입장은 만료 있는 초대 코드(`inviteCodes`)로만 가능하다.
 - 교회 메인 콘텐츠(공지·일정·사진첩·설교영상·말씀묵상)는 `churches/{id}/{notices|events|photos|sermons|devotions}`에 있고 종류 목록은 `lib/data/models/church_content.dart`의 `ContentKind`와 `firestore.rules`가 일치해야 한다. 이미지는 Firebase Storage(`churches/{id}/{종류}/...`, `storage.rules`)에 올리고 글에는 다운로드 주소만 저장한다. 공지는 `imageUrls`의 첫 번째가 3:4 썸네일, 두 번째가 캐러셀 가로 배경이다.

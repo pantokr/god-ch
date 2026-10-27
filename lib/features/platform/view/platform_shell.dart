@@ -4,8 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../../app/routes.dart';
 import '../../../core/layout/profile_summary.dart';
 import '../../../core/layout/sidebar_scaffold.dart';
-import '../../../core/layout/app_dialog.dart';
-import '../../auth/view/profile_edit_dialog.dart';
+import '../../auth/view/profile_dialog.dart';
 import '../../notifications/view/notifications_button.dart';
 import '../../settings/view/settings_dialog.dart';
 
@@ -43,13 +42,10 @@ class PlatformShell extends StatelessWidget {
   Widget build(BuildContext context) {
     return SidebarScaffold(
       userName: userName,
-      onProfile: () => showAppDialog<void>(
+      onProfile: () => showAccountDialog(
         context,
-        maxWidth: 420,
-        child: ProfileEditDialog(
-          name: userName,
-          details: const [ProfileDetail('역할', '앱 운영자')],
-        ),
+        name: userName,
+        details: const [ProfileDetail('역할', '앱 운영자')],
       ),
       onSettings: () => showSettingsDialog(context),
       onSignOut: onSignOut,

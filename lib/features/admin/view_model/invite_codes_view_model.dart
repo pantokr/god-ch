@@ -2,11 +2,10 @@ import '../../../core/mvvm/view_model.dart';
 import '../../../data/models/department.dart';
 import '../../../data/models/invite_code.dart';
 import '../../../data/models/member.dart';
-import '../../../data/models/profile_field.dart';
 import '../../church/data/church_repository.dart';
 import '../../church/data/department_repository.dart';
 
-/// 이 교회의 초대 코드 목록 / 새로 발급(역할·부서·받는 분 지정) / 폐기.
+/// 이 교회의 초대 코드 목록 / 새로 발급(역할·부서·일회용 지정) / 폐기.
 class InviteCodesViewModel extends ViewModel {
   InviteCodesViewModel(
     this._churches,
@@ -26,16 +25,14 @@ class InviteCodesViewModel extends ViewModel {
   Future<bool> create({
     Role role = Role.member,
     List<String> departmentIds = const [],
-    String recipient = '',
-    Set<ProfileField> requiredFields = const {},
+    bool singleUse = false,
   }) => run(
     () => _churches.createInviteCode(
       me.churchId,
       me.churchName,
       role: role,
       departmentIds: departmentIds,
-      recipient: recipient,
-      requiredFields: requiredFields,
+      singleUse: singleUse,
     ),
   );
 

@@ -32,9 +32,6 @@ class FeedPage extends StatelessWidget {
         prayers: vm.prayers,
         me: me,
         title: department == null ? '교회 기도제목' : '${department!.name} 기도제목',
-        subtitle: department == null
-            ? '교회 모두에게 공개된 기도제목이에요. 이모티콘으로 응원해 주세요.'
-            : '이 부서 교인에게만 보이는 기도제목이에요.',
         emptyText: '아직 나눠진 기도제목이 없어요.\n첫 기도제목을 나눠 보세요.',
         showReactions: true,
         onWrite: onWrite,

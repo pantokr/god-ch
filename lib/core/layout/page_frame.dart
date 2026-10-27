@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../theme.dart';
 import 'responsive.dart';
 
 /// 가운데 정렬된 최대 폭 콘텐츠 영역.
@@ -37,10 +36,9 @@ class PageFrame extends StatelessWidget {
 
 /// 본문 위에 놓는 페이지 제목 줄. 오른쪽에 주요 버튼을 둘 수 있다.
 class PageTitle extends StatelessWidget {
-  const PageTitle({super.key, required this.title, this.subtitle, this.action});
+  const PageTitle({super.key, required this.title, this.action});
 
   final String title;
-  final String? subtitle;
   final Widget? action;
 
   @override
@@ -61,14 +59,6 @@ class PageTitle extends StatelessWidget {
                     fontWeight: FontWeight.w700,
                   ),
                 ),
-                if (subtitle != null)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 4),
-                    child: Text(
-                      subtitle!,
-                      style: TextStyle(color: context.palette.muted),
-                    ),
-                  ),
               ],
             ),
           ),

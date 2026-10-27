@@ -10,6 +10,8 @@ class Church {
     required this.phone,
     required this.address,
     this.thumbnailUrl = '',
+    this.listed = false,
+    this.closed = false,
     this.createdAt,
   });
 
@@ -24,6 +26,12 @@ class Church {
 
   /// 교회 썸네일 이미지 주소. 없으면 빈 문자열.
   final String thumbnailUrl;
+
+  /// 공개 탐색에 노출되는가. 노출된 교회는 누구나 찾아서 입장을 요청할 수 있다.
+  final bool listed;
+
+  /// 폐쇄된 교회인가. 폐쇄해도 교회와 기록은 지우지 않고 남긴다.
+  final bool closed;
   final DateTime? createdAt;
 
   factory Church.fromDoc(DocumentSnapshot<Json> doc) {
@@ -34,6 +42,8 @@ class Church {
       phone: d['phone'] as String? ?? '',
       address: d['address'] as String? ?? '',
       thumbnailUrl: d['thumbnailUrl'] as String? ?? '',
+      listed: d['listed'] == true,
+      closed: d['closed'] == true,
       createdAt: toDate(d['createdAt']),
     );
   }

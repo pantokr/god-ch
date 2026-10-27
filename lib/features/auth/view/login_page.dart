@@ -85,7 +85,7 @@ class _LoginPageState extends State<LoginPage> {
                             ? '아이디를 입력해 주세요'
                             : null,
                       ),
-                      const SizedBox(height: 12),
+                      AppField.spacer,
                       TextFormField(
                         controller: _password,
                         obscureText: true,
@@ -145,7 +145,7 @@ class _Brand extends StatelessWidget {
         Text('같이', style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800)),
         SizedBox(height: 6),
         Text(
-          '서로의 기도제목을 조용히 나누는 공간',
+          '교회가 함께 말씀을 나누는 공간',
           style: TextStyle(color: context.palette.muted),
         ),
       ],

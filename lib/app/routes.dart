@@ -5,29 +5,35 @@ enum ChurchSection {
   /// 교회 메인: 공지 캐러셀, 일정, 사진첩, 설교영상, 말씀묵상.
   home('home'),
 
-  /// 중보기도: 기도제목 피드.
-  feed('prayers'),
-
-  /// 교역자가 구성한 페이지 (주소 `/p/{페이지}`). 메인 · 말씀 묵상 · 중보기도 요청 등.
+  /// 교역자가 구성한 페이지 (주소 `/p/{페이지}`). 메인 · 말씀 묵상 등.
   page('p'),
+
+  /// 기도: 중보기도 페이지들 (기도 요청 …).
+  intercession('intercession'),
+
+  /// 말씀: 말씀 묵상 · 요약 등 페이지들.
+  word('word'),
+
+  /// 내 활동: 기도 · 말씀 페이지 구성에 따라 자동으로 모이는 내 글.
+  mine('mine'),
 
   /// 갤러리: 사진첩의 사진만 모아 보는 별도의 탭.
   gallery('gallery'),
 
-  /// 내 기도제목.
-  mine('mine'),
-
-  /// 페이지 편집 (교역자·교회 운영자): 메뉴 대분류와 페이지 구성.
+  /// 페이지 편집 (교역자·교회 운영자): 메뉴의 페이지와 페이지 구성.
   content('content'),
 
   /// 콘텐츠 관리 (교회 운영자만): 공지·일정 같은 글을 종류별로 올리고 고친다.
   contents('contents'),
 
-  /// 게시글 관리 (교역자·교회 운영자): 회원이 쓴 글을 확인하고 고치거나 지운다.
-  posts('posts'),
-
   /// 인원 관리 (교역자·교회 운영자): 새로 등록된 인원 승인, 등록 인원 조회.
   members('members'),
+
+  /// 교회 입장 관리 (교역자·교회 운영자): 입장 방식과 초대 코드.
+  join('join'),
+
+  /// 교회 정보 관리 (교회 운영자만): 교회 정보 수정과 폐쇄 요청.
+  info('info'),
 
   /// 부서 관리 (교역자·교회 운영자): 부서 목록과 부서별 인원 (주소 `/departments/{부서}`).
   departments('departments');
@@ -78,6 +84,9 @@ class Routes {
   /// 내 교회 목록을 일부러 열 때의 주소. 이 주소가 아닌 `/churches`는 소속 교회가 있으면
   /// 바로 그 교회의 메인으로 넘어간다.
   static const churchList = '/churches?list=1';
+
+  /// 교회 탐색: 공개 탐색에 노출된 교회를 찾아 입장을 요청한다.
+  static const explore = '/explore';
 
   static String church(String churchId) => '/churches/$churchId';
 

@@ -3,7 +3,6 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/app_scope.dart';
 import '../../../app/routes.dart';
-import '../../../core/layout/app_dialog.dart';
 import '../../../core/layout/profile_summary.dart';
 import '../../../core/layout/sidebar_scaffold.dart';
 import '../../../core/mvvm/view_model_builder.dart';
@@ -11,15 +10,15 @@ import '../../../core/theme.dart';
 import '../../../data/models/department.dart';
 import '../../../data/models/member.dart';
 import '../../../data/models/page_layout.dart';
-import '../../auth/view/profile_edit_dialog.dart';
-import '../../home/view/page_icons.dart';
+import '../../admin/view_model/pending_members_view_model.dart';
+import '../../auth/view/profile_dialog.dart';
 import '../../home/view_model/church_pages_view_model.dart';
 import '../../notifications/view/notifications_button.dart';
 import '../../settings/view/settings_dialog.dart';
 import 'church_scope.dart';
 
 /// 교회(또는 부서) 안의 화면 틀: 왼쪽 메뉴(좁은 화면에서는 서랍) + 본문([child]) + 오른쪽 얇은 계정 띠.
-/// 왼쪽 메뉴는 교역자가 구성한 페이지들(메인 · 말씀 묵상 · 중보기도 요청 …)과 내 기도제목, 관리 메뉴다.
+/// 왼쪽 메뉴는 교역자가 구성한 페이지들(메인 · 말씀 묵상 …)과 관리 메뉴다.
 /// 메뉴를 바꾸면 주소가 바뀌므로 브라우저 뒤로가기로 이전 메뉴에 돌아갈 수 있다.
 class ChurchShell extends StatelessWidget {
   const ChurchShell({
@@ -48,78 +47,65 @@ class ChurchShell extends StatelessWidget {
   final Widget child;
 
   static const _labels = {
+    ChurchSection.mine: '내 활동',
     ChurchSection.gallery: '갤러리',
-    ChurchSection.mine: '내 기도제목',
     ChurchSection.content: '페이지 편집',
     ChurchSection.contents: '콘텐츠 관리',
-    ChurchSection.posts: '게시글 관리',
-    ChurchSection.members: '인원 관리',
+    ChurchSection.members: '교회 회원 관리',
+    ChurchSection.join: '교회 입장 관리',
+    ChurchSection.info: '교회 정보 관리',
     ChurchSection.departments: '부서 관리',
   };
 
   static const _icons = {
-    ChurchSection.gallery: (Icons.photo_library_outlined, Icons.photo_library),
     ChurchSection.mine: (Icons.person_outline, Icons.person),
+    ChurchSection.gallery: (Icons.photo_library_outlined, Icons.photo_library),
     ChurchSection.content: (Icons.edit_note_outlined, Icons.edit_note),
     ChurchSection.contents: (
       Icons.collections_bookmark_outlined,
       Icons.collections_bookmark,
     ),
-    ChurchSection.posts: (Icons.forum_outlined, Icons.forum),
     ChurchSection.members: (Icons.people_outline, Icons.people),
+    ChurchSection.join: (Icons.vpn_key_outlined, Icons.vpn_key),
+    ChurchSection.info: (Icons.church_outlined, Icons.church),
     ChurchSection.departments: (Icons.groups_outlined, Icons.groups),
   };
 
   static const _staffOnly = [
     ChurchSection.content,
-    ChurchSection.posts,
     ChurchSection.members,
+    ChurchSection.join,
     ChurchSection.departments,
   ];
 
   /// 교회 운영자에게만 보이는 메뉴. 콘텐츠 관리는 교역자가 신경 쓸 일이 아니다.
-  static const _adminOnly = [ChurchSection.contents];
+  static const _adminOnly = [ChurchSection.contents, ChurchSection.info];
 
-  SidebarItem _item(BuildContext context, ChurchSection s) => SidebarItem(
-    label: _labels[s]!,
-    icon: _icons[s]!.$1,
-    selectedIcon: _icons[s]!.$2,
-    selected: s == section,
-    onTap: () => context.go(
-      Routes.section(
-        me.churchId,
-        s,
-        // 부서 공간은 기도제목에만 적용된다.
-        dept: s == ChurchSection.mine ? department?.id : null,
-      ),
-    ),
-  );
+  SidebarItem _item(BuildContext context, ChurchSection s, {int badge = 0}) =>
+      SidebarItem(
+        label: _labels[s]!,
+        icon: _icons[s]!.$1,
+        selectedIcon: _icons[s]!.$2,
+        selected: s == section,
+        onTap: () => context.go(Routes.section(me.churchId, s)),
+        badge: badge,
+      );
 
-  /// 페이지 한 칸. 메인 주소(/home)는 첫째 페이지, 중보기도 주소(/prayers)는 메신저 페이지로 본다.
-  SidebarItem _pageItem(
+  /// 하단 탭 한 칸. 지금 보는 곳이 선택된다.
+  SidebarItem _tab(
     BuildContext context,
-    List<PageConfig> pages,
-    PageConfig page,
-  ) {
-    final icon = pageIconOf(page.icon);
-    final selected = switch (section) {
-      ChurchSection.page => pageId == page.id,
-      ChurchSection.home => identical(page, pages.first),
-      ChurchSection.feed => identical(
-        page,
-        pages.firstWhere((p) => p.hasMessenger, orElse: () => pages.first),
-      ),
-      _ => false,
-    };
-    return SidebarItem(
-      label: page.title,
-      icon: icon.outlined,
-      selectedIcon: icon.filled,
-      selected: selected,
-      onTap: () =>
-          context.go(Routes.page(me.churchId, page.id, dept: department?.id)),
-    );
-  }
+    String label,
+    ChurchSection target,
+    IconData icon,
+    IconData selectedIcon,
+  ) => SidebarItem(
+    label: label,
+    icon: icon,
+    selectedIcon: selectedIcon,
+    selected: section == target,
+    onTap: () =>
+        context.go(Routes.section(me.churchId, target, dept: department?.id)),
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -141,52 +127,122 @@ class ChurchShell extends StatelessWidget {
         initialData: PageConfig.defaults,
         builder: (context, snap) {
           final pages = snap.data ?? PageConfig.defaults;
+          Widget frame(int pending) => SidebarScaffold(
+            userName: userName,
+            onProfile: () => showAccountDialog(
+              context,
+              name: userName,
+              details: profileDetailsOf(me),
+            ),
+            onSettings: () => showSettingsDialog(context),
+            onSignOut: onSignOut,
+            railActions: [
+              NotificationsButton(
+                pendingRequests: pending,
+                onOpenRequests: () => context.go(
+                  Routes.section(me.churchId, ChurchSection.members),
+                ),
+              ),
+            ],
+            // 서랍 맨 위: 앱 이름에서 조금 띄워 "내가 속한 교회"를 보여준다.
+            sidebarHeader: Padding(
+              padding: const EdgeInsets.only(top: 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(left: 4, bottom: 6),
+                    child: Text(
+                      '내가 속한 교회',
+                      style: TextStyle(
+                        color: context.palette.muted,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                  _ChurchCard(
+                    name: me.churchName,
+                    department: department?.name,
+                    onSwitch: () => context.push(Routes.churchList),
+                  ),
+                ],
+              ),
+            ),
+            // 하단 탭은 기도 · 홈(가운데 원형) · 말씀으로 고정이다.
+            bottomItems: [
+              _tab(
+                context,
+                '기도',
+                ChurchSection.intercession,
+                Icons.favorite_border,
+                Icons.favorite,
+              ),
+              _tab(
+                context,
+                '홈',
+                ChurchSection.home,
+                Icons.home_outlined,
+                Icons.home,
+              ),
+              _tab(
+                context,
+                '말씀',
+                ChurchSection.word,
+                Icons.menu_book_outlined,
+                Icons.menu_book,
+              ),
+            ],
+            // 서랍: 내 활동 · 교회 탐색, 교역자에게는 관리 메뉴가 더해진다.
+            groups: [
+              SidebarGroup(
+                items: [
+                  _item(context, ChurchSection.mine),
+                  SidebarItem(
+                    label: '교회 탐색',
+                    icon: Icons.explore_outlined,
+                    selectedIcon: Icons.explore,
+                    selected: false,
+                    onTap: () => context.push(Routes.explore),
+                  ),
+                ],
+              ),
+              if (me.isStaff)
+                SidebarGroup(
+                  title: '관리',
+                  items: [
+                    // 인원 관리가 관리 메뉴의 첫째다. 입장 요청이 있으면 오른쪽에 숫자가 나온다.
+                    _item(context, ChurchSection.members, badge: pending),
+                    _item(context, ChurchSection.join),
+                    _item(context, ChurchSection.content),
+                    if (me.isAdmin) _item(context, ChurchSection.contents),
+                    _item(context, ChurchSection.departments),
+                    if (me.isAdmin) _item(context, ChurchSection.info),
+                  ],
+                ),
+            ],
+            child: child,
+          );
+
           return ChurchScope(
             me: me,
             department: department,
             userName: userName,
             onSignOut: onSignOut,
             pages: pages,
-            child: SidebarScaffold(
-              userName: userName,
-              onProfile: () => showAppDialog<void>(
-                context,
-                maxWidth: 420,
-                child: ProfileEditDialog(
-                  name: userName,
-                  details: profileDetailsOf(me),
-                ),
-              ),
-              onSettings: () => showSettingsDialog(context),
-              onSignOut: onSignOut,
-              railActions: const [NotificationsButton()],
-              sidebarHeader: _ChurchCard(
-                name: me.churchName,
-                department: department?.name,
-                onSwitch: () => context.go(Routes.churchList),
-              ),
-              groups: [
-                SidebarGroup(
-                  items: [
-                    for (final p in pages) _pageItem(context, pages, p),
-                    _item(context, ChurchSection.gallery),
-                    _item(context, ChurchSection.mine),
-                  ],
-                ),
-                if (me.isStaff)
-                  SidebarGroup(
-                    title: '관리',
-                    items: [
-                      _item(context, ChurchSection.content),
-                      if (me.isAdmin) _item(context, ChurchSection.contents),
-                      _item(context, ChurchSection.posts),
-                      _item(context, ChurchSection.members),
-                      _item(context, ChurchSection.departments),
-                    ],
-                  ),
-              ],
-              child: child,
-            ),
+            child: me.isStaff
+                ? ViewModelBuilder<PendingMembersViewModel>(
+                    create: (context) => PendingMembersViewModel(
+                      AppScope.read(context).members,
+                      me.churchId,
+                    ),
+                    builder: (context, pvm) => StreamBuilder<int>(
+                      stream: pvm.count,
+                      initialData: 0,
+                      builder: (context, snap) => frame(snap.data ?? 0),
+                    ),
+                  )
+                : frame(0),
           );
         },
       ),

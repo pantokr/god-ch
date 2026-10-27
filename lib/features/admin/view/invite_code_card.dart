@@ -12,11 +12,10 @@ import '../../../core/theme.dart';
 import '../../../data/models/department.dart';
 import '../../../data/models/invite_code.dart';
 import '../../../data/models/member.dart';
-import '../../../data/models/profile_field.dart';
 import '../../church/data/church_repository.dart';
 import '../view_model/invite_codes_view_model.dart';
 
-/// 초대 코드. 코드를 만들 때 받는 분 · 역할 · 부서를 정해 두면, 그 코드로 들어온 사람은
+/// 초대 코드. 코드를 만들 때 역할 · 부서 · 일회용 여부를 정해 두면, 그 코드로 들어온 사람은
 /// 그 역할과 부서로 신청된다. 알맞은 사람에게 보낼 초대 메시지를 복사해 전달한다.
 /// 코드는 일정 기간만 유효하고, 필요하면 새로 발급하거나 폐기한다.
 class InviteCodeCard extends StatelessWidget {
@@ -90,7 +89,7 @@ class InviteCodeCard extends StatelessWidget {
                             .toList();
                         if (active.isEmpty) {
                           return Text(
-                            '유효한 초대 코드가 없어요. 받는 분과 역할·부서를 정해 새 코드를 만들어 주세요.',
+                            '유효한 초대 코드가 없어요. 새 코드를 만들어 주세요.',
                             style: TextStyle(color: context.palette.muted),
                           );
                         }
@@ -129,27 +128,20 @@ class InviteCodeCard extends StatelessWidget {
     await vm.create(
       role: form.role,
       departmentIds: form.departmentIds,
-      recipient: form.recipient,
-      requiredFields: form.requiredFields,
+      singleUse: form.singleUse,
     );
   }
 }
 
 class _InviteForm {
-  const _InviteForm(
-    this.recipient,
-    this.role,
-    this.departmentIds,
-    this.requiredFields,
-  );
+  const _InviteForm(this.singleUse, this.role, this.departmentIds);
 
-  final String recipient;
+  final bool singleUse;
   final Role role;
   final List<String> departmentIds;
-  final Set<ProfileField> requiredFields;
 }
 
-/// 새 초대 코드: 받는 분(선택) · 역할 · 부서를 고른다.
+/// 새 초대 코드: 역할 · 부서 · 필수 정보 · 일회용 여부를 고른다.
 class _NewInviteForm extends StatefulWidget {
   const _NewInviteForm({required this.vm});
 
@@ -160,16 +152,9 @@ class _NewInviteForm extends StatefulWidget {
 }
 
 class _NewInviteFormState extends State<_NewInviteForm> {
-  final _recipient = TextEditingController();
+  bool _singleUse = false;
   Role _role = Role.member;
-  final _departments = <String>{};
-  final _requiredFields = <ProfileField>{};
-
-  @override
-  void dispose() {
-    _recipient.dispose();
-    super.dispose();
-  }
+  String? _department;
 
   @override
   Widget build(BuildContext context) {
@@ -179,21 +164,7 @@ class _NewInviteFormState extends State<_NewInviteForm> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text('초대 코드 만들기', style: theme.textTheme.titleLarge),
-        const SizedBox(height: 4),
-        Text(
-          '이 코드로 들어오는 사람은 아래 역할과 부서로 신청돼요. 승인은 그대로 필요해요.',
-          style: TextStyle(color: context.palette.muted),
-        ),
         const SizedBox(height: 16),
-        TextField(
-          controller: _recipient,
-          maxLength: 30,
-          decoration: const InputDecoration(
-            labelText: '받는 분 (선택)',
-            hintText: '예: 김은혜',
-          ),
-        ),
-        const SizedBox(height: 8),
         Text('역할', style: theme.textTheme.titleSmall),
         const SizedBox(height: 8),
         SegmentedButton<Role>(
@@ -218,58 +189,33 @@ class _NewInviteFormState extends State<_NewInviteForm> {
             ),
           ),
         const SizedBox(height: 16),
-        Text('소속 부서', style: theme.textTheme.titleSmall),
-        const SizedBox(height: 8),
         StreamBuilder<List<Department>>(
           stream: widget.vm.departments,
           builder: (context, snap) {
             final list = snap.data ?? const <Department>[];
-            if (list.isEmpty) {
-              return Text(
-                '아직 부서가 없어요. 부서 없이 초대돼요.',
-                style: TextStyle(color: context.palette.muted),
-              );
-            }
-            return Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
+            return DropdownButtonFormField<String?>(
+              initialValue: _department,
+              isExpanded: true,
+              borderRadius: BorderRadius.circular(AppRadius.control),
+              decoration: const InputDecoration(labelText: '소속 부서'),
+              items: [
+                const DropdownMenuItem(value: null, child: Text('없음')),
                 for (final d in list)
-                  FilterChip(
-                    label: Text(d.name),
-                    selected: _departments.contains(d.id),
-                    onSelected: (on) => setState(
-                      () => on
-                          ? _departments.add(d.id)
-                          : _departments.remove(d.id),
-                    ),
-                  ),
+                  DropdownMenuItem(value: d.id, child: Text(d.name)),
               ],
+              onChanged: (v) => setState(() => _department = v),
             );
           },
         ),
-        const SizedBox(height: 16),
-        Text('입장할 때 필수로 받을 정보', style: theme.textTheme.titleSmall),
-        const SizedBox(height: 4),
-        Text(
-          '가입할 때는 선택이에요. 선택한 정보가 회원 정보에 없으면 이 코드로 입장을 신청할 때 입력해야 해요.',
-          style: TextStyle(color: context.palette.muted, fontSize: 12),
-        ),
         const SizedBox(height: 8),
-        Wrap(
-          spacing: 8,
-          children: [
-            for (final f in ProfileField.values)
-              FilterChip(
-                label: Text(f.label),
-                selected: _requiredFields.contains(f),
-                onSelected: (on) => setState(
-                  () => on ? _requiredFields.add(f) : _requiredFields.remove(f),
-                ),
-              ),
-          ],
+        CheckboxListTile(
+          contentPadding: EdgeInsets.zero,
+          controlAffinity: ListTileControlAffinity.leading,
+          value: _singleUse,
+          onChanged: (v) => setState(() => _singleUse = v ?? false),
+          title: const Text('일회용'),
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 12),
         Row(
           mainAxisAlignment: MainAxisAlignment.end,
           children: [
@@ -281,12 +227,7 @@ class _NewInviteFormState extends State<_NewInviteForm> {
             FilledButton(
               onPressed: () => Navigator.pop(
                 context,
-                _InviteForm(
-                  _recipient.text.trim(),
-                  _role,
-                  _departments.toList(),
-                  {..._requiredFields},
-                ),
+                _InviteForm(_singleUse, _role, [?_department]),
               ),
               child: const Text('코드 만들기'),
             ),
@@ -313,11 +254,9 @@ class _CodeRow extends StatelessWidget {
   String get _roleLabel => code.role == Role.staff ? '교역자' : '교인';
 
   String get _target => [
-    if (code.recipient.isNotEmpty) code.recipient,
     _roleLabel,
+    if (code.singleUse) '일회용',
     if (departmentNames.isNotEmpty) departmentNames.join(', '),
-    if (code.requiredFields.isNotEmpty)
-      '필수 입력: ${code.requiredFields.map((f) => f.label).join(', ')}',
   ].join(' · ');
 
   /// "3일 남음" / "5시간 남음" 처럼 남은 유효기간을 보여준다.
@@ -330,14 +269,11 @@ class _CodeRow extends StatelessWidget {
     return '곧 만료';
   }
 
-  /// 받는 분에게 그대로 보낼 수 있는 초대 메시지.
+  /// 그대로 보낼 수 있는 초대 메시지.
   String _message() {
-    final greeting = code.recipient.isEmpty ? '' : '${code.recipient}님, ';
     return [
-      '$greeting$churchName에 초대합니다.',
+      '$churchName에 초대합니다.',
       '역할: $_roleLabel${departmentNames.isEmpty ? '' : ' · 부서: ${departmentNames.join(', ')}'}',
-      if (code.requiredFields.isNotEmpty)
-        '입장할 때 ${code.requiredFields.map((f) => f.label).join('·')} 입력이 필요해요.',
       '초대 코드: ${code.code} (${fmtDate(code.expiresAt)}까지)',
       '앱에서 "초대 코드로 입장"을 눌러 이 코드를 입력해 주세요.',
       if (kIsWeb) Uri.base.origin,

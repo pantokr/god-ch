@@ -19,13 +19,18 @@ class NotificationRepository {
       .orderBy('createdAt', descending: true)
       .limit(100)
       .snapshots()
-      .map((s) => s.docs.map(AppNotification.fromDoc).toList());
+      .map(
+        (s) => s.docs
+            .map(AppNotification.fromDoc)
+            .where((n) => !n.hidden)
+            .toList(),
+      );
 
   /// 아직 읽지 않은 알림 수.
   Stream<int> unreadCount() => _mine
       .where('read', isEqualTo: false)
       .snapshots()
-      .map((s) => s.docs.length);
+      .map((s) => s.docs.where((d) => d.data()['hidden'] != true).length);
 
   Future<void> markRead(String id) => _mine.doc(id).update({'read': true});
 
@@ -39,5 +44,7 @@ class NotificationRepository {
     await batch.commit();
   }
 
-  Future<void> delete(String id) => _mine.doc(id).delete();
+  /// 알림을 지우지 않고 내 목록에서 숨긴다 (읽은 것으로 처리).
+  Future<void> delete(String id) =>
+      _mine.doc(id).update({'hidden': true, 'read': true});
 }

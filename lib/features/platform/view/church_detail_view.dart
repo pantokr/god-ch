@@ -9,7 +9,7 @@ import 'church_info_form.dart';
 
 /// 한 교회의 상세 관리: 교회 정보 / 교회 회원 관리 / 교회 입장 관리 / 부서.
 /// 교회 회원 관리는 앱 운영자의 회원 관리와 같은 모양이다.
-/// 앱 운영자는 교회에 소속되지 않으므로 기도제목 내용은 이 화면에 나오지 않는다.
+/// 앱 운영자는 교회에 소속되지 않으므로 교회 안의 글 내용은 이 화면에 나오지 않는다.
 class ChurchDetailView extends StatelessWidget {
   const ChurchDetailView({super.key, required this.church});
 

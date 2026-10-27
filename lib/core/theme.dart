@@ -1,21 +1,35 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-/// 앱 전체의 모서리 둥글기. 부드럽고 넉넉하게 둥글린다.
+/// 앱 전체의 모서리 둥글기. 아주 약하게(각진 느낌) 둔다 — 둥글게 뭉개서 흔한 느낌이 나지 않게.
 class AppRadius {
   AppRadius._();
 
   /// 버튼·입력창·칩·배지 등 작은 요소.
-  static const control = 12.0;
+  static const control = 4.0;
 
   /// 로그인·회원가입 패널 같은 큰 틀.
-  static const panel = 24.0;
+  static const panel = 8.0;
 
   /// 카드·팝업 메뉴.
-  static const card = 16.0;
+  static const card = 6.0;
 
   /// 대화상자.
-  static const dialog = 24.0;
+  static const dialog = 8.0;
+}
+
+/// 입력칸 공통 규격: 높이와 칸 사이 간격. 화면마다 따로 정하지 않고 이것을 쓴다.
+class AppField {
+  AppField._();
+
+  /// 입력칸 최소 높이.
+  static const height = 44.0;
+
+  /// 위아래로 이어지는 입력칸 사이 간격.
+  static const gap = 8.0;
+
+  /// [gap]만큼 띄우는 빈 칸.
+  static const spacer = SizedBox(height: gap);
 }
 
 /// 면을 살짝 띄우는 부드러운 그림자 (두 겹: 넓고 옅은 것 + 가깝고 또렷한 것).
@@ -68,19 +82,37 @@ class AppDepth {
     ];
   }
 
-  /// 포인트색이 살짝 밝아졌다 어두워지는 대각선 그라데이션.
+  /// 네온 그라데이션: 전기 파랑 → 보라 → 핫 마젠타. 앱의 모든 포인트 면(버튼 · 선택 표시 · 머리글)에 쓴다.
+  /// 흰 글자가 읽히도록 세 색 모두 충분히 진하고, 어두운 모드에서는 조금 더 밝게 빛난다.
   static LinearGradient brand(BuildContext context) {
-    final b = context.palette.brand;
+    final dark = Theme.of(context).brightness == Brightness.dark;
     return LinearGradient(
       begin: Alignment.topLeft,
       end: Alignment.bottomRight,
-      colors: [
-        Color.lerp(b, Colors.white, 0.22)!,
-        b,
-        Color.lerp(b, Colors.black, 0.18)!,
-      ],
+      colors: dark
+          ? const [Color(0xFF4F7BFF), Color(0xFF9B5CFF), Color(0xFFFF3FC0)]
+          : const [Color(0xFF2F55FF), Color(0xFF7B2DFF), Color(0xFFE8199F)],
       stops: const [0, 0.5, 1],
     );
+  }
+
+  /// 네온 빛 번짐 그림자 (그라데이션 면 아래에 깐다).
+  static List<BoxShadow> glow(BuildContext context, {double strength = 1}) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    return [
+      BoxShadow(
+        color: const Color(0xFF7B2DFF)
+            .withValues(alpha: (dark ? 0.55 : 0.38) * strength),
+        blurRadius: 18,
+        offset: const Offset(-2, 6),
+      ),
+      BoxShadow(
+        color: const Color(0xFFE8199F)
+            .withValues(alpha: (dark ? 0.35 : 0.22) * strength),
+        blurRadius: 18,
+        offset: const Offset(4, 8),
+      ),
+    ];
   }
 }
 
@@ -126,13 +158,13 @@ class AppPalette extends ThemeExtension<AppPalette> {
   /// 소프트 인디고: 연한 라벤더 바탕에 흰 카드, 인디고 포인트와 코랄 강조.
   static const light = AppPalette(
     ink: Color(0xFF191B2E),
-    muted: Color(0xFF6B6F8D),
+    muted: Color(0xFF636886),
     bg: Color(0xFFF3F4FB),
     surface: Color(0xFFFFFFFF),
     border: Color(0xFFE3E5F2),
-    brand: Color(0xFF5B5FEF),
+    brand: Color(0xFF6A2DFF),
     onBrand: Color(0xFFFFFFFF),
-    accent: Color(0xFFFF7A6B),
+    accent: Color(0xFFE8199F),
   );
 
   /// 딥 인디고: 남색에 가까운 먹색 바탕에 밝은 인디고와 코랄.
@@ -142,9 +174,9 @@ class AppPalette extends ThemeExtension<AppPalette> {
     bg: Color(0xFF0E1020),
     surface: Color(0xFF181B30),
     border: Color(0xFF2B2F4D),
-    brand: Color(0xFF8E92FF),
-    onBrand: Color(0xFF0E1020),
-    accent: Color(0xFFFF9A8C),
+    brand: Color(0xFFA37CFF),
+    onBrand: Color(0xFFFFFFFF),
+    accent: Color(0xFFFF4FC3),
   );
 
   @override
@@ -189,7 +221,7 @@ extension PaletteContext on BuildContext {
   AppPalette get palette => Theme.of(this).extension<AppPalette>()!;
 }
 
-/// 기도제목 본문처럼 길게 읽는 글에 쓰는 명조 글꼴.
+/// 말씀 구절처럼 길게 읽는 글에 쓰는 명조 글꼴.
 TextStyle readingStyle(BuildContext context) => GoogleFonts.notoSerifKr(
   textStyle: Theme.of(context).textTheme.bodyLarge?.copyWith(height: 1.85),
 );
@@ -279,37 +311,36 @@ ThemeData buildTheme(Brightness brightness) {
         side: BorderSide(color: p.border.withValues(alpha: 0.7)),
       ),
     ),
-    // 입력란은 연하게 채운 둥근 칸이다. 글자 수 표시는 입력란 아래 줄을 차지하므로 숨기고,
+    // 입력란은 미니멀하게: 채움과 상자 없이 밑줄 하나, 낮은 높이. 글자 수 표시는 숨기고,
     // 안내 문구는 각 입력란의 suffixText·hintText 안에 넣는다 (한도는 maxLength가 그대로 막는다).
     inputDecorationTheme: InputDecorationTheme(
-      filled: true,
-      fillColor: Color.alphaBlend(
-        p.brand.withValues(alpha: brightness == Brightness.dark ? 0.08 : 0.04),
-        p.bg,
+      isDense: true,
+      filled: false,
+      contentPadding: const EdgeInsets.symmetric(vertical: 10),
+      // 모든 입력칸의 최소 높이를 같게 한다 (한 줄 · 드롭다운 · 검색란이 나란히 놓여도 키가 같다).
+      constraints: const BoxConstraints(minHeight: AppField.height),
+      prefixIconConstraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+      suffixIconConstraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+      prefixIconColor: WidgetStateColor.resolveWith(
+        (states) => states.contains(WidgetState.focused) ? p.brand : p.muted,
       ),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      suffixIconColor: p.muted,
       counterStyle: const TextStyle(fontSize: 0, height: 0),
-      // 제목이 테두리에 걸쳐지지 않도록, 윤곽선 대신 채운 칸(밑줄형)을 쓴다.
-      // 제목은 칸 안에 있다가 입력하면 칸 안쪽 위로 올라간다.
-      border: UnderlineInputBorder(
-        borderRadius: radius,
-        borderSide: BorderSide.none,
-      ),
+      border: UnderlineInputBorder(borderSide: BorderSide(color: p.border)),
       enabledBorder: UnderlineInputBorder(
-        borderRadius: radius,
-        borderSide: BorderSide.none,
+        borderSide: BorderSide(color: p.border),
+      ),
+      disabledBorder: UnderlineInputBorder(
+        borderSide: BorderSide(color: p.border.withValues(alpha: 0.5)),
       ),
       focusedBorder: UnderlineInputBorder(
-        borderRadius: radius,
-        borderSide: BorderSide(color: p.brand, width: 2),
+        borderSide: BorderSide(color: p.brand, width: 1.5),
       ),
       errorBorder: UnderlineInputBorder(
-        borderRadius: radius,
-        borderSide: BorderSide(color: scheme.error, width: 1.5),
+        borderSide: BorderSide(color: scheme.error),
       ),
       focusedErrorBorder: UnderlineInputBorder(
-        borderRadius: radius,
-        borderSide: BorderSide(color: scheme.error, width: 2),
+        borderSide: BorderSide(color: scheme.error, width: 1.5),
       ),
       suffixStyle: TextStyle(color: p.muted, fontSize: 12),
       // 힌트(예시 글자)는 아주 옅게 해서 입력한 값과 확실히 구별되게 한다.
@@ -323,6 +354,7 @@ ThemeData buildTheme(Brightness brightness) {
         ),
       ),
     ),
+    // 채움 버튼은 네온 그라데이션 면에 빛 번짐을 준다. 눌 수 없을 때는 회색 면.
     filledButtonTheme: FilledButtonThemeData(
       style: FilledButton.styleFrom(
         shape: shape,
@@ -330,6 +362,25 @@ ThemeData buildTheme(Brightness brightness) {
         padding: const EdgeInsets.symmetric(horizontal: 22),
         textStyle: const TextStyle(fontWeight: FontWeight.w700),
         elevation: 0,
+        foregroundColor: Colors.white,
+        disabledForegroundColor: p.muted,
+        backgroundColor: Colors.transparent,
+        shadowColor: Colors.transparent,
+        backgroundBuilder: (context, states, child) {
+          final disabled = states.contains(WidgetState.disabled);
+          final hovered = states.contains(WidgetState.hovered);
+          return DecoratedBox(
+            decoration: BoxDecoration(
+              borderRadius: radius,
+              gradient: disabled ? null : AppDepth.brand(context),
+              color: disabled ? p.border : null,
+              boxShadow: disabled
+                  ? null
+                  : AppDepth.glow(context, strength: hovered ? 1.3 : 0.8),
+            ),
+            child: child,
+          );
+        },
       ),
     ),
     outlinedButtonTheme: OutlinedButtonThemeData(
@@ -361,11 +412,26 @@ ThemeData buildTheme(Brightness brightness) {
     ),
     chipTheme: ChipThemeData(
       side: BorderSide(color: p.border),
-      shape: const StadiumBorder(),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppRadius.control),
+      ),
       backgroundColor: p.surface,
       selectedColor: p.brand.withValues(alpha: 0.16),
       checkmarkColor: p.brand,
       labelStyle: TextStyle(color: p.ink, fontWeight: FontWeight.w600),
+    ),
+    // 드롭다운 목록도 입력칸과 같은 모서리·테두리.
+    dropdownMenuTheme: DropdownMenuThemeData(
+      menuStyle: MenuStyle(
+        backgroundColor: WidgetStatePropertyAll(p.surface),
+        surfaceTintColor: const WidgetStatePropertyAll(Colors.transparent),
+        shape: WidgetStatePropertyAll(
+          RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadius.card),
+            side: BorderSide(color: p.border),
+          ),
+        ),
+      ),
     ),
     popupMenuTheme: PopupMenuThemeData(
       color: p.surface,
@@ -404,7 +470,9 @@ ThemeData buildTheme(Brightness brightness) {
       shadowColor: Colors.black.withValues(alpha: 0.2),
       height: 68,
       indicatorColor: p.brand.withValues(alpha: 0.16),
-      indicatorShape: const StadiumBorder(),
+      indicatorShape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppRadius.control),
+      ),
       labelTextStyle: WidgetStateProperty.resolveWith(
         (states) => TextStyle(
           fontSize: 12,

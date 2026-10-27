@@ -30,7 +30,7 @@ class PrayerDetailPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final back = Routes.section(me.churchId, ChurchSection.feed);
+    final back = Routes.section(me.churchId, ChurchSection.intercession);
     return ViewModelBuilder<PrayerDetailViewModel>(
       create: (context) =>
           PrayerDetailViewModel(AppScope.read(context).prayers, me, prayerId),
@@ -117,7 +117,7 @@ class PrayerDetailPage extends StatelessWidget {
       if (router.canPop()) {
         router.pop();
       } else {
-        router.go(Routes.section(me.churchId, ChurchSection.feed));
+        router.go(Routes.section(me.churchId, ChurchSection.intercession));
       }
     }
   }
@@ -160,7 +160,7 @@ class _Body extends StatelessWidget {
                 const SizedBox(height: 20),
                 // 기도제목 본문은 책처럼 읽히도록 명조로 보여준다.
                 SelectableText(p.content, style: readingStyle(context)),
-                if (p.isPublic && !p.deleted) ...[
+                if (p.isPublic && !p.deleted && vm.settings.reactionsOn) ...[
                   const SizedBox(height: 24),
                   const Divider(),
                   const SizedBox(height: 16),
@@ -171,7 +171,7 @@ class _Body extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 16),
-        if (p.isPublic && !p.deleted)
+        if (p.isPublic && !p.deleted && vm.settings.staffComments)
           EntrySection(
             title: '교역자 댓글',
             entries: vm.comments,
@@ -180,7 +180,7 @@ class _Body extends StatelessWidget {
             onSend: (text) => vm.addComment(p, text),
             errorOf: () => vm.error,
           ),
-        if (!p.isPublic)
+        if (!p.isPublic && vm.settings.privateResponses)
           EntrySection(
             title: '교역자 답변',
             entries: vm.responses,

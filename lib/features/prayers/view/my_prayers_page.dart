@@ -23,7 +23,6 @@ class MyPrayersPage extends StatelessWidget {
         prayers: vm.prayers,
         me: me,
         title: '내 기도제목',
-        subtitle: '내가 쓴 기도제목을 보고 수정하거나 삭제할 수 있어요.',
         emptyText: '작성한 기도제목이 없어요.',
         showReactions: false,
         onWrite: onWrite,
