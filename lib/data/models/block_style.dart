@@ -28,7 +28,6 @@ class BlockPalette {
 
   static const all = [
     BlockPalette('indigo', '인디고', Color(0xFF5B5FEF)),
-    BlockPalette('violet', '보라', Color(0xFF8B5CF6)),
     BlockPalette('rose', '장미', Color(0xFFEC4899)),
     BlockPalette('coral', '코랄', Color(0xFFFF6B5B)),
     BlockPalette('amber', '호박', Color(0xFFF59E0B)),

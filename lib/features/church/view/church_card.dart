@@ -1,3 +1,5 @@
+import '../../../core/icons.dart';
+
 import 'package:flutter/material.dart';
 
 import '../../../app/app_scope.dart';
@@ -36,7 +38,10 @@ class ChurchCard extends StatelessWidget {
                       color: context.palette.brand.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(AppRadius.control),
                     ),
-                    child: Icon(Icons.church, color: context.palette.brand),
+                    child: Icon(
+                      AppIcons.churchFill,
+                      color: context.palette.brand,
+                    ),
                   ),
                   const SizedBox(width: 14),
                   Expanded(
@@ -57,7 +62,7 @@ class ChurchCard extends StatelessWidget {
                       ],
                     ),
                   ),
-                  Icon(Icons.arrow_forward, color: context.palette.muted),
+                  Icon(AppIcons.arrowRight, color: context.palette.muted),
                 ],
               ),
             ),
@@ -101,7 +106,7 @@ class _DepartmentChips extends StatelessWidget {
             children: [
               for (final d in mine)
                 ActionChip(
-                  avatar: const Icon(Icons.groups_outlined, size: 18),
+                  avatar: const Icon(AppIcons.usersThree, size: 18),
                   label: Text(d.name),
                   onPressed: () => onOpen(member, d),
                 ),
@@ -115,7 +120,7 @@ class _DepartmentChips extends StatelessWidget {
                         ),
                       )
                     : null,
-                icon: const Icon(Icons.tune, size: 18),
+                icon: const Icon(AppIcons.sliders, size: 18),
                 label: Text(mine.isEmpty ? '부서 선택 (선택 사항)' : '부서 변경'),
               ),
             ],

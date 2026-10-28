@@ -1,3 +1,5 @@
+import '../../../core/icons.dart';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -34,29 +36,29 @@ class ContentListPage extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                // 뒤로가기는 다른 페이지처럼 맨 위 왼쪽에 둔다.
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: IconButton(
+                    tooltip: '메인',
+                    onPressed: () => context.canPop()
+                        ? context.pop()
+                        : context.go(Routes.home(me.churchId)),
+                    icon: const Icon(AppIcons.arrowLeft),
+                  ),
+                ),
+                const SizedBox(height: 8),
                 PageTitle(
                   title: kind.label,
-                  action: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (me.isStaff)
-                        OutlinedButton.icon(
+                  action: me.isStaff
+                      ? OutlinedButton.icon(
                           onPressed: () => context.push(
                             Routes.contentEdit(me.churchId, kind: kind),
                           ),
-                          icon: const Icon(Icons.edit_outlined, size: 18),
+                          icon: const Icon(AppIcons.pencilSimple, size: 18),
                           label: const Text('편집'),
-                        ),
-                      const SizedBox(width: 8),
-                      IconButton(
-                        tooltip: '메인',
-                        onPressed: () => context.canPop()
-                            ? context.pop()
-                            : context.go(Routes.home(me.churchId)),
-                        icon: const Icon(Icons.arrow_back),
-                      ),
-                    ],
-                  ),
+                        )
+                      : null,
                 ),
                 ContentStream(
                   stream: vm.items,

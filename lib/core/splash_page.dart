@@ -1,3 +1,5 @@
+import 'icons.dart';
+
 import 'package:flutter/material.dart';
 
 import 'theme.dart';
@@ -23,11 +25,7 @@ class SplashPage extends StatelessWidget {
                 borderRadius: BorderRadius.circular(AppRadius.panel),
                 boxShadow: AppDepth.glow(context),
               ),
-              child: Icon(
-                Icons.volunteer_activism,
-                size: 44,
-                color: palette.onBrand,
-              ),
+              child: Icon(AppIcons.handHeart, size: 44, color: palette.onBrand),
             ),
             const SizedBox(height: 20),
             Text(

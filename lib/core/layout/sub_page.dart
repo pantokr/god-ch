@@ -1,3 +1,5 @@
+import '../icons.dart';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -45,7 +47,7 @@ class SubPage extends StatelessWidget {
                         onPressed: () => context.canPop()
                             ? context.pop()
                             : context.go(fallbackLocation),
-                        icon: const Icon(Icons.arrow_back),
+                        icon: const Icon(AppIcons.arrowLeft),
                       ),
                       const Spacer(),
                       ...actions,

@@ -1,3 +1,5 @@
+import '../../../core/icons.dart';
+
 import 'package:flutter/material.dart';
 
 import '../../../core/theme.dart';
@@ -17,8 +19,8 @@ Future<void> showSettingsDialog(BuildContext context) => showDialog<void>(
 );
 
 enum _Tab {
-  display('화면', Icons.palette_outlined),
-  about('앱 정보', Icons.info_outline);
+  display('화면', AppIcons.palette),
+  about('앱 정보', AppIcons.info);
 
   const _Tab(this.label, this.icon);
 
@@ -91,7 +93,7 @@ class _SettingsPanelState extends State<_SettingsPanel> {
                 right: 4,
                 child: IconButton(
                   tooltip: '닫기',
-                  icon: const Icon(Icons.close),
+                  icon: const Icon(AppIcons.x),
                   onPressed: () => Navigator.pop(context),
                 ),
               ),

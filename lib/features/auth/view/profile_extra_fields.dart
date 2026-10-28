@@ -1,3 +1,5 @@
+import '../../../core/icons.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -117,7 +119,7 @@ class _ProfileExtraFieldsState extends State<ProfileExtraFields> {
                         const SizedBox(width: 8),
                         OutlinedButton.icon(
                           onPressed: _searchAddress,
-                          icon: const Icon(Icons.search, size: 18),
+                          icon: const Icon(AppIcons.magnifyingGlass, size: 18),
                           label: const Text('주소 검색'),
                         ),
                       ],
@@ -152,10 +154,10 @@ class _ProfileExtraFieldsState extends State<ProfileExtraFields> {
               label: RequiredLabel('생년월일', required: widget.requireBirthDate),
               hintText: '눌러서 날짜를 고르세요',
               suffixIcon: widget.birthDate.text.isEmpty || !widget.enabled
-                  ? const Icon(Icons.calendar_today_outlined, size: 18)
+                  ? const Icon(AppIcons.calendar, size: 18)
                   : IconButton(
                       tooltip: '지우기',
-                      icon: const Icon(Icons.close, size: 18),
+                      icon: const Icon(AppIcons.x, size: 18),
                       onPressed: () => setState(() => widget.birthDate.clear()),
                     ),
             ),

@@ -1,3 +1,5 @@
+import '../../../core/icons.dart';
+
 import 'package:flutter/material.dart';
 
 import '../../../app/app_scope.dart';
@@ -306,7 +308,7 @@ class _DevotionDesignState extends State<DevotionDesign> {
       children: [
         Row(
           children: [
-            Icon(Icons.menu_book_outlined, size: 18, color: palette.accent),
+            Icon(AppIcons.bookOpen, size: 18, color: palette.accent),
             const SizedBox(width: 8),
             Expanded(
               child: Text(
@@ -480,7 +482,7 @@ class _DevotionDesignState extends State<DevotionDesign> {
                     IconButton(
                       tooltip: '지우기',
                       visualDensity: VisualDensity.compact,
-                      icon: const Icon(Icons.delete_outline, size: 18),
+                      icon: const Icon(AppIcons.trash, size: 18),
                       onPressed: widget.busy
                           ? null
                           : () => widget.onDelete!(r.authorId),

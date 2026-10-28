@@ -1,3 +1,5 @@
+import '../../../core/icons.dart';
+
 import 'package:flutter/material.dart';
 
 import '../../../app/app_scope.dart';
@@ -97,11 +99,7 @@ class _Submitted extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Icon(
-          Icons.check_circle_outline,
-          size: 48,
-          color: context.palette.brand,
-        ),
+        Icon(AppIcons.checkCircle, size: 48, color: context.palette.brand),
         const SizedBox(height: 16),
         Text(
           '요청을 보냈어요',

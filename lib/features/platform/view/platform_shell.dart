@@ -1,3 +1,5 @@
+import '../../../core/icons.dart';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -32,9 +34,9 @@ class PlatformShell extends StatelessWidget {
   };
 
   static const _icons = {
-    PlatformSection.dashboard: (Icons.dashboard_outlined, Icons.dashboard),
-    PlatformSection.churches: (Icons.church_outlined, Icons.church),
-    PlatformSection.users: (Icons.people_outline, Icons.people),
+    PlatformSection.dashboard: (AppIcons.squaresFour, AppIcons.squaresFourFill),
+    PlatformSection.churches: (AppIcons.church, AppIcons.churchFill),
+    PlatformSection.users: (AppIcons.users, AppIcons.usersFill),
   };
 
   @override

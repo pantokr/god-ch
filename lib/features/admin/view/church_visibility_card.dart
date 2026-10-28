@@ -1,3 +1,5 @@
+import '../../../core/icons.dart';
+
 import 'package:flutter/material.dart';
 
 import '../../../app/app_scope.dart';
@@ -44,7 +46,7 @@ class ChurchVisibilityCard extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  const Icon(Icons.travel_explore_outlined),
+                  const Icon(AppIcons.globeHemisphereEast),
                   const SizedBox(width: 10),
                   Text('노출', style: Theme.of(context).textTheme.titleMedium),
                 ],

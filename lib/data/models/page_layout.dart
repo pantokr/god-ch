@@ -16,7 +16,7 @@ enum BlockType {
     BlockVariant('compact', '글만 · 간단히', '글만'),
     BlockVariant('table', '글만 · 표', '글만'),
   ]),
-  devotion('devotion', '성경 인용', '예) 오늘의 말씀, 묵상 나눔', [
+  devotion('devotion', '말씀 묵상', '예) 오늘의 말씀, 묵상 나눔', [
     // 일체형: 말씀과 내 묵상이 한 카드. 분리형: 말씀 카드와 내 묵상 카드가 따로 (일체형 세 가지에 각각 대응).
     BlockVariant('card', '카드', '일체형'),
     BlockVariant('quote', '인용형', '일체형'),
@@ -69,11 +69,15 @@ enum BlockType {
     return groups;
   }
 
-  /// 구조를 성격별로 묶은 것. 선택 목록에서 묶음 제목 아래에 놓이고, 기도 요청과 성경 인용은 같은 묶음이다.
+  /// 구조를 성격별로 묶은 것. 선택 목록에서 묶음 제목 아래에 놓이고, 기도 요청과 말씀 묵상은 같은 묶음이다.
+  /// 구조 고르기에 나오는 구조들. 기도 요청 · 말씀 묵상은 페이지 한 장을 통째로 제공하는
+  /// 템플릿으로만 만들므로 여기에는 없다.
   static List<(String, List<BlockType>)> get sections => const [
     ('열람', [board, video, schedule, gallery]),
-    ('참여', [devotion, prayer]),
   ];
+
+  /// 페이지 한 장을 통째로 쓰는 구조(기도 요청 · 말씀 묵상). 홈에 이어 붙일 수 없다.
+  bool get wholePage => this == prayer || this == devotion;
 
   static BlockType fromId(String? id) =>
       values.firstWhere((t) => t.id == id, orElse: () => board);
@@ -137,6 +141,27 @@ class BlockSource {
   }
 }
 
+/// 유튜브 구조가 영상을 가져오는 방식.
+enum VideoMode {
+  manual('manual', '직접 게시'),
+  channel('channel', '채널 최신 영상'),
+  playlist('playlist', '재생목록 최신 영상');
+
+  const VideoMode(this.id, this.label);
+
+  final String id;
+  final String label;
+
+  /// 저장된 방식. 없으면(방식을 나누기 전 구성) 주소를 보고 정한다.
+  static VideoMode fromId(String? id, String feedUrl) {
+    for (final m in values) {
+      if (m.id == id) return m;
+    }
+    if (feedUrl.trim().isEmpty) return manual;
+    return youtubePlaylistTarget(feedUrl) != null ? playlist : channel;
+  }
+}
+
 /// 페이지 안의 구조 한 칸. 위에서 아래로 쌓인다.
 class BlockConfig {
   const BlockConfig({
@@ -146,6 +171,9 @@ class BlockConfig {
     required this.source,
     this.title = '',
     this.limit = 5,
+    this.feedUrl = '',
+    this.videoMode = VideoMode.manual,
+    this.category = '',
     this.style = BlockStyle.simple,
     this.paletteId = BlockPalette.defaultId,
   });
@@ -164,6 +192,19 @@ class BlockConfig {
     _ => false,
   };
 
+  /// 새 템플릿(기도 요청 · 말씀 묵상) 블록: 기본 디자인과 개수로 시작한다.
+  factory BlockConfig.template(BlockType type) {
+    final source = type.sources.first;
+    return BlockConfig(
+      id: 'b${DateTime.now().millisecondsSinceEpoch}',
+      type: type,
+      variant: type == BlockType.prayer ? 'float' : 'carousel',
+      source: source,
+      title: source.label,
+      limit: type == BlockType.prayer ? 4 : 3,
+    );
+  }
+
   /// 고른 디자인의 id ([BlockType.variants] 중 하나).
   final String variant;
   final BlockSource source;
@@ -173,6 +214,47 @@ class BlockConfig {
 
   /// 보여줄 최대 개수.
   final int limit;
+
+  /// 유튜브 구조에서 채널이나 재생목록 주소 ([videoMode]에 맞는 주소).
+  final String feedUrl;
+
+  /// 유튜브 구조가 영상을 가져오는 방식: 직접 게시 · 채널 최신 영상 · 재생목록 최신 영상.
+  final VideoMode videoMode;
+
+  /// 이 구조가 보여줄 글의 분류. 비우면 그 종류의 글 전체. 같은 종류의 구조를 여러 개 이어 붙여도
+  /// 분류를 달리하면 서로 다른 글을 보여준다 ([supportsCategory]인 구조만).
+  final String category;
+
+  /// 글 분류로 보여줄 글을 고를 수 있는 구조인가: 게시판 · 갤러리 · 직접 게시하는 유튜브.
+  bool get supportsCategory => switch (type) {
+    BlockType.board || BlockType.gallery => true,
+    BlockType.video => videoMode == VideoMode.manual,
+    _ => false,
+  };
+
+  /// 분류 글자 수 제한 (`firestore.rules`와 같아야 한다).
+  static const maxCategoryLength = ChurchContent.maxCategoryLength;
+
+  /// 이 구조가 글 [c]를 보여주는가: 같은 종류이고, 영역을 정했다면 그 영역의 글이어야 한다.
+  /// (채널 · 재생목록에서 가져오는 유튜브 구조는 교회 글을 보여주지 않는다.)
+  bool shows(ChurchContent c) {
+    if (source.kind != c.kind) return false;
+    if (type == BlockType.video && usesFeed) return false;
+    if (supportsCategory && category.isNotEmpty) return c.category == category;
+    return true;
+  }
+
+  /// 유튜브 구조가 채널·재생목록의 새 영상을 자동으로 보여주는가 (방식에 맞는 주소일 때).
+  bool get usesFeed =>
+      type == BlockType.video &&
+      switch (videoMode) {
+        VideoMode.manual => false,
+        VideoMode.channel => youtubeChannelTarget(feedUrl) != null,
+        VideoMode.playlist => youtubePlaylistTarget(feedUrl) != null,
+      };
+
+  /// 유튜브 구조가 한 번에 보여줄 영상 수의 범위. 그보다 많으면 "더 보기"로 펼친다.
+  static const videoLimits = (min: 1, max: 5);
 
   BlockVariant get variantInfo => type.variants.firstWhere(
     (v) => v.id == variant,
@@ -185,6 +267,9 @@ class BlockConfig {
     BlockSource? source,
     String? title,
     int? limit,
+    String? feedUrl,
+    VideoMode? videoMode,
+    String? category,
     BlockStyle? style,
     String? paletteId,
   }) {
@@ -205,6 +290,9 @@ class BlockConfig {
       source: nextSource,
       title: title ?? this.title,
       limit: limit ?? this.limit,
+      feedUrl: feedUrl ?? this.feedUrl,
+      videoMode: videoMode ?? this.videoMode,
+      category: category ?? this.category,
       style: style ?? this.style,
       paletteId: paletteId ?? this.paletteId,
     );
@@ -217,6 +305,9 @@ class BlockConfig {
     'source': source.id,
     'title': title,
     'limit': limit,
+    'feedUrl': feedUrl,
+    'videoMode': videoMode.id,
+    'category': category,
     'style': style.id,
     'palette': paletteId,
   };
@@ -252,6 +343,7 @@ class BlockConfig {
         palette = legacy.palette;
       }
     }
+    final feed = m['feedUrl'] as String? ?? '';
     return BlockConfig(
       id: m['id'] as String? ?? '',
       type: type,
@@ -260,7 +352,15 @@ class BlockConfig {
           : type.variants.first.id,
       source: source,
       title: m['title'] as String? ?? '',
-      limit: (m['limit'] as num?)?.toInt().clamp(1, 20) ?? 5,
+      limit:
+          (m['limit'] as num?)?.toInt().clamp(
+            1,
+            type == BlockType.video ? videoLimits.max : 20,
+          ) ??
+          5,
+      feedUrl: feed,
+      videoMode: VideoMode.fromId(m['videoMode'] as String?, feed),
+      category: m['category'] as String? ?? '',
       style: style,
       paletteId: BlockPalette.all.any((p) => p.id == palette)
           ? palette
@@ -324,15 +424,16 @@ class BlockConfig {
   }
 }
 
-/// 페이지가 속한 그룹. 하단 탭의 "홈" · "기도" · "말씀"에 각각 대응한다.
-/// - 홈: 교회 → 교인, 소식과 열람 위주 (공지 · 설교영상 · 일정 · 사진첩 …).
-/// - 기도: 중보기도 (기도 요청 …).
-/// - 말씀: 말씀 묵상 · 요약 등.
-/// "내 활동"은 그룹이 아니라 기도 · 말씀 페이지 구성에 따라 자동으로 만들어진다 ([MyActivity]).
+/// 페이지가 놓이는 자리. 어떤 페이지든 어느 자리에든 놓을 수 있다 (템플릿 페이지는 홈만 빼고).
+/// - 홈: 하단 가운데 버튼. 여러 개를 위에서 아래로 이어 붙인다.
+/// - 왼쪽 버튼 · 오른쪽 버튼: 하단 탭 양옆 버튼. 각각 하나만 놓인다.
+/// - 좌측 탭: 왼쪽 메뉴의 항목. 최대 [maxDrawer]개 (저장 값은 예전 이름 `drawer` 그대로).
+/// "내 활동"은 자리가 아니라 기도 요청 · 말씀 묵상 템플릿 페이지에 따라 자동으로 만들어진다 ([MyActivity]).
 enum PageGroup {
-  home('home', '홈', '홈 페이지 구성'),
-  prayer('prayer', '기도', '기도 페이지 구성'),
-  word('word', '말씀', '말씀 페이지 구성');
+  home('home', '홈', '홈 (이어 붙이기)'),
+  left('left', '왼쪽 버튼', '왼쪽 버튼 (1개)'),
+  right('right', '오른쪽 버튼', '오른쪽 버튼 (1개)'),
+  drawer('drawer', '좌측 탭', '좌측 탭 (최대 $maxDrawer개)');
 
   const PageGroup(this.id, this.label, this.sectionTitle);
 
@@ -342,14 +443,20 @@ enum PageGroup {
   /// 페이지 편집 목록의 구역 제목.
   final String sectionTitle;
 
-  static PageGroup fromId(String? id) =>
-      values.firstWhere((g) => g.id == id, orElse: () => home);
+  /// 좌측 탭에 둘 수 있는 페이지 수. 늘리려면 이 값만 바꾼다.
+  static const maxDrawer = 4;
 
-  /// 이 구조의 페이지를 새로 만들 때 기본으로 놓이는 그룹.
-  static PageGroup defaultFor(BlockType type) => switch (type) {
-    BlockType.prayer => prayer,
-    BlockType.devotion => word,
-    _ => home,
+  /// 한 자리에 페이지 하나만 놓인다 (하단 탭 양옆).
+  bool get single => this == left || this == right;
+
+  /// 이 자리에 놓을 수 있는 최대 페이지 수. null이면 제한이 없다.
+  int? get capacity => single ? 1 : (this == drawer ? maxDrawer : null);
+
+  /// 예전에 쓰던 자리 이름(기도 · 말씀)은 왼쪽 · 오른쪽 버튼으로 이어받는다.
+  static PageGroup fromId(String? id) => switch (id) {
+    'prayer' => left,
+    'word' => right,
+    _ => values.firstWhere((g) => g.id == id, orElse: () => home),
   };
 }
 
@@ -369,22 +476,25 @@ enum MyActivity {
     _ => null,
   };
 
-  /// 기도 · 말씀 페이지들에서 만들어지는 내 활동 목록 (중복 없이, 페이지 순서대로).
+  /// 기도 요청 · 말씀 묵상 템플릿 페이지들에서 만들어지는 내 활동 목록 (중복 없이, 페이지 순서대로).
   static List<MyActivity> from(Iterable<PageConfig> pages) => {
     for (final p in pages)
-      if (p.group != PageGroup.home && p.layout != null) ?of(p.layout!.type),
+      for (final b in p.blocks) ?of(b.type),
   }.toList();
 }
 
-/// 교회 페이지 하나: 홈 · 기도 · 말씀 그룹 중 한 곳의 한 칸이자, 하나의 레이아웃(구조 + 디자인).
-/// 한 페이지에는 레이아웃을 하나만 둘 수 있다. 아직 고르지 않았으면 [layout]이 null이다.
+/// 교회 페이지 하나: 홈 · 왼쪽 버튼 · 오른쪽 버튼 · 좌측 탭 중 한 곳의 한 칸.
+/// 먼저 페이지를 만들고, 그 안에 템플릿 1개(기도 요청 · 말씀 묵상) 또는 구조(게시판 · 일정 …) 여러 개를
+/// 위에서 아래로 이어 붙인다. 템플릿이 있는 페이지에는 구조를 더할 수 없고,
+/// 같은 템플릿은 교회에 하나만 둘 수 있다 (운영 설정이 교회 단위라서).
 class PageConfig {
   const PageConfig({
     required this.id,
     required this.title,
     this.icon = 'home',
     this.group = PageGroup.home,
-    this.layout,
+    this.blocks = const [],
+    this.updatedAt,
   });
 
   final String id;
@@ -393,100 +503,330 @@ class PageConfig {
   /// 메뉴 아이콘 이름 (화면 쪽 `pageIcons`에 있는 이름).
   final String icon;
 
-  /// 홈 · 기도 · 말씀 중 어느 그룹에 둘지.
+  /// 홈 · 왼쪽 버튼 · 오른쪽 버튼 · 좌측 탭 중 어느 자리에 둘지.
   final PageGroup group;
-  final BlockConfig? layout;
+
+  /// 페이지에 이어 붙인 템플릿 하나, 또는 구조들. 비어 있으면 아직 구성이 없는 페이지.
+  final List<BlockConfig> blocks;
+
+  /// 마지막으로 저장된 시각. 동시에 고치는 것을 막는 데 쓴다 (저장된 적 없으면 null).
+  final DateTime? updatedAt;
+
+  /// 한 페이지에 둘 수 있는 구조의 최대 개수.
+  static const maxStructures = 8;
+
+  /// 페이지를 통째로 쓰는 템플릿 (기도 요청 · 말씀 묵상). 없으면 null.
+  BlockConfig? get template =>
+      blocks.where((b) => b.type.wholePage).firstOrNull;
+
+  bool get hasTemplate => template != null;
+
+  /// 템플릿 페이지는 홈에 둘 수 없다.
+  bool canBeIn(PageGroup g) => !(g == PageGroup.home && hasTemplate);
+
+  /// [pages] 중 글 [c]가 보이는 페이지들 (콘텐츠 관리에서 "어디에 속해 있는지" 알려 줄 때 쓴다).
+  static List<PageConfig> showing(
+    Iterable<PageConfig> pages,
+    ChurchContent c,
+  ) => [
+    for (final p in pages)
+      if (p.blocks.any((b) => b.shows(c))) p,
+  ];
+
+  /// [pages]를 마지막으로 저장한 시각 중 가장 늦은 것. 이 화면을 연 뒤 누가 먼저 저장했는지 알아내는 기준이다.
+  static DateTime? versionOf(Iterable<PageConfig> pages) {
+    DateTime? v;
+    for (final p in pages) {
+      final t = p.updatedAt;
+      if (t != null && (v == null || t.isAfter(v))) v = t;
+    }
+    return v;
+  }
+
+  /// [pages]에서 [pageId]를 [to] 자리에 두도록 바꾼 목록 (순서는 그대로).
+  /// 한 칸짜리 자리(왼쪽 · 오른쪽 버튼)에 있던 다른 페이지는 홈으로(홈에 둘 수 없으면 좌측 탭으로) 옮겨진다.
+  /// 둘 수 없으면(좌측 탭이 꽉 참, 템플릿 페이지를 홈으로) null.
+  static List<PageConfig>? place(
+    List<PageConfig> pages,
+    String pageId,
+    PageGroup to,
+  ) {
+    final page = pages.firstWhere((p) => p.id == pageId);
+    if (!page.canBeIn(to)) return null;
+    final cap = to.capacity;
+    final others = pages.where((p) => p.id != pageId && p.group == to).length;
+    if (cap != null && !to.single && others >= cap) return null;
+    var drawer = pages.where((p) => p.group == PageGroup.drawer).length;
+    final out = <PageConfig>[];
+    for (final p in pages) {
+      if (p.id == pageId) {
+        out.add(p.copyWith(group: to));
+      } else if (to.single && p.group == to) {
+        if (p.canBeIn(PageGroup.home)) {
+          out.add(p.copyWith(group: PageGroup.home));
+        } else if (drawer < PageGroup.maxDrawer) {
+          drawer++;
+          out.add(p.copyWith(group: PageGroup.drawer));
+        } else {
+          return null;
+        }
+      } else {
+        out.add(p);
+      }
+    }
+    return out;
+  }
+
+  /// 자리 · 구성 제한을 어긴 곳이 있으면 그 안내 문구, 없으면 null.
+  static String? slotError(Iterable<PageConfig> pages) {
+    for (final p in pages) {
+      if (!p.canBeIn(p.group)) return '"${p.title}"은(는) 홈에 둘 수 없어요.';
+      if (p.hasTemplate && p.blocks.length > 1) {
+        return '"${p.title}"은(는) 템플릿이 있어 구조를 더할 수 없어요.';
+      }
+      if (p.blocks.length > maxStructures) {
+        return '"${p.title}"에는 구조를 $maxStructures개까지 둘 수 있어요.';
+      }
+    }
+    for (final t in BlockType.values.where((t) => t.wholePage)) {
+      final count = pages.where((p) => p.template?.type == t).length;
+      if (count > 1) return '${t.label} 템플릿은 교회에 하나만 둘 수 있어요.';
+    }
+    for (final g in PageGroup.values) {
+      final cap = g.capacity;
+      if (cap != null && pages.where((p) => p.group == g).length > cap) {
+        return '${g.label}에는 $cap개까지 둘 수 있어요.';
+      }
+    }
+    return null;
+  }
 
   PageConfig copyWith({
     String? title,
     String? icon,
     PageGroup? group,
-    BlockConfig? layout,
+    List<BlockConfig>? blocks,
   }) => PageConfig(
     id: id,
     title: title ?? this.title,
     icon: icon ?? this.icon,
     group: group ?? this.group,
-    layout: layout ?? this.layout,
+    blocks: blocks ?? this.blocks,
+    updatedAt: updatedAt,
   );
 
-  /// 저장된 페이지를 읽는다. 구조를 여러 개 쌓던 예전 방식(`blocks`)의 페이지는 더 쓰지 않으므로 null을 돌려준다.
-  /// 구조가 하나뿐인 예전 페이지는 그 구조를 레이아웃으로 이어받는다.
-  static PageConfig? fromDoc(DocumentSnapshot<Json> doc) {
-    final d = doc.data() ?? const {};
+  /// 저장된 페이지를 읽는다.
+  static PageConfig? fromDoc(DocumentSnapshot<Json> doc) =>
+      fromData(doc.id, doc.data() ?? const {});
+
+  /// 저장된 값에서 페이지를 만든다. 구조 목록(`structures`)이 기본이고, 예전의 단일 `layout`과
+  /// 구조가 하나뿐인 `blocks`도 이어받는다. 여러 개를 쌓던 예전 `blocks`는 더 쓰지 않으므로 null을 돌려준다.
+  static PageConfig? fromData(String id, Map<String, dynamic> d) {
     final legacy = d['blocks'] as List? ?? const [];
-    if (legacy.length > 1) return null;
-    final raw = d['layout'] ?? (legacy.isEmpty ? null : legacy.first);
-    // 없어진 구조(기도제목 메신저 · 내 기도제목)로 저장된 칸은 건너뛴다.
-    final ok =
-        raw is Map<String, dynamic> &&
-        raw['type'] != 'messenger' &&
-        raw['type'] != 'my_prayers';
+    if (legacy.length > 1 && d['structures'] == null) return null;
+    final raw =
+        d['structures'] as List? ??
+        [
+          if (d['layout'] != null)
+            d['layout']
+          else if (legacy.isNotEmpty)
+            legacy.first,
+        ];
     return PageConfig(
-      id: doc.id,
+      id: id,
       title: d['title'] as String? ?? '',
       icon: d['icon'] as String? ?? 'home',
       group: PageGroup.fromId(d['group'] as String?),
-      layout: ok ? BlockConfig.fromMap(raw) : null,
+      // 없어진 구조(기도제목 메신저 · 내 기도제목)로 저장된 칸은 건너뛴다.
+      blocks: [
+        for (final r in raw)
+          if (r is Map<String, dynamic> &&
+              r['type'] != 'messenger' &&
+              r['type'] != 'my_prayers')
+            BlockConfig.fromMap(r),
+      ],
+      updatedAt: toDate(d['updatedAt']),
     );
   }
 
-  /// 아직 한 번도 편집하지 않은 교회가 보는 기본 구성: 홈(공지) · 말씀(말씀 묵상) · 기도(기도 요청).
+  /// 아직 한 번도 편집하지 않은 교회가 보는 기본 구성: 홈(공지 · 일정) · 왼쪽 버튼(기도 요청) · 오른쪽 버튼(말씀 묵상).
   static final defaults = [
     // 홈: 공지사항과 일정.
     const PageConfig(
       id: 'main',
       title: '공지사항',
       icon: 'home',
-      layout: BlockConfig(
-        id: 'main-notices',
-        type: BlockType.board,
-        variant: 'banner',
-        source: BlockSource._('notices', '공지사항', ContentKind.notice),
-        title: '공지사항',
-      ),
+      blocks: [
+        BlockConfig(
+          id: 'main-notices',
+          type: BlockType.board,
+          variant: 'banner',
+          source: BlockSource._('notices', '공지사항', ContentKind.notice),
+          title: '공지사항',
+        ),
+      ],
     ),
     const PageConfig(
       id: 'schedule',
       title: '일정',
       icon: 'event',
-      layout: BlockConfig(
-        id: 'schedule-calendar',
-        type: BlockType.schedule,
-        variant: 'calendar',
-        source: BlockSource._('events', '일정', ContentKind.event),
-        title: '일정',
-      ),
+      blocks: [
+        BlockConfig(
+          id: 'schedule-calendar',
+          type: BlockType.schedule,
+          variant: 'calendar',
+          source: BlockSource._('events', '일정', ContentKind.event),
+          title: '일정',
+        ),
+      ],
     ),
-    // 말씀: 최근 말씀 묵상 세 개를 캐러셀로.
+    // 말씀 묵상 템플릿: 최근 말씀 묵상 세 개를 캐러셀로.
     const PageConfig(
       id: 'devotion',
       title: '말씀 묵상',
       icon: 'book',
-      group: PageGroup.word,
-      layout: BlockConfig(
-        id: 'devotion-list',
-        type: BlockType.devotion,
-        variant: 'carousel',
-        source: BlockSource._('devotions', '말씀묵상', ContentKind.devotion),
-        title: '말씀묵상',
-        limit: 3,
-      ),
+      group: PageGroup.right,
+      blocks: [
+        BlockConfig(
+          id: 'devotion-list',
+          type: BlockType.devotion,
+          variant: 'carousel',
+          source: BlockSource._('devotions', '말씀묵상', ContentKind.devotion),
+          title: '말씀묵상',
+          limit: 3,
+        ),
+      ],
     ),
-    // 기도: 최신 기도 요청 네 장이 둥둥 떠다닌다.
+    // 기도 요청 템플릿: 최신 기도 요청 네 장이 둥둥 떠다닌다.
     const PageConfig(
       id: 'prayer',
       title: '기도 요청',
       icon: 'favorite',
-      group: PageGroup.prayer,
-      layout: BlockConfig(
-        id: 'prayer-feed',
-        type: BlockType.prayer,
-        variant: 'float',
-        source: BlockSource._('prayers', '기도 요청', null),
-        title: '기도 요청',
-        limit: 4,
-      ),
+      group: PageGroup.left,
+      blocks: [
+        BlockConfig(
+          id: 'prayer-feed',
+          type: BlockType.prayer,
+          variant: 'float',
+          source: BlockSource._('prayers', '기도 요청', null),
+          title: '기도 요청',
+          limit: 4,
+        ),
+      ],
     ),
   ];
+
+  /// 처음 시작하거나 되돌릴 때 고르는 시작 구성들.
+  static final presets = [
+    PagePreset('기본 구성', '공지 · 일정 · 기도 · 말씀', defaults),
+    PagePreset('소규모 교회', '공지 하나로 간단하게', [
+      PageConfig(
+        id: 'main',
+        title: '공지사항',
+        icon: 'home',
+        blocks: [
+          BlockConfig(
+            id: 'main-notices',
+            type: BlockType.board,
+            variant: 'list',
+            source: BlockType.board.sources.first,
+            title: '공지사항',
+          ),
+        ],
+      ),
+      defaults[2],
+      defaults[3],
+    ]),
+    PagePreset('청년부 중심', '소식 · 영상 · 갤러리 · 기도 · 말씀', [
+      PageConfig(
+        id: 'news',
+        title: '소식',
+        icon: 'campaign',
+        blocks: [
+          BlockConfig(
+            id: 'news-board',
+            type: BlockType.board,
+            variant: 'banner',
+            source: BlockType.board.sources.first,
+            title: '공지사항',
+          ),
+          BlockConfig(
+            id: 'news-schedule',
+            type: BlockType.schedule,
+            variant: 'strip',
+            source: BlockType.schedule.sources.first,
+            title: '일정',
+          ),
+          BlockConfig(
+            id: 'news-video',
+            type: BlockType.video,
+            variant: 'cards',
+            source: BlockType.video.sources.first,
+            title: '영상',
+            limit: 3,
+          ),
+        ],
+      ),
+      defaults[2],
+      defaults[3],
+      PageConfig(
+        id: 'album',
+        title: '갤러리',
+        icon: 'photo',
+        group: PageGroup.drawer,
+        blocks: [
+          BlockConfig(
+            id: 'album-gallery',
+            type: BlockType.gallery,
+            variant: 'albums',
+            source: BlockType.gallery.sources.first,
+            title: '사진첩',
+          ),
+        ],
+      ),
+    ]),
+  ];
+}
+
+/// 시작 구성 하나: 이름, 한 줄 설명, 페이지들.
+class PagePreset {
+  const PagePreset(this.label, this.summary, this.pages);
+
+  final String label;
+  final String summary;
+  final List<PageConfig> pages;
+}
+
+/// 페이지 구성을 저장하기 직전의 모습. 저장할 때마다 하나씩 남기고, 이전 구성으로 되돌릴 때 쓴다.
+class PageRevision {
+  const PageRevision({
+    required this.id,
+    required this.savedAt,
+    required this.pages,
+  });
+
+  final String id;
+
+  /// 이 구성이 바뀐(다음 구성이 저장된) 시각.
+  final DateTime? savedAt;
+  final List<PageConfig> pages;
+
+  factory PageRevision.fromDoc(DocumentSnapshot<Json> doc) {
+    final d = doc.data() ?? const {};
+    final raw =
+        [
+          for (final r in d['pages'] as List? ?? const [])
+            if (r is Map<String, dynamic>) r,
+        ]..sort(
+          (a, b) =>
+              ((a['order'] as num?) ?? 0).compareTo((b['order'] as num?) ?? 0),
+        );
+    return PageRevision(
+      id: doc.id,
+      savedAt: toDate(d['savedAt']),
+      pages: [
+        for (final r in raw) ?PageConfig.fromData(r['id'] as String? ?? '', r),
+      ],
+    );
+  }
 }

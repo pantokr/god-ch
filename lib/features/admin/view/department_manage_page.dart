@@ -1,3 +1,5 @@
+import '../../../core/icons.dart';
+
 import 'package:flutter/material.dart';
 
 import '../../../app/app_scope.dart';
@@ -8,7 +10,6 @@ import '../../../core/mvvm/view_model_builder.dart';
 import '../../../data/models/church_features.dart';
 import '../../../data/models/department.dart';
 import '../../../data/models/member.dart';
-import '../../../data/models/page_layout.dart';
 import '../../home/view/content_widgets.dart';
 import '../view_model/department_manage_view_model.dart';
 import 'department_detail_page.dart';
@@ -36,7 +37,7 @@ class DepartmentManagePage extends StatelessWidget {
                   alignment: Alignment.centerLeft,
                   child: IconButton(
                     tooltip: '돌아가기',
-                    icon: const Icon(Icons.arrow_back),
+                    icon: const Icon(AppIcons.arrowLeft),
                     onPressed: () => Navigator.of(context).maybePop(),
                   ),
                 ),
@@ -75,7 +76,7 @@ class DepartmentManagePage extends StatelessWidget {
                   alignment: Alignment.centerLeft,
                   child: FilledButton.icon(
                     onPressed: () => _edit(context, vm),
-                    icon: const Icon(Icons.add, size: 18),
+                    icon: const Icon(AppIcons.plus, size: 18),
                     label: const Text('부서 만들기'),
                   ),
                 ),
@@ -204,7 +205,7 @@ class _DepartmentCard extends StatelessWidget {
   final VoidCallback onRename;
 
   /// 이 부서의 기도 · 말씀 탭을 켜거나 끈다.
-  final void Function(PageGroup group, bool on) onFeature;
+  final void Function(PageFeature feature, bool on) onFeature;
 
   @override
   Widget build(BuildContext context) {
@@ -241,7 +242,7 @@ class _DepartmentCard extends StatelessWidget {
                           ),
                         ),
                         child: Icon(
-                          Icons.groups_outlined,
+                          AppIcons.usersThree,
                           size: 22,
                           color: palette.onBrand,
                         ),
@@ -266,10 +267,7 @@ class _DepartmentCard extends StatelessWidget {
                       Wrap(
                         spacing: 6,
                         children: [
-                          for (final g in const [
-                            PageGroup.prayer,
-                            PageGroup.word,
-                          ])
+                          for (final g in PageFeature.values)
                             FilterChip(
                               visualDensity: VisualDensity.compact,
                               label: Text(g.label),
@@ -289,7 +287,7 @@ class _DepartmentCard extends StatelessWidget {
                     right: 4,
                     child: IconButton(
                       tooltip: '이름 변경',
-                      icon: const Icon(Icons.edit_outlined, size: 20),
+                      icon: const Icon(AppIcons.pencilSimple, size: 20),
                       onPressed: onRename,
                     ),
                   ),

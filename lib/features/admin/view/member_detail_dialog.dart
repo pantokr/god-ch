@@ -1,3 +1,5 @@
+import '../../../core/icons.dart';
+
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
@@ -362,7 +364,7 @@ class _MemberDetailDialogState extends State<MemberDetailDialog> {
                   style: TextButton.styleFrom(
                     foregroundColor: theme.colorScheme.error,
                   ),
-                  icon: const Icon(Icons.block, size: 18),
+                  icon: const Icon(AppIcons.prohibit, size: 18),
                   label: const Text('차단'),
                 ),
               if (widget.onRemove != null) ...[
@@ -371,7 +373,7 @@ class _MemberDetailDialogState extends State<MemberDetailDialog> {
                   style: TextButton.styleFrom(
                     foregroundColor: theme.colorScheme.error,
                   ),
-                  icon: const Icon(Icons.person_remove_outlined, size: 18),
+                  icon: const Icon(AppIcons.userMinus, size: 18),
                   label: const Text('추방'),
                 ),
                 const Spacer(),

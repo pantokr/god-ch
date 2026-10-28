@@ -1,3 +1,5 @@
+import '../../../core/icons.dart';
+
 import 'package:flutter/material.dart';
 
 import '../../../app/app_scope.dart';
@@ -36,7 +38,7 @@ class ChurchRequestsAdminCard extends StatelessWidget {
                     children: [
                       const Padding(
                         padding: EdgeInsets.only(top: 2),
-                        child: Icon(Icons.admin_panel_settings_outlined),
+                        child: Icon(AppIcons.shieldCheck),
                       ),
                       const SizedBox(width: 10),
                       Expanded(

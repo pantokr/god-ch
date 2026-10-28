@@ -1,3 +1,5 @@
+import '../../../core/icons.dart';
+
 import 'package:flutter/material.dart';
 
 import '../../../app/app_scope.dart';
@@ -45,7 +47,7 @@ class _NotificationsButtonState extends State<NotificationsButton> {
           icon: Badge(
             isLabelVisible: hasNew,
             label: const Text('N'),
-            child: const Icon(Icons.notifications_none),
+            child: const Icon(AppIcons.bell),
           ),
         );
       },

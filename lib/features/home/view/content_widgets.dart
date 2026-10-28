@@ -1,3 +1,5 @@
+import '../../../core/icons.dart';
+
 import 'package:flutter/material.dart';
 
 import '../../../core/theme.dart';
@@ -16,7 +18,7 @@ const kSampleImages = [
 /// 주소로 불러오는 이미지. 불러오지 못하면 빈 면을 보여준다.
 /// 다른 사이트의 이미지가 막혀도(CORS) 웹에서는 `<img>`로 한 번 더 시도한다.
 class ContentImage extends StatelessWidget {
-  const ContentImage(this.url, {super.key, this.icon = Icons.image_outlined});
+  const ContentImage(this.url, {super.key, this.icon = AppIcons.image});
 
   final String? url;
   final IconData icon;
@@ -79,7 +81,7 @@ class SectionHeader extends StatelessWidget {
               onPressed: onMore,
               child: const Row(
                 mainAxisSize: MainAxisSize.min,
-                children: [Text('더보기'), Icon(Icons.chevron_right, size: 18)],
+                children: [Text('더보기'), Icon(AppIcons.caretRight, size: 18)],
               ),
             ),
         ],

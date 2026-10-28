@@ -1,3 +1,5 @@
+import '../../../core/icons.dart';
+
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
@@ -58,7 +60,7 @@ class _BibleUploadCardState extends State<BibleUploadCard> {
           children: [
             Row(
               children: [
-                Icon(Icons.menu_book_outlined, color: palette.muted),
+                Icon(AppIcons.bookOpen, color: palette.muted),
                 const SizedBox(width: 10),
                 Text('성경 본문', style: Theme.of(context).textTheme.titleMedium),
               ],
@@ -88,7 +90,7 @@ class _BibleUploadCardState extends State<BibleUploadCard> {
               children: [
                 FilledButton.icon(
                   onPressed: _busy ? null : _upload,
-                  icon: const Icon(Icons.upload_file, size: 18),
+                  icon: const Icon(AppIcons.fileArrowUp, size: 18),
                   label: const Text('verse.csv 올리기'),
                 ),
                 if (_busy) ...[

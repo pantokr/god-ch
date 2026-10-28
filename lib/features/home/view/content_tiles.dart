@@ -1,3 +1,5 @@
+import '../../../core/icons.dart';
+
 import 'package:flutter/material.dart';
 
 import '../../../core/format.dart';
@@ -127,60 +129,57 @@ class SermonCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // 카드 틀 없이 썸네일과 글만 놓는다.
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(AppRadius.card),
-      child: Ink(
-        decoration: _cardBox(context),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(AppRadius.card),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              AspectRatio(
-                aspectRatio: 16 / 9,
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    ContentImage(
-                      content.thumbnail,
-                      icon: Icons.smart_display_outlined,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(AppRadius.card),
+            child: AspectRatio(
+              aspectRatio: 16 / 9,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  ContentImage(content.thumbnail, icon: AppIcons.monitorPlay),
+                  const Center(
+                    child: Icon(
+                      AppIcons.playCircleFill,
+                      size: 44,
+                      color: Colors.white70,
                     ),
-                    const Center(
-                      child: Icon(
-                        Icons.play_circle_fill,
-                        size: 44,
-                        color: Colors.white70,
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-              Padding(
-                padding: const EdgeInsets.all(12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      content.title,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontWeight: FontWeight.w700),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      fmtDate(content.date),
-                      style: TextStyle(
-                        color: context.palette.muted,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+            ),
           ),
-        ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(2, 8, 2, 4),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  content.title,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontWeight: FontWeight.w700),
+                ),
+                if (!content.fromFeed) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    fmtDate(content.date),
+                    style: TextStyle(
+                      color: context.palette.muted,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -213,7 +212,7 @@ class DevotionCard extends StatelessWidget {
             Row(
               children: [
                 Icon(
-                  Icons.menu_book_outlined,
+                  AppIcons.bookOpen,
                   size: 18,
                   color: context.palette.accent,
                 ),
@@ -274,7 +273,7 @@ class NoticeRow extends StatelessWidget {
                 height: 80 / kThumbnailAspect,
                 child: ContentImage(
                   content.thumbnail,
-                  icon: Icons.campaign_outlined,
+                  icon: AppIcons.megaphone,
                 ),
               ),
             ),
@@ -316,48 +315,44 @@ class VideoRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // 카드 틀 없이 썸네일과 글만 놓는다.
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(AppRadius.card),
-      child: Ink(
-        decoration: _cardBox(context),
-        padding: const EdgeInsets.all(12),
-        child: Row(
-          children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(AppRadius.control),
-              child: SizedBox(
-                width: 120,
-                height: 120 * 9 / 16,
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    ContentImage(
-                      content.thumbnail,
-                      icon: Icons.smart_display_outlined,
+      borderRadius: BorderRadius.circular(AppRadius.control),
+      child: Row(
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(AppRadius.control),
+            child: SizedBox(
+              width: 120,
+              height: 120 * 9 / 16,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  ContentImage(content.thumbnail, icon: AppIcons.monitorPlay),
+                  const Center(
+                    child: Icon(
+                      AppIcons.playCircleFill,
+                      size: 32,
+                      color: Colors.white70,
                     ),
-                    const Center(
-                      child: Icon(
-                        Icons.play_circle_fill,
-                        size: 32,
-                        color: Colors.white70,
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    content.title,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontWeight: FontWeight.w700),
-                  ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  content.title,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontWeight: FontWeight.w700),
+                ),
+                if (!content.fromFeed) ...[
                   const SizedBox(height: 2),
                   Text(
                     fmtDate(content.date),
@@ -367,10 +362,10 @@ class VideoRow extends StatelessWidget {
                     ),
                   ),
                 ],
-              ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

@@ -1,5 +1,8 @@
+import '../../../core/icons.dart';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../app/app_scope.dart';
 import '../../../app/routes.dart';
@@ -10,6 +13,7 @@ import '../../../data/models/department.dart';
 import '../../../data/models/member.dart';
 import '../../../data/models/page_layout.dart';
 import '../../../data/models/prayer_settings.dart';
+import '../data/youtube_feed.dart';
 import '../view_model/block_view_model.dart';
 import '../../prayers/view/floating_prayers.dart';
 import '../../prayers/view/prayer_list.dart';
@@ -55,7 +59,7 @@ class BlockView extends StatelessWidget {
     return ViewModelBuilder<BlockViewModel>(
       // 자료가 바뀌는 설정(구조·종류·개수·부서)이 달라지면 스트림을 새로 만든다.
       key: ValueKey(
-        '${block.id}/${block.type.id}/${block.source.id}/${block.limit}/${department?.id}',
+        '${block.id}/${block.type.id}/${block.source.id}/${block.limit}/${block.videoMode.id}/${block.feedUrl}/${block.category}/${department?.id}',
       ),
       create: (context) {
         final scope = AppScope.read(context);
@@ -77,7 +81,10 @@ class BlockView extends StatelessWidget {
                 : block.title.trim().isNotEmpty
                 ? SectionHeader(
                     title: block.title.trim(),
-                    onMore: kind == null || block.type == BlockType.schedule
+                    onMore:
+                        kind == null ||
+                            block.type == BlockType.schedule ||
+                            block.usesFeed
                         ? null
                         : () => context.push(
                             Routes.contentList(me.churchId, kind),
@@ -111,7 +118,7 @@ class BlockView extends StatelessWidget {
                 onPressed: () => context.push(
                   Routes.contentEdit(me.churchId, kind: ContentKind.devotion),
                 ),
-                icon: const Icon(Icons.add, size: 18),
+                icon: const Icon(AppIcons.plus, size: 18),
                 label: const Text('말씀 묵상 추가'),
               ),
             ),
@@ -125,8 +132,10 @@ class BlockView extends StatelessWidget {
 
   Widget _contentBody(BuildContext context, BlockViewModel vm) {
     final hint = me.isStaff ? '\n"콘텐츠 관리"에서 추가할 수 있어요.' : '';
-    void open(ChurchContent c) =>
-        context.push(Routes.contentDetail(me.churchId, c.kind, c.id));
+    void open(ChurchContent c) => c.id.startsWith(YoutubeFeed.idPrefix)
+        // 채널·재생목록에서 온 영상은 교회 글이 아니므로 유튜브에서 바로 연다.
+        ? launchUrl(Uri.parse(c.videoUrl), mode: LaunchMode.externalApplication)
+        : context.push(Routes.contentDetail(me.churchId, c.kind, c.id));
 
     // 자료가 없거나 불러오는 중에도, 자료가 들어왔을 때와 같은 높이(이미지 4:3 기준)를 잡는다.
     return LayoutBuilder(
@@ -152,14 +161,16 @@ class BlockView extends StatelessWidget {
                     )
                   : empty;
             }
-            return BlockContentBody(
+            Widget body(List<ChurchContent> shown) => BlockContentBody(
               block: block,
-              items: items,
+              items: shown,
               onOpen: open,
               hint: hint,
               me: me,
               bleedInset: inset,
             );
+            if (!block.usesFeed) return body(items);
+            return _FeedExpand(items: items, limit: block.limit, builder: body);
           },
         );
       },
@@ -170,36 +181,39 @@ class BlockView extends StatelessWidget {
   Widget _prayers(BuildContext context, BlockViewModel vm) => Column(
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
-      StreamBuilder<PrayerSettings>(
-        stream: vm.prayerSettings,
-        initialData: PrayerSettings.standard,
-        builder: (context, cfg) {
-          // 교회가 교역자만 쓰게 정했으면 교인에게는 쓰기 버튼이 보이지 않는다.
-          final canWrite =
-              (cfg.data ?? PrayerSettings.standard).writers ==
-                  PrayerWriters.member ||
-              me.isStaff;
-          if (!canWrite) return const SizedBox.shrink();
-          return Align(
-            alignment: Alignment.centerLeft,
-            child: Padding(
-              padding: const EdgeInsets.only(bottom: 16),
-              child: FilledButton.icon(
-                onPressed: () => context.push(
-                  Routes.newPrayer(me.churchId, dept: department?.id),
+      // 화면 전체를 쓰는 기도 화면에서는 쓰기 버튼이 오른쪽 아래에 따로 떠 있다.
+      if (!fullScreen)
+        StreamBuilder<PrayerSettings>(
+          stream: vm.prayerSettings,
+          initialData: PrayerSettings.standard,
+          builder: (context, cfg) {
+            // 교회가 교역자만 쓰게 정했으면 교인에게는 쓰기 버튼이 보이지 않는다.
+            final canWrite =
+                (cfg.data ?? PrayerSettings.standard).writers ==
+                    PrayerWriters.member ||
+                me.isStaff;
+            if (!canWrite) return const SizedBox.shrink();
+            return Align(
+              alignment: Alignment.centerLeft,
+              child: Padding(
+                padding: const EdgeInsets.only(bottom: 16),
+                child: FilledButton.icon(
+                  onPressed: () => context.push(
+                    Routes.newPrayer(me.churchId, dept: department?.id),
+                  ),
+                  icon: const Icon(AppIcons.pencilSimple, size: 18),
+                  label: const Text('기도 요청'),
                 ),
-                icon: const Icon(Icons.edit_outlined, size: 18),
-                label: const Text('기도 요청'),
               ),
-            ),
-          );
-        },
-      ),
+            );
+          },
+        ),
       if (block.variant == 'float')
         FloatingPrayers(
           prayers: vm.prayers!,
           me: me,
           count: block.limit.clamp(1, 4),
+          fullScreen: fullScreen,
         )
       else
         PrayerGrid(
@@ -476,5 +490,46 @@ class BlockContentBody extends StatelessWidget {
           ],
         );
     }
+  }
+}
+
+/// 채널·재생목록 영상: 정한 개수만 보이고, "더 보기"를 누르면 피드의 나머지가 펼쳐진다.
+class _FeedExpand extends StatefulWidget {
+  const _FeedExpand({
+    required this.items,
+    required this.limit,
+    required this.builder,
+  });
+
+  final List<ChurchContent> items;
+  final int limit;
+  final Widget Function(List<ChurchContent> shown) builder;
+
+  @override
+  State<_FeedExpand> createState() => _FeedExpandState();
+}
+
+class _FeedExpandState extends State<_FeedExpand> {
+  bool _all = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final more = widget.items.length > widget.limit;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        widget.builder(
+          _all ? widget.items : widget.items.take(widget.limit).toList(),
+        ),
+        if (more)
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton(
+              onPressed: () => setState(() => _all = !_all),
+              child: Text(_all ? '접기' : '더 보기'),
+            ),
+          ),
+      ],
+    );
   }
 }

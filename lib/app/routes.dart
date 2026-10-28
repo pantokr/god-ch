@@ -8,13 +8,13 @@ enum ChurchSection {
   /// 교역자가 구성한 페이지 (주소 `/p/{페이지}`). 메인 · 말씀 묵상 등.
   page('p'),
 
-  /// 기도: 중보기도 페이지들 (기도 요청 …).
-  intercession('intercession'),
+  /// 하단 탭 왼쪽 버튼: 그 자리에 놓인 페이지 하나.
+  left('left'),
 
-  /// 말씀: 말씀 묵상 · 요약 등 페이지들.
-  word('word'),
+  /// 하단 탭 오른쪽 버튼: 그 자리에 놓인 페이지 하나.
+  right('right'),
 
-  /// 내 활동: 기도 · 말씀 페이지 구성에 따라 자동으로 모이는 내 글.
+  /// 내 활동: 기도 요청 · 말씀 묵상 페이지에 따라 자동으로 모이는 내 글.
   mine('mine'),
 
   /// 갤러리: 사진첩의 사진만 모아 보는 별도의 탭.
@@ -43,6 +43,9 @@ enum ChurchSection {
   final String path;
 
   static ChurchSection? fromPath(String path) {
+    // 예전 주소(기도 · 말씀 탭)는 왼쪽 · 오른쪽 버튼으로 이어진다.
+    if (path == 'intercession') return left;
+    if (path == 'word') return right;
     for (final s in values) {
       if (s.path == path) return s;
     }

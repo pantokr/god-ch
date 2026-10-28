@@ -1,3 +1,5 @@
+import '../../../core/icons.dart';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -64,7 +66,7 @@ class ContentDetailPage extends StatelessWidget {
                       onPressed: () => context.canPop()
                           ? context.pop()
                           : context.go(Routes.contentList(me.churchId, kind)),
-                      icon: const Icon(Icons.arrow_back),
+                      icon: const Icon(AppIcons.arrowLeft),
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -113,11 +115,11 @@ class _Detail extends StatelessWidget {
                   children: [
                     ContentImage(
                       youtubeThumbnail(content.videoUrl),
-                      icon: Icons.smart_display_outlined,
+                      icon: AppIcons.monitorPlay,
                     ),
                     const Center(
                       child: Icon(
-                        Icons.play_circle_fill,
+                        AppIcons.playCircleFill,
                         size: 64,
                         color: Colors.white70,
                       ),
@@ -133,7 +135,7 @@ class _Detail extends StatelessWidget {
             child: OutlinedButton.icon(
               onPressed: () =>
                   launchUrl(watchUri, mode: LaunchMode.externalApplication),
-              icon: const Icon(Icons.open_in_new, size: 18),
+              icon: const Icon(AppIcons.arrowSquareOut, size: 18),
               label: const Text('유튜브에서 보기'),
             ),
           ),

@@ -1,3 +1,5 @@
+import '../../../core/icons.dart';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -30,7 +32,7 @@ class PrayerDetailPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final back = Routes.section(me.churchId, ChurchSection.intercession);
+    final back = Routes.home(me.churchId);
     return ViewModelBuilder<PrayerDetailViewModel>(
       create: (context) =>
           PrayerDetailViewModel(AppScope.read(context).prayers, me, prayerId),
@@ -82,19 +84,19 @@ class PrayerDetailPage extends StatelessWidget {
   ) => [
     if (vm.canEdit(p))
       TextButton.icon(
-        icon: const Icon(Icons.edit_outlined, size: 18),
+        icon: const Icon(AppIcons.pencilSimple, size: 18),
         label: const Text('수정'),
         onPressed: () => context.push(Routes.editPrayer(me.churchId, p.id)),
       ),
     if (vm.canDelete(p))
       TextButton.icon(
-        icon: const Icon(Icons.delete_outline, size: 18),
+        icon: const Icon(AppIcons.trash, size: 18),
         label: const Text('삭제'),
         onPressed: () => _confirmDelete(context, vm, p),
       ),
     if (vm.canRestore(p))
       TextButton.icon(
-        icon: const Icon(Icons.restore_from_trash, size: 18),
+        icon: const Icon(AppIcons.arrowUUpLeft, size: 18),
         label: const Text('복구'),
         onPressed: () => vm.restore(p),
       ),
@@ -117,7 +119,7 @@ class PrayerDetailPage extends StatelessWidget {
       if (router.canPop()) {
         router.pop();
       } else {
-        router.go(Routes.section(me.churchId, ChurchSection.intercession));
+        router.go(Routes.home(me.churchId));
       }
     }
   }
@@ -207,12 +209,12 @@ class _MetaRow extends StatelessWidget {
         Text(fmtDate(prayer.createdAt), style: muted),
         if (prayer.departmentId != null) ...[
           const SizedBox(width: 10),
-          Icon(Icons.groups_outlined, size: 14, color: context.palette.muted),
+          Icon(AppIcons.usersThree, size: 14, color: context.palette.muted),
           Text(' 부서 전용', style: muted),
         ],
         if (!prayer.isPublic) ...[
           const SizedBox(width: 10),
-          Icon(Icons.lock_outline, size: 14, color: context.palette.muted),
+          Icon(AppIcons.lock, size: 14, color: context.palette.muted),
           Text(' 교역자 전용', style: muted),
         ],
       ],

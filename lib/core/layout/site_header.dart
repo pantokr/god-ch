@@ -1,3 +1,5 @@
+import '../icons.dart';
+
 import 'package:flutter/material.dart';
 
 import '../theme.dart';
@@ -67,10 +69,7 @@ class SiteHeader extends StatelessWidget {
                   height: 56,
                   child: Row(
                     children: [
-                      Icon(
-                        Icons.volunteer_activism,
-                        color: context.palette.brand,
-                      ),
+                      Icon(AppIcons.handHeart, color: context.palette.brand),
                       const SizedBox(width: 8),
                       // 이름이 길어 오른쪽 메뉴와 겹치지 않도록, 남는 자리만 쓰고 넘치면 줄인다.
                       Expanded(
@@ -93,12 +92,12 @@ class SiteHeader extends StatelessWidget {
                             details: profileDetails,
                             extras: profileExtras,
                           ),
-                          icon: const Icon(Icons.person_outline, size: 18),
+                          icon: const Icon(AppIcons.user, size: 18),
                           label: const Text('내 정보'),
                         ),
                         TextButton.icon(
                           onPressed: onSignOut,
-                          icon: const Icon(Icons.logout, size: 18),
+                          icon: const Icon(AppIcons.signOut, size: 18),
                           label: const Text('로그아웃'),
                         ),
                       ] else if (nav.isEmpty)
@@ -123,7 +122,7 @@ class SiteHeader extends StatelessWidget {
                         for (var i = 0; i < breadcrumb.length; i++) ...[
                           if (i > 0)
                             Icon(
-                              Icons.chevron_right,
+                              AppIcons.caretRight,
                               size: 18,
                               color: context.palette.muted,
                             ),

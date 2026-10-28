@@ -1,10 +1,12 @@
+import '../../../core/icons.dart';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/app_scope.dart';
 import '../../../app/routes.dart';
-import '../../../core/layout/confirm_dialog.dart';
 import '../../../core/layout/app_dialog.dart';
+import '../../../core/layout/confirm_dialog.dart';
 import '../../../core/layout/page_frame.dart';
 import '../../../core/layout/responsive.dart';
 import '../../../core/mvvm/view_model_builder.dart';
@@ -12,11 +14,11 @@ import '../../../core/theme.dart';
 import '../../../data/models/member.dart';
 import '../../../data/models/page_layout.dart';
 import '../view_model/church_pages_view_model.dart';
-import 'design_gallery.dart';
 import 'page_icons.dart';
+import 'placement_editor.dart';
 
-/// 페이지 편집: 교회 메뉴의 페이지를 목록으로 보여주고 추가 · 삭제 · 순서 변경을 한다.
-/// 순서는 왼쪽 손잡이를 잡고 끌어서 바꾼다 (더 보기 메뉴의 위로/아래로도 된다).
+/// 페이지 편집: 교회의 페이지를 나열하고 추가 · 삭제 · 배치 설정(위치와 순서)을 한다. 구조와 템플릿은 페이지를 연 뒤 그 안에서 더한다.
+/// 위치와 순서는 줄 오른쪽 "배치 설정"에서 실제 앱과 비슷한 화면 안에서 끌어서 정한다.
 /// 페이지는 최소 하나는 남아 있어야 한다. "수정"을 누르면 그 페이지의 구성을 고치는 화면으로 간다.
 /// 공지·일정 같은 글 자체는 "콘텐츠 관리"(교회 운영자)에서 따로 고친다.
 class PageListPage extends StatelessWidget {
@@ -34,6 +36,9 @@ class PageListPage extends StatelessWidget {
       create: (context) => PageLayoutEditorViewModel(
         AppScope.read(context).pageLayouts,
         me.churchId,
+        null,
+        // 이 화면을 연 뒤 다른 관리자가 먼저 저장했는지 알아내는 기준.
+        PageConfig.versionOf(pages),
       ),
       builder: (context, vm) => SingleChildScrollView(
         child: PageFrame(
@@ -53,29 +58,17 @@ class PageListPage extends StatelessWidget {
                   ),
                 ),
               const SizedBox(height: 16),
-              for (final group in PageGroup.values) ...[
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: Text(
-                    group.sectionTitle,
-                    style: Theme.of(context).textTheme.titleSmall,
-                  ),
-                ),
-                _ReorderablePages(
-                  pages: _of(group),
-                  busy: vm.busy,
-                  canDelete: pages.length > 1,
-                  group: group,
-                  onEdit: (p) =>
-                      context.push(Routes.pageEdit(me.churchId, p.id)),
-                  onReorder: (next) => _save(vm, group, next),
-                  onMove: (i, d) => _move(vm, group, i, d),
-                  onMoveTo: (p, to) => _changeGroup(vm, p, to),
-                  onDelete: (p) => _delete(context, vm, p),
-                ),
-                const SizedBox(height: 20),
-              ],
-              // 내 활동은 직접 고치지 않는다. 기도 · 말씀 페이지 구성에 따라 자동으로 정해진다.
+              // 페이지를 나열한다: 각 줄에 속한 위치가 보이고, 오른쪽 "배치 설정"에서 위치와 순서를 정한다.
+              _PageTiles(
+                pages: pages,
+                busy: vm.busy,
+                canDelete: pages.length > 1,
+                onEdit: (p) => context.push(Routes.pageEdit(me.churchId, p.id)),
+                onArrange: (p) => _arrange(context, vm, p),
+                onDelete: (p) => _delete(context, vm, p),
+              ),
+              const SizedBox(height: 20),
+              // 내 활동은 직접 고치지 않는다. 기도 요청 · 말씀 묵상 템플릿에 따라 자동으로 정해진다.
               Padding(
                 padding: const EdgeInsets.only(bottom: 8),
                 child: Text(
@@ -98,136 +91,102 @@ class PageListPage extends StatelessWidget {
     bool narrow,
   ) {
     final button = FilledButton.icon(
-      onPressed: vm.busy || pages.length >= 12 ? null : () => _add(context, vm),
-      icon: const Icon(Icons.add, size: 18),
+      onPressed: vm.busy || pages.length >= 12 ? null : () => _add(context),
+      icon: const Icon(AppIcons.plus, size: 18),
       label: const Text('페이지 추가'),
     );
-    final reset = OutlinedButton.icon(
-      onPressed: vm.busy ? null : () => _resetToDefaults(context, vm),
-      icon: const Icon(Icons.restart_alt, size: 18),
-      label: const Text('기본 구성으로 되돌리기'),
+    final start = OutlinedButton.icon(
+      onPressed: vm.busy ? null : () => _chooseStart(context, vm),
+      icon: const Icon(AppIcons.squaresFour, size: 18),
+      label: const Text('시작 구성'),
+    );
+    final history = OutlinedButton.icon(
+      onPressed: vm.busy ? null : () => _restore(context, vm),
+      icon: const Icon(AppIcons.arrowCounterClockwise, size: 18),
+      label: const Text('이전 구성'),
     );
     return Wrap(
       spacing: 8,
       runSpacing: 8,
       children: [
         SizedBox(width: narrow ? double.infinity : null, child: button),
-        SizedBox(width: narrow ? double.infinity : null, child: reset),
+        SizedBox(width: narrow ? double.infinity : null, child: start),
+        SizedBox(width: narrow ? double.infinity : null, child: history),
       ],
     );
   }
 
-  /// 지금 페이지들을 모두 지우고 기본 구성(홈: 공지사항 · 일정 / 말씀 / 기도)으로 되돌린다.
-  Future<void> _resetToDefaults(
+  /// 시작 구성(기본 · 소규모 교회 · 청년부 중심) 중 하나로 바꾼다. 바꾸기 전 구성은 이전 구성에 남는다.
+  Future<void> _chooseStart(
     BuildContext context,
     PageLayoutEditorViewModel vm,
   ) async {
+    final preset = await showAppDialog<PagePreset>(
+      context,
+      maxWidth: 460,
+      child: const _PresetDialog(),
+    );
+    if (preset == null || !context.mounted) return;
     final ok = await confirmChange(
       context,
-      title: '기본 구성으로 되돌리기',
-      body: '지금 만든 페이지와 레이아웃이 모두 사라지고 기본 구성으로 바뀌어요. 되돌릴 수 없어요.',
-      confirmLabel: '되돌리기',
+      title: '${preset.label}으로 바꾸기',
+      body: '지금 페이지들이 이 구성으로 바뀌어요. 바꾸기 전 구성은 이전 구성에 남아요.',
+      confirmLabel: '바꾸기',
     );
     if (!ok) return;
-    final keep = {for (final d in PageConfig.defaults) d.id};
-    await vm.save(PageConfig.defaults, [
+    final keep = {for (final d in preset.pages) d.id};
+    await vm.save(preset.pages, [
       for (final p in pages)
         if (!keep.contains(p.id)) p.id,
     ]);
   }
 
-  /// 새 페이지를 만든다. 템플릿(목적)을 고르고 디자인을 고르면 편집 화면이 열리고,
-  /// 저장 버튼을 눌러야 비로소 교회에 만들어진다 (저장하지 않고 나가면 만들어지지 않는다).
-  Future<void> _add(BuildContext context, PageLayoutEditorViewModel vm) async {
-    final router = GoRouter.of(context);
-    final template = await showAppDialog<_Template>(
+  /// 저장 직전에 남겨 둔 이전 구성 중 하나로 되돌린다.
+  Future<void> _restore(
+    BuildContext context,
+    PageLayoutEditorViewModel vm,
+  ) async {
+    final revision = await showAppDialog<PageRevision>(
       context,
       maxWidth: 520,
-      child: const _TemplateDialog(),
+      child: _RevisionsDialog(churchId: me.churchId),
     );
-    if (template == null || !context.mounted) return;
+    if (revision == null || !context.mounted) return;
+    final ok = await confirmChange(
+      context,
+      title: '이전 구성으로 되돌리기',
+      body: '지금 구성이 이 시점의 구성으로 바뀌어요. 지금 구성도 이전 구성에 남아요.',
+      confirmLabel: '되돌리기',
+    );
+    if (!ok) return;
+    await vm.restore(revision, pages);
+  }
 
+  /// 새 페이지를 만든다: 이름 · 위치 · 아이콘만 정하는 편집 화면이 열리고,
+  /// "페이지 만들기"를 눌러야 교회에 만들어진다. 구조나 템플릿은 만들어진 뒤에 페이지 안에서 더한다.
+  void _add(BuildContext context) {
     final id = 'p${DateTime.now().millisecondsSinceEpoch}';
-    final draft = await _newPage(context, id, template);
-    if (draft == null) return;
-    router.push(Routes.pageEdit(me.churchId, id), extra: draft);
-  }
-
-  /// 템플릿의 구조에서 디자인을 골라 새 페이지(저장 전)를 만든다.
-  /// 디자인이 하나뿐인 구조는 고르기를 건너뛰고, 기타는 모든 구조 중에서 고른다.
-  Future<PageConfig?> _newPage(
-    BuildContext context,
-    String id,
-    _Template template,
-  ) async {
-    final DesignChoice? choice;
-    final only = template.type;
-    if (only != null && only.variants.length == 1) {
-      choice = DesignChoice(only, only.variants.first.id);
-    } else {
-      choice = await showDesignGallery(context, only: only);
-    }
-    if (choice == null) return null;
-    final type = choice.type;
-    final source = type.sources[template.sourceIndex];
-    return PageConfig(
-      id: id,
-      title: template.pageTitle ?? type.label,
-      icon: template.icon,
-      // 기타는 고른 구조에 맞는 그룹(기도 · 말씀 · 홈)에 둔다.
-      group: template.type == null
-          ? PageGroup.defaultFor(type)
-          : template.group,
-      layout: BlockConfig(
-        id: 'b${DateTime.now().millisecondsSinceEpoch}',
-        type: type,
-        variant: choice.variant,
-        source: source,
-        title: source.label,
-      ),
+    context.push(
+      Routes.pageEdit(me.churchId, id),
+      extra: PageConfig(id: id, title: '', icon: 'star'),
     );
   }
 
-  /// [group]에 속한 페이지들 (저장된 순서대로).
-  List<PageConfig> _of(PageGroup group) => [
-    for (final p in pages)
-      if (p.group == group) p,
-  ];
-
-  /// [group] 쪽의 순서를 [next]로 바꿔 저장한다. 저장 순서는 홈, 기도, 말씀 순이다.
-  Future<void> _save(
+  /// 배치 설정: 실제 앱과 비슷한 화면에서 페이지의 위치와 순서를 끌어서 정한다.
+  Future<void> _arrange(
+    BuildContext context,
     PageLayoutEditorViewModel vm,
-    PageGroup group,
-    List<PageConfig> next,
-  ) => vm.save([
-    for (final g in PageGroup.values) ...(g == group ? next : _of(g)),
-  ], const []);
-
-  Future<void> _move(
-    PageLayoutEditorViewModel vm,
-    PageGroup group,
-    int index,
-    int delta,
-  ) async {
-    final list = _of(group);
-    final j = index + delta;
-    if (j < 0 || j >= list.length) return;
-    list.insert(j, list.removeAt(index));
-    await _save(vm, group, list);
-  }
-
-  /// 페이지를 [to] 그룹의 맨 아래로 옮긴다.
-  Future<void> _changeGroup(
-    PageLayoutEditorViewModel vm,
-    PageConfig page,
-    PageGroup to,
-  ) => vm.save([
-    for (final g in PageGroup.values) ...[
-      for (final p in _of(g))
-        if (p.id != page.id) p,
-      if (g == to) page.copyWith(group: to),
-    ],
-  ], const []);
+    PageConfig focus,
+  ) => showAppDialog<void>(
+    context,
+    maxWidth: 420,
+    child: PlacementEditor(
+      pages: pages,
+      focusId: focus.id,
+      onSave: (next) async =>
+          await vm.save(next, const []) ? null : (vm.error ?? '저장하지 못했어요.'),
+    ),
+  );
 
   Future<void> _delete(
     BuildContext context,
@@ -262,57 +221,31 @@ class PageListPage extends StatelessWidget {
   }
 }
 
-/// 끌어서 순서를 바꾸는 페이지 목록. 놓는 즉시 화면의 순서를 바꾸고 저장은 뒤따른다
-/// (저장된 순서가 돌아오기 전에 목록이 제자리로 튀지 않게 하려고 순서를 따로 들고 있는다).
-class _ReorderablePages extends StatefulWidget {
-  const _ReorderablePages({
+/// 페이지 목록: 페이지마다 속한 위치가 보이고, 오른쪽에 배치 설정 · 수정 · 더 보기(삭제) 버튼이 있다.
+/// 줄을 누르면 그 페이지의 구성을 고치는 화면이 열린다.
+class _PageTiles extends StatelessWidget {
+  const _PageTiles({
     required this.pages,
     required this.busy,
     required this.canDelete,
-    required this.group,
     required this.onEdit,
-    required this.onReorder,
-    required this.onMove,
-    required this.onMoveTo,
+    required this.onArrange,
     required this.onDelete,
   });
 
   final List<PageConfig> pages;
   final bool busy;
 
-  /// 페이지가 둘 이상일 때만 지울 수 있다 (전체 기준).
+  /// 페이지가 둘 이상일 때만 지울 수 있다.
   final bool canDelete;
-  final PageGroup group;
   final void Function(PageConfig) onEdit;
-  final void Function(List<PageConfig>) onReorder;
-  final void Function(int index, int delta) onMove;
-  final void Function(PageConfig, PageGroup) onMoveTo;
+  final void Function(PageConfig) onArrange;
   final void Function(PageConfig) onDelete;
-
-  @override
-  State<_ReorderablePages> createState() => _ReorderablePagesState();
-}
-
-class _ReorderablePagesState extends State<_ReorderablePages> {
-  late List<PageConfig> _items = List.of(widget.pages);
-
-  @override
-  void didUpdateWidget(_ReorderablePages old) {
-    super.didUpdateWidget(old);
-    // 저장된 구성이 바뀌어 오면(순서 저장, 추가, 삭제) 그것을 따른다.
-    _items = List.of(widget.pages);
-  }
-
-  void _reorder(int from, int to) {
-    // onReorderItem의 to는 이미 항목을 뺀 뒤의 자리다.
-    if (from == to) return;
-    setState(() => _items.insert(to, _items.removeAt(from)));
-    widget.onReorder(List.of(_items));
-  }
 
   @override
   Widget build(BuildContext context) {
     final palette = context.palette;
+    final narrow = MediaQuery.sizeOf(context).width < 600;
     return Container(
       decoration: BoxDecoration(
         color: palette.surface,
@@ -323,285 +256,63 @@ class _ReorderablePagesState extends State<_ReorderablePages> {
       // 배경색이 있는 바깥 틀 안에서도 ListTile의 눌림 효과가 보이도록 투명한 Material을 둔다.
       child: Material(
         type: MaterialType.transparency,
-        child: ReorderableListView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          // 손잡이로만 끌 수 있게 기본 손잡이는 끈다.
-          buildDefaultDragHandles: false,
-          itemCount: _items.length,
-          onReorderItem: widget.busy ? (_, _) {} : _reorder,
-          proxyDecorator: (child, _, _) =>
-              Material(elevation: 4, color: palette.surface, child: child),
-          itemBuilder: (context, i) {
-            final page = _items[i];
-            return Container(
-              key: ValueKey(page.id),
-              decoration: BoxDecoration(
-                border: i == 0
-                    ? null
-                    : Border(top: BorderSide(color: palette.border)),
-              ),
-              child: _PageRow(
-                index: i,
-                page: page,
-                first: i == 0,
-                last: i == _items.length - 1,
-                canDelete: widget.canDelete,
-                group: widget.group,
-                busy: widget.busy,
-                onEdit: () => widget.onEdit(page),
-                onMove: (d) => widget.onMove(i, d),
-                onMoveTo: (to) => widget.onMoveTo(page, to),
-                onDelete: () => widget.onDelete(page),
-              ),
-            );
-          },
-        ),
-      ),
-    );
-  }
-}
-
-class _PageRow extends StatelessWidget {
-  const _PageRow({
-    required this.index,
-    required this.page,
-    required this.first,
-    required this.last,
-    required this.canDelete,
-    required this.busy,
-    required this.group,
-    required this.onEdit,
-    required this.onMove,
-    required this.onMoveTo,
-    required this.onDelete,
-  });
-
-  final int index;
-  final PageConfig page;
-  final bool first;
-  final bool last;
-  final bool canDelete;
-  final bool busy;
-  final PageGroup group;
-  final VoidCallback onEdit;
-  final ValueChanged<int> onMove;
-  final ValueChanged<PageGroup> onMoveTo;
-  final VoidCallback onDelete;
-
-  @override
-  Widget build(BuildContext context) {
-    return ListTile(
-      onTap: onEdit,
-      leading: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // 이 손잡이를 잡고 위아래로 끌어 순서를 바꾼다.
-          ReorderableDragStartListener(
-            index: index,
-            child: MouseRegion(
-              cursor: SystemMouseCursors.grab,
-              child: Tooltip(
-                message: '끌어서 순서 바꾸기',
-                child: Icon(Icons.drag_indicator, color: context.palette.muted),
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Icon(pageIconOf(page.icon).outlined),
-        ],
-      ),
-      title: Text(page.title, maxLines: 1, overflow: TextOverflow.ellipsis),
-      subtitle: Text(page.layout == null ? '레이아웃 없음' : page.layout!.type.label),
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          IconButton(
-            tooltip: '수정',
-            icon: const Icon(Icons.edit_outlined, size: 20),
-            onPressed: onEdit,
-          ),
-          PopupMenuButton<VoidCallback>(
-            tooltip: '더 보기',
-            enabled: !busy,
-            onSelected: (a) => a(),
-            itemBuilder: (context) => [
-              if (!first)
-                PopupMenuItem(value: () => onMove(-1), child: const Text('위로')),
-              if (!last)
-                PopupMenuItem(value: () => onMove(1), child: const Text('아래로')),
-              for (final g in PageGroup.values)
-                if (g != group)
-                  PopupMenuItem(
-                    value: () => onMoveTo(g),
-                    child: Text('${g.label}(으)로 옮기기'),
-                  ),
-              PopupMenuItem(
-                value: onDelete,
-                enabled: canDelete,
-                child: Text(canDelete ? '삭제' : '삭제 (최소 1개는 남겨야 해요)'),
+        child: Column(
+          children: [
+            for (var i = 0; i < pages.length; i++) ...[
+              if (i > 0) Divider(height: 1, color: palette.border),
+              ListTile(
+                onTap: () => onEdit(pages[i]),
+                leading: Icon(pageIconOf(pages[i].icon).outlined),
+                title: Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        pages[i].title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    _LocationBadge(group: pages[i].group),
+                  ],
+                ),
+                subtitle: Text(_summary(pages[i])),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (narrow)
+                      IconButton(
+                        tooltip: '배치 설정',
+                        icon: const Icon(AppIcons.squaresFour, size: 20),
+                        onPressed: busy ? null : () => onArrange(pages[i]),
+                      )
+                    else
+                      OutlinedButton.icon(
+                        onPressed: busy ? null : () => onArrange(pages[i]),
+                        icon: const Icon(AppIcons.squaresFour, size: 18),
+                        label: const Text('배치 설정'),
+                      ),
+                    IconButton(
+                      tooltip: '수정',
+                      icon: const Icon(AppIcons.pencilSimple, size: 20),
+                      onPressed: () => onEdit(pages[i]),
+                    ),
+                    PopupMenuButton<VoidCallback>(
+                      tooltip: '더 보기',
+                      enabled: !busy,
+                      onSelected: (a) => a(),
+                      itemBuilder: (context) => [
+                        PopupMenuItem(
+                          value: () => onDelete(pages[i]),
+                          enabled: canDelete,
+                          child: Text(canDelete ? '삭제' : '삭제 (최소 1개는 남겨야 해요)'),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// 새 페이지의 템플릿: 교회가 하려는 일(목적)에 맞춰 구조와 자료, 페이지 이름·아이콘이 정해진다.
-/// 새 주제가 생기면 [_templates]에 넣지 않고 우선 [other](기타)로 만든다.
-class _Template {
-  const _Template({
-    required this.label,
-    required this.icon,
-    this.type,
-    this.pageTitle,
-    this.sourceIndex = 0,
-    this.group = PageGroup.home,
-  });
-
-  final String label;
-
-  /// 페이지 메뉴 아이콘 이름 (`pageIcons`의 키).
-  final String icon;
-
-  /// 쓸 구조. null이면 기타: 모든 구조 중에서 고른다.
-  final BlockType? type;
-
-  /// 새 페이지의 이름. null이면 구조 이름.
-  final String? pageTitle;
-
-  /// 구조가 보여줄 수 있는 자료 중 몇 번째를 쓰는지 (게시판: 0 공지, 1 사진첩).
-  final int sourceIndex;
-
-  /// 새 페이지가 속할 그룹 (홈 · 기도 · 말씀).
-  final PageGroup group;
-}
-
-const _templates = [
-  _Template(
-    label: '공지·소식',
-    icon: 'campaign',
-    type: BlockType.board,
-    pageTitle: '공지사항',
-  ),
-  _Template(
-    label: '행사·수련회 사진',
-    icon: 'photo',
-    type: BlockType.gallery,
-    pageTitle: '사진첩',
-  ),
-  _Template(
-    label: '설교·찬양 영상',
-    icon: 'video',
-    type: BlockType.video,
-    pageTitle: '설교영상',
-  ),
-  _Template(
-    label: '예배·행사 일정',
-    icon: 'event',
-    type: BlockType.schedule,
-    pageTitle: '일정',
-  ),
-  _Template(
-    label: '말씀 묵상',
-    icon: 'book',
-    type: BlockType.devotion,
-    pageTitle: '말씀묵상',
-    group: PageGroup.word,
-  ),
-  _Template(
-    label: '기도 요청',
-    icon: 'favorite',
-    type: BlockType.prayer,
-    pageTitle: '기도 요청',
-    group: PageGroup.prayer,
-  ),
-  _Template(
-    label: '홍보자료',
-    icon: 'star',
-    type: BlockType.board,
-    pageTitle: '홍보자료',
-    sourceIndex: 1,
-  ),
-];
-
-/// 어느 템플릿에도 맞지 않는 새 주제.
-const _other = _Template(label: '기타', icon: 'star');
-
-class _TemplateDialog extends StatelessWidget {
-  const _TemplateDialog();
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Text('새 페이지 만들기', style: Theme.of(context).textTheme.titleLarge),
-        const SizedBox(height: 16),
-        Flexible(
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                for (final t in [..._templates, _other]) ...[
-                  _Choice(
-                    icon: pageIconOf(t.icon).outlined,
-                    title: t.label,
-                    onTap: () => Navigator.pop(context, t),
-                  ),
-                  const SizedBox(height: 10),
-                ],
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _Choice extends StatelessWidget {
-  const _Choice({required this.icon, required this.title, required this.onTap});
-
-  final IconData icon;
-  final String title;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final palette = context.palette;
-    final radius = BorderRadius.circular(AppRadius.card);
-    return InkWell(
-      borderRadius: radius,
-      onTap: onTap,
-      child: Ink(
-        height: 76,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        decoration: BoxDecoration(
-          color: palette.surface,
-          border: Border.all(color: palette.border),
-          borderRadius: radius,
-        ),
-        child: Row(
-          children: [
-            Icon(icon, color: palette.brand),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(fontWeight: FontWeight.w700),
-                  ),
-                ],
-              ),
-            ),
-            Icon(Icons.chevron_right, color: palette.muted),
           ],
         ),
       ),
@@ -609,7 +320,41 @@ class _Choice extends StatelessWidget {
   }
 }
 
-/// 내 활동 미리보기: 기도 · 말씀 페이지 구성에 따라 자동으로 정해지는 항목들 (고칠 수 없다).
+/// 페이지가 속한 위치(홈 · 왼쪽 버튼 · 오른쪽 버튼 · 좌측 탭) 표시.
+class _LocationBadge extends StatelessWidget {
+  const _LocationBadge({required this.group});
+
+  final PageGroup group;
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = context.palette;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(
+        color: palette.brand.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(
+        group.label,
+        style: TextStyle(
+          color: palette.brand,
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
+}
+
+/// 페이지 한 줄의 요약: 템플릿 하나, 또는 이어 붙인 구조들.
+String _summary(PageConfig p) {
+  if (p.blocks.isEmpty) return '구성 없음';
+  if (p.hasTemplate) return '템플릿 · ${p.template!.type.label}';
+  return '구조 ${p.blocks.length}개 · ${p.blocks.map((b) => b.type.label).join(', ')}';
+}
+
+/// 내 활동 미리보기: 기도 요청 · 말씀 묵상 템플릿에 따라 자동으로 정해지는 항목들 (고칠 수 없다).
 class _MyActivityPreview extends StatelessWidget {
   const _MyActivityPreview({required this.activities});
 
@@ -633,11 +378,164 @@ class _MyActivityPreview extends StatelessWidget {
               children: [
                 for (final a in activities)
                   Chip(
-                    avatar: Icon(Icons.check, size: 16, color: palette.brand),
+                    avatar: Icon(
+                      AppIcons.check,
+                      size: 16,
+                      color: palette.brand,
+                    ),
                     label: Text(a.label),
                   ),
               ],
             ),
+    );
+  }
+}
+
+/// 시작 구성 고르기.
+class _PresetDialog extends StatelessWidget {
+  const _PresetDialog();
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = context.palette;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text('시작 구성', style: Theme.of(context).textTheme.titleLarge),
+        const SizedBox(height: 16),
+        for (final p in PageConfig.presets) ...[
+          InkWell(
+            borderRadius: BorderRadius.circular(AppRadius.card),
+            onTap: () => Navigator.pop(context, p),
+            child: Ink(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: palette.surface,
+                border: Border.all(color: palette.border),
+                borderRadius: BorderRadius.circular(AppRadius.card),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          p.label,
+                          style: const TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          p.summary,
+                          style: TextStyle(color: palette.muted, fontSize: 13),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Icon(AppIcons.caretRight, color: palette.muted),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+        ],
+        Align(
+          alignment: Alignment.centerRight,
+          child: TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('취소'),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+String _stamp(DateTime? t) {
+  if (t == null) return '방금';
+  String two(int n) => n.toString().padLeft(2, '0');
+  return '${t.year}.${two(t.month)}.${two(t.day)} ${two(t.hour)}:${two(t.minute)}';
+}
+
+/// 이전 구성 목록: 저장할 때마다 남은 직전 구성 중 최근 10개.
+class _RevisionsDialog extends StatefulWidget {
+  const _RevisionsDialog({required this.churchId});
+
+  final String churchId;
+
+  @override
+  State<_RevisionsDialog> createState() => _RevisionsDialogState();
+}
+
+class _RevisionsDialogState extends State<_RevisionsDialog> {
+  late final Stream<List<PageRevision>> _revisions = AppScope.read(context)
+      .pageLayouts
+      .revisions(widget.churchId);
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = context.palette;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text('이전 구성', style: Theme.of(context).textTheme.titleLarge),
+        const SizedBox(height: 16),
+        Flexible(
+          child: StreamBuilder<List<PageRevision>>(
+            stream: _revisions,
+            builder: (context, snap) {
+              if (snap.hasError) return const Text('불러오지 못했어요.');
+              if (!snap.hasData) {
+                return const Padding(
+                  padding: EdgeInsets.all(24),
+                  child: Center(child: CircularProgressIndicator()),
+                );
+              }
+              final items = snap.data!;
+              if (items.isEmpty) {
+                return Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Center(
+                    child: Text(
+                      '기록 없음',
+                      style: TextStyle(color: palette.muted),
+                    ),
+                  ),
+                );
+              }
+              return ListView(
+                shrinkWrap: true,
+                children: [
+                  for (final r in items)
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: Text(_stamp(r.savedAt)),
+                      subtitle: Text(
+                        r.pages.map((p) => p.title).join(', '),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      trailing: TextButton(
+                        onPressed: () => Navigator.pop(context, r),
+                        child: const Text('복원'),
+                      ),
+                    ),
+                ],
+              );
+            },
+          ),
+        ),
+        const SizedBox(height: 12),
+        Align(
+          alignment: Alignment.centerRight,
+          child: TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('닫기'),
+          ),
+        ),
+      ],
     );
   }
 }

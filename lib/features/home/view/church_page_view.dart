@@ -69,23 +69,23 @@ class ChurchPageBody extends StatelessWidget {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            if (page.layout == null)
+            if (page.blocks.isEmpty)
               Padding(
                 padding: EdgeInsets.symmetric(horizontal: inset),
-                child: EmptyHint(
-                  me.isStaff
-                      ? '아직 레이아웃이 없어요.\n"페이지 편집"에서 이 페이지의 레이아웃을 골라 보세요.'
-                      : '아직 준비 중인 페이지예요.',
-                ),
+                child: EmptyHint(me.isStaff ? '페이지 편집에서 구조 추가' : '준비 중'),
               )
             else
-              BlockView(
-                block: page.layout!,
-                me: me,
-                department: department,
-                inset: inset,
-                fullScreen: fullScreen,
-              ),
+              for (var i = 0; i < page.blocks.length; i++) ...[
+                if (i > 0) const SizedBox(height: 16),
+                BlockView(
+                  key: ValueKey(page.blocks[i].id),
+                  block: page.blocks[i],
+                  me: me,
+                  department: department,
+                  inset: inset,
+                  fullScreen: fullScreen,
+                ),
+              ],
             SizedBox(height: fullScreen ? 0 : 24),
           ],
         );

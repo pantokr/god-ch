@@ -29,6 +29,94 @@ class ContentRepository {
   Query<Json> _query(String churchId, ContentKind kind) =>
       _paths.contents(churchId, kind.collection);
 
+  CollectionReference<Json> _areas(String churchId) =>
+      _paths.church(churchId).collection('contentAreas');
+
+  /// 만들어 둔 영역들 (지운 것은 뺀다).
+  Stream<List<ContentArea>> areas(String churchId) => _areas(churchId)
+      .snapshots()
+      .map(
+        (s) => [
+          for (final d in s.docs)
+            if (d.data()['deleted'] != true) ?ContentArea.fromDoc(d),
+        ],
+      );
+
+  /// [kind] 종류에 영역 [name]을 만든다. 같은 종류 안에서 이름이 겹치면 안 된다 ([existing]은 이미 있는 이름들).
+  Future<void> addArea(
+    String churchId,
+    ContentKind kind,
+    String name, {
+    required Iterable<String> existing,
+  }) {
+    final n = name.trim();
+    if (!kind.hasAreas) throw const AppException('이 종류에는 영역이 없어요.');
+    if (n.isEmpty) throw const AppException('영역 이름을 입력해 주세요.');
+    if (n.length > ChurchContent.maxCategoryLength) {
+      throw const AppException('영역 이름은 20자까지 쓸 수 있어요.');
+    }
+    if (existing.contains(n)) throw const AppException('이미 있는 영역이에요.');
+    return _areas(churchId).add({
+      'kind': kind.collection,
+      'name': n,
+      'createdBy': _auth.uid,
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  /// 영역을 지운 것으로 표시한다. 영역 안에 글이 하나라도 남아 있으면 지울 수 없다.
+  Future<void> deleteArea(
+    String churchId,
+    ContentKind kind,
+    String name,
+  ) async {
+    final posts = await _query(
+      churchId,
+      kind,
+    ).where('category', isEqualTo: name).get();
+    if (posts.docs.any((d) => d.data()['deleted'] != true)) {
+      throw const AppException('영역 안에 게시글이 있어 지울 수 없어요. 먼저 다른 영역으로 옮겨 주세요.');
+    }
+    final docs = await _areas(churchId)
+        .where('kind', isEqualTo: kind.collection)
+        .get();
+    final batch = _paths.db.batch();
+    for (final d in docs.docs) {
+      if (d.data()['name'] != name || d.data()['deleted'] == true) continue;
+      batch.update(d.reference, {
+        'deleted': true,
+        'deletedAt': FieldValue.serverTimestamp(),
+        'deletedBy': _auth.uid,
+      });
+    }
+    await batch.commit();
+  }
+
+  /// 글 [items]를 영역 [area]로 옮긴다 (비우면 영역 없음). 한 번에 여러 건도 된다.
+  Future<void> moveToArea(
+    String churchId,
+    List<ChurchContent> items,
+    String area,
+  ) async {
+    final a = area.trim();
+    if (a.length > ChurchContent.maxCategoryLength) {
+      throw const AppException('영역 이름은 20자까지 쓸 수 있어요.');
+    }
+    if (items.any((c) => !c.kind.hasAreas)) {
+      throw const AppException('이 종류에는 영역이 없어요.');
+    }
+    for (var i = 0; i < items.length; i += 400) {
+      final batch = _paths.db.batch();
+      for (final c in items.skip(i).take(400)) {
+        batch.update(_paths.contents(churchId, c.kind.collection).doc(c.id), {
+          'category': a,
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+      }
+      await batch.commit();
+    }
+  }
+
   /// 지워진 글(deleted)은 목록에서 뺀다.
   List<ChurchContent> _map(ContentKind kind, QuerySnapshot<Json> s) => s.docs
       .map((d) => ChurchContent.fromDoc(kind, d))
@@ -79,8 +167,13 @@ class ContentRepository {
     required DateTime date,
     List<String> imageUrls = const [],
     String videoUrl = '',
+    String category = '',
   }) {
     final t = title.trim();
+    final cat = category.trim();
+    if (cat.length > ChurchContent.maxCategoryLength) {
+      throw const AppException('분류는 20자까지 쓸 수 있어요.');
+    }
     if (t.isEmpty) throw const AppException('제목을 입력해 주세요.');
     if (t.length > 100) throw const AppException('제목은 100자까지 쓸 수 있어요.');
     if (body.trim().length > 5000) {
@@ -102,6 +195,7 @@ class ContentRepository {
       'date': Timestamp.fromDate(date),
       'imageUrls': images.toList(),
       'videoUrl': video,
+      'category': cat,
     };
     final col = _paths.contents(churchId, kind.collection);
     if (id == null) {

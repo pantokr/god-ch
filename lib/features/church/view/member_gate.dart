@@ -1,3 +1,5 @@
+import '../../../core/icons.dart';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -74,7 +76,7 @@ class _ClosedChurch extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.lock_outline, size: 40),
+              const Icon(AppIcons.lock, size: 40),
               const SizedBox(height: 16),
               Text('폐쇄된 교회예요', style: Theme.of(context).textTheme.titleLarge),
               const SizedBox(height: 8),

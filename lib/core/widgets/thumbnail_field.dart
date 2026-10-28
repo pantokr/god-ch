@@ -1,3 +1,5 @@
+import '../icons.dart';
+
 import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
@@ -82,7 +84,7 @@ class _ThumbnailFieldState extends State<ThumbnailField> {
             else if (widget.enabled) ...[
               OutlinedButton.icon(
                 onPressed: _pick,
-                icon: const Icon(Icons.image_outlined, size: 18),
+                icon: const Icon(AppIcons.image, size: 18),
                 label: Text(url.isEmpty ? '이미지 선택' : '이미지 변경'),
               ),
               if (url.isNotEmpty)

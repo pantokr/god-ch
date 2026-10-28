@@ -1,3 +1,5 @@
+import '../../../core/icons.dart';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -48,11 +50,11 @@ class PrayerCard extends StatelessWidget {
                 runSpacing: 6,
                 children: [
                   if (prayer.departmentId != null)
-                    const _Badge(icon: Icons.groups_outlined, label: '부서'),
+                    const _Badge(icon: AppIcons.usersThree, label: '부서'),
                   if (!prayer.isPublic)
-                    const _Badge(icon: Icons.lock_outline, label: '교역자 전용'),
+                    const _Badge(icon: AppIcons.lock, label: '교역자 전용'),
                   if (prayer.deleted)
-                    const _Badge(icon: Icons.delete_outline, label: '삭제됨'),
+                    const _Badge(icon: AppIcons.trash, label: '삭제됨'),
                 ],
               ),
               const SizedBox(height: 8),
@@ -82,7 +84,7 @@ class PrayerCard extends StatelessWidget {
               Row(
                 children: [
                   Icon(
-                    Icons.mark_email_unread_outlined,
+                    AppIcons.envelopeSimple,
                     size: 18,
                     color: theme.colorScheme.primary,
                   ),

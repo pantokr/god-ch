@@ -1,3 +1,5 @@
+import '../../../core/icons.dart';
+
 import 'package:flutter/material.dart';
 
 import '../../../app/app_scope.dart';
@@ -37,10 +39,7 @@ class MyAffiliationsCard extends StatelessWidget {
                   children: [
                     Row(
                       children: [
-                        Icon(
-                          Icons.church_outlined,
-                          color: context.palette.muted,
-                        ),
+                        Icon(AppIcons.church, color: context.palette.muted),
                         const SizedBox(width: 14),
                         const Text(
                           '내가 속한 교회',
@@ -121,7 +120,7 @@ class _Church extends StatelessWidget {
                   Chip(
                     visualDensity: VisualDensity.compact,
                     avatar: Icon(
-                      Icons.groups_outlined,
+                      AppIcons.usersThree,
                       size: 16,
                       color: palette.muted,
                     ),

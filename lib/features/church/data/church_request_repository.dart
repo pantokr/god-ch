@@ -21,6 +21,9 @@ class ChurchRequestRepository {
 
   // ---- 요청하는 사람 ----
 
+  /// 한 사람이 낼 수 있는 교회 생성 요청 수 (거절된 요청은 세지 않는다).
+  static const maxPerPerson = 3;
+
   /// 교회 생성을 요청한다. 앱 운영자가 승인할 때까지 교회는 만들어지지 않는다.
   Future<void> request({
     required String name,
@@ -31,6 +34,15 @@ class ChurchRequestRepository {
     if (phone.trim().isEmpty) throw const AppException('교회 전화번호를 입력해 주세요.');
     if (address.trim().isEmpty) throw const AppException('교회 주소를 입력해 주세요.');
     final profile = await _profiles.requireCurrent();
+    final mine = await _paths.churchRequests
+        .where('requesterId', isEqualTo: _auth.uid)
+        .get();
+    final used = mine.docs
+        .where((d) => d.data()['status'] != RequestStatus.rejected.name)
+        .length;
+    if (used >= maxPerPerson) {
+      throw const AppException('교회 생성 요청은 한 사람당 3개까지 할 수 있어요.');
+    }
     await _paths.churchRequests.add({
       'requesterId': _auth.uid,
       'requesterName': profile.name,

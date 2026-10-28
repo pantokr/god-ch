@@ -81,8 +81,12 @@ class _ExploreBody extends StatelessWidget {
                       child: Center(child: CircularProgressIndicator()),
                     );
                   }
+                  // 공개로 노출한 교회가 하나도 없는 것과, 검색에 맞는 교회가 없는 것은 다르다.
+                  if (snap.data!.isEmpty) {
+                    return const EmptyHint('공개된 교회 없음');
+                  }
                   final items = vm.filter(snap.data!);
-                  if (items.isEmpty) return const EmptyHint('교회 없음');
+                  if (items.isEmpty) return const EmptyHint('검색 결과 없음');
                   final status = {
                     for (final m in mine.data ?? const <Member>[])
                       m.churchId: m,
@@ -99,14 +103,26 @@ class _ExploreBody extends StatelessWidget {
                               imageUrl: items[i].thumbnailUrl,
                             ),
                             title: items[i].name,
-                            line1: items[i].address,
-                            trailing: [
-                              _Action(
+                            line1: items[i].region,
+                            onTap: () => showAppDialog<void>(
+                              context,
+                              child: _ChurchDetail(
+                                church: items[i],
                                 member: status[items[i].id],
                                 busy: vm.busy,
-                                onRequest: () =>
-                                    _request(context, vm, items[i]),
+                                onRequest: () {
+                                  Navigator.pop(context);
+                                  _request(context, vm, items[i]);
+                                },
                               ),
+                            ),
+                            trailing: [
+                              if (status[items[i].id] != null)
+                                _Action(
+                                  member: status[items[i].id],
+                                  busy: vm.busy,
+                                  onRequest: () {},
+                                ),
                             ],
                           ),
                         ],
@@ -160,6 +176,80 @@ class _ExploreBody extends StatelessWidget {
     if (done) {
       messenger.showSnackBar(const SnackBar(content: Text('입장을 요청했어요.')));
     }
+  }
+}
+
+/// 교회를 눌렀을 때 보이는 상세 정보: 사진, 전체 주소, 전화번호, 입장 요청.
+class _ChurchDetail extends StatelessWidget {
+  const _ChurchDetail({
+    required this.church,
+    required this.member,
+    required this.busy,
+    required this.onRequest,
+  });
+
+  final Church church;
+  final Member? member;
+  final bool busy;
+  final VoidCallback onRequest;
+
+  @override
+  Widget build(BuildContext context) {
+    Widget row(String label, String value) => Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 64,
+            child: Text(label, style: TextStyle(color: context.palette.muted)),
+          ),
+          Expanded(child: Text(value.isEmpty ? '-' : value)),
+        ],
+      ),
+    );
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            ManageListRow.avatar(
+              context,
+              church.name,
+              imageUrl: church.thumbnailUrl,
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Text(
+                church.name,
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+            ),
+          ],
+        ),
+        row('주소', church.address),
+        row('전화', church.phone),
+        const SizedBox(height: 20),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('닫기'),
+            ),
+            const SizedBox(width: 8),
+            if (member == null)
+              FilledButton(
+                onPressed: busy ? null : onRequest,
+                child: const Text('입장 요청'),
+              )
+            else
+              _Action(member: member, busy: busy, onRequest: onRequest),
+          ],
+        ),
+      ],
+    );
   }
 }
 

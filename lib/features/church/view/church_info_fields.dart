@@ -1,3 +1,5 @@
+import '../../../core/icons.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -126,7 +128,7 @@ class _ChurchInfoFieldsState extends State<ChurchInfoFields> {
                       const SizedBox(width: 8),
                       OutlinedButton.icon(
                         onPressed: _searchAddress,
-                        icon: const Icon(Icons.search, size: 18),
+                        icon: const Icon(AppIcons.magnifyingGlass, size: 18),
                         label: const Text('주소 검색'),
                       ),
                     ],

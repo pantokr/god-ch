@@ -1,3 +1,5 @@
+import '../../../core/icons.dart';
+
 import 'package:flutter/material.dart';
 
 import '../../../app/app_scope.dart';
@@ -29,7 +31,7 @@ class JoinRequirementsCard extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  const Icon(Icons.fact_check_outlined),
+                  const Icon(AppIcons.clipboardText),
                   const SizedBox(width: 10),
                   Text(
                     '입장 시 필수 정보',

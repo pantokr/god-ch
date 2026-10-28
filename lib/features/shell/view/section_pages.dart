@@ -19,7 +19,6 @@ import '../../home/view/group_hub_page.dart';
 import '../../home/view/my_activity_page.dart';
 import '../../home/view/page_edit_page.dart';
 import '../../home/view/page_list_page.dart';
-import '../../home/view/church_page_view.dart';
 import 'church_scope.dart';
 
 /// 교회 틀 안에 들어가는 메뉴별 페이지들. 필요한 정보는 [ChurchScope]에서 꺼낸다.
@@ -74,7 +73,7 @@ class DepartmentDetailSectionPage extends StatelessWidget {
   );
 }
 
-/// 하단 탭 "홈": 홈 그룹 페이지들 (소식과 열람 위주).
+/// 하단 가운데 "홈": 홈 자리의 페이지들을 이어 붙인다.
 class HomeSectionPage extends StatelessWidget {
   const HomeSectionPage({super.key});
 
@@ -91,15 +90,17 @@ class HomeSectionPage extends StatelessWidget {
   }
 }
 
-/// 하단 탭 "기도": 기도 그룹 페이지들 (기도 요청 …).
-class IntercessionSectionPage extends StatelessWidget {
-  const IntercessionSectionPage({super.key});
+/// 하단 탭 양옆 버튼: [group](왼쪽 · 오른쪽) 자리에 놓인 페이지 하나.
+class SlotSectionPage extends StatelessWidget {
+  const SlotSectionPage({super.key, required this.group});
+
+  final PageGroup group;
 
   @override
   Widget build(BuildContext context) {
     final scope = ChurchScope.of(context);
     return GroupHubPage(
-      group: PageGroup.prayer,
+      group: group,
       pages: scope.pages,
       me: scope.me,
       choice: scope.departmentChoice,
@@ -108,24 +109,7 @@ class IntercessionSectionPage extends StatelessWidget {
   }
 }
 
-/// 하단 탭 "말씀": 말씀 그룹 페이지들 (말씀 묵상 …).
-class WordSectionPage extends StatelessWidget {
-  const WordSectionPage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    final scope = ChurchScope.of(context);
-    return GroupHubPage(
-      group: PageGroup.word,
-      pages: scope.pages,
-      me: scope.me,
-      choice: scope.departmentChoice,
-      department: scope.department,
-    );
-  }
-}
-
-/// 하단 탭 "내 활동": 기도 · 말씀 페이지 구성에 따라 자동으로 모이는 내 글.
+/// "내 활동": 기도 요청 · 말씀 묵상 페이지에 따라 자동으로 모이는 내 글.
 class MineSectionPage extends StatelessWidget {
   const MineSectionPage({super.key});
 
@@ -148,10 +132,13 @@ class PageSectionPage extends StatelessWidget {
     final page =
         scope.pages.where((p) => p.id == pageId).firstOrNull ??
         scope.pages.first;
-    return ChurchPageView(
+    return GroupHubPage(
       key: ValueKey('page/${page.id}/${scope.department?.id}'),
+      group: PageGroup.drawer,
       page: page,
+      pages: scope.pages,
       me: scope.me,
+      choice: scope.departmentChoice,
       department: scope.department,
     );
   }
@@ -179,7 +166,7 @@ class ContentEditSectionPage extends StatelessWidget {
     final scope = ChurchScope.of(context);
     final k = kind;
     return k == null
-        ? ContentManagePage(me: scope.me)
+        ? ContentManagePage(me: scope.me, pages: scope.pages)
         : ContentEditPage(me: scope.me, kind: k);
   }
 }

@@ -1,3 +1,5 @@
+import '../../../core/icons.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -127,7 +129,7 @@ class _PhotoViewerState extends State<PhotoViewer> {
                       IconButton(
                         tooltip: '닫기',
                         color: Colors.white,
-                        icon: const Icon(Icons.close),
+                        icon: const Icon(AppIcons.x),
                         onPressed: () => Navigator.pop(context),
                       ),
                     ],
@@ -140,7 +142,7 @@ class _PhotoViewerState extends State<PhotoViewer> {
               Align(
                 alignment: Alignment.centerLeft,
                 child: _Arrow(
-                  icon: Icons.chevron_left,
+                  icon: AppIcons.caretLeft,
                   onTap: () => _go(_index - 1),
                 ),
               ),
@@ -148,7 +150,7 @@ class _PhotoViewerState extends State<PhotoViewer> {
               Align(
                 alignment: Alignment.centerRight,
                 child: _Arrow(
-                  icon: Icons.chevron_right,
+                  icon: AppIcons.caretRight,
                   onTap: () => _go(_index + 1),
                 ),
               ),
@@ -171,28 +173,28 @@ class _PhotoViewerState extends State<PhotoViewer> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           _Tool(
-                            icon: Icons.rotate_left,
+                            icon: AppIcons.arrowCounterClockwise,
                             tooltip: '왼쪽으로 회전',
                             onTap: () => _change(
                               () => _current.turns = (_current.turns + 3) % 4,
                             ),
                           ),
                           _Tool(
-                            icon: Icons.rotate_right,
+                            icon: AppIcons.arrowClockwise,
                             tooltip: '오른쪽으로 회전',
                             onTap: () => _change(
                               () => _current.turns = (_current.turns + 1) % 4,
                             ),
                           ),
                           _Tool(
-                            icon: Icons.flip,
+                            icon: AppIcons.flipHorizontal,
                             tooltip: '좌우 반전',
                             active: _current.flipX,
                             onTap: () =>
                                 _change(() => _current.flipX = !_current.flipX),
                           ),
                           _Tool(
-                            icon: Icons.flip,
+                            icon: AppIcons.flipHorizontal,
                             quarterTurns: 1,
                             tooltip: '상하 반전',
                             active: _current.flipY,
@@ -200,7 +202,7 @@ class _PhotoViewerState extends State<PhotoViewer> {
                                 _change(() => _current.flipY = !_current.flipY),
                           ),
                           _Tool(
-                            icon: Icons.restart_alt,
+                            icon: AppIcons.arrowCounterClockwise,
                             tooltip: '원래대로',
                             onTap: () => _change(() {
                               _current.turns = 0;
@@ -250,7 +252,7 @@ class _Photo extends StatelessWidget {
                       child: CircularProgressIndicator(color: Colors.white70),
                     ),
               errorBuilder: (context, error, stack) => const Icon(
-                Icons.broken_image_outlined,
+                AppIcons.imageBroken,
                 color: Colors.white54,
                 size: 48,
               ),

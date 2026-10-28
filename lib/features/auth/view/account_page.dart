@@ -1,3 +1,5 @@
+import '../../../core/icons.dart';
+
 import 'package:flutter/material.dart';
 
 import '../../../app/app_scope.dart';
@@ -33,7 +35,7 @@ class AccountPage extends StatelessWidget {
       appBar: AppBar(
         leading: IconButton(
           tooltip: '뒤로',
-          icon: const Icon(Icons.arrow_back),
+          icon: const Icon(AppIcons.arrowLeft),
           onPressed: () => context.goBack(Routes.churches),
         ),
         title: const Text('내 정보'),
@@ -66,7 +68,7 @@ class AccountPage extends StatelessWidget {
                         padding: const EdgeInsets.fromLTRB(28, 20, 20, 20),
                         child: Row(
                           children: [
-                            Icon(Icons.lock_outline, color: palette.muted),
+                            Icon(AppIcons.lock, color: palette.muted),
                             const SizedBox(width: 14),
                             const Expanded(
                               child: Text(

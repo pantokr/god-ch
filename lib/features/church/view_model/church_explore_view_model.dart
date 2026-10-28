@@ -27,7 +27,7 @@ class ChurchExploreViewModel extends ViewModel {
     notifyListeners();
   }
 
-  /// 이름이나 주소에 검색어가 들어 있는 교회만.
+  /// 이름이나 지역(시도 시군구)에 검색어가 들어 있는 교회만. 상세 주소로는 찾지 않는다.
   List<Church> filter(List<Church> all) {
     if (_query.isEmpty) return all;
     final q = _query.toLowerCase();
@@ -35,7 +35,7 @@ class ChurchExploreViewModel extends ViewModel {
         .where(
           (c) =>
               c.name.toLowerCase().contains(q) ||
-              c.address.toLowerCase().contains(q),
+              c.region.toLowerCase().contains(q),
         )
         .toList();
   }

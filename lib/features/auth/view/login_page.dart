@@ -1,3 +1,5 @@
+import '../../../core/icons.dart';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -110,7 +112,7 @@ class _LoginPageState extends State<LoginPage> {
                       const SizedBox(height: 10),
                       OutlinedButton.icon(
                         onPressed: vm.busy ? null : vm.signInWithGoogle,
-                        icon: const Icon(Icons.g_mobiledata, size: 28),
+                        icon: const Icon(AppIcons.googleLogo, size: 28),
                         label: const Text('Google로 계속하기'),
                       ),
                       const SizedBox(height: 8),
@@ -140,7 +142,7 @@ class _Brand extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        Icon(Icons.volunteer_activism, color: context.palette.brand, size: 40),
+        Icon(AppIcons.handHeart, color: context.palette.brand, size: 40),
         SizedBox(height: 12),
         Text('같이', style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800)),
         SizedBox(height: 6),

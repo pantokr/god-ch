@@ -1,3 +1,5 @@
+import '../../../core/icons.dart';
+
 import 'package:flutter/material.dart';
 
 import '../../../app/app_scope.dart';
@@ -13,15 +15,16 @@ import '../view_model/group_access_view_model.dart';
 import 'department_select.dart';
 import 'church_page_view.dart';
 import 'content_widgets.dart';
-import 'page_icons.dart';
+import '../../prayers/view/prayer_write_fab.dart';
 
-/// 하단 탭 "홈" · "기도" · "말씀": 그룹에 속한 페이지들을 칩으로 고르고, 고른 페이지의 레이아웃을 바로 보여준다.
-/// 페이지가 하나뿐이면 칩 없이 그 페이지만 보인다.
+/// 하단 가운데 "홈"과 양옆 버튼(왼쪽 · 오른쪽)의 화면.
+/// - 홈: 홈 자리의 페이지들을 위에서 아래로 이어 붙인다 (순서는 페이지 편집에서 정한다).
+/// - 왼쪽 · 오른쪽: 그 자리에 놓인 페이지 하나를 화면 전체로 보여준다.
 ///
-/// 기도 · 말씀은 교역자가 부서별로 켜고 끈다 ([ChurchFeatures]).
+/// 기도 요청 · 말씀 묵상 페이지는 어느 자리에 있든 교역자가 부서별로 켜고 끈다 ([ChurchFeatures]).
 /// - 소속 부서가 모두 꺼져 있으면 서비스가 허용되지 않았다는 안내만 보인다.
 /// - 소속 부서 중 쓸 수 있는 부서가 여럿이면 위쪽 탭(서랍 버튼 줄) 오른쪽에서 부서를 고른다 ([DepartmentSelect]).
-class GroupHubPage extends StatefulWidget {
+class GroupHubPage extends StatelessWidget {
   const GroupHubPage({
     super.key,
     required this.group,
@@ -29,9 +32,13 @@ class GroupHubPage extends StatefulWidget {
     required this.me,
     required this.choice,
     this.department,
+    this.page,
   });
 
   final PageGroup group;
+
+  /// 보여줄 페이지를 직접 정한다 (좌측 탭의 페이지). 없으면 [group] 자리의 페이지.
+  final PageConfig? page;
 
   /// 교회의 모든 페이지. 이 중 [group]에 속한 것만 보인다.
   final List<PageConfig> pages;
@@ -42,27 +49,22 @@ class GroupHubPage extends StatefulWidget {
   final Department? department;
 
   @override
-  State<GroupHubPage> createState() => _GroupHubPageState();
-}
-
-class _GroupHubPageState extends State<GroupHubPage> {
-  String? _selected;
-
-  @override
   Widget build(BuildContext context) {
-    if (widget.group == PageGroup.home) {
-      return _content(widget.department);
+    if (group == PageGroup.home) return _home(department);
+    final page = this.page ?? slotPage(pages, group);
+    if (page == null) {
+      return PageFrame(child: EmptyHint(me.isStaff ? '페이지 편집에서 추가' : '준비 중'));
     }
+    final feature = PageFeature.of(page.template?.type);
+    if (feature == null) return _slot(context, page, department);
     // 앱 개발자는 교회를 고칠 수 있어도 기도제목 내용은 볼 수 없다.
-    if (widget.me.isOperatorView && widget.group == PageGroup.prayer) {
+    if (me.isOperatorView && feature == PageFeature.prayer) {
       return const _OperatorNotice();
     }
     return ViewModelBuilder<GroupAccessViewModel>(
-      key: ValueKey('access/${widget.me.churchId}'),
-      create: (context) => GroupAccessViewModel(
-        AppScope.read(context).departments,
-        widget.me.churchId,
-      ),
+      key: ValueKey('access/${me.churchId}'),
+      create: (context) =>
+          GroupAccessViewModel(AppScope.read(context).departments, me.churchId),
       builder: (context, vm) => StreamBuilder<List<Department>>(
         stream: vm.departments,
         builder: (context, depts) => StreamBuilder<ChurchFeatures>(
@@ -71,118 +73,86 @@ class _GroupHubPageState extends State<GroupHubPage> {
             if (!depts.hasData || !feat.hasData) {
               return const Center(child: CircularProgressIndicator());
             }
-            final access = feat.data!.accessFor(
-              widget.group,
-              widget.me,
-              depts.data!,
+            final access = feat.data!.accessFor(feature, me, depts.data!);
+            if (access.blocked) return _NotAllowed(feature: feature);
+            // 부서는 위쪽 탭(서랍 버튼 줄) 오른쪽에서 고르고, 소속 부서가 없으면 교회 전체다.
+            return ListenableBuilder(
+              listenable: choice,
+              builder: (context, _) => _slot(
+                context,
+                page,
+                chosenDepartment(access, choice) ?? department,
+              ),
             );
-            if (access.blocked) return _NotAllowed(group: widget.group);
-            return _withDepartment(access);
           },
         ),
       ),
     );
   }
 
-  /// 고른 부서의 내용을 보여준다. 부서는 위쪽 탭(서랍 버튼 줄) 오른쪽에서 고르고, 소속 부서가 없으면 교회 전체다.
-  Widget _withDepartment(TabAccess access) => ListenableBuilder(
-    listenable: widget.choice,
-    builder: (context, _) =>
-        _content(chosenDepartment(access, widget.choice) ?? widget.department),
-  );
-
-  Widget _chip({
-    required String label,
-    required bool selected,
-    required VoidCallback onTap,
-    IconData? icon,
-  }) => Padding(
-    padding: const EdgeInsets.only(right: 8),
-    child: ChoiceChip(
-      avatar: icon == null ? null : Icon(icon, size: 18),
-      label: Text(label),
-      selected: selected,
-      onSelected: (_) => onTap(),
-    ),
-  );
-
-  Widget _chipRow(List<Widget> chips) => SizedBox(
-    height: 52,
-    child: ListView(
-      scrollDirection: Axis.horizontal,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      children: chips,
-    ),
-  );
-
-  Widget _content(Department? department) {
+  /// 홈은 탭으로 나누지 않고 페이지들을 한 화면에 위에서 아래로 이어 붙인다.
+  Widget _home(Department? department) {
     final items = [
-      for (final p in widget.pages)
-        if (p.group == widget.group) p,
+      for (final p in pages)
+        if (p.group == PageGroup.home) p,
     ];
     if (items.isEmpty) {
-      return PageFrame(
-        child: EmptyHint(widget.me.isStaff ? '페이지 편집에서 추가' : '준비 중'),
-      );
+      return PageFrame(child: EmptyHint(me.isStaff ? '페이지 편집에서 추가' : '준비 중'));
     }
-    // 홈은 탭으로 나누지 않고 페이지들을 한 화면에 위에서 아래로 이어 붙인다 (순서는 페이지 편집에서 정한다).
-    if (widget.group == PageGroup.home) {
-      return SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 28),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              for (final p in items)
-                ChurchPageBody(
-                  key: ValueKey('home/${p.id}/${department?.id}'),
-                  page: p,
-                  me: widget.me,
-                  department: department,
-                ),
-            ],
-          ),
-        ),
-      );
-    }
-    final page = items.firstWhere(
-      (p) => p.id == _selected,
-      orElse: () => items.first,
-    );
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        // 한 그룹에 페이지가 여럿이면 칩으로 고른다.
-        if (items.length > 1)
-          _chipRow([
+    return SingleChildScrollView(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 28),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
             for (final p in items)
-              _chip(
-                label: p.title,
-                icon: pageIconOf(p.icon).outlined,
-                selected: p.id == page.id,
-                onTap: () => setState(() => _selected = p.id),
+              ChurchPageBody(
+                key: ValueKey('home/${p.id}/${department?.id}'),
+                page: p,
+                me: me,
+                department: department,
               ),
-          ]),
-        Expanded(
-          child: ChurchPageView(
-            key: ValueKey('hub/${page.id}/${department?.id}'),
-            page: page,
-            me: widget.me,
-            department: department,
-            // 기도 · 말씀은 페이지 제목도 카드도 없이 화면 전체를 쓴다.
-            fullScreen: true,
-          ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// 왼쪽 · 오른쪽 버튼, 좌측 탭의 페이지 하나를 보여준다.
+  /// 기도 요청 페이지는 기도 요청 버튼이 오른쪽 아래에 떠 있다 (배경은 바깥 틀이 깐다).
+  Widget _slot(BuildContext context, PageConfig page, Department? department) {
+    final view = ChurchPageView(
+      key: ValueKey('hub/${page.id}/${department?.id}'),
+      page: page,
+      me: me,
+      department: department,
+      // 템플릿(기도 요청 · 말씀 묵상)은 페이지 제목도 카드도 없이 화면 전체를 쓴다.
+      fullScreen: page.hasTemplate,
+    );
+    if (page.template?.type != BlockType.prayer) return view;
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        view,
+        Positioned(
+          right: 16,
+          bottom: 16,
+          child: PrayerWriteFab(me: me, department: department),
         ),
       ],
     );
   }
 }
 
-/// 소속 부서에서 이 탭이 꺼져 있을 때의 안내.
-class _NotAllowed extends StatelessWidget {
-  const _NotAllowed({required this.group});
+/// [group](왼쪽 · 오른쪽) 자리에 놓인 페이지. 비어 있으면 null.
+PageConfig? slotPage(List<PageConfig> pages, PageGroup group) =>
+    pages.where((p) => p.group == group).firstOrNull;
 
-  final PageGroup group;
+/// 소속 부서에서 이 기능이 꺼져 있을 때의 안내.
+class _NotAllowed extends StatelessWidget {
+  const _NotAllowed({required this.feature});
+
+  final PageFeature feature;
 
   @override
   Widget build(BuildContext context) {
@@ -193,7 +163,7 @@ class _NotAllowed extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.lock_outline, size: 40, color: palette.muted),
+            Icon(AppIcons.lock, size: 40, color: palette.muted),
             const SizedBox(height: 16),
             Text(
               '본 서비스가 허용되지 않았습니다',
@@ -202,7 +172,7 @@ class _NotAllowed extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              '소속 부서에서 ${group.label} 서비스를 사용할 수 없습니다.\n담당 교역자에게 문의해 주세요.',
+              '소속 부서에서 ${feature.label} 서비스를 사용할 수 없습니다.\n담당 교역자에게 문의해 주세요.',
               textAlign: TextAlign.center,
               style: TextStyle(color: palette.muted),
             ),

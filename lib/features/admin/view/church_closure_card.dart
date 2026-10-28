@@ -1,4 +1,7 @@
+import '../../../core/icons.dart';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../../app/app_scope.dart';
 import '../../../core/format.dart';
@@ -54,7 +57,7 @@ class ChurchClosureCard extends StatelessWidget {
                 children: [
                   Row(
                     children: [
-                      Icon(Icons.warning_amber_outlined, color: error),
+                      Icon(AppIcons.warning, color: error),
                       const SizedBox(width: 10),
                       Text(
                         '교회 폐쇄',
@@ -99,7 +102,7 @@ class ChurchClosureCard extends StatelessWidget {
                       foregroundColor: error,
                       side: BorderSide(color: error.withValues(alpha: 0.6)),
                     ),
-                    icon: const Icon(Icons.block, size: 18),
+                    icon: const Icon(AppIcons.prohibit, size: 18),
                     label: Text(pending ? '폐쇄 요청 중' : '폐쇄 요청'),
                   ),
                 ],
@@ -148,17 +151,29 @@ class _ClosureFormState extends State<_ClosureForm> {
         TextField(
           controller: _reason,
           autofocus: true,
-          maxLines: 3,
-          maxLength: ChurchClosureRequest.maxReasonLength,
-          decoration: const InputDecoration(labelText: '폐쇄 사유'),
+          // 줄 수를 고정해서 입력 중에도, 커서가 옮겨 다녀도 칸 크기가 변하지 않게 한다.
+          minLines: 4,
+          maxLines: 4,
+          inputFormatters: [
+            LengthLimitingTextInputFormatter(
+              ChurchClosureRequest.maxReasonLength,
+            ),
+          ],
+          decoration: const InputDecoration(
+            labelText: '폐쇄 사유',
+            alignLabelWithHint: true,
+          ),
           onChanged: (_) => setState(() {}),
         ),
         AppField.spacer,
         TextField(
           controller: _confirm,
+          maxLines: 1,
           decoration: InputDecoration(
             labelText: '확인을 위해 교회 이름을 입력하세요',
             hintText: widget.churchName,
+            // 안내 글자가 생기고 사라져도 칸 높이가 바뀌지 않게 한다.
+            hintMaxLines: 1,
           ),
           onChanged: (_) => setState(() {}),
         ),

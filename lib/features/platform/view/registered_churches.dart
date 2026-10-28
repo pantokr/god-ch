@@ -1,3 +1,5 @@
+import '../../../core/icons.dart';
+
 import 'package:flutter/material.dart';
 
 import '../../../core/layout/manage_list_row.dart';
@@ -83,7 +85,7 @@ class RegisteredChurches extends StatelessWidget {
                 alignment: Alignment.centerLeft,
                 child: OutlinedButton.icon(
                   onPressed: vm.busy ? null : vm.registerSample,
-                  icon: const Icon(Icons.church_outlined, size: 18),
+                  icon: const Icon(AppIcons.church, size: 18),
                   label: const Text('예시 교회 추가 (PL교회)'),
                 ),
               ),

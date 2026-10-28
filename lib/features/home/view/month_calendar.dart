@@ -1,3 +1,5 @@
+import '../../../core/icons.dart';
+
 import 'package:flutter/gestures.dart' show PointerDeviceKind;
 import 'package:flutter/material.dart';
 
@@ -848,7 +850,7 @@ class _Bubble extends StatelessWidget {
                     ),
                     Padding(
                       padding: const EdgeInsets.only(right: 8),
-                      child: Icon(Icons.chevron_right, color: style.bubbleSub),
+                      child: Icon(AppIcons.caretRight, color: style.bubbleSub),
                     ),
                   ],
                 ),

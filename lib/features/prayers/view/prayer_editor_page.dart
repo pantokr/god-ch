@@ -1,3 +1,5 @@
+import '../../../core/icons.dart';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -48,7 +50,7 @@ class _PrayerEditorPageState extends State<PrayerEditorPage> {
     if (router.canPop()) {
       router.pop();
     } else {
-      router.go(Routes.section(widget.me.churchId, ChurchSection.intercession));
+      router.go(Routes.home(widget.me.churchId));
     }
   }
 
@@ -80,10 +82,7 @@ class _PrayerEditorPageState extends State<PrayerEditorPage> {
       ),
       builder: (context, vm) => SubPage(
         title: vm.isEditing ? '기도제목 수정' : '기도제목 쓰기',
-        fallbackLocation: Routes.section(
-          widget.me.churchId,
-          ChurchSection.intercession,
-        ),
+        fallbackLocation: Routes.home(widget.me.churchId),
         child: !vm.canWrite
             ? const Card(
                 child: Padding(
@@ -213,12 +212,12 @@ class _VisibilityPicker extends StatelessWidget {
           segments: const [
             ButtonSegment(
               value: PrayerVisibility.public,
-              icon: Icon(Icons.public, size: 18),
+              icon: Icon(AppIcons.globe, size: 18),
               label: Text('공개'),
             ),
             ButtonSegment(
               value: PrayerVisibility.private,
-              icon: Icon(Icons.lock_outline, size: 18),
+              icon: Icon(AppIcons.lock, size: 18),
               label: Text('교역자 전용'),
             ),
           ],

@@ -1,13 +1,11 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 
-import '../../../app/routes.dart';
-import '../../../core/format.dart';
 import '../../../core/theme.dart';
 import '../../../data/models/member.dart';
 import '../../../data/models/prayer.dart';
+import 'postit_card.dart';
 
 /// 최신 기도 요청 몇 장을 공중에 둥둥 떠다니는 카드로 보여준다. 카드를 누르면 기도 상세로 간다.
 /// 카드는 정해진 자리 둘레를 천천히 오르내리며 살짝 기운다 (시스템에서 애니메이션을 끈 경우는 멈춰 있다).
@@ -17,6 +15,7 @@ class FloatingPrayers extends StatelessWidget {
     required this.prayers,
     required this.me,
     this.count = 4,
+    this.fullScreen = false,
   });
 
   final Stream<List<Prayer>> prayers;
@@ -24,6 +23,9 @@ class FloatingPrayers extends StatelessWidget {
 
   /// 띄울 카드 수 (최신 글부터).
   final int count;
+
+  /// 화면 전체를 쓰는 기도 화면: 따로 틀(패널)을 두르지 않고 화면의 배경 위에 카드만 떠다닌다.
+  final bool fullScreen;
 
   @override
   Widget build(BuildContext context) {
@@ -38,22 +40,24 @@ class FloatingPrayers extends StatelessWidget {
           );
         }
         final items = snap.data!.take(count).toList();
-        if (items.isEmpty) return const _EmptyStage();
-        return _Stage(prayers: items, me: me);
+        if (items.isEmpty) return _EmptyStage(fullScreen: fullScreen);
+        return _Stage(prayers: items, me: me, fullScreen: fullScreen);
       },
     );
   }
 }
 
 class _EmptyStage extends StatelessWidget {
-  const _EmptyStage();
+  const _EmptyStage({required this.fullScreen});
+
+  final bool fullScreen;
 
   @override
   Widget build(BuildContext context) {
     return Container(
       height: 240,
       alignment: Alignment.center,
-      decoration: _stageDecoration(context),
+      decoration: fullScreen ? null : _stageDecoration(context),
       child: Text(
         '아직 기도 요청이 없어요.\n첫 기도를 요청해 보세요.',
         textAlign: TextAlign.center,
@@ -80,10 +84,15 @@ BoxDecoration _stageDecoration(BuildContext context) {
 }
 
 class _Stage extends StatefulWidget {
-  const _Stage({required this.prayers, required this.me});
+  const _Stage({
+    required this.prayers,
+    required this.me,
+    required this.fullScreen,
+  });
 
   final List<Prayer> prayers;
   final Member me;
+  final bool fullScreen;
 
   @override
   State<_Stage> createState() => _StageState();
@@ -111,8 +120,6 @@ class _StageState extends State<_Stage> with SingleTickerProviderStateMixin {
     super.dispose();
   }
 
-  static const _cardHeight = 150.0;
-
   @override
   Widget build(BuildContext context) {
     final n = widget.prayers.length;
@@ -120,31 +127,32 @@ class _StageState extends State<_Stage> with SingleTickerProviderStateMixin {
       builder: (context, box) {
         final w = box.maxWidth;
         final narrow = w < 560;
-        final cardW = narrow ? w * 0.78 : math.min(300.0, w * 0.46);
+        // 카드는 정사각형에 가까운 포스트잇이다.
+        final cardW = narrow
+            ? math.min(w * 0.56, 230.0)
+            : math.min(250.0, w * 0.3);
+        final cardH = cardW * PostItNote.ratio;
         // 카드 자리: 넓은 화면은 두 줄에 엇갈려, 좁은 화면은 좌우로 번갈아 한 줄씩 내려간다.
         final rows = narrow ? n : (n + 1) ~/ 2;
         final rowGap = narrow ? 36.0 : 56.0;
-        final height = 32 + rows * _cardHeight + (rows - 1) * rowGap + 40;
+        final height = 32 + rows * cardH + (rows - 1) * rowGap + 40;
         Offset slot(int i) {
           if (narrow) {
-            return Offset(
-              i.isEven ? 0 : w - cardW,
-              16 + i * (_cardHeight + rowGap),
-            );
+            return Offset(i.isEven ? 0 : w - cardW, 16 + i * (cardH + rowGap));
           }
           final row = i ~/ 2;
           final left = i.isEven;
           final shift = row.isOdd ? 36.0 : 0.0;
           return Offset(
             left ? 8 + shift : w - cardW - 8 - shift,
-            16 + row * (_cardHeight + rowGap) + (left ? 0 : 36),
+            16 + row * (cardH + rowGap) + (left ? 0 : 36),
           );
         }
 
         return Container(
           height: height,
-          decoration: _stageDecoration(context),
-          clipBehavior: Clip.antiAlias,
+          decoration: widget.fullScreen ? null : _stageDecoration(context),
+          clipBehavior: widget.fullScreen ? Clip.none : Clip.antiAlias,
           child: Stack(
             children: [
               for (var i = 0; i < n; i++)
@@ -155,10 +163,12 @@ class _StageState extends State<_Stage> with SingleTickerProviderStateMixin {
                   tilt: i.isEven ? -0.025 : 0.025,
                   child: SizedBox(
                     width: cardW,
-                    height: _cardHeight,
-                    child: _PrayerBubble(
+                    height: cardH,
+                    // 공중에 떠 있으니 그림자를 더 크게 준다.
+                    child: PostItNote(
                       prayer: widget.prayers[i],
                       me: widget.me,
+                      lift: 1.8,
                     ),
                   ),
                 ),
@@ -202,74 +212,6 @@ class _Floating extends StatelessWidget {
           ),
         );
       },
-    );
-  }
-}
-
-class _PrayerBubble extends StatelessWidget {
-  const _PrayerBubble({required this.prayer, required this.me});
-
-  final Prayer prayer;
-  final Member me;
-
-  @override
-  Widget build(BuildContext context) {
-    final p = context.palette;
-    final theme = Theme.of(context);
-    return Material(
-      color: p.surface,
-      elevation: 0,
-      borderRadius: BorderRadius.circular(AppRadius.card + 6),
-      child: Ink(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(AppRadius.card + 6),
-          border: Border.all(color: p.border),
-          boxShadow: AppShadow.soft(context),
-        ),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(AppRadius.card + 6),
-          onTap: () => context.push(
-            Routes.prayer(me.churchId, prayer.id),
-            extra: prayer,
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Icon(Icons.favorite, size: 14, color: p.accent),
-                    const SizedBox(width: 6),
-                    Text(
-                      fmtDate(prayer.createdAt),
-                      style: TextStyle(color: p.muted, fontSize: 12),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  prayer.title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Expanded(
-                  child: Text(
-                    prayer.content,
-                    maxLines: 3,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(color: p.muted, height: 1.5),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
     );
   }
 }

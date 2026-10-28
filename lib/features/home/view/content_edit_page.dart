@@ -1,3 +1,5 @@
+import '../../../core/icons.dart';
+
 import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
@@ -30,35 +32,39 @@ class ContentEditPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final pad = pagePadding(context);
     final narrow = MediaQuery.sizeOf(context).width < kNarrow;
-    return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: kContentWidth),
-        child: Padding(
-          padding: EdgeInsets.symmetric(horizontal: pad),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              SizedBox(height: narrow ? 8 : 28),
-              Row(
-                children: [
-                  IconButton(
-                    tooltip: '콘텐츠 관리',
-                    icon: const Icon(Icons.arrow_back),
-                    onPressed: () =>
-                        context.goBack(Routes.contentEdit(me.churchId)),
-                  ),
-                  Expanded(
-                    child: Text(
-                      '${kind.label} 관리',
-                      style: Theme.of(context).textTheme.titleLarge,
+    // 바탕을 채워서, 아래에 깔린 이전 화면(콘텐츠 관리 카드)이 비쳐 보이지 않게 한다.
+    return Material(
+      color: Theme.of(context).scaffoldBackgroundColor,
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: kContentWidth),
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: pad),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SizedBox(height: narrow ? 8 : 28),
+                Row(
+                  children: [
+                    IconButton(
+                      tooltip: '콘텐츠 관리',
+                      icon: const Icon(AppIcons.arrowLeft),
+                      onPressed: () =>
+                          context.goBack(Routes.contentEdit(me.churchId)),
                     ),
-                  ),
-                ],
-              ),
-              Expanded(
-                child: _KindTab(me: me, kind: kind),
-              ),
-            ],
+                    Expanded(
+                      child: Text(
+                        '${kind.label} 관리',
+                        style: Theme.of(context).textTheme.titleLarge,
+                      ),
+                    ),
+                  ],
+                ),
+                Expanded(
+                  child: _KindTab(me: me, kind: kind),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -89,7 +95,7 @@ class _KindTab extends StatelessWidget {
               alignment: Alignment.centerLeft,
               child: FilledButton.icon(
                 onPressed: vm.busy ? null : () => _edit(context, vm),
-                icon: const Icon(Icons.add, size: 18),
+                icon: const Icon(AppIcons.plus, size: 18),
                 label: Text('${kind.label} 추가'),
               ),
             ),
@@ -117,16 +123,16 @@ class _KindTab extends StatelessWidget {
                             children: [
                               IconButton(
                                 tooltip: '수정',
-                                icon: const Icon(Icons.edit_outlined, size: 20),
+                                icon: const Icon(
+                                  AppIcons.pencilSimple,
+                                  size: 20,
+                                ),
                                 onPressed: () =>
                                     _edit(context, vm, content: items[i]),
                               ),
                               IconButton(
                                 tooltip: '삭제',
-                                icon: const Icon(
-                                  Icons.delete_outline,
-                                  size: 20,
-                                ),
+                                icon: const Icon(AppIcons.trash, size: 20),
                                 onPressed: () =>
                                     _confirmDelete(context, vm, items[i]),
                               ),
@@ -149,31 +155,7 @@ class _KindTab extends StatelessWidget {
     BuildContext context,
     ContentListViewModel vm, {
     ChurchContent? content,
-  }) async {
-    final result = await showAppDialog<_FormResult>(
-      context,
-      maxWidth: 560,
-      child: _ContentForm(
-        kind: kind,
-        initial: content,
-        upload: vm.uploadImage,
-        errorOf: () => vm.error,
-      ),
-    );
-    if (result == null || !context.mounted) return;
-    final messenger = ScaffoldMessenger.of(context);
-    final ok = await vm.save(
-      id: content?.id,
-      title: result.title,
-      body: result.body,
-      date: result.date,
-      imageUrls: result.imageUrls,
-      videoUrl: result.videoUrl,
-    );
-    if (!ok && vm.error != null) {
-      messenger.showSnackBar(SnackBar(content: Text(vm.error!)));
-    }
-  }
+  }) => editContent(context, vm, content: content);
 
   Future<void> _confirmDelete(
     BuildContext context,
@@ -205,6 +187,55 @@ class _KindTab extends StatelessWidget {
   }
 }
 
+/// 글 추가·수정 양식을 열고, 저장하면 [vm]의 종류로 저장한다 (콘텐츠 관리 목록과 종류별 화면이 함께 쓴다).
+/// [areas]는 고를 수 있는 영역 이름들이다. 없으면 그 종류의 글에 이미 적힌 영역을 쓴다.
+Future<void> editContent(
+  BuildContext context,
+  ContentListViewModel vm, {
+  ChurchContent? content,
+  List<String>? areas,
+}) async {
+  final names = areas ?? await _areasOf(vm);
+  if (!context.mounted) return;
+  final result = await showAppDialog<_FormResult>(
+    context,
+    maxWidth: 560,
+    child: _ContentForm(
+      kind: vm.kind,
+      categories: names,
+      initial: content,
+      upload: vm.uploadImage,
+      errorOf: () => vm.error,
+    ),
+  );
+  if (result == null || !context.mounted) return;
+  final messenger = ScaffoldMessenger.of(context);
+  final ok = await vm.save(
+    id: content?.id,
+    title: result.title,
+    body: result.body,
+    date: result.date,
+    imageUrls: result.imageUrls,
+    videoUrl: result.videoUrl,
+    category: result.category,
+  );
+  if (!ok && vm.error != null) {
+    messenger.showSnackBar(SnackBar(content: Text(vm.error!)));
+  }
+}
+
+Future<List<String>> _areasOf(ContentListViewModel vm) async {
+  try {
+    final items = await vm.items.first;
+    return {
+      for (final c in items)
+        if (c.category.isNotEmpty) c.category,
+    }.toList()..sort();
+  } catch (_) {
+    return const [];
+  }
+}
+
 class _FormResult {
   const _FormResult({
     required this.title,
@@ -212,6 +243,7 @@ class _FormResult {
     required this.date,
     required this.imageUrls,
     required this.videoUrl,
+    required this.category,
   });
 
   final String title;
@@ -219,6 +251,7 @@ class _FormResult {
   final DateTime date;
   final List<String> imageUrls;
   final String videoUrl;
+  final String category;
 }
 
 /// 종류에 맞는 입력칸을 보여 주는 추가·수정 양식. 저장하면 입력값을 돌려준다.
@@ -228,11 +261,15 @@ class _ContentForm extends StatefulWidget {
     required this.kind,
     required this.upload,
     required this.errorOf,
+    required this.categories,
     this.initial,
   });
 
   final ContentKind kind;
   final ChurchContent? initial;
+
+  /// 고를 수 있는 영역 이름들.
+  final List<String> categories;
 
   /// 이미지를 올리고 주소를 돌려준다. 실패하면 null.
   final Future<String?> Function(String fileName, Uint8List bytes) upload;
@@ -248,6 +285,7 @@ class _ContentFormState extends State<_ContentForm> {
   late final _title = TextEditingController(text: widget.initial?.title);
   late final _body = TextEditingController(text: widget.initial?.body);
   late final _video = TextEditingController(text: widget.initial?.videoUrl);
+  late String _area = widget.initial?.category ?? '';
   late DateTime _date = widget.initial?.date ?? DateTime.now();
 
   // 공지: [썸네일, 배경] 두 칸. 사진첩: 여러 장.
@@ -269,6 +307,13 @@ class _ContentFormState extends State<_ContentForm> {
   bool get _isNotice => _kind == ContentKind.notice;
   bool get _isPhoto => _kind == ContentKind.photo;
   bool get _hasVideo => _kind == ContentKind.sermon;
+
+  /// 구조가 분류별로 골라 보여줄 수 있는 종류 (공지 · 사진첩 · 설교영상).
+  bool get _hasCategory => const {
+    ContentKind.notice,
+    ContentKind.photo,
+    ContentKind.sermon,
+  }.contains(_kind);
 
   String get _titleLabel => switch (_kind) {
     ContentKind.photo => '앨범 제목',
@@ -375,6 +420,7 @@ class _ContentFormState extends State<_ContentForm> {
             ? _photos
             : const [],
         videoUrl: _hasVideo ? _video.text : '',
+        category: _hasCategory ? _area : '',
       ),
     );
   }
@@ -397,13 +443,39 @@ class _ContentFormState extends State<_ContentForm> {
           maxLength: 100,
           decoration: InputDecoration(labelText: _titleLabel),
         ),
+        if (_hasCategory && widget.categories.isNotEmpty) ...[
+          const SizedBox(height: 4),
+          Text('영역', style: Theme.of(context).textTheme.labelLarge),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              ChoiceChip(
+                label: const Text('영역 없음'),
+                selected: _area.isEmpty,
+                onSelected: (_) => setState(() => _area = ''),
+              ),
+              for (final c in {
+                ...widget.categories,
+                if (_area.isNotEmpty) _area,
+              })
+                ChoiceChip(
+                  label: Text(c),
+                  selected: _area == c,
+                  onSelected: (_) => setState(() => _area = c),
+                ),
+            ],
+          ),
+          const SizedBox(height: 16),
+        ],
         if (_kind == ContentKind.devotion) ...[
           const SizedBox(height: 4),
           Align(
             alignment: Alignment.centerLeft,
             child: TextButton.icon(
               onPressed: _pickVerse,
-              icon: const Icon(Icons.menu_book_outlined, size: 18),
+              icon: const Icon(AppIcons.bookOpen, size: 18),
               label: const Text('성경 구절 불러오기'),
             ),
           ),
@@ -412,7 +484,7 @@ class _ContentFormState extends State<_ContentForm> {
           const SizedBox(height: 4),
           OutlinedButton.icon(
             onPressed: _pickDate,
-            icon: const Icon(Icons.event_outlined, size: 18),
+            icon: const Icon(AppIcons.calendarBlank, size: 18),
             label: Text('$_dateLabel  ${fmtDate(_date)}'),
           ),
           const SizedBox(height: 16),
@@ -467,7 +539,7 @@ class _ContentFormState extends State<_ContentForm> {
                 ),
               OutlinedButton.icon(
                 onPressed: _uploading ? null : _addPhotos,
-                icon: const Icon(Icons.add_photo_alternate_outlined, size: 18),
+                icon: const Icon(AppIcons.imageSquare, size: 18),
                 label: const Text('사진 올리기'),
               ),
             ],
@@ -564,7 +636,7 @@ class _ImageSlot extends StatelessWidget {
               if (url != null)
                 IconButton(
                   tooltip: '삭제',
-                  icon: const Icon(Icons.close, size: 18),
+                  icon: const Icon(AppIcons.x, size: 18),
                   onPressed: busy ? null : onClear,
                 ),
             ],
@@ -601,7 +673,7 @@ class _PhotoThumb extends StatelessWidget {
               child: const CircleAvatar(
                 radius: 10,
                 backgroundColor: Colors.black54,
-                child: Icon(Icons.close, size: 12, color: Colors.white),
+                child: Icon(AppIcons.x, size: 12, color: Colors.white),
               ),
             ),
           ),

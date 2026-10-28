@@ -1,3 +1,5 @@
+import '../../../core/icons.dart';
+
 import 'package:flutter/material.dart';
 
 import '../../../app/app_scope.dart';
@@ -32,7 +34,7 @@ class ChurchClosuresAdminCard extends StatelessWidget {
                 children: [
                   Row(
                     children: [
-                      const Icon(Icons.warning_amber_outlined),
+                      const Icon(AppIcons.warning),
                       const SizedBox(width: 10),
                       Expanded(
                         child: Text(

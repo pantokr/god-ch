@@ -1,3 +1,5 @@
+import '../../../core/icons.dart';
+
 import 'package:flutter/material.dart';
 
 import '../../../app/app_scope.dart';
@@ -22,17 +24,17 @@ class ThemeModeSelector extends StatelessWidget {
             segments: const [
               ButtonSegment(
                 value: ThemeMode.system,
-                icon: Icon(Icons.brightness_auto_outlined, size: 18),
+                icon: Icon(AppIcons.circleHalf, size: 18),
                 label: Text('시스템'),
               ),
               ButtonSegment(
                 value: ThemeMode.light,
-                icon: Icon(Icons.light_mode_outlined, size: 18),
+                icon: Icon(AppIcons.sun, size: 18),
                 label: Text('라이트'),
               ),
               ButtonSegment(
                 value: ThemeMode.dark,
-                icon: Icon(Icons.dark_mode_outlined, size: 18),
+                icon: Icon(AppIcons.moon, size: 18),
                 label: Text('다크'),
               ),
             ],

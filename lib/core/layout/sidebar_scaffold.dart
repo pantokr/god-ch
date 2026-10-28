@@ -1,3 +1,5 @@
+import '../icons.dart';
+
 import 'package:flutter/material.dart';
 
 import '../theme.dart';
@@ -60,11 +62,19 @@ class SidebarScaffold extends StatelessWidget {
     required this.child,
     this.sidebarHeader,
     this.railActions = const [],
-    this.bottomItems = const [],
+    this.tabHome,
+    this.tabLeft,
+    this.tabRight,
     this.topBarTrailing,
+    this.backgroundColor,
+    this.backdrop,
   });
 
   final List<SidebarGroup> groups;
+
+  /// 상단 바 · 내용 · 하단 바 뒤에 한 장으로 깔리는 배경 (예: 기도 화면의 게시판 무늬).
+  /// 있으면 상단 바가 투명해져서 배경이 끊기지 않고 이어진다.
+  final Widget? backdrop;
 
   /// 앱 이름 아래에 놓는 위젯 (예: 지금 보는 교회와 교회 바꾸기).
   final Widget? sidebarHeader;
@@ -72,11 +82,19 @@ class SidebarScaffold extends StatelessWidget {
   /// 오른쪽 계정 띠에서 프로필 아래에 놓는 버튼들 (예: 알림).
   final List<Widget> railActions;
 
-  /// 하단 탭: 왼쪽 · 가운데(원형 버튼) · 오른쪽 셋. 좁은 화면에서만 아래에 뜨고, 넓은 화면에서는 왼쪽 메뉴 맨 위에 함께 놓인다.
-  final List<SidebarItem> bottomItems;
+  /// 하단 탭: 가운데(원형 버튼)와 양옆. 양옆은 비어 있을 수 있다.
+  /// 좁은 화면에서만 아래에 뜨고, 넓은 화면에서는 왼쪽 메뉴 맨 위에 함께 놓인다.
+  final SidebarItem? tabHome;
+  final SidebarItem? tabLeft;
+  final SidebarItem? tabRight;
+
+  List<SidebarItem> get _tabItems => [?tabLeft, ?tabHome, ?tabRight];
 
   /// 위쪽 탭(서랍 버튼이 있는 줄) 오른쪽에 놓는 위젯 (예: 기도 · 말씀 탭의 부서 선택).
   final Widget? topBarTrailing;
+
+  /// 화면 바탕색을 바꾼다 (예: 기도 화면의 게시판 색). 상단 바 · 하단 바까지 같은 색이 되어 배경색이 하나로 보인다.
+  final Color? backgroundColor;
   final String userName;
   final VoidCallback onProfile;
   final VoidCallback onSettings;
@@ -91,9 +109,9 @@ class SidebarScaffold extends StatelessWidget {
   Widget build(BuildContext context) {
     final narrow = MediaQuery.sizeOf(context).width < kNarrow;
     final panel = _SidebarPanel(
-      groups: narrow || bottomItems.isEmpty
+      groups: narrow || _tabItems.isEmpty
           ? groups
-          : [SidebarGroup(items: bottomItems), ...groups],
+          : [SidebarGroup(items: _tabItems), ...groups],
       header: sidebarHeader,
       // 서랍 안에서는 메뉴를 고르면 서랍을 닫는다.
       closeOnTap: narrow,
@@ -106,23 +124,35 @@ class SidebarScaffold extends StatelessWidget {
       actions: railActions,
     );
 
+    final Widget frame;
     if (narrow) {
-      return _NarrowFrame(
+      frame = _NarrowFrame(
         panel: Material(
           color: context.palette.surface,
           child: SafeArea(child: panel),
         ),
         rail: rail,
-        bottomBar: bottomItems.isEmpty ? null : _PillTabBar(items: bottomItems),
+        bottomBar: tabHome == null
+            ? null
+            : _PillTabBar(left: tabLeft, home: tabHome!, right: tabRight),
         topBarTrailing: topBarTrailing,
+        backdrop: backdrop,
+        child: child,
+      );
+    } else {
+      frame = _WideFrame(
+        sidebar: panel,
+        rail: rail,
+        topBarTrailing: topBarTrailing,
+        backdrop: backdrop,
         child: child,
       );
     }
-    return _WideFrame(
-      sidebar: panel,
-      rail: rail,
-      topBarTrailing: topBarTrailing,
-      child: child,
+    final color = backgroundColor;
+    if (color == null) return frame;
+    return Theme(
+      data: Theme.of(context).copyWith(scaffoldBackgroundColor: color),
+      child: frame,
     );
   }
 }
@@ -171,7 +201,7 @@ class AccountRail extends StatelessWidget {
                     const Spacer(),
                     IconButton(
                       tooltip: '설정',
-                      icon: const Icon(Icons.settings_outlined),
+                      icon: const Icon(AppIcons.gear),
                       onPressed: onSettings,
                     ),
                     const SizedBox(height: 8),
@@ -194,7 +224,7 @@ class _LogoutButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) => IconButton(
     tooltip: '로그아웃',
-    icon: const Icon(Icons.logout),
+    icon: const Icon(AppIcons.signOut),
     onPressed: onSignOut,
   );
 }
@@ -283,7 +313,7 @@ class _SidebarPanel extends StatelessWidget {
                     ],
                   ),
                   child: Icon(
-                    Icons.volunteer_activism,
+                    AppIcons.handHeart,
                     size: 24,
                     color: palette.onBrand,
                   ),
@@ -302,7 +332,7 @@ class _SidebarPanel extends StatelessWidget {
                 if (closeOnTap)
                   IconButton(
                     tooltip: '닫기',
-                    icon: const Icon(Icons.close),
+                    icon: const Icon(AppIcons.x),
                     onPressed: () => _PanelCloser.of(context)?.call(),
                   ),
               ],
@@ -453,12 +483,18 @@ class _SidebarTile extends StatelessWidget {
   }
 }
 
-/// 하단 탭: 내용 아래에 떠 있는 알약 모양 바. [items]는 왼쪽 · 가운데 · 오른쪽 셋이고,
-/// 가운데(홈)는 알약 위로 솟은 원형 버튼이다. 양옆은 아이콘과 이름을 보여준다.
+/// 하단 탭: 내용 아래에 떠 있는 알약 모양 바. 가운데([home])는 알약 위로 솟은 원형 버튼이고,
+/// 양옆([left] · [right])은 아이콘과 이름을 보여준다. 비어 있는 쪽은 빈 칸으로 둔다.
 class _PillTabBar extends StatelessWidget {
-  const _PillTabBar({required this.items}) : assert(items.length == 3);
+  const _PillTabBar({
+    required this.left,
+    required this.home,
+    required this.right,
+  });
 
-  final List<SidebarItem> items;
+  final SidebarItem? left;
+  final SidebarItem home;
+  final SidebarItem? right;
 
   /// 가운데 원형 버튼의 지름과, 알약 바의 높이.
   static const _circle = 64.0;
@@ -491,15 +527,23 @@ class _PillTabBar extends StatelessWidget {
                 ),
                 child: Row(
                   children: [
-                    Expanded(child: _SideTab(item: items[0])),
+                    Expanded(
+                      child: left == null
+                          ? const SizedBox.shrink()
+                          : _SideTab(item: left!),
+                    ),
                     // 가운데 원형 버튼이 놓일 자리.
                     const SizedBox(width: _circle + 8),
-                    Expanded(child: _SideTab(item: items[2])),
+                    Expanded(
+                      child: right == null
+                          ? const SizedBox.shrink()
+                          : _SideTab(item: right!),
+                    ),
                   ],
                 ),
               ),
             ),
-            Positioned(top: 0, child: _HomeButton(item: items[1])),
+            Positioned(top: 0, child: _HomeButton(item: home)),
           ],
         ),
       ),
@@ -595,6 +639,7 @@ class _TopBar extends StatelessWidget {
     required this.tooltip,
     required this.onTap,
     this.trailing,
+    this.transparent = false,
   });
 
   final IconData icon;
@@ -602,10 +647,15 @@ class _TopBar extends StatelessWidget {
   final VoidCallback onTap;
   final Widget? trailing;
 
+  /// 뒤에 깔린 배경이 비쳐 보이게 한다.
+  final bool transparent;
+
   @override
   Widget build(BuildContext context) {
     return ColoredBox(
-      color: Theme.of(context).scaffoldBackgroundColor,
+      color: transparent
+          ? Colors.transparent
+          : Theme.of(context).scaffoldBackgroundColor,
       child: SafeArea(
         bottom: false,
         right: false,
@@ -633,6 +683,7 @@ class _NarrowFrame extends StatefulWidget {
     required this.child,
     this.bottomBar,
     this.topBarTrailing,
+    this.backdrop,
   });
 
   final Widget panel;
@@ -640,6 +691,7 @@ class _NarrowFrame extends StatefulWidget {
   final Widget child;
   final Widget? bottomBar;
   final Widget? topBarTrailing;
+  final Widget? backdrop;
 
   @override
   State<_NarrowFrame> createState() => _NarrowFrameState();
@@ -663,13 +715,15 @@ class _NarrowFrameState extends State<_NarrowFrame> {
       child: Scaffold(
         body: Stack(
           children: [
+            ?widget.backdrop,
             Column(
               children: [
                 _TopBar(
-                  icon: Icons.view_sidebar_outlined,
+                  icon: AppIcons.sidebarSimple,
                   tooltip: '메뉴',
                   onTap: () => _setOpen(true),
                   trailing: widget.topBarTrailing,
+                  transparent: widget.backdrop != null,
                 ),
                 Expanded(child: widget.child),
                 ?widget.bottomBar,
@@ -728,12 +782,14 @@ class _WideFrame extends StatefulWidget {
     required this.rail,
     required this.child,
     this.topBarTrailing,
+    this.backdrop,
   });
 
   final Widget sidebar;
   final Widget rail;
   final Widget child;
   final Widget? topBarTrailing;
+  final Widget? backdrop;
 
   @override
   State<_WideFrame> createState() => _WideFrameState();
@@ -767,17 +823,23 @@ class _WideFrameState extends State<_WideFrame> {
             ),
           ),
           Expanded(
-            child: Column(
+            child: Stack(
               children: [
-                _TopBar(
-                  icon: _open
-                      ? Icons.view_sidebar
-                      : Icons.view_sidebar_outlined,
-                  tooltip: _open ? '메뉴 접기' : '메뉴 펼치기',
-                  onTap: () => setState(() => _open = !_open),
-                  trailing: widget.topBarTrailing,
+                ?widget.backdrop,
+                Column(
+                  children: [
+                    _TopBar(
+                      icon: _open
+                          ? AppIcons.sidebarSimpleFill
+                          : AppIcons.sidebarSimple,
+                      tooltip: _open ? '메뉴 접기' : '메뉴 펼치기',
+                      onTap: () => setState(() => _open = !_open),
+                      trailing: widget.topBarTrailing,
+                      transparent: widget.backdrop != null,
+                    ),
+                    Expanded(child: widget.child),
+                  ],
                 ),
-                Expanded(child: widget.child),
               ],
             ),
           ),

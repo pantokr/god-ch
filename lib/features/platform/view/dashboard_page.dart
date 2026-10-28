@@ -1,3 +1,5 @@
+import '../../../core/icons.dart';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -34,19 +36,19 @@ class DashboardPage extends StatelessWidget {
                 minColumnWidth: 240,
                 children: [
                   _StatCard(
-                    icon: Icons.church_outlined,
+                    icon: AppIcons.church,
                     label: '등록된 교회',
                     value: vm.churchCount,
                   ),
                   _StatCard(
-                    icon: Icons.hourglass_top,
+                    icon: AppIcons.hourglassHigh,
                     label: '승인 대기 중인 교회 생성 요청',
                     value: vm.pendingRequestCount,
                     highlightWhenPositive: true,
                     onTap: () => context.go(Routes.adminChurches),
                   ),
                   _StatCard(
-                    icon: Icons.people_outline,
+                    icon: AppIcons.users,
                     label: '가입한 회원',
                     value: vm.userCount,
                   ),

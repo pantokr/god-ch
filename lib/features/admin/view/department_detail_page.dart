@@ -1,3 +1,5 @@
+import '../../../core/icons.dart';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -89,7 +91,7 @@ class DepartmentDetailBody extends StatelessWidget {
                           alignment: Alignment.centerLeft,
                           child: TextButton.icon(
                             onPressed: onBack,
-                            icon: const Icon(Icons.arrow_back, size: 18),
+                            icon: const Icon(AppIcons.arrowLeft, size: 18),
                             label: const Text('부서 목록'),
                           ),
                         ),
@@ -99,7 +101,7 @@ class DepartmentDetailBody extends StatelessWidget {
                           onPressed: vm.busy
                               ? null
                               : () => _add(context, vm, all),
-                          icon: const Icon(Icons.person_add_alt, size: 18),
+                          icon: const Icon(AppIcons.userPlus, size: 18),
                           label: const Text('인원 추가'),
                         ),
                       ),

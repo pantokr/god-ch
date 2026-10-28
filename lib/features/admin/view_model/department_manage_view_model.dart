@@ -2,7 +2,6 @@ import '../../../core/app_exception.dart';
 import '../../../core/mvvm/view_model.dart';
 import '../../../data/models/church_features.dart';
 import '../../../data/models/department.dart';
-import '../../../data/models/page_layout.dart';
 import '../../../data/models/member.dart';
 import '../../church/data/department_repository.dart';
 import '../../members/data/member_repository.dart';
@@ -39,17 +38,17 @@ class DepartmentManageViewModel extends ViewModel {
           .toList()
         ..sort((a, b) => a.name.compareTo(b.name));
 
-  /// [department] 부서의 [group](기도 · 말씀) 탭을 켜거나 끈다.
+  /// [department] 부서의 [feature](기도 · 말씀)를 켜거나 끈다.
   Future<bool> setFeature(
     ChurchFeatures current,
     List<Department> all,
     Department department,
-    PageGroup group,
+    PageFeature feature,
     bool on,
   ) => run(
     () => _departments.setFeatures(
       churchId,
-      current.toggled(group, department.id, on, [for (final d in all) d.id]),
+      current.toggled(feature, department.id, on, [for (final d in all) d.id]),
     ),
   );
 

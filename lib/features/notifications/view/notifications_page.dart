@@ -1,3 +1,5 @@
+import '../../../core/icons.dart';
+
 import 'package:flutter/material.dart';
 
 import '../../../app/app_scope.dart';
@@ -8,7 +10,7 @@ import '../../../core/theme.dart';
 import '../../../data/models/app_notification.dart';
 import '../view_model/notifications_view_model.dart';
 
-/// 알림 탭: 내 알림 내역. 상단 바 없이 뒤로가기 버튼만 내용 위에 있다.
+/// 알림 탭: 내 알림 내역. 뒤로가기 버튼과 같은 줄에 제목이 있다.
 class NotificationsPage extends StatelessWidget {
   const NotificationsPage({
     super.key,
@@ -37,37 +39,42 @@ class NotificationsPage extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      Align(
-                        alignment: Alignment.centerLeft,
-                        child: IconButton(
-                          tooltip: '돌아가기',
-                          icon: const Icon(Icons.arrow_back),
-                          onPressed: () => Navigator.of(context).maybePop(),
-                        ),
+                      Row(
+                        children: [
+                          IconButton(
+                            tooltip: '돌아가기',
+                            icon: const Icon(AppIcons.arrowLeft),
+                            onPressed: () => Navigator.of(context).maybePop(),
+                          ),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              '알림',
+                              style: Theme.of(context).textTheme.titleLarge,
+                            ),
+                          ),
+                          if (items.any((n) => !n.read))
+                            TextButton(
+                              onPressed: vm.busy
+                                  ? null
+                                  : () => vm.markAllRead(items),
+                              child: const Text('모두 읽음'),
+                            ),
+                        ],
                       ),
-                      PageTitle(
-                        title: '알림',
-                        action: items.any((n) => !n.read)
-                            ? TextButton(
-                                onPressed: vm.busy
-                                    ? null
-                                    : () => vm.markAllRead(items),
-                                child: const Text('모두 읽음'),
-                              )
-                            : null,
-                      ),
+                      const SizedBox(height: 8),
                       if (pendingRequests > 0)
                         Padding(
                           padding: const EdgeInsets.only(bottom: 12),
                           child: Card(
                             child: ListTile(
                               leading: Icon(
-                                Icons.person_add_alt_1_outlined,
+                                AppIcons.userPlus,
                                 color: context.palette.brand,
                               ),
                               title: Text('입장 요청 $pendingRequests건'),
                               subtitle: const Text('인원 관리에서 승인해 주세요.'),
-                              trailing: const Icon(Icons.chevron_right),
+                              trailing: const Icon(AppIcons.caretRight),
                               onTap: () {
                                 Navigator.of(context).maybePop();
                                 onOpenRequests?.call();
@@ -136,7 +143,7 @@ class _Row extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.only(top: 6),
               child: Icon(
-                Icons.circle,
+                AppIcons.circleFill,
                 size: 8,
                 // 읽지 않은 알림만 점이 보인다.
                 color: item.read ? Colors.transparent : palette.brand,
@@ -167,7 +174,7 @@ class _Row extends StatelessWidget {
             ),
             IconButton(
               tooltip: '삭제',
-              icon: const Icon(Icons.close, size: 18),
+              icon: const Icon(AppIcons.x, size: 18),
               onPressed: vm.busy ? null : () => vm.delete(item),
             ),
           ],

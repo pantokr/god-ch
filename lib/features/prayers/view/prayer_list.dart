@@ -1,3 +1,5 @@
+import '../../../core/icons.dart';
+
 import 'package:flutter/material.dart';
 
 import '../../../core/layout/card_grid.dart';
@@ -5,6 +7,7 @@ import '../../../core/layout/page_frame.dart';
 import '../../../core/theme.dart';
 import '../../../data/models/member.dart';
 import '../../../data/models/prayer.dart';
+import 'postit_card.dart';
 import 'prayer_card.dart';
 
 /// 제목 줄 + 반응형 카드 그리드. 피드와 내 기도제목이 함께 쓴다.
@@ -37,7 +40,7 @@ class PrayerList extends StatelessWidget {
               title: title,
               action: FilledButton.icon(
                 onPressed: onWrite,
-                icon: const Icon(Icons.edit_outlined, size: 18),
+                icon: const Icon(AppIcons.pencilSimple, size: 18),
                 label: const Text('기도제목 쓰기'),
               ),
             ),
@@ -78,7 +81,7 @@ class PrayerGrid extends StatelessWidget {
   /// 교역자 화면에서 카드에 작성자 이름을 덧붙일 때 쓴다 (uid → 이름).
   final Map<String, String> authorNames;
 
-  /// 카드 없이 화면 전체 폭에 구분선으로 이어지는 목록으로 그린다.
+  /// 카드 대신 포스트잇 게시판으로 그린다 (화면 전체를 쓰는 기도 화면).
   final bool flat;
 
   @override
@@ -122,22 +125,13 @@ class PrayerGrid extends StatelessWidget {
             ),
           );
         }
+        // 화면 전체를 쓰는 기도 화면은 포스트잇을 붙여 놓은 게시판으로 보여준다.
         if (flat) {
-          return Column(
-            children: [
-              for (var i = 0; i < items.length; i++) ...[
-                if (i > 0) const Divider(height: 1),
-                PrayerCard(
-                  prayer: items[i],
-                  me: me,
-                  flat: true,
-                  showReactions: showReactions && items[i].isPublic,
-                  subtitle: authorNames.isEmpty
-                      ? null
-                      : (authorNames[items[i].authorId] ?? '알 수 없음'),
-                ),
-              ],
-            ],
+          return PostItWall(
+            prayers: items,
+            me: me,
+            showReactions: showReactions,
+            authorNames: authorNames,
           );
         }
         return CardGrid(

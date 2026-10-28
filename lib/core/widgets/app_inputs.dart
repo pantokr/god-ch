@@ -1,3 +1,5 @@
+import '../icons.dart';
+
 import 'package:flutter/material.dart';
 
 import '../theme.dart';
@@ -30,7 +32,7 @@ class AppDropdown<T> extends StatelessWidget {
       isExpanded: true,
       menuMaxHeight: menuMaxHeight,
       borderRadius: BorderRadius.circular(AppRadius.card),
-      icon: const Icon(Icons.expand_more),
+      icon: const Icon(AppIcons.caretDown),
       decoration: InputDecoration(
         labelText: label,
         prefixIcon: icon == null ? null : Icon(icon),
@@ -64,7 +66,7 @@ class AppSearchField extends StatelessWidget {
       onChanged: onChanged,
       textInputAction: TextInputAction.search,
       decoration: InputDecoration(
-        prefixIcon: const Icon(Icons.search),
+        prefixIcon: const Icon(AppIcons.magnifyingGlass),
         hintText: hint,
       ),
     );

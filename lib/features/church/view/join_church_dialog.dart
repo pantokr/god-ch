@@ -7,7 +7,7 @@ import '../../../data/models/profile_field.dart';
 import '../../auth/view/profile_extra_fields.dart';
 import '../view_model/join_church_view_model.dart';
 
-/// 초대 코드를 입력해 교회 입장을 신청한다. 코드는 발급 후 일정 기간만 유효하다.
+/// 초대 코드를 입력해 교회 입장을 신청한다.
 class JoinChurchDialog extends StatefulWidget {
   const JoinChurchDialog({super.key});
 
@@ -57,11 +57,6 @@ class _JoinChurchDialogState extends State<JoinChurchDialog> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text('초대 코드로 입장', style: theme.textTheme.titleLarge),
-            const SizedBox(height: 4),
-            Text(
-              '교회에서 받은 초대 코드를 입력하세요. 코드는 발급 후 7일 동안만 유효해요.',
-              style: TextStyle(color: context.palette.muted),
-            ),
             AppField.spacer,
             TextFormField(
               controller: _code,

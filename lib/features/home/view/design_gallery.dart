@@ -1,3 +1,5 @@
+import '../../../core/icons.dart';
+
 import 'package:flutter/gestures.dart' show PointerDeviceKind;
 import 'package:flutter/material.dart';
 
@@ -45,12 +47,12 @@ class _GalleryState extends State<_Gallery> {
   late BlockType? _type = widget.only;
 
   static const _typeIcons = {
-    BlockType.video: Icons.smart_display_outlined,
-    BlockType.devotion: Icons.menu_book_outlined,
-    BlockType.board: Icons.dashboard_outlined,
-    BlockType.schedule: Icons.event_outlined,
-    BlockType.gallery: Icons.photo_library_outlined,
-    BlockType.prayer: Icons.favorite_border,
+    BlockType.video: AppIcons.monitorPlay,
+    BlockType.devotion: AppIcons.bookOpen,
+    BlockType.board: AppIcons.squaresFour,
+    BlockType.schedule: AppIcons.calendarBlank,
+    BlockType.gallery: AppIcons.images,
+    BlockType.prayer: AppIcons.heart,
   };
 
   @override
@@ -131,7 +133,7 @@ class _GalleryState extends State<_Gallery> {
                             ],
                           ),
                         ),
-                        Icon(Icons.chevron_right, color: palette.muted),
+                        Icon(AppIcons.caretRight, color: palette.muted),
                       ],
                     ),
                   ),
@@ -156,7 +158,7 @@ class _GalleryState extends State<_Gallery> {
             if (widget.only == null)
               IconButton(
                 tooltip: '구조 다시 고르기',
-                icon: const Icon(Icons.arrow_back),
+                icon: const Icon(AppIcons.arrowLeft),
                 onPressed: () => setState(() => _type = null),
               ),
             Expanded(
@@ -257,7 +259,11 @@ class _DesignCard extends StatelessWidget {
                       ),
                     ),
                     if (selected)
-                      Icon(Icons.check_circle, size: 18, color: palette.brand),
+                      Icon(
+                        AppIcons.checkCircleFill,
+                        size: 18,
+                        color: palette.brand,
+                      ),
                   ],
                 ),
               ),
@@ -500,7 +506,7 @@ class _DesignRowState extends State<_DesignRow> {
         shape: const CircleBorder(),
         child: IconButton(
           tooltip: left ? '이전 디자인' : '다음 디자인',
-          icon: Icon(left ? Icons.chevron_left : Icons.chevron_right),
+          icon: Icon(left ? AppIcons.caretLeft : AppIcons.caretRight),
           onPressed: () => _page(left ? -1 : 1),
         ),
       ),

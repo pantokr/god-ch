@@ -1,3 +1,5 @@
+import '../../../core/icons.dart';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -13,6 +15,10 @@ import '../../../data/models/page_layout.dart';
 import '../../admin/view_model/pending_members_view_model.dart';
 import '../../home/view_model/church_pages_view_model.dart';
 import '../../home/view/department_select.dart';
+import '../../home/view/group_hub_page.dart';
+import '../../home/view/page_icons.dart';
+import '../../../data/models/church_features.dart';
+import '../../prayers/view/postit_card.dart';
 import '../../home/view_model/department_choice.dart';
 import '../../notifications/view/notifications_button.dart';
 import '../../settings/view/settings_dialog.dart';
@@ -63,17 +69,14 @@ class ChurchShell extends StatelessWidget {
   };
 
   static const _icons = {
-    ChurchSection.mine: (Icons.person_outline, Icons.person),
-    ChurchSection.gallery: (Icons.photo_library_outlined, Icons.photo_library),
-    ChurchSection.content: (Icons.edit_note_outlined, Icons.edit_note),
-    ChurchSection.contents: (
-      Icons.collections_bookmark_outlined,
-      Icons.collections_bookmark,
-    ),
-    ChurchSection.members: (Icons.people_outline, Icons.people),
-    ChurchSection.join: (Icons.vpn_key_outlined, Icons.vpn_key),
-    ChurchSection.info: (Icons.church_outlined, Icons.church),
-    ChurchSection.departments: (Icons.groups_outlined, Icons.groups),
+    ChurchSection.mine: (AppIcons.user, AppIcons.userFill),
+    ChurchSection.gallery: (AppIcons.images, AppIcons.imagesFill),
+    ChurchSection.content: (AppIcons.notePencil, AppIcons.notePencilFill),
+    ChurchSection.contents: (AppIcons.bookBookmark, AppIcons.bookBookmarkFill),
+    ChurchSection.members: (AppIcons.users, AppIcons.usersFill),
+    ChurchSection.join: (AppIcons.key, AppIcons.keyFill),
+    ChurchSection.info: (AppIcons.church, AppIcons.churchFill),
+    ChurchSection.departments: (AppIcons.usersThree, AppIcons.usersThreeFill),
   };
 
   /// 교역자 이상에게 보이는 메뉴: 인원 · 입장 · 글 게시(콘텐츠) · 부서 (조회와 교역자 업무).
@@ -113,6 +116,28 @@ class ChurchShell extends StatelessWidget {
         context.go(Routes.section(me.churchId, target, dept: department?.id)),
   );
 
+  /// 왼쪽 · 오른쪽 자리에 놓인 페이지의 하단 탭 한 칸 (이름과 아이콘은 페이지의 것).
+  SidebarItem _pageTab(
+    BuildContext context,
+    PageConfig page,
+    ChurchSection target,
+  ) {
+    final icon = pageIconOf(page.icon);
+    return _tab(context, page.title, target, icon.outlined, icon.filled);
+  }
+
+  /// 비어 있는 하단 버튼 자리: 교회 관리자에게는 페이지 편집을 여는 버튼, 그 밖에는 없음.
+  SidebarItem? _emptyTab(BuildContext context, String label) {
+    if (!me.isAdmin) return null;
+    return SidebarItem(
+      label: label,
+      icon: AppIcons.plus,
+      selectedIcon: AppIcons.plus,
+      selected: false,
+      onTap: () => context.go(Routes.pageList(me.churchId)),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     // 권한이 없는 메뉴 주소로 들어왔다면 메인으로 보낸다 (예: 교인이 인원 관리 주소를 직접 열었을 때).
@@ -133,24 +158,36 @@ class ChurchShell extends StatelessWidget {
         initialData: PageConfig.defaults,
         builder: (context, snap) {
           final pages = snap.data ?? PageConfig.defaults;
+          final leftPage = slotPage(pages, PageGroup.left);
+          final rightPage = slotPage(pages, PageGroup.right);
+          // 지금 보는 페이지. 템플릿이 기도 요청이면 게시판 배경, 기도 · 말씀이면 부서 선택이 붙는다.
+          final slot = switch (section) {
+            ChurchSection.left => leftPage,
+            ChurchSection.right => rightPage,
+            ChurchSection.page =>
+              pages.where((p) => p.id == pageId).firstOrNull,
+            _ => null,
+          };
+          final feature = PageFeature.of(slot?.template?.type);
+          final board = slot?.template?.type == BlockType.prayer;
           Widget frame(int pending) => SidebarScaffold(
             userName: userName,
             onProfile: () =>
                 context.push(Routes.account, extra: profileDetailsOf(me)),
             onSettings: () => showSettingsDialog(context),
             onSignOut: onSignOut,
-            // 위쪽 탭(서랍 버튼 줄) 오른쪽: 기도 · 말씀 탭에서는 볼 부서를 고른다.
-            topBarTrailing:
-                section == ChurchSection.intercession ||
-                    section == ChurchSection.word
-                ? DepartmentSelect(
-                    group: section == ChurchSection.intercession
-                        ? PageGroup.prayer
-                        : PageGroup.word,
+            // 기도 화면은 상단 바 · 하단 바까지 게시판 색 하나로 통일한다.
+            backgroundColor: board ? prayerBoardColor(context) : null,
+            // 무늬와 빛무리도 상단 바 · 하단 바 뒤까지 한 장으로 깔아 배경이 끊기지 않게 한다.
+            backdrop: board ? const PrayerBoardBackground() : null,
+            // 위쪽 탭(서랍 버튼 줄) 오른쪽: 기도 요청 · 말씀 묵상 페이지에서는 볼 부서를 고른다.
+            topBarTrailing: feature == null
+                ? null
+                : DepartmentSelect(
+                    feature: feature,
                     me: me,
                     choice: departmentChoice,
-                  )
-                : null,
+                  ),
             railActions: [
               NotificationsButton(
                 pendingRequests: pending,
@@ -187,40 +224,53 @@ class ChurchShell extends StatelessWidget {
                 ],
               ),
             ),
-            // 하단 탭은 기도 · 홈(가운데 원형) · 말씀으로 고정이다.
-            bottomItems: [
-              _tab(
-                context,
-                '기도',
-                ChurchSection.intercession,
-                Icons.favorite_border,
-                Icons.favorite,
-              ),
-              _tab(
-                context,
-                '홈',
-                ChurchSection.home,
-                Icons.home_outlined,
-                Icons.home,
-              ),
-              _tab(
-                context,
-                '말씀',
-                ChurchSection.word,
-                Icons.menu_book_outlined,
-                Icons.menu_book,
-              ),
-            ],
+            // 하단 탭: 가운데는 홈 고정, 양옆은 페이지 편집에서 왼쪽 · 오른쪽에 놓은 페이지다.
+            tabHome: _tab(
+              context,
+              '홈',
+              ChurchSection.home,
+              AppIcons.house,
+              AppIcons.houseFill,
+            ),
+            // 비어 있는 쪽은 교회 관리자에게만 페이지 편집으로 가는 "추가" 버튼이 보인다.
+            tabLeft: leftPage != null
+                ? _pageTab(context, leftPage, ChurchSection.left)
+                : _emptyTab(context, '왼쪽 추가'),
+            tabRight: rightPage != null
+                ? _pageTab(context, rightPage, ChurchSection.right)
+                : _emptyTab(context, '오른쪽 추가'),
             // 서랍: 내 활동 · 교회 탐색, 교역자에게는 관리 메뉴가 더해진다.
             groups: [
+              // 좌측 탭에 놓은 페이지들.
+              if (pages.any((p) => p.group == PageGroup.drawer))
+                SidebarGroup(
+                  items: [
+                    for (final p in pages)
+                      if (p.group == PageGroup.drawer)
+                        SidebarItem(
+                          label: p.title,
+                          icon: pageIconOf(p.icon).outlined,
+                          selectedIcon: pageIconOf(p.icon).filled,
+                          selected:
+                              section == ChurchSection.page && pageId == p.id,
+                          onTap: () => context.go(
+                            Routes.page(
+                              me.churchId,
+                              p.id,
+                              dept: department?.id,
+                            ),
+                          ),
+                        ),
+                  ],
+                ),
               SidebarGroup(
                 items: me.isOperatorView
                     // 앱 개발자: 회원이 아니라 내 활동 · 교회 탐색이 없고, 앱 개발자 화면으로 돌아가는 길이 있다.
                     ? [
                         SidebarItem(
                           label: '앱 개발자 화면',
-                          icon: Icons.admin_panel_settings_outlined,
-                          selectedIcon: Icons.admin_panel_settings,
+                          icon: AppIcons.shieldCheck,
+                          selectedIcon: AppIcons.shieldCheckFill,
                           selected: false,
                           onTap: () => context.go(Routes.admin),
                         ),
@@ -229,8 +279,8 @@ class ChurchShell extends StatelessWidget {
                         _item(context, ChurchSection.mine),
                         SidebarItem(
                           label: '교회 탐색',
-                          icon: Icons.explore_outlined,
-                          selectedIcon: Icons.explore,
+                          icon: AppIcons.compass,
+                          selectedIcon: AppIcons.compassFill,
                           selected: false,
                           onTap: () => context.push(Routes.explore),
                         ),
@@ -305,7 +355,7 @@ class _ChurchCard extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Icon(Icons.church_outlined, size: 20, color: palette.brand),
+          Icon(AppIcons.church, size: 20, color: palette.brand),
           const SizedBox(width: 10),
           Expanded(
             child: Column(
@@ -329,7 +379,7 @@ class _ChurchCard extends StatelessWidget {
           ),
           IconButton(
             tooltip: '내 교회 목록',
-            icon: const Icon(Icons.unfold_more, size: 20),
+            icon: const Icon(AppIcons.caretUpDown, size: 20),
             onPressed: onSwitch,
           ),
         ],

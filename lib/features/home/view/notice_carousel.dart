@@ -1,3 +1,5 @@
+import '../../../core/icons.dart';
+
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -103,14 +105,14 @@ class _NoticeCarouselState extends State<NoticeCarousel> {
                 Align(
                   alignment: Alignment.centerLeft,
                   child: _Arrow(
-                    icon: Icons.chevron_left,
+                    icon: AppIcons.caretLeft,
                     onTap: () => _go(_index - 1),
                   ),
                 ),
                 Align(
                   alignment: Alignment.centerRight,
                   child: _Arrow(
-                    icon: Icons.chevron_right,
+                    icon: AppIcons.caretRight,
                     onTap: () => _go(_index + 1),
                   ),
                 ),
@@ -161,7 +163,7 @@ class _Slide extends StatelessWidget {
           // 가로 배경. 없으면 썸네일을 배경으로 깐다.
           ContentImage(
             notice.background ?? notice.thumbnail,
-            icon: Icons.campaign_outlined,
+            icon: AppIcons.megaphone,
           ),
           const ColoredBox(color: Color(0x73000000)),
           // 왼쪽에 4:3 썸네일, 오른쪽에 날짜와 제목.
@@ -191,7 +193,7 @@ class _Slide extends StatelessWidget {
                         clipBehavior: Clip.antiAlias,
                         child: ContentImage(
                           notice.thumbnail,
-                          icon: Icons.campaign_outlined,
+                          icon: AppIcons.megaphone,
                         ),
                       ),
                     const SizedBox(width: 20),

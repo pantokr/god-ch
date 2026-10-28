@@ -1,3 +1,4 @@
+import '../../../core/icons.dart';
 import 'church_closures_admin_card.dart';
 
 import 'package:flutter/material.dart';
@@ -46,7 +47,7 @@ class ChurchRegistryPage extends StatelessWidget {
                       context,
                       child: RegisterChurchDialog(vm: vm),
                     ),
-                    icon: const Icon(Icons.add, size: 18),
+                    icon: const Icon(AppIcons.plus, size: 18),
                     label: const Text('교회 등록'),
                   ),
                 ),

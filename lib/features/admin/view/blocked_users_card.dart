@@ -1,3 +1,5 @@
+import '../../../core/icons.dart';
+
 import 'package:flutter/material.dart';
 
 import '../../../app/app_scope.dart';
@@ -68,7 +70,7 @@ class _BlockedUsersCardState extends State<BlockedUsersCard> {
             children: [
               Row(
                 children: [
-                  const Icon(Icons.block_outlined),
+                  const Icon(AppIcons.prohibit),
                   const SizedBox(width: 10),
                   Text('차단 목록', style: Theme.of(context).textTheme.titleMedium),
                 ],
@@ -90,7 +92,7 @@ class _BlockedUsersCardState extends State<BlockedUsersCard> {
                         onSubmitted: (_) => _add(vm),
                         decoration: const InputDecoration(
                           hintText: '차단할 아이디를 입력하세요',
-                          prefixIcon: Icon(Icons.person_off_outlined),
+                          prefixIcon: Icon(AppIcons.userCircleMinus),
                         ),
                       ),
                     ),
@@ -139,7 +141,7 @@ class _BlockedUsersCardState extends State<BlockedUsersCard> {
                         if (i > 0) const Divider(height: 1),
                         ListTile(
                           contentPadding: EdgeInsets.zero,
-                          leading: const Icon(Icons.block),
+                          leading: const Icon(AppIcons.prohibit),
                           title: Text(items[i].label),
                           subtitle:
                               items[i].name.isNotEmpty &&

@@ -1,3 +1,5 @@
+import '../../../core/icons.dart';
+
 import 'package:flutter/material.dart';
 
 import '../../../app/app_scope.dart';
@@ -6,7 +8,6 @@ import '../../../core/theme.dart';
 import '../../../data/models/church_features.dart';
 import '../../../data/models/department.dart';
 import '../../../data/models/member.dart';
-import '../../../data/models/page_layout.dart';
 import '../view_model/department_choice.dart';
 import '../view_model/group_access_view_model.dart';
 
@@ -23,12 +24,12 @@ Department? chosenDepartment(TabAccess access, DepartmentChoice choice) {
 class DepartmentSelect extends StatelessWidget {
   const DepartmentSelect({
     super.key,
-    required this.group,
+    required this.feature,
     required this.me,
     required this.choice,
   });
 
-  final PageGroup group;
+  final PageFeature feature;
   final Member me;
   final DepartmentChoice choice;
 
@@ -44,7 +45,7 @@ class DepartmentSelect extends StatelessWidget {
           stream: vm.features,
           builder: (context, feat) {
             if (!depts.hasData || !feat.hasData) return const SizedBox.shrink();
-            final access = feat.data!.accessFor(group, me, depts.data!);
+            final access = feat.data!.accessFor(feature, me, depts.data!);
             if (access.blocked || access.options.isEmpty) {
               return const SizedBox.shrink();
             }
@@ -68,7 +69,7 @@ class DepartmentSelect extends StatelessWidget {
                   value: current.id,
                   isDense: true,
                   style: style,
-                  icon: Icon(Icons.arrow_drop_down, color: palette.muted),
+                  icon: Icon(AppIcons.caretDown, color: palette.muted),
                   borderRadius: BorderRadius.circular(AppRadius.card),
                   items: [
                     for (final d in access.options)

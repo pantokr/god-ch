@@ -133,10 +133,28 @@ GoRouter buildRouter(SessionNotifier session) {
             ),
           ),
           _sectionRoute(
-            ChurchSection.intercession,
-            const IntercessionSectionPage(),
+            ChurchSection.left,
+            const SlotSectionPage(group: PageGroup.left),
           ),
-          _sectionRoute(ChurchSection.word, const WordSectionPage()),
+          _sectionRoute(
+            ChurchSection.right,
+            const SlotSectionPage(group: PageGroup.right),
+          ),
+          // 예전 주소(기도 · 말씀 탭)도 열린다.
+          GoRoute(
+            path: '/churches/:cid/intercession',
+            redirect: (context, state) => Routes.section(
+              state.pathParameters['cid']!,
+              ChurchSection.left,
+            ),
+          ),
+          GoRoute(
+            path: '/churches/:cid/word',
+            redirect: (context, state) => Routes.section(
+              state.pathParameters['cid']!,
+              ChurchSection.right,
+            ),
+          ),
           _sectionRoute(ChurchSection.mine, const MineSectionPage()),
           _sectionRoute(ChurchSection.gallery, const GallerySectionPage()),
           _sectionRoute(ChurchSection.members, const MemberManageSectionPage()),
@@ -192,7 +210,8 @@ GoRouter buildRouter(SessionNotifier session) {
           GoRoute(
             path: '/churches/:cid/${ChurchSection.contents.path}',
             pageBuilder: (context, state) => NoTransitionPage(
-              key: ValueKey('${state.pathParameters['cid']}/contents'),
+              // 콘텐츠 관리 목록 위에 종류별 화면(?kind=)이 쌓이므로 쿼리까지 키에 넣는다 (같은 키가 겹치면 오류가 난다).
+              key: ValueKey(state.uri.toString()),
               child: ContentEditSectionPage(
                 kind: ContentKind.fromPath(
                   state.uri.queryParameters['kind'] ?? '',

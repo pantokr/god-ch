@@ -21,6 +21,7 @@ class ContentListViewModel extends ViewModel {
     required DateTime date,
     List<String> imageUrls = const [],
     String videoUrl = '',
+    String category = '',
   }) => run(
     () => _repository.save(
       churchId,
@@ -31,6 +32,7 @@ class ContentListViewModel extends ViewModel {
       date: date,
       imageUrls: imageUrls,
       videoUrl: videoUrl,
+      category: category,
     ),
   );
 

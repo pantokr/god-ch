@@ -1,3 +1,5 @@
+import '../../../core/icons.dart';
+
 import 'package:flutter/material.dart';
 
 import '../../../core/format.dart';
@@ -92,7 +94,7 @@ class _DevotionCarouselState extends State<DevotionCarousel> {
                     IconButton(
                       tooltip: '이전',
                       onPressed: _page > 0 ? () => _go(_page - 1) : null,
-                      icon: const Icon(Icons.chevron_left),
+                      icon: const Icon(AppIcons.caretLeft),
                     ),
                     for (var i = 0; i < items.length; i++)
                       AnimatedContainer(
@@ -112,7 +114,7 @@ class _DevotionCarouselState extends State<DevotionCarousel> {
                       onPressed: _page < items.length - 1
                           ? () => _go(_page + 1)
                           : null,
-                      icon: const Icon(Icons.chevron_right),
+                      icon: const Icon(AppIcons.caretRight),
                     ),
                   ],
                 ),
@@ -152,7 +154,7 @@ class _Slide extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    Icon(Icons.menu_book_outlined, size: 16, color: t.accent),
+                    Icon(AppIcons.bookOpen, size: 16, color: t.accent),
                     const SizedBox(width: 6),
                     Text(
                       fmtDate(content.date),
@@ -192,7 +194,7 @@ class _Slide extends StatelessWidget {
                         fontSize: 13,
                       ),
                     ),
-                    Icon(Icons.chevron_right, size: 18, color: t.accent),
+                    Icon(AppIcons.caretRight, size: 18, color: t.accent),
                   ],
                 ),
               ],

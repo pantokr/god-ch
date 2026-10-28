@@ -1,3 +1,5 @@
+import '../../../core/icons.dart';
+
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -35,7 +37,7 @@ class InviteCodeCard extends StatelessWidget {
         final narrow = MediaQuery.sizeOf(context).width < kNarrow;
         final createButton = FilledButton.icon(
           onPressed: vm.busy ? null : () => _create(context, vm),
-          icon: const Icon(Icons.add, size: 18),
+          icon: const Icon(AppIcons.plus, size: 18),
           label: Text(
             '새 코드 만들기 (${ChurchRepository.inviteValidity.inDays}일 유효)',
           ),
@@ -48,7 +50,7 @@ class InviteCodeCard extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    const Icon(Icons.vpn_key_outlined),
+                    const Icon(AppIcons.key),
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
@@ -338,7 +340,7 @@ class _CodeRow extends StatelessWidget {
               Expanded(
                 child: OutlinedButton.icon(
                   onPressed: () => _copyCode(context),
-                  icon: const Icon(Icons.copy, size: 18),
+                  icon: const Icon(AppIcons.copy, size: 18),
                   label: const Text('코드 복사'),
                 ),
               ),
@@ -346,7 +348,7 @@ class _CodeRow extends StatelessWidget {
               Expanded(
                 child: FilledButton.icon(
                   onPressed: () => _share(context),
-                  icon: const Icon(Icons.share_outlined, size: 18),
+                  icon: const Icon(AppIcons.shareNetwork, size: 18),
                   label: const Text('공유'),
                 ),
               ),

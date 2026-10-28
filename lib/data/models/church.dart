@@ -34,6 +34,17 @@ class Church {
   final bool closed;
   final DateTime? createdAt;
 
+  /// 목록에 보이는 대략의 위치: 시도 시군구까지 (예: "경기 수원시 영통구").
+  String get region {
+    final t = address.trim().split(RegExp(r'\s+'));
+    if (t.length < 2) return address.trim();
+    final r = [t[0], t[1]];
+    if (t.length > 2 && t[1].endsWith('시') && t[2].endsWith('구')) {
+      r.add(t[2]);
+    }
+    return r.join(' ');
+  }
+
   factory Church.fromDoc(DocumentSnapshot<Json> doc) {
     final d = doc.data() ?? const {};
     return Church(

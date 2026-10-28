@@ -1,3 +1,5 @@
+import '../../../core/icons.dart';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -57,7 +59,7 @@ class MyChurchesPage extends StatelessWidget {
                         padding: const EdgeInsets.fromLTRB(8, 4, 0, 0),
                         child: IconButton(
                           tooltip: '돌아가기',
-                          icon: const Icon(Icons.arrow_back),
+                          icon: const Icon(AppIcons.arrowLeft),
                           onPressed: () => context.pop(),
                         ),
                       ),
@@ -148,19 +150,19 @@ class _Actions extends StatelessWidget {
       children: [
         FilledButton.icon(
           onPressed: () => context.push(Routes.explore),
-          icon: const Icon(Icons.explore_outlined, size: 18),
+          icon: const Icon(AppIcons.compass, size: 18),
           label: const Text('교회 탐색'),
         ),
         OutlinedButton.icon(
           onPressed: () =>
               showAppDialog<void>(context, child: const JoinChurchDialog()),
-          icon: const Icon(Icons.vpn_key_outlined, size: 18),
+          icon: const Icon(AppIcons.key, size: 18),
           label: const Text('초대 코드로 입장'),
         ),
         OutlinedButton.icon(
           onPressed: () =>
               showAppDialog<void>(context, child: const ChurchRequestDialog()),
-          icon: const Icon(Icons.add, size: 18),
+          icon: const Icon(AppIcons.plus, size: 18),
           label: const Text('교회 생성 요청'),
         ),
       ],
@@ -206,7 +208,7 @@ class _NoChurchNotice extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.church_outlined, size: 64, color: context.palette.muted),
+            Icon(AppIcons.church, size: 64, color: context.palette.muted),
             const SizedBox(height: 24),
             Text(
               '소속된 교회가 없습니다.',
@@ -242,8 +244,8 @@ class _ApplicationStatus extends StatelessWidget {
         ListTile(
           leading: Icon(
             r.status == RequestStatus.pending
-                ? Icons.hourglass_top
-                : Icons.block,
+                ? AppIcons.hourglassHigh
+                : AppIcons.prohibit,
             color: context.palette.muted,
           ),
           title: Text('${r.name} · 교회 생성 요청'),
@@ -257,8 +259,8 @@ class _ApplicationStatus extends StatelessWidget {
         ListTile(
           leading: Icon(
             m.status == MemberStatus.pending
-                ? Icons.hourglass_top
-                : Icons.block,
+                ? AppIcons.hourglassHigh
+                : AppIcons.prohibit,
             color: context.palette.muted,
           ),
           title: Text(m.churchName),
