@@ -81,8 +81,10 @@ GoRouter buildRouter(SessionNotifier session) {
       // 기도제목 상세·작성·수정은 교회 틀 밖의 전체 화면이다 (뒤로가기로 목록에 돌아온다).
       GoRoute(
         path: '/churches/:cid/prayers/new',
-        builder: (context, state) =>
-            PrayerCreateRoute(churchId: state.pathParameters['cid']!),
+        builder: (context, state) => PrayerCreateRoute(
+          churchId: state.pathParameters['cid']!,
+          affiliationId: state.uri.queryParameters['aff'],
+        ),
       ),
       GoRoute(
         path: '/churches/:cid/prayers/:pid',
@@ -146,6 +148,25 @@ GoRouter buildRouter(SessionNotifier session) {
           _sectionRoute(ChurchSection.members, const MemberManageSectionPage()),
           _sectionRoute(ChurchSection.join, const JoinManageSectionPage()),
           _sectionRoute(ChurchSection.info, const ChurchInfoSectionPage()),
+          GoRoute(
+            path: '/churches/:cid/${ChurchSection.affiliations.path}',
+            // 부모와 자식 경로가 한 화면 스택에 함께 쌓이므로, 키는 각자 맞은 주소(matchedLocation)로 둔다.
+            pageBuilder: (context, state) => NoTransitionPage(
+              key: ValueKey(state.matchedLocation),
+              child: const AffiliationManageSectionPage(),
+            ),
+            routes: [
+              GoRoute(
+                path: ':aid',
+                pageBuilder: (context, state) => NoTransitionPage(
+                  key: ValueKey(state.matchedLocation),
+                  child: AffiliationDetailSectionPage(
+                    affiliationId: state.pathParameters['aid']!,
+                  ),
+                ),
+              ),
+            ],
+          ),
           // 예전 주소(홈 · 기도 · 말씀 탭, 페이지, 콘텐츠 관리 등)는 지금의 메뉴로 보낸다.
           for (final old in const [
             'home',

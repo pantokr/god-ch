@@ -8,8 +8,13 @@ import '../data/prayer_repository.dart';
 
 /// 기도제목 작성 / 수정. [existing]이 있으면 수정 모드.
 class PrayerEditorViewModel extends ViewModel {
-  PrayerEditorViewModel(this._prayers, this.me, {this.existing})
-    : _visibility = existing?.visibility ?? PrayerVisibility.public {
+  PrayerEditorViewModel(
+    this._prayers,
+    this.me, {
+    this.existing,
+    String? defaultAffiliationId,
+  }) : _visibility = existing?.visibility ?? PrayerVisibility.public,
+       _affiliationId = existing?.affiliationId ?? defaultAffiliationId {
     _settingsSub = _prayers.settings(me.churchId).listen((s) {
       _settings = s;
       // 처음 쓸 때, 아직 고르지 않았다면 교회가 정한 기본 공개 범위를 따른다.
@@ -41,9 +46,19 @@ class PrayerEditorViewModel extends ViewModel {
     super.dispose();
   }
 
+  String? _affiliationId;
+
   bool get isEditing => existing != null;
 
   PrayerVisibility get visibility => _visibility;
+
+  /// 게시 범위: null이면 교회 전체, 값이 있으면 그 소속 전용.
+  String? get affiliationId => _affiliationId;
+
+  void setAffiliation(String? affiliationId) {
+    _affiliationId = affiliationId;
+    notifyListeners();
+  }
 
   void setVisibility(PrayerVisibility value) {
     _touched = true;
@@ -61,6 +76,7 @@ class PrayerEditorViewModel extends ViewModel {
             title: title,
             content: content,
             visibility: _visibility,
+            affiliationId: _affiliationId,
           );
         }
         return _prayers.update(

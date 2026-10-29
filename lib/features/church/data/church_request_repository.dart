@@ -103,6 +103,7 @@ class ChurchRequestRepository {
       if (r.requesterPhone.isNotEmpty) 'phone': r.requesterPhone,
       'role': Role.admin.name,
       'status': MemberStatus.approved.name,
+      'affiliationIds': <String>[],
       'createdAt': FieldValue.serverTimestamp(),
     });
     batch.update(_paths.churchRequests.doc(r.id), {

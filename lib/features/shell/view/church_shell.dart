@@ -14,6 +14,9 @@ import '../../../core/widgets/list_style_toggle.dart';
 import '../../../data/models/member.dart';
 import '../../admin/view_model/pending_members_view_model.dart';
 import '../../prayers/view/postit_card.dart';
+import '../../../data/models/church_features.dart';
+import '../../home/view/affiliation_select.dart';
+import '../../home/view_model/affiliation_choice.dart';
 import '../../notifications/view/notifications_button.dart';
 import 'church_scope.dart';
 
@@ -28,6 +31,7 @@ class ChurchShell extends StatelessWidget {
     required this.userName,
     required this.onSignOut,
     required this.child,
+    required this.affiliationChoice,
   });
 
   final Member me;
@@ -39,6 +43,9 @@ class ChurchShell extends StatelessWidget {
   final VoidCallback onSignOut;
   final Widget child;
 
+  /// 기도 · 성경 화면에서 지금 고른 소속.
+  final AffiliationChoice affiliationChoice;
+
   static const _labels = {
     ChurchSection.prayer: '기도제목',
     ChurchSection.meetings: '모임',
@@ -48,6 +55,7 @@ class ChurchShell extends StatelessWidget {
     ChurchSection.members: '교회 회원 관리',
     ChurchSection.join: '교회 입장 관리',
     ChurchSection.info: '교회 정보 관리',
+    ChurchSection.affiliations: '소속 관리',
   };
 
   static const _icons = {
@@ -59,10 +67,15 @@ class ChurchShell extends StatelessWidget {
     ChurchSection.members: (AppIcons.users, AppIcons.usersFill),
     ChurchSection.join: (AppIcons.key, AppIcons.keyFill),
     ChurchSection.info: (AppIcons.church, AppIcons.churchFill),
+    ChurchSection.affiliations: (AppIcons.usersThree, AppIcons.usersThreeFill),
   };
 
-  /// 교역자 이상에게 보이는 메뉴: 인원 · 입장 (조회와 교역자 업무).
-  static const _staffOnly = [ChurchSection.members, ChurchSection.join];
+  /// 교역자 이상에게 보이는 메뉴: 인원 · 입장 · 소속 (조회와 교역자 업무).
+  static const _staffOnly = [
+    ChurchSection.members,
+    ChurchSection.join,
+    ChurchSection.affiliations,
+  ];
 
   /// 교회 관리자에게만 보이는 메뉴: 앱을 고치는 일 (기도 설정 · 교회 정보).
   static const _adminOnly = [ChurchSection.prayerSettings, ChurchSection.info];
@@ -131,7 +144,18 @@ class ChurchShell extends StatelessWidget {
               ? null
               : Row(
                   mainAxisSize: MainAxisSize.min,
-                  children: [const ListStyleToggle()],
+                  children: [
+                    if (section == ChurchSection.prayer ||
+                        section == ChurchSection.bible)
+                      AffiliationSelect(
+                        feature: section == ChurchSection.prayer
+                            ? PageFeature.prayer
+                            : PageFeature.word,
+                        me: me,
+                        choice: affiliationChoice,
+                      ),
+                    const ListStyleToggle(),
+                  ],
                 ),
           railActions: [
             NotificationsButton(
@@ -197,6 +221,7 @@ class ChurchShell extends StatelessWidget {
                   // 인원 관리가 관리 메뉴의 첫째다. 입장 요청이 있으면 오른쪽에 숫자가 나온다.
                   _item(context, ChurchSection.members, badge: pending),
                   _item(context, ChurchSection.join),
+                  _item(context, ChurchSection.affiliations),
                   // 앱을 고치는 일은 교회 관리자만: 기도 설정 · 교회 정보.
                   if (me.isAdmin) _item(context, ChurchSection.prayerSettings),
                   if (me.isAdmin) _item(context, ChurchSection.info),
@@ -212,6 +237,7 @@ class ChurchShell extends StatelessWidget {
       me: me,
       userName: userName,
       onSignOut: onSignOut,
+      affiliationChoice: affiliationChoice,
       child: me.isStaff
           ? ViewModelBuilder<PendingMembersViewModel>(
               create: (context) => PendingMembersViewModel(

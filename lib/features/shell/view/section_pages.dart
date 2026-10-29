@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../../app/routes.dart';
+import '../../admin/view/affiliation_detail_page.dart';
+import '../../admin/view/affiliation_manage_page.dart';
 import '../../admin/view/church_info_manage_page.dart';
 import '../../admin/view/church_join_tab.dart';
 import '../../admin/view/church_members_tab.dart';
@@ -19,7 +23,7 @@ class PrayerSectionPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scope = ChurchScope.of(context);
-    return PrayerBoardPage(me: scope.me);
+    return PrayerBoardPage(me: scope.me, choice: scope.affiliationChoice);
   }
 }
 
@@ -37,8 +41,10 @@ class BibleSectionPage extends StatelessWidget {
   const BibleSectionPage({super.key});
 
   @override
-  Widget build(BuildContext context) =>
-      BiblePage(me: ChurchScope.of(context).me);
+  Widget build(BuildContext context) {
+    final scope = ChurchScope.of(context);
+    return BiblePage(me: scope.me, choice: scope.affiliationChoice);
+  }
 }
 
 /// "내 활동": 내가 쓴 기도제목과 묵상.
@@ -81,4 +87,30 @@ class ChurchInfoSectionPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) =>
       ChurchInfoManagePage(me: ChurchScope.of(context).me);
+}
+
+/// 소속 관리 (교역자 · 교회 운영자): 소속 목록.
+class AffiliationManageSectionPage extends StatelessWidget {
+  const AffiliationManageSectionPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final me = ChurchScope.of(context).me;
+    return AffiliationManagePage(
+      me: me,
+      onOpen: (a) => context.push(Routes.affiliation(me.churchId, a.id)),
+    );
+  }
+}
+
+class AffiliationDetailSectionPage extends StatelessWidget {
+  const AffiliationDetailSectionPage({super.key, required this.affiliationId});
+
+  final String affiliationId;
+
+  @override
+  Widget build(BuildContext context) => AffiliationDetailPage(
+    me: ChurchScope.of(context).me,
+    affiliationId: affiliationId,
+  );
 }

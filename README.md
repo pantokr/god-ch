@@ -21,11 +21,11 @@ lib/
   data/       모델, Firestore 경로
   features/
     auth/     로그인·가입·프로필 입력   (data / view_model / view)
-    church/   내 교회, 입장·생성 요청
+    church/   내 교회, 입장·생성 요청, 소속
     members/  교인 저장소
     home/     교회 페이지·콘텐츠·페이지 편집·갤러리
     shell/    교회 안 화면 틀(상단 메뉴 / 모바일 하단 탭)
-    admin/    교회 관리(인원 관리, 초대 코드)
+    admin/    교회 관리(인원·소속 관리, 초대 코드)
     platform/ 앱 운영자 패널(대시보드·교회 관리·회원 관리)
 firestore.rules, firestore.indexes.json   보안 규칙과 인덱스
 tool/create_admin.ps1                      앱 운영자 계정 생성/비밀번호 재설정

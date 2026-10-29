@@ -33,7 +33,8 @@ class PrayerCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final hasBadge = !prayer.isPublic || prayer.deleted;
+    final hasBadge =
+        prayer.affiliationId != null || !prayer.isPublic || prayer.deleted;
     final body = InkWell(
       // 주소로 이동하므로 브라우저 뒤로가기로 목록에 돌아온다. 이미 가진 글은 함께 넘겨 바로 보여준다.
       onTap: () =>
@@ -48,6 +49,10 @@ class PrayerCard extends StatelessWidget {
                 spacing: 6,
                 runSpacing: 6,
                 children: [
+                  if (prayer.affiliationId != null)
+                    const _Badge(icon: AppIcons.usersThree, label: '소속'),
+                  if (prayer.affiliationId != null)
+                    const _Badge(icon: AppIcons.usersThree, label: '소속'),
                   if (!prayer.isPublic)
                     const _Badge(icon: AppIcons.lock, label: '교역자 전용'),
                   if (prayer.deleted)

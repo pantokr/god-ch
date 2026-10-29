@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../../../core/app_exception.dart';
 import '../../../data/firestore_paths.dart';
+import '../../church/data/admin_affiliations.dart' as admin_affs;
 import '../../../data/models/app_notification.dart';
 import '../../../data/models/blocked_user.dart';
 import '../../../data/models/member.dart';
@@ -176,6 +177,7 @@ class MemberRepository {
     String? phone,
     String? address,
     String? birthDate,
+    List<String>? affiliationIds,
     Role? role,
     MemberStatus? status,
   }) async {
@@ -207,9 +209,35 @@ class MemberRepository {
       }
       info['birthDate'] = b;
     }
+    if (affiliationIds != null) info['affiliationIds'] = affiliationIds;
     final doc = _paths.members(m.churchId).doc(m.id);
     if (info.isNotEmpty) await doc.update(info);
-    if (role != null) await doc.update({'role': role.name});
+    if (role != null) {
+      await doc.update({'role': role.name});
+      // 교회 운영자가 되면 모든 소속에 자동으로 속한다.
+      if (role == Role.admin) {
+        await admin_affs.syncAdminAffiliations(_paths, m.churchId);
+      }
+    }
     if (status != null) await doc.update({'status': status.name});
   }
+
+  /// 교회 운영자가 모든 소속에 속해 있게 맞춘다 (이미 맞으면 아무것도 쓰지 않는다).
+  Future<void> syncAdminAffiliations(String churchId) =>
+      admin_affs.syncAdminAffiliations(_paths, churchId);
+
+  /// 교역자가 교인을 소속에 넣는다 (이미 있으면 그대로).
+  Future<void> addToAffiliation(String churchId, String userId, String affId) =>
+      _paths.members(churchId).doc(userId).update({
+        'affiliationIds': FieldValue.arrayUnion([affId]),
+      });
+
+  /// 교역자가 교인을 소속에서 뺀다.
+  Future<void> removeFromAffiliation(
+    String churchId,
+    String userId,
+    String affId,
+  ) => _paths.members(churchId).doc(userId).update({
+    'affiliationIds': FieldValue.arrayRemove([affId]),
+  });
 }

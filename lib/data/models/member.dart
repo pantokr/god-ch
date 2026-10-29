@@ -21,6 +21,7 @@ class Member {
     this.address = '',
     this.birthDate = '',
     this.photoUrl = '',
+    this.affiliationIds = const [],
     this.createdAt,
     this.isOperatorView = false,
   });
@@ -43,6 +44,9 @@ class Member {
 
   /// 프로필 사진 주소 (회원 정보에서 복사).
   final String photoUrl;
+
+  /// 속한 소속들 (여러 개일 수 있다). 교역자 · 교회 운영자만 정하고, 교인은 스스로 고를 수 없다.
+  final List<String> affiliationIds;
   final Role role;
   final MemberStatus status;
 
@@ -77,6 +81,9 @@ class Member {
         MemberStatus.values,
         d['status'],
         MemberStatus.pending,
+      ),
+      affiliationIds: List<String>.from(
+        d['affiliationIds'] as List? ?? const [],
       ),
       createdAt: toDate(d['createdAt']),
     );

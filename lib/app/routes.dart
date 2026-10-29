@@ -22,7 +22,10 @@ enum ChurchSection {
   join('join'),
 
   /// 교회 정보 관리 (교회 운영자만): 교회 정보 수정과 폐쇄 요청.
-  info('info');
+  info('info'),
+
+  /// 소속 관리 (교역자·교회 운영자): 소속 목록과 소속별 인원 (주소 `/affiliations/{소속}`).
+  affiliations('affiliations');
 
   const ChurchSection(this.path);
 
@@ -83,6 +86,10 @@ class Routes {
   static String section(String churchId, ChurchSection s) =>
       '/churches/$churchId/${s.path}';
 
+  /// 한 소속의 인원 관리 화면.
+  static String affiliation(String churchId, String affId) =>
+      '${section(churchId, ChurchSection.affiliations)}/$affId';
+
   /// 교회의 첫 화면 (기도제목).
   static String home(String churchId) =>
       section(churchId, ChurchSection.prayer);
@@ -98,7 +105,11 @@ class Routes {
   static String prayer(String churchId, String prayerId) =>
       '/churches/$churchId/prayers/$prayerId';
 
-  static String newPrayer(String churchId) => '/churches/$churchId/prayers/new';
+  /// 새 기도제목 쓰기. [aff]가 있으면 그 소속이 기본 게시 범위다.
+  static String newPrayer(String churchId, {String? aff}) {
+    final base = '/churches/$churchId/prayers/new';
+    return aff == null ? base : '$base?aff=$aff';
+  }
 
   static String editPrayer(String churchId, String prayerId) =>
       '/churches/$churchId/prayers/$prayerId/edit';

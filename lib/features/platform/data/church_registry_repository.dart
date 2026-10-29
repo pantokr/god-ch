@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../../../core/app_exception.dart';
 import '../../../data/firestore_paths.dart';
+import '../../../data/models/affiliation.dart';
 import '../../../data/models/church.dart';
 import '../../../data/models/member.dart';
 import '../../../data/models/user_profile.dart';
@@ -60,6 +61,21 @@ class ChurchRegistryRepository {
         .where((m) => !m.isAppOperator && m.status != MemberStatus.removed)
         .toList(),
   );
+
+  /// 모든 교회의 소속 (앱 운영자 전용).
+  Stream<List<Affiliation>> allAffiliations() => _db
+      .collectionGroup('affiliations')
+      .snapshots()
+      .map(
+        (s) => [
+          for (final d in s.docs)
+            Affiliation(
+              d.id,
+              d.data()['name'] as String? ?? '',
+              churchId: d.reference.parent.parent!.id,
+            ),
+        ],
+      );
 
   /// 회원의 이름·전화번호를 고친다. 소속된 모든 교회의 교인 정보에도 같이 반영한다.
   Future<void> updateUser(

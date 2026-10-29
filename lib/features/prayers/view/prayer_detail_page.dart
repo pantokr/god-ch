@@ -210,6 +210,16 @@ class _MetaRow extends StatelessWidget {
         const SizedBox(width: 10),
         Icon(AppIcons.eyeCount, size: 14, color: context.palette.muted),
         Text(' 조회 ${prayer.views}', style: muted),
+        if (prayer.affiliationId != null) ...[
+          const SizedBox(width: 10),
+          Icon(AppIcons.usersThree, size: 14, color: context.palette.muted),
+          Text(' 소속 전용', style: muted),
+        ],
+        if (prayer.affiliationId != null) ...[
+          const SizedBox(width: 10),
+          Icon(AppIcons.usersThree, size: 14, color: context.palette.muted),
+          Text(' 소속 전용', style: muted),
+        ],
         if (!prayer.isPublic) ...[
           const SizedBox(width: 10),
           Icon(AppIcons.lock, size: 14, color: context.palette.muted),

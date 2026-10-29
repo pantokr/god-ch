@@ -36,17 +36,23 @@ class PrayerDetailRoute extends StatelessWidget {
   }
 }
 
-/// 주소 `/churches/:cid/prayers/new`: 새 기도제목 쓰기.
+/// 주소 `/churches/:cid/prayers/new`: 새 기도제목 쓰기. `?aff=`가 있으면 그 소속이 기본 게시 범위다.
 class PrayerCreateRoute extends StatelessWidget {
-  const PrayerCreateRoute({super.key, required this.churchId});
+  const PrayerCreateRoute({
+    super.key,
+    required this.churchId,
+    this.affiliationId,
+  });
 
   final String churchId;
+  final String? affiliationId;
 
   @override
   Widget build(BuildContext context) {
     return MemberGate(
       churchId: churchId,
-      builder: (context, me) => PrayerEditorPage(me: me),
+      builder: (context, me) =>
+          PrayerEditorPage(me: me, defaultAffiliationId: affiliationId),
     );
   }
 }

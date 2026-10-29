@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/mvvm/view_model.dart';
 import '../../../core/theme.dart';
+import '../../../data/models/affiliation.dart';
 import '../../../data/models/member.dart';
 import '../../../core/widgets/thumbnail_field.dart';
 import '../../auth/view/profile_extra_fields.dart';
@@ -15,25 +16,34 @@ import '../../../core/widgets/app_inputs.dart';
 class MembershipEditor {
   const MembershipEditor({
     required this.member,
+    required this.affiliations,
     this.canRole = false,
     this.canStatus = false,
   });
 
   final Member member;
 
+  /// 이 교회에 있는 소속 전체.
+  final List<Affiliation> affiliations;
   final bool canRole;
   final bool canStatus;
 }
 
 /// 한 교회에서 바뀐 항목. 바뀌지 않은 항목은 null이다.
 class MembershipChange {
-  const MembershipChange(this.member, {this.role, this.status});
+  const MembershipChange(
+    this.member, {
+    this.affiliationIds,
+    this.role,
+    this.status,
+  });
 
   final Member member;
+  final List<String>? affiliationIds;
   final Role? role;
   final MemberStatus? status;
 
-  bool get isEmpty => role == null && status == null;
+  bool get isEmpty => affiliationIds == null && role == null && status == null;
 }
 
 class MemberDetailResult {
@@ -128,6 +138,9 @@ class _MemberDetailDialogState extends State<MemberDetailDialog> {
   late final _address = TextEditingController(text: widget.address);
   late final _birthDate = TextEditingController(text: widget.birthDate);
   late final _photo = TextEditingController(text: widget.photoUrl);
+  late final List<Set<String>> _affs = [
+    for (final m in widget.memberships) {...m.member.affiliationIds},
+  ];
   late final List<Role> _roles = [
     for (final m in widget.memberships) m.member.role,
   ];
@@ -151,6 +164,12 @@ class _MemberDetailDialogState extends State<MemberDetailDialog> {
     super.dispose();
   }
 
+  bool _sameIds(Iterable<String> a, Iterable<String> b) {
+    final x = a.toSet();
+    final y = b.toSet();
+    return x.length == y.length && x.containsAll(y);
+  }
+
   Future<void> _save() async {
     final navigator = Navigator.of(context);
     final messenger = ScaffoldMessenger.of(context);
@@ -160,6 +179,15 @@ class _MemberDetailDialogState extends State<MemberDetailDialog> {
       final m = e.member;
       final change = MembershipChange(
         m,
+        affiliationIds: _sameIds(_affs[i], m.affiliationIds)
+            ? null
+            : [
+                for (final a in e.affiliations)
+                  if (_affs[i].contains(a.id)) a.id,
+                // 삭제되었거나 보이지 않는 소속은 그대로 둔다.
+                for (final id in m.affiliationIds)
+                  if (!e.affiliations.any((a) => a.id == id)) id,
+              ],
         role: e.canRole && _roles[i] != m.role ? _roles[i] : null,
         status: e.canStatus && _statuses[i] != m.status ? _statuses[i] : null,
       );
@@ -292,6 +320,31 @@ class _MemberDetailDialogState extends State<MemberDetailDialog> {
                       ),
                   ],
                 ),
+              ),
+            const SizedBox(height: 12),
+            Text('소속', style: muted),
+            if (widget.memberships[i].affiliations.isEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Text('만들어진 소속이 없어요.', style: muted),
+              ),
+            for (final a in widget.memberships[i].affiliations)
+              CheckboxListTile(
+                dense: true,
+                contentPadding: EdgeInsets.zero,
+                controlAffinity: ListTileControlAffinity.leading,
+                title: Text(a.name),
+                // 교회 운영자는 모든 소속에 자동으로 속한다.
+                value: _roles[i] == Role.admin || _affs[i].contains(a.id),
+                onChanged: _roles[i] == Role.admin
+                    ? null
+                    : (v) => setState(() {
+                        if (v ?? false) {
+                          _affs[i].add(a.id);
+                        } else {
+                          _affs[i].remove(a.id);
+                        }
+                      }),
               ),
           ],
           if (widget.vm.error != null) ...[

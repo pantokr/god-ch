@@ -2,11 +2,12 @@ import 'package:flutter/material.dart';
 
 import '../../../core/layout/app_dialog.dart';
 import '../../../core/layout/manage_list_row.dart';
+import '../../../data/models/affiliation.dart';
 import '../../../data/models/member.dart';
 import '../view_model/member_admin_view_model.dart';
 import 'member_detail_dialog.dart';
 
-/// 교인 한 명: 이름 · 소속 교회만 보여주고, 관리를 누르면 상세 관리 창이 열린다.
+/// 교인 한 명: 이름 · 소속 교회 · 소속만 보여주고, 관리를 누르면 상세 관리 창이 열린다.
 /// 본인 줄에는 '본인' 표시가 붙는다. 관리 창에서 교회 운영자는 회원을 추방할 수 있다.
 /// 승인 대기 계정은 같은 줄에서 바로 승인할 수 있다 (거절은 관리 창의 상태에서).
 class MemberTile extends StatelessWidget {
@@ -14,11 +15,19 @@ class MemberTile extends StatelessWidget {
     super.key,
     required this.member,
     required this.vm,
+    this.affiliationNames = const [],
+    this.affiliations = const [],
     this.isNew = false,
   });
 
   final Member member;
   final MemberAdminViewModel vm;
+
+  /// 이 교인이 속한 소속 이름들.
+  final List<String> affiliationNames;
+
+  /// 이 교회의 소속 전체 (상세 관리 창에서 고를 목록).
+  final List<Affiliation> affiliations;
 
   /// 새로 등록된 인원이면 이름 옆에 표시한다.
   final bool isNew;
@@ -44,6 +53,7 @@ class MemberTile extends StatelessWidget {
           ? 'NEW'
           : null,
       line1: member.churchName,
+      line2: affiliationNames.join(', '),
       onTap: () => _edit(context),
       trailing: [
         if (pending && vm.canChangeStatus(member))
@@ -120,6 +130,7 @@ class MemberTile extends StatelessWidget {
         memberships: [
           MembershipEditor(
             member: member,
+            affiliations: affiliations,
             canRole: vm.canChangeRole(member),
             canStatus: vm.canChangeStatus(member),
           ),

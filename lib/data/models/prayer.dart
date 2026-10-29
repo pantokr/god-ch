@@ -12,6 +12,7 @@ class Prayer {
     required this.content,
     required this.visibility,
     required this.deleted,
+    this.affiliationId,
     this.views = 0,
     this.createdAt,
     this.deleteReason,
@@ -27,6 +28,8 @@ class Prayer {
   final PrayerVisibility visibility;
   final bool deleted;
 
+  /// null이면 교회 전체 글, 값이 있으면 그 소속 전용 글.
+  final String? affiliationId;
   final int views;
   final DateTime? createdAt;
   final String? deleteReason;
@@ -53,6 +56,7 @@ class Prayer {
         PrayerVisibility.private,
       ),
       deleted: d['deleted'] as bool? ?? false,
+      affiliationId: d['affiliationId'] as String?,
       views: (d['views'] as num?)?.toInt() ?? 0,
       // 서버 시각이 아직 확정되지 않은 로컬 쓰기는 null이므로 현재 시각으로 대체한다.
       createdAt: toDate(d['createdAt']) ?? DateTime.now(),

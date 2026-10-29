@@ -9,69 +9,71 @@ import '../../../core/layout/page_frame.dart';
 import '../../../core/mvvm/view_model_builder.dart';
 import '../../../core/theme.dart';
 import '../../../core/widgets/stat_icons.dart';
+import '../../../data/models/church_features.dart';
 import '../../../data/models/member.dart';
 import '../../../data/models/prayer.dart';
 import '../../../data/models/reaction.dart';
 import '../../home/view/content_widgets.dart';
+import '../../home/view/feature_gate.dart';
+import '../../home/view_model/affiliation_choice.dart';
 import '../view_model/prayer_list_view_model.dart';
 import 'floating_prayers.dart';
 import 'prayer_write_fab.dart';
 
-/// 기도제목: 교회의 공개 기도제목.
+/// 기도제목: 고른 소속(속한 소속이 없으면 교회 전체)의 공개 기도제목.
 /// - 알록달록: 화면 가득 포스트잇 카드가 떠다닌다 (배경은 바깥 틀이 깐다).
-/// - 심플: 글 중심 목록. 줄마다 제목과 내용 미리보기가 있고 오른쪽 가장자리에 조회수와 응원 수가 보인다.
+/// - 심플: 카드 격자. 카드마다 제목과 내용 미리보기가 있고 아래에 조회수와 응원 수가 보인다.
 /// 어느 쪽이든 누르면 기도제목 상세가 열린다. 기도 요청 버튼은 오른쪽 아래에 떠 있다.
 class PrayerBoardPage extends StatelessWidget {
-  const PrayerBoardPage({super.key, required this.me});
+  const PrayerBoardPage({super.key, required this.me, required this.choice});
 
   final Member me;
+  final AffiliationChoice choice;
 
   /// 한꺼번에 떠다니는 카드 수.
   static const floating = 4;
 
   @override
   Widget build(BuildContext context) {
-    // 앱 개발자는 교회를 고칠 수 있어도 기도제목 내용은 볼 수 없다.
-    if (me.isOperatorView) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(32),
-          child: Text(
-            '앱 개발자는 기도제목을 볼 수 없습니다',
-            textAlign: TextAlign.center,
-            style: TextStyle(color: context.palette.muted),
-          ),
-        ),
-      );
-    }
     final style = AppScope.read(context).listStyle;
-    return ViewModelBuilder<PrayerListViewModel>(
-      key: ValueKey('board/${me.churchId}'),
-      create: (context) => PrayerListViewModel(
-        AppScope.read(context).prayers.publicFeed(me.churchId),
-      ),
-      builder: (context, vm) => Stack(
-        fit: StackFit.expand,
-        children: [
-          ListenableBuilder(
-            listenable: style,
-            builder: (context, _) => style.style == ListStyle.colorful
-                ? FloatingPrayers(
-                    prayers: vm.prayers,
-                    me: me,
-                    count: floating,
-                    fullScreen: true,
-                  )
-                : _MinimalList(prayers: vm.prayers, me: me),
-          ),
-          Positioned(right: 16, bottom: 16, child: PrayerWriteFab(me: me)),
-        ],
+    return FeatureGate(
+      feature: PageFeature.prayer,
+      me: me,
+      choice: choice,
+      builder: (context, affiliation) => ViewModelBuilder<PrayerListViewModel>(
+        // 소속이 바뀌면 그 소속의 기도제목을 새로 구독한다.
+        key: ValueKey('board/${me.churchId}/${affiliation?.id}'),
+        create: (context) => PrayerListViewModel(
+          AppScope.read(context).prayers
+              .publicFeed(me.churchId, affiliationId: affiliation?.id),
+        ),
+        builder: (context, vm) => Stack(
+          fit: StackFit.expand,
+          children: [
+            ListenableBuilder(
+              listenable: style,
+              builder: (context, _) => style.style == ListStyle.colorful
+                  ? FloatingPrayers(
+                      prayers: vm.prayers,
+                      me: me,
+                      count: floating,
+                      fullScreen: true,
+                    )
+                  : _MinimalList(prayers: vm.prayers, me: me),
+            ),
+            Positioned(
+              right: 16,
+              bottom: 16,
+              child: PrayerWriteFab(me: me, affiliation: affiliation),
+            ),
+          ],
+        ),
       ),
     );
   }
 }
 
-/// 심플 목록.
+/// 심플 격자.
 class _MinimalList extends StatelessWidget {
   const _MinimalList({required this.prayers, required this.me});
 
@@ -102,16 +104,8 @@ class _MinimalList extends StatelessWidget {
                   );
                 }
                 if (items.isEmpty) return const EmptyHint('기도제목 없음');
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    for (var i = 0; i < items.length; i++)
-                      _Row(
-                        prayer: items[i],
-                        me: me,
-                        last: i == items.length - 1,
-                      ),
-                  ],
+                return _Grid(
+                  children: [for (final p in items) _Tile(prayer: p, me: me)],
                 );
               },
             ),
@@ -122,71 +116,80 @@ class _MinimalList extends StatelessWidget {
   }
 }
 
-class _Row extends StatelessWidget {
-  const _Row({required this.prayer, required this.me, required this.last});
+/// 폭이 좁으면 한 줄에 하나, 넉넉하면 두 개씩 놓는 격자.
+class _Grid extends StatelessWidget {
+  const _Grid({required this.children});
+
+  final List<Widget> children;
+
+  static const _gap = 12.0;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, box) {
+        final cols = box.maxWidth >= 360 ? 2 : 1;
+        final width = (box.maxWidth - _gap * (cols - 1)) / cols;
+        return Wrap(
+          spacing: _gap,
+          runSpacing: _gap,
+          children: [
+            for (final c in children) SizedBox(width: width, child: c),
+          ],
+        );
+      },
+    );
+  }
+}
+
+/// 격자의 기도제목 카드 하나: 제목 · 날짜 · 내용 미리보기, 아래에 조회수와 응원 수.
+class _Tile extends StatelessWidget {
+  const _Tile({required this.prayer, required this.me});
 
   final Prayer prayer;
   final Member me;
-  final bool last;
 
   @override
   Widget build(BuildContext context) {
     final palette = context.palette;
     final p = prayer;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        InkWell(
-          onTap: () => context.push(Routes.prayer(me.churchId, p.id), extra: p),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 14),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              p.title,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w800,
-                                fontSize: 16,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            fmtDate(p.createdAt),
-                            style: TextStyle(
-                              color: palette.muted,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        p.content,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: readingStyle(context).copyWith(fontSize: 14),
-                      ),
-                    ],
-                  ),
+    return Card(
+      margin: EdgeInsets.zero,
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () => context.push(Routes.prayer(me.churchId, p.id), extra: p),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                p.title,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 16,
                 ),
-                const SizedBox(width: 16),
-                _Stats(prayer: p, me: me),
-              ],
-            ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                fmtDate(p.createdAt),
+                style: TextStyle(color: palette.muted, fontSize: 12),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                p.content,
+                maxLines: 4,
+                overflow: TextOverflow.ellipsis,
+                style: readingStyle(context).copyWith(fontSize: 14),
+              ),
+              const SizedBox(height: 12),
+              _Stats(prayer: p, me: me),
+            ],
           ),
         ),
-        if (!last) Divider(height: 1, color: palette.border),
-      ],
+      ),
     );
   }
 }

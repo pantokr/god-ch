@@ -58,15 +58,19 @@ class PrayerRepository {
   static const pageSize = 100;
 
   /// 반드시 visibility/deleted 조건을 쿼리에 포함해야 규칙을 통과한다.
-  /// 공개 기도제목, 최신 글부터.
-  Stream<List<Prayer>> publicFeed(String churchId, {int limit = pageSize}) =>
-      _paths
-          .prayers(churchId)
-          .where('visibility', isEqualTo: PrayerVisibility.public.name)
-          .where('deleted', isEqualTo: false)
-          .limit(limit)
-          .snapshots()
-          .map(_toPrayers);
+  /// [affiliationId]가 null이면 교회 전체 글, 값이 있으면 그 소속 전용 글만 가져온다. 최신 글부터.
+  Stream<List<Prayer>> publicFeed(
+    String churchId, {
+    String? affiliationId,
+    int limit = pageSize,
+  }) => _paths
+      .prayers(churchId)
+      .where('visibility', isEqualTo: PrayerVisibility.public.name)
+      .where('deleted', isEqualTo: false)
+      .where('affiliationId', isEqualTo: affiliationId)
+      .limit(limit)
+      .snapshots()
+      .map(_toPrayers);
 
   Stream<List<Prayer>> myPrayers(String churchId, {int limit = pageSize}) =>
       _paths
@@ -105,8 +109,10 @@ class PrayerRepository {
     required String title,
     required String content,
     required PrayerVisibility visibility,
+    String? affiliationId,
   }) => _paths.prayers(churchId).doc(newId()).set({
     'authorId': _auth.uid,
+    'affiliationId': affiliationId,
     'title': title,
     'content': content,
     'visibility': visibility.name,

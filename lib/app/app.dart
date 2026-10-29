@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import '../core/theme.dart';
 import '../features/auth/data/auth_repository.dart';
 import '../features/auth/data/profile_repository.dart';
+import '../features/church/data/affiliation_repository.dart';
 import '../features/church/data/church_closure_repository.dart';
 import '../features/church/data/church_repository.dart';
 import '../features/church/data/church_request_repository.dart';
@@ -64,6 +65,10 @@ class _AppState extends State<App> {
   );
   late final ChurchRegistryRepository _churchRegistry =
       ChurchRegistryRepository(_db, _auth, _contents);
+  late final AffiliationRepository _affiliations = AffiliationRepository(
+    _db,
+    _auth,
+  );
   late final ContentRepository _contents = ContentRepository(
     _db,
     FirebaseStorage.instance,
@@ -116,6 +121,7 @@ class _AppState extends State<App> {
       churchRequests: _churchRequests,
       churchRegistry: _churchRegistry,
       churchClosures: _churchClosures,
+      affiliations: _affiliations,
       contents: _contents,
       reflections: _reflections,
       meetings: _meetings,

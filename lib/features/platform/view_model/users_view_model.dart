@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 
 import '../../../core/mvvm/view_model.dart';
+import '../../../data/models/affiliation.dart';
 import '../../../data/models/member.dart';
 import '../../../data/models/user_profile.dart';
 import '../../admin/view/member_detail_dialog.dart';
@@ -11,7 +12,8 @@ import '../data/church_registry_repository.dart';
 class UsersViewModel extends ViewModel {
   UsersViewModel(this._registry, this._members)
     : users = _registry.users(),
-      memberships = _registry.allMembers();
+      memberships = _registry.allMembers(),
+      affiliations = _registry.allAffiliations();
 
   final ChurchRegistryRepository _registry;
   final MemberRepository _members;
@@ -20,6 +22,9 @@ class UsersViewModel extends ViewModel {
 
   /// 모든 교회의 교인 정보. 회원 한 명이 여러 교회에 속할 수 있다.
   final Stream<List<Member>> memberships;
+
+  /// 모든 교회의 소속.
+  final Stream<List<Affiliation>> affiliations;
 
   String _query = '';
 
@@ -69,7 +74,12 @@ class UsersViewModel extends ViewModel {
       );
     }
     for (final c in r.changes) {
-      await _members.saveMember(c.member, role: c.role, status: c.status);
+      await _members.saveMember(
+        c.member,
+        affiliationIds: c.affiliationIds,
+        role: c.role,
+        status: c.status,
+      );
     }
   });
 }

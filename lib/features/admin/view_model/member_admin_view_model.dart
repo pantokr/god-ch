@@ -1,5 +1,7 @@
 import '../../../core/mvvm/view_model.dart';
+import '../../../data/models/affiliation.dart';
 import '../../../data/models/member.dart';
+import '../../church/data/affiliation_repository.dart';
 import '../../members/data/member_repository.dart';
 import '../view/member_detail_dialog.dart';
 
@@ -17,8 +19,17 @@ enum MemberSort {
 /// 인원 관리: 새로 등록된 인원의 승인, 등록된 인원 조회(검색 · 필터 · 정렬), 역할 지정.
 /// 교역자는 일반 교인의 승인 상태만, 교회 운영자는 역할까지 바꿀 수 있다 (본인 계정은 제외).
 class MemberAdminViewModel extends ViewModel {
-  MemberAdminViewModel(this._members, this.me)
-    : members = _members.members(me.churchId);
+  MemberAdminViewModel(
+    this._members,
+    AffiliationRepository affiliations,
+    this.me,
+  ) : members = _members.members(me.churchId),
+      affiliations = affiliations.affiliations(me.churchId) {
+    // 교회 운영자는 모든 소속에 자동으로 속한다 (예전 데이터도 여기서 맞춘다).
+    if (me.isStaff) {
+      _members.syncAdminAffiliations(me.churchId).catchError((_) {});
+    }
+  }
 
   /// 이 기간 안에 가입했으면 "새로 등록된 인원"으로 본다.
   static const newcomerDays = 7;
@@ -26,6 +37,7 @@ class MemberAdminViewModel extends ViewModel {
   final MemberRepository _members;
   final Member me;
   final Stream<List<Member>> members;
+  final Stream<List<Affiliation>> affiliations;
 
   // ---- 조회 조건 (등록된 인원 목록에만 적용된다) ----
   String _query = '';
@@ -152,6 +164,7 @@ class MemberAdminViewModel extends ViewModel {
         birthDate: profile && r.birthDate.trim() != m.birthDate
             ? r.birthDate
             : null,
+        affiliationIds: change?.affiliationIds,
         role: change?.role,
         status: change?.status,
       ),

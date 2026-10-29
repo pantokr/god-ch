@@ -11,8 +11,11 @@ import '../../../core/mvvm/view_model_builder.dart';
 import '../../../core/theme.dart';
 import '../../../core/widgets/stat_icons.dart';
 import '../../../data/models/church_content.dart';
+import '../../../data/models/church_features.dart';
 import '../../../data/models/member.dart';
 import '../../home/view/content_widgets.dart';
+import '../../home/view/feature_gate.dart';
+import '../../home/view_model/affiliation_choice.dart';
 import '../view_model/devotions_view_model.dart';
 import 'devotion_form.dart';
 
@@ -20,69 +23,75 @@ import 'devotion_form.dart';
 /// 줄을 누르면 말씀 · 묵상 · 반응 · 댓글이 분리된 카드로 열린다 ([DevotionDetailPage]).
 /// 모양은 알록달록 / 심플 중 고른다 ([ListStyleController]). 글을 올리는 것은 교역자 · 교회 운영자다.
 class BiblePage extends StatelessWidget {
-  const BiblePage({super.key, required this.me});
+  const BiblePage({super.key, required this.me, required this.choice});
 
   final Member me;
+  final AffiliationChoice choice;
 
   @override
   Widget build(BuildContext context) {
     final style = AppScope.read(context).listStyle;
-    return ViewModelBuilder<DevotionsViewModel>(
-      key: ValueKey('bible/${me.churchId}'),
-      create: (context) =>
-          DevotionsViewModel(AppScope.read(context).contents, me.churchId),
-      builder: (context, vm) => SingleChildScrollView(
-        child: PageFrame(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              PageTitle(
-                title: '성경',
-                action: me.isStaff
-                    ? FilledButton.icon(
-                        onPressed: vm.busy ? null : () => _add(context, vm),
-                        icon: const Icon(AppIcons.plus, size: 18),
-                        label: const Text('추가'),
-                      )
-                    : null,
-              ),
-              StreamBuilder<List<ChurchContent>>(
-                stream: vm.items,
-                builder: (context, snap) {
-                  if (snap.hasError) {
-                    return EmptyHint('불러오지 못했습니다\n${snap.error}');
-                  }
-                  final items = snap.data;
-                  if (items == null) {
-                    return const Padding(
-                      padding: EdgeInsets.all(48),
-                      child: Center(child: CircularProgressIndicator()),
+    return FeatureGate(
+      feature: PageFeature.word,
+      me: me,
+      choice: choice,
+      builder: (context, _) => ViewModelBuilder<DevotionsViewModel>(
+        key: ValueKey('bible/${me.churchId}'),
+        create: (context) =>
+            DevotionsViewModel(AppScope.read(context).contents, me.churchId),
+        builder: (context, vm) => SingleChildScrollView(
+          child: PageFrame(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                PageTitle(
+                  title: '성경',
+                  action: me.isStaff
+                      ? FilledButton.icon(
+                          onPressed: vm.busy ? null : () => _add(context, vm),
+                          icon: const Icon(AppIcons.plus, size: 18),
+                          label: const Text('추가'),
+                        )
+                      : null,
+                ),
+                StreamBuilder<List<ChurchContent>>(
+                  stream: vm.items,
+                  builder: (context, snap) {
+                    if (snap.hasError) {
+                      return EmptyHint('불러오지 못했습니다\n${snap.error}');
+                    }
+                    final items = snap.data;
+                    if (items == null) {
+                      return const Padding(
+                        padding: EdgeInsets.all(48),
+                        child: Center(child: CircularProgressIndicator()),
+                      );
+                    }
+                    if (items.isEmpty) return const EmptyHint('말씀 없음');
+                    return ListenableBuilder(
+                      listenable: style,
+                      builder: (context, _) => Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          for (var i = 0; i < items.length; i++)
+                            style.style == ListStyle.colorful
+                                ? _ColorfulItem(
+                                    content: items[i],
+                                    index: i,
+                                    me: me,
+                                  )
+                                : _MinimalItem(
+                                    content: items[i],
+                                    last: i == items.length - 1,
+                                    me: me,
+                                  ),
+                        ],
+                      ),
                     );
-                  }
-                  if (items.isEmpty) return const EmptyHint('말씀 없음');
-                  return ListenableBuilder(
-                    listenable: style,
-                    builder: (context, _) => Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        for (var i = 0; i < items.length; i++)
-                          style.style == ListStyle.colorful
-                              ? _ColorfulItem(
-                                  content: items[i],
-                                  index: i,
-                                  me: me,
-                                )
-                              : _MinimalItem(
-                                  content: items[i],
-                                  last: i == items.length - 1,
-                                  me: me,
-                                ),
-                      ],
-                    ),
-                  );
-                },
-              ),
-            ],
+                  },
+                ),
+              ],
+            ),
           ),
         ),
       ),

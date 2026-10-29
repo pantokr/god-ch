@@ -11,13 +11,14 @@ import '../../../core/layout/app_dialog.dart';
 import '../../../core/layout/responsive.dart';
 import '../../../core/mvvm/view_model_builder.dart';
 import '../../../core/theme.dart';
+import '../../../data/models/affiliation.dart';
 import '../../../data/models/invite_code.dart';
 import '../../../data/models/member.dart';
 import '../../church/data/church_repository.dart';
 import '../view_model/invite_codes_view_model.dart';
 
-/// 초대 코드. 코드를 만들 때 역할 · 일회용 여부를 정해 두면, 그 코드로 들어온 사람은
-/// 그 역할로 신청된다. 알맞은 사람에게 보낼 초대 메시지를 복사해 전달한다.
+/// 초대 코드. 코드를 만들 때 역할 · 소속 · 일회용 여부를 정해 두면, 그 코드로 들어온 사람은
+/// 그 역할과 소속으로 신청된다. 알맞은 사람에게 보낼 초대 메시지를 복사해 전달한다.
 /// 코드는 일정 기간만 유효하고, 필요하면 새로 발급하거나 폐기한다.
 class InviteCodeCard extends StatelessWidget {
   const InviteCodeCard({super.key, required this.me});
@@ -27,8 +28,11 @@ class InviteCodeCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ViewModelBuilder<InviteCodesViewModel>(
-      create: (context) =>
-          InviteCodesViewModel(AppScope.read(context).churches, me),
+      create: (context) => InviteCodesViewModel(
+        AppScope.read(context).churches,
+        AppScope.read(context).affiliations,
+        me,
+      ),
       builder: (context, vm) {
         final narrow = MediaQuery.sizeOf(context).width < kNarrow;
         final createButton = FilledButton.icon(
@@ -72,23 +76,40 @@ class InviteCodeCard extends StatelessWidget {
                   ),
                 ],
                 const SizedBox(height: 12),
-                StreamBuilder<List<InviteCode>>(
-                  stream: vm.codes,
-                  builder: (context, snap) {
-                    final active = (snap.data ?? const <InviteCode>[])
-                        .where((c) => !c.isExpired)
-                        .toList();
-                    if (active.isEmpty) {
-                      return Text(
-                        '유효한 초대 코드가 없어요. 새 코드를 만들어 주세요.',
-                        style: TextStyle(color: context.palette.muted),
-                      );
-                    }
-                    return Column(
-                      children: [
-                        for (final c in active)
-                          _CodeRow(code: c, vm: vm, churchName: me.churchName),
-                      ],
+                StreamBuilder<List<Affiliation>>(
+                  stream: vm.affiliations,
+                  builder: (context, affSnap) {
+                    final names = {
+                      for (final a in affSnap.data ?? const <Affiliation>[])
+                        a.id: a.name,
+                    };
+                    return StreamBuilder<List<InviteCode>>(
+                      stream: vm.codes,
+                      builder: (context, snap) {
+                        final active = (snap.data ?? const <InviteCode>[])
+                            .where((c) => !c.isExpired)
+                            .toList();
+                        if (active.isEmpty) {
+                          return Text(
+                            '유효한 초대 코드가 없어요. 새 코드를 만들어 주세요.',
+                            style: TextStyle(color: context.palette.muted),
+                          );
+                        }
+                        return Column(
+                          children: [
+                            for (final c in active)
+                              _CodeRow(
+                                code: c,
+                                vm: vm,
+                                churchName: me.churchName,
+                                affiliationNames: [
+                                  for (final id in c.affiliationIds)
+                                    if (names[id] != null) names[id]!,
+                                ],
+                              ),
+                          ],
+                        );
+                      },
                     );
                   },
                 ),
@@ -111,10 +132,11 @@ class InviteCodeCard extends StatelessWidget {
 }
 
 class _InviteForm {
-  const _InviteForm(this.singleUse, this.role);
+  const _InviteForm(this.singleUse, this.role, this.affiliationIds);
 
   final bool singleUse;
   final Role role;
+  final List<String> affiliationIds;
 }
 
 /// 새 초대 코드: 역할 · 일회용 여부를 고른다.
@@ -130,6 +152,7 @@ class _NewInviteForm extends StatefulWidget {
 class _NewInviteFormState extends State<_NewInviteForm> {
   bool _singleUse = false;
   Role _role = Role.member;
+  String? _affiliation;
 
   @override
   Widget build(BuildContext context) {
@@ -164,6 +187,24 @@ class _NewInviteFormState extends State<_NewInviteForm> {
             ),
           ),
         const SizedBox(height: 16),
+        StreamBuilder<List<Affiliation>>(
+          stream: widget.vm.affiliations,
+          builder: (context, snap) {
+            final list = snap.data ?? const <Affiliation>[];
+            return DropdownButtonFormField<String?>(
+              initialValue: _affiliation,
+              isExpanded: true,
+              borderRadius: BorderRadius.circular(AppRadius.control),
+              decoration: const InputDecoration(labelText: '소속'),
+              items: [
+                const DropdownMenuItem(value: null, child: Text('없음')),
+                for (final a in list)
+                  DropdownMenuItem(value: a.id, child: Text(a.name)),
+              ],
+              onChanged: (v) => setState(() => _affiliation = v),
+            );
+          },
+        ),
         const SizedBox(height: 8),
         CheckboxListTile(
           contentPadding: EdgeInsets.zero,
@@ -182,8 +223,10 @@ class _NewInviteFormState extends State<_NewInviteForm> {
             ),
             const SizedBox(width: 8),
             FilledButton(
-              onPressed: () =>
-                  Navigator.pop(context, _InviteForm(_singleUse, _role)),
+              onPressed: () => Navigator.pop(
+                context,
+                _InviteForm(_singleUse, _role, [?_affiliation]),
+              ),
               child: const Text('코드 만들기'),
             ),
           ],
@@ -198,15 +241,21 @@ class _CodeRow extends StatelessWidget {
     required this.code,
     required this.vm,
     required this.churchName,
+    required this.affiliationNames,
   });
 
   final InviteCode code;
   final InviteCodesViewModel vm;
   final String churchName;
+  final List<String> affiliationNames;
 
   String get _roleLabel => code.role == Role.staff ? '교역자' : '교인';
 
-  String get _target => [_roleLabel, if (code.singleUse) '일회용'].join(' · ');
+  String get _target => [
+    _roleLabel,
+    if (code.singleUse) '일회용',
+    if (affiliationNames.isNotEmpty) affiliationNames.join(', '),
+  ].join(' · ');
 
   /// "3일 남음" / "5시간 남음" 처럼 남은 유효기간을 보여준다.
   String _remaining() {
@@ -222,7 +271,7 @@ class _CodeRow extends StatelessWidget {
   String _message() {
     return [
       '$churchName에 초대합니다.',
-      '역할: $_roleLabel',
+      '역할: $_roleLabel${affiliationNames.isEmpty ? '' : ' · 소속: ${affiliationNames.join(', ')}'}',
       '초대 코드: ${code.code} (${fmtDate(code.expiresAt)}까지)',
       '앱에서 "초대 코드로 입장"을 눌러 이 코드를 입력해 주세요.',
       if (kIsWeb) Uri.base.origin,

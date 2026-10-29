@@ -5,6 +5,7 @@ import '../../../app/routes.dart';
 import '../../../core/mvvm/view_model_builder.dart';
 import '../../auth/view_model/account_view_model.dart';
 import '../../church/view/member_gate.dart';
+import '../../home/view_model/affiliation_choice.dart';
 import 'church_shell.dart';
 
 /// 주소 `/churches/:cid/...`의 틀. 승인된 교인인지 확인한 뒤 교회 틀을 그린다.
@@ -27,12 +28,17 @@ class ChurchShellRoute extends StatelessWidget {
       churchId: churchId,
       builder: (context, me) => ViewModelBuilder<AccountViewModel>(
         create: (context) => AccountViewModel(AppScope.read(context).auth),
-        builder: (context, account) => ChurchShell(
-          me: me,
-          section: section,
-          userName: account.userName,
-          onSignOut: account.signOut,
-          child: child,
+        // 기도 · 성경에서 고른 소속은 탭을 오가도 유지된다.
+        builder: (context, account) => ViewModelBuilder<AffiliationChoice>(
+          create: (context) => AffiliationChoice(),
+          builder: (context, choice) => ChurchShell(
+            me: me,
+            section: section,
+            affiliationChoice: choice,
+            userName: account.userName,
+            onSignOut: account.signOut,
+            child: child,
+          ),
         ),
       ),
     );

@@ -4,6 +4,7 @@ import '../../../app/app_scope.dart';
 import '../../../core/layout/page_frame.dart';
 import '../../../core/mvvm/view_model_builder.dart';
 import '../../../core/theme.dart';
+import '../../../data/models/affiliation.dart';
 import '../../../data/models/member.dart';
 import '../view_model/member_admin_view_model.dart';
 import 'member_tile.dart';
@@ -22,7 +23,7 @@ class ChurchMembersTab extends StatelessWidget {
     return ViewModelBuilder<MemberAdminViewModel>(
       create: (context) {
         final scope = AppScope.read(context);
-        return MemberAdminViewModel(scope.members, me);
+        return MemberAdminViewModel(scope.members, scope.affiliations, me);
       },
       builder: (context, vm) => SingleChildScrollView(
         child: PageFrame(
@@ -44,7 +45,14 @@ class ChurchMembersTab extends StatelessWidget {
                       child: Center(child: CircularProgressIndicator()),
                     );
                   }
-                  return _List(vm: vm, all: snap.data!);
+                  return StreamBuilder<List<Affiliation>>(
+                    stream: vm.affiliations,
+                    builder: (context, affs) => _List(
+                      vm: vm,
+                      all: snap.data!,
+                      affiliations: affs.data ?? const <Affiliation>[],
+                    ),
+                  );
                 },
               ),
               const SizedBox(height: 32),
@@ -57,10 +65,15 @@ class ChurchMembersTab extends StatelessWidget {
 }
 
 class _List extends StatelessWidget {
-  const _List({required this.vm, required this.all});
+  const _List({
+    required this.vm,
+    required this.all,
+    required this.affiliations,
+  });
 
   final MemberAdminViewModel vm;
   final List<Member> all;
+  final List<Affiliation> affiliations;
 
   @override
   Widget build(BuildContext context) {
@@ -76,6 +89,7 @@ class _List extends StatelessWidget {
       ...existing,
     ];
     final recent = rows.length - existing.length;
+    final names = {for (final a in affiliations) a.id: a.name};
 
     return ListenableBuilder(
       listenable: vm,
@@ -105,7 +119,16 @@ class _List extends StatelessWidget {
                 children: [
                   for (var i = 0; i < requests.length; i++) ...[
                     if (i > 0) const Divider(),
-                    MemberTile(member: requests[i], vm: vm, isNew: true),
+                    MemberTile(
+                      member: requests[i],
+                      vm: vm,
+                      isNew: true,
+                      affiliations: affiliations,
+                      affiliationNames: [
+                        for (final id in requests[i].affiliationIds)
+                          if (names[id] != null) names[id]!,
+                      ],
+                    ),
                   ],
                 ],
               ),
@@ -134,7 +157,16 @@ class _List extends StatelessWidget {
                 children: [
                   for (var i = 0; i < rows.length; i++) ...[
                     if (i > 0) const Divider(),
-                    MemberTile(member: rows[i], vm: vm, isNew: i < recent),
+                    MemberTile(
+                      member: rows[i],
+                      vm: vm,
+                      isNew: i < recent,
+                      affiliations: affiliations,
+                      affiliationNames: [
+                        for (final id in rows[i].affiliationIds)
+                          if (names[id] != null) names[id]!,
+                      ],
+                    ),
                   ],
                 ],
               ),

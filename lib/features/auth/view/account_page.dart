@@ -10,6 +10,7 @@ import '../../../core/layout/app_dialog.dart';
 import '../../../core/layout/profile_summary.dart';
 import '../../../core/theme.dart';
 import 'change_password_form.dart';
+import 'my_affiliations_card.dart';
 import 'profile_edit_dialog.dart';
 
 /// 내 정보 페이지(프로필 사진을 누르면 열린다): 사진 · 이름 · 연락처 · 주소 · 생년월일을 고친다.
@@ -64,6 +65,8 @@ class AccountPage extends StatelessWidget {
                       ),
                     ),
                   ),
+                  // 내가 속한 교회와 소속 (여러 개일 수 있고, 소속은 교역자가 정한다).
+                  const MyAffiliationsCard(),
                   if (auth.hasPassword) ...[
                     const SizedBox(height: 20),
                     Card(

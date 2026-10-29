@@ -44,6 +44,7 @@ class SampleDataRepository {
     for (var i = 0; i < prayers.length; i++) {
       batch.set(_paths.prayers(churchId).doc(PrayerRepository.newId()), {
         'authorId': uid,
+        'affiliationId': null,
         'title': prayers[i].$1,
         'content': prayers[i].$2,
         'visibility': 'public',
