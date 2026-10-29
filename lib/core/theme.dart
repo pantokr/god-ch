@@ -362,7 +362,7 @@ ThemeData buildTheme(Brightness brightness) {
         padding: const EdgeInsets.symmetric(horizontal: 22),
         textStyle: const TextStyle(fontWeight: FontWeight.w700),
         elevation: 0,
-        foregroundColor: Colors.white,
+        foregroundColor: p.onBrand,
         disabledForegroundColor: p.muted,
         backgroundColor: Colors.transparent,
         shadowColor: Colors.transparent,

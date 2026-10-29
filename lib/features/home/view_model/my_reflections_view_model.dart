@@ -18,16 +18,14 @@ class MyReflectionsViewModel extends ViewModel {
     ContentRepository contents,
     ReflectionRepository reflections,
     String churchId,
-  ) : items = contents
-          .latest(churchId, ContentKind.devotion, limit: 30)
-          .asyncMap((devotions) async {
-            final mine = <MyReflection>[];
-            for (final d in devotions) {
-              final r = await reflections.mine(churchId, d.id);
-              if (r != null) mine.add(MyReflection(d, r));
-            }
-            return mine;
-          });
+  ) : items = contents.latest(churchId).asyncMap((devotions) async {
+        final mine = <MyReflection>[];
+        for (final d in devotions) {
+          final r = await reflections.mine(churchId, d.id);
+          if (r != null) mine.add(MyReflection(d, r));
+        }
+        return mine;
+      });
 
   final Stream<List<MyReflection>> items;
 }

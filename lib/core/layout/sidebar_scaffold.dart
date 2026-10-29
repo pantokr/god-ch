@@ -2,6 +2,7 @@ import '../icons.dart';
 
 import 'package:flutter/material.dart';
 
+import '../../app/app_scope.dart';
 import '../theme.dart';
 import 'responsive.dart';
 
@@ -57,14 +58,11 @@ class SidebarScaffold extends StatelessWidget {
     required this.groups,
     required this.userName,
     required this.onProfile,
-    required this.onSettings,
     required this.onSignOut,
     required this.child,
     this.sidebarHeader,
     this.railActions = const [],
-    this.tabHome,
-    this.tabLeft,
-    this.tabRight,
+    this.tabs = const [],
     this.topBarTrailing,
     this.backgroundColor,
     this.backdrop,
@@ -82,22 +80,17 @@ class SidebarScaffold extends StatelessWidget {
   /// 오른쪽 계정 띠에서 프로필 아래에 놓는 버튼들 (예: 알림).
   final List<Widget> railActions;
 
-  /// 하단 탭: 가운데(원형 버튼)와 양옆. 양옆은 비어 있을 수 있다.
+  /// 하단 탭: 같은 크기의 칸으로 나란히 놓인다.
   /// 좁은 화면에서만 아래에 뜨고, 넓은 화면에서는 왼쪽 메뉴 맨 위에 함께 놓인다.
-  final SidebarItem? tabHome;
-  final SidebarItem? tabLeft;
-  final SidebarItem? tabRight;
+  final List<SidebarItem> tabs;
 
-  List<SidebarItem> get _tabItems => [?tabLeft, ?tabHome, ?tabRight];
-
-  /// 위쪽 탭(서랍 버튼이 있는 줄) 오른쪽에 놓는 위젯 (예: 기도 · 말씀 탭의 부서 선택).
+  /// 위쪽 탭(서랍 버튼이 있는 줄) 오른쪽에 놓는 위젯 (예: 목록 모양 스위치).
   final Widget? topBarTrailing;
 
   /// 화면 바탕색을 바꾼다 (예: 기도 화면의 게시판 색). 상단 바 · 하단 바까지 같은 색이 되어 배경색이 하나로 보인다.
   final Color? backgroundColor;
   final String userName;
   final VoidCallback onProfile;
-  final VoidCallback onSettings;
   final VoidCallback onSignOut;
   final Widget child;
 
@@ -109,9 +102,9 @@ class SidebarScaffold extends StatelessWidget {
   Widget build(BuildContext context) {
     final narrow = MediaQuery.sizeOf(context).width < kNarrow;
     final panel = _SidebarPanel(
-      groups: narrow || _tabItems.isEmpty
+      groups: narrow || tabs.isEmpty
           ? groups
-          : [SidebarGroup(items: _tabItems), ...groups],
+          : [SidebarGroup(items: tabs), ...groups],
       header: sidebarHeader,
       // 서랍 안에서는 메뉴를 고르면 서랍을 닫는다.
       closeOnTap: narrow,
@@ -119,7 +112,6 @@ class SidebarScaffold extends StatelessWidget {
     final rail = AccountRail(
       userName: userName,
       onProfile: onProfile,
-      onSettings: onSettings,
       onSignOut: onSignOut,
       actions: railActions,
     );
@@ -132,9 +124,7 @@ class SidebarScaffold extends StatelessWidget {
           child: SafeArea(child: panel),
         ),
         rail: rail,
-        bottomBar: tabHome == null
-            ? null
-            : _PillTabBar(left: tabLeft, home: tabHome!, right: tabRight),
+        bottomBar: tabs.isEmpty ? null : _PillTabBar(items: tabs),
         topBarTrailing: topBarTrailing,
         backdrop: backdrop,
         child: child,
@@ -164,14 +154,12 @@ class AccountRail extends StatelessWidget {
     super.key,
     required this.userName,
     required this.onProfile,
-    required this.onSettings,
     required this.onSignOut,
     this.actions = const [],
   });
 
   final String userName;
   final VoidCallback onProfile;
-  final VoidCallback onSettings;
   final VoidCallback onSignOut;
 
   /// 프로필 아래에 놓는 버튼들 (예: 알림).
@@ -199,11 +187,7 @@ class AccountRail extends StatelessWidget {
                     ...actions,
                     _LogoutButton(onSignOut: onSignOut),
                     const Spacer(),
-                    IconButton(
-                      tooltip: '설정',
-                      icon: const Icon(AppIcons.gear),
-                      onPressed: onSettings,
-                    ),
+                    const _ThemeButton(),
                     const SizedBox(height: 8),
                   ],
                 ),
@@ -212,6 +196,23 @@ class AccountRail extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// 화면 모드 버튼: 누르면 라이트와 다크가 바뀐다 (지금 보이는 모드의 반대로).
+class _ThemeButton extends StatelessWidget {
+  const _ThemeButton();
+
+  @override
+  Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    return IconButton(
+      tooltip: dark ? '라이트 모드' : '다크 모드',
+      icon: Icon(dark ? AppIcons.sun : AppIcons.moon),
+      onPressed: () =>
+          AppScope.read(context).themeMode
+              .setMode(dark ? ThemeMode.light : ThemeMode.dark),
     );
   }
 }
@@ -483,75 +484,40 @@ class _SidebarTile extends StatelessWidget {
   }
 }
 
-/// 하단 탭: 내용 아래에 떠 있는 알약 모양 바. 가운데([home])는 알약 위로 솟은 원형 버튼이고,
-/// 양옆([left] · [right])은 아이콘과 이름을 보여준다. 비어 있는 쪽은 빈 칸으로 둔다.
+/// 하단 탭: 내용 아래에 떠 있는 알약 모양 바. 칸마다 아이콘과 이름이 있다.
 class _PillTabBar extends StatelessWidget {
-  const _PillTabBar({
-    required this.left,
-    required this.home,
-    required this.right,
-  });
+  const _PillTabBar({required this.items});
 
-  final SidebarItem? left;
-  final SidebarItem home;
-  final SidebarItem? right;
+  final List<SidebarItem> items;
 
-  /// 가운데 원형 버튼의 지름과, 알약 바의 높이.
-  static const _circle = 64.0;
-  static const _bar = 58.0;
+  static const _bar = 62.0;
 
   @override
   Widget build(BuildContext context) {
     final palette = context.palette;
-    const radius = BorderRadius.all(Radius.circular(999));
-    // 원형 버튼이 알약 위로 솟는 만큼 위쪽을 비워 둔다.
-    const lift = _circle - _bar / 2 - 4;
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-      child: SizedBox(
-        height: _bar + lift,
-        child: Stack(
-          alignment: Alignment.topCenter,
-          children: [
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
-              height: _bar,
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  color: palette.surface,
-                  borderRadius: radius,
-                  border: Border.all(color: palette.border),
-                  boxShadow: AppShadow.soft(context),
-                ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: left == null
-                          ? const SizedBox.shrink()
-                          : _SideTab(item: left!),
-                    ),
-                    // 가운데 원형 버튼이 놓일 자리.
-                    const SizedBox(width: _circle + 8),
-                    Expanded(
-                      child: right == null
-                          ? const SizedBox.shrink()
-                          : _SideTab(item: right!),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            Positioned(top: 0, child: _HomeButton(item: home)),
-          ],
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: palette.surface,
+          borderRadius: const BorderRadius.all(Radius.circular(999)),
+          border: Border.all(color: palette.border),
+          boxShadow: AppShadow.soft(context),
+        ),
+        child: SizedBox(
+          height: _bar,
+          child: Row(
+            children: [
+              for (final item in items) Expanded(child: _SideTab(item: item)),
+            ],
+          ),
         ),
       ),
     );
   }
 }
 
-/// 양옆 탭: 아이콘 위에 이름. 고른 탭은 포인트색으로 굵게 보인다.
+/// 탭 한 칸: 아이콘 위에 이름. 고른 탭은 포인트색으로 굵게 보인다.
 class _SideTab extends StatelessWidget {
   const _SideTab({required this.item});
 
@@ -586,46 +552,6 @@ class _SideTab extends StatelessWidget {
               ),
             ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-/// 가운데 원형 홈 버튼. 늘 네온 그라데이션이고, 홈에 있을 때는 빛이 더 강하다.
-class _HomeButton extends StatelessWidget {
-  const _HomeButton({required this.item});
-
-  final SidebarItem item;
-
-  @override
-  Widget build(BuildContext context) {
-    final palette = context.palette;
-    return Tooltip(
-      message: item.label,
-      child: GestureDetector(
-        onTap: item.onTap,
-        child: Container(
-          width: _PillTabBar._circle,
-          height: _PillTabBar._circle,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: AppDepth.brand(context),
-            // 알약과 겹치는 가장자리를 배경색 고리로 갈라 준다.
-            border: Border.all(
-              color: Theme.of(context).scaffoldBackgroundColor,
-              width: 4,
-            ),
-            boxShadow: AppDepth.glow(
-              context,
-              strength: item.selected ? 1.2 : 0.6,
-            ),
-          ),
-          child: Icon(
-            item.selected ? item.selectedIcon : item.icon,
-            size: 30,
-            color: palette.onBrand,
-          ),
         ),
       ),
     );

@@ -36,23 +36,17 @@ class PrayerDetailRoute extends StatelessWidget {
   }
 }
 
-/// 주소 `/churches/:cid/prayers/new`: 새 기도제목 쓰기. `?dept=`가 있으면 그 부서가 기본 게시 범위다.
+/// 주소 `/churches/:cid/prayers/new`: 새 기도제목 쓰기.
 class PrayerCreateRoute extends StatelessWidget {
-  const PrayerCreateRoute({
-    super.key,
-    required this.churchId,
-    this.departmentId,
-  });
+  const PrayerCreateRoute({super.key, required this.churchId});
 
   final String churchId;
-  final String? departmentId;
 
   @override
   Widget build(BuildContext context) {
     return MemberGate(
       churchId: churchId,
-      builder: (context, me) =>
-          PrayerEditorPage(me: me, defaultDepartmentId: departmentId),
+      builder: (context, me) => PrayerEditorPage(me: me),
     );
   }
 }

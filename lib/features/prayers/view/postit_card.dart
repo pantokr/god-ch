@@ -217,11 +217,7 @@ class PostItNote extends StatelessWidget {
     // -0.03 ~ +0.03 라디안: 한 장씩 조금씩 다르게 기울인다.
     final tilt = ((hash ~/ 7) % 5 - 2) * 0.015;
     final pinned = hash % 3 != 0; // 압정이거나 테이프
-    final badges = [
-      if (prayer.departmentId != null) '부서',
-      if (!prayer.isPublic) '교역자 전용',
-      if (prayer.deleted) '삭제됨',
-    ];
+    final badges = [if (!prayer.isPublic) '교역자 전용', if (prayer.deleted) '삭제됨'];
     return Transform.rotate(
       angle: tilt,
       child: Stack(

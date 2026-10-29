@@ -7,7 +7,6 @@ import '../../../app/routes.dart';
 import '../../../core/layout/profile_summary.dart';
 import '../../../core/layout/sidebar_scaffold.dart';
 import '../../notifications/view/notifications_button.dart';
-import '../../settings/view/settings_dialog.dart';
 
 /// 앱 운영자 전용 관리자 패널의 틀. 교회에 소속되지 않고, 이 패널 안에서만 움직인다.
 /// 왼쪽 메뉴(좁은 화면에서는 서랍)로 이동하며, 메뉴를 바꾸면 주소가 바뀌므로
@@ -47,7 +46,6 @@ class PlatformShell extends StatelessWidget {
         Routes.account,
         extra: const [ProfileDetail('역할', '앱 운영자')],
       ),
-      onSettings: () => showSettingsDialog(context),
       onSignOut: onSignOut,
       railActions: const [NotificationsButton()],
       groups: [

@@ -5,7 +5,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../core/app_exception.dart';
 import '../../../data/firestore_paths.dart';
 import '../../../data/models/church.dart';
-import '../../../data/models/department.dart';
 import '../../../data/models/member.dart';
 import '../../../data/models/user_profile.dart';
 import '../../auth/data/auth_repository.dart';
@@ -37,7 +36,7 @@ class ChurchRegistryRepository {
       .map((s) => s.exists ? Church.fromDoc(s) : null);
 
   /// 앱 운영자는 교회 회원이 아니므로, 예전에 잘못 남은 내 교인 문서를 모두 지운다.
-  /// 앱 운영자는 회원이 아니어도 교회의 정보 · 인원 · 입장 · 부서 · 콘텐츠를 고칠 수 있다 (보안 규칙이 허용한다).
+  /// 앱 운영자는 회원이 아니어도 교회의 정보 · 인원 · 입장 · 콘텐츠를 고칠 수 있다 (보안 규칙이 허용한다).
   Future<void> removeOwnMemberships() async {
     final mine = await _paths.allMembers
         .where('uid', isEqualTo: _auth.uid)
@@ -54,28 +53,13 @@ class ChurchRegistryRepository {
       .snapshots()
       .map((s) => s.docs.map(UserProfile.fromDoc).toList());
 
-  /// 모든 교회의 교인 정보 (앱 운영자 전용). 회원이 어느 교회·부서에 속하는지 보여줄 때 쓴다.
+  /// 모든 교회의 교인 정보 (앱 운영자 전용). 회원이 어느 교회에 속하는지 보여줄 때 쓴다.
   Stream<List<Member>> allMembers() => _paths.allMembers.snapshots().map(
     (s) => s.docs
         .map(Member.fromDoc)
         .where((m) => !m.isAppOperator && m.status != MemberStatus.removed)
         .toList(),
   );
-
-  /// 모든 교회의 부서 (앱 운영자 전용).
-  Stream<List<Department>> allDepartments() => _db
-      .collectionGroup('departments')
-      .snapshots()
-      .map(
-        (s) => [
-          for (final d in s.docs)
-            Department(
-              d.id,
-              d.data()['name'] as String? ?? '',
-              churchId: d.reference.parent.parent!.id,
-            ),
-        ],
-      );
 
   /// 회원의 이름·전화번호를 고친다. 소속된 모든 교회의 교인 정보에도 같이 반영한다.
   Future<void> updateUser(
@@ -202,7 +186,7 @@ class ChurchRegistryRepository {
   }
 
   /// 앱 운영자가 교회를 관리할 때 쓰는 화면용 교인 정보. 저장되지 않으며 소속을 뜻하지 않는다.
-  /// 기존 교인 관리 화면(교인·초대 코드·부서)을 그대로 쓰기 위한 것이다.
+  /// 기존 교인 관리 화면(교인·초대 코드)을 그대로 쓰기 위한 것이다.
   Member operatorViewOf(Church church) => Member(
     id: _auth.uid,
     churchId: church.id,

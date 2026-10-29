@@ -9,7 +9,7 @@ import '../../../data/models/member.dart';
 import '../view_model/my_churches_view_model.dart';
 import 'my_churches_page.dart';
 
-/// 주소 `/churches`: 내 교회 목록. 교회나 부서를 고르면 그 주소로 이동해
+/// 주소 `/churches`: 내 교회 목록. 교회를 고르면 그 주소로 이동해
 /// 브라우저 뒤로가기로 목록에 돌아올 수 있다.
 /// 승인된 교회가 하나라도 있으면 목록을 거치지 않고 바로 그 교회의 메인으로 들어간다
 /// ([showList]가 true일 때, 즉 "내 교회 목록"을 일부러 열었을 때는 제외).
@@ -61,16 +61,7 @@ class MyChurchesRoute extends StatelessWidget {
                   .toList(),
               userName: vm.userName,
               onSignOut: vm.signOut,
-              // 부서 공간과 교회 전체 모두 메인으로 들어간다 (부서 공간은 주소에 부서가 붙는다).
-              onOpen: (church, department) => context.go(
-                department == null
-                    ? Routes.home(church.churchId)
-                    : Routes.section(
-                        church.churchId,
-                        ChurchSection.home,
-                        dept: department.id,
-                      ),
-              ),
+              onOpen: (church) => context.go(Routes.home(church.churchId)),
             ),
           );
         },

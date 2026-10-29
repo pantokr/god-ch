@@ -1,30 +1,19 @@
-import '../data/models/church_content.dart';
-
-/// 교회 안의 메뉴. 주소의 마지막 부분이 [path]다.
+/// 교회 안의 메뉴. 주소의 마지막 부분이 [path]다. 왼쪽 메뉴(서랍)에서 고른다.
 enum ChurchSection {
-  /// 교회 메인: 공지 캐러셀, 일정, 사진첩, 설교영상, 말씀묵상.
-  home('home'),
+  /// 기도제목: 공개 기도제목이 포스트잇 카드로 떠다닌다. 교회의 첫 화면이다.
+  prayer('prayer'),
 
-  /// 교역자가 구성한 페이지 (주소 `/p/{페이지}`). 메인 · 말씀 묵상 등.
-  page('p'),
+  /// 모임: 노션에 정리한 교회 모임 목록.
+  meetings('meetings'),
 
-  /// 하단 탭 왼쪽 버튼: 그 자리에 놓인 페이지 하나.
-  left('left'),
+  /// 성경: 말씀 묵상 글과 내 묵상.
+  bible('bible'),
 
-  /// 하단 탭 오른쪽 버튼: 그 자리에 놓인 페이지 하나.
-  right('right'),
-
-  /// 내 활동: 기도 요청 · 말씀 묵상 페이지에 따라 자동으로 모이는 내 글.
+  /// 내 활동: 내가 쓴 기도제목과 묵상.
   mine('mine'),
 
-  /// 갤러리: 사진첩의 사진만 모아 보는 별도의 탭.
-  gallery('gallery'),
-
-  /// 페이지 편집 (교역자·교회 운영자): 메뉴의 페이지와 페이지 구성.
-  content('content'),
-
-  /// 콘텐츠 관리 (교회 운영자만): 공지·일정 같은 글을 종류별로 올리고 고친다.
-  contents('contents'),
+  /// 기도 설정 (교회 운영자만): 기도제목 운영 방식.
+  prayerSettings('prayer-settings'),
 
   /// 인원 관리 (교역자·교회 운영자): 새로 등록된 인원 승인, 등록 인원 조회.
   members('members'),
@@ -33,19 +22,13 @@ enum ChurchSection {
   join('join'),
 
   /// 교회 정보 관리 (교회 운영자만): 교회 정보 수정과 폐쇄 요청.
-  info('info'),
-
-  /// 부서 관리 (교역자·교회 운영자): 부서 목록과 부서별 인원 (주소 `/departments/{부서}`).
-  departments('departments');
+  info('info');
 
   const ChurchSection(this.path);
 
   final String path;
 
   static ChurchSection? fromPath(String path) {
-    // 예전 주소(기도 · 말씀 탭)는 왼쪽 · 오른쪽 버튼으로 이어진다.
-    if (path == 'intercession') return left;
-    if (path == 'word') return right;
     for (final s in values) {
       if (s.path == path) return s;
     }
@@ -96,52 +79,26 @@ class Routes {
 
   static String church(String churchId) => '/churches/$churchId';
 
-  /// 교회 안의 메뉴. [dept]가 있으면 그 부서 전용 공간으로 본다.
-  static String section(String churchId, ChurchSection s, {String? dept}) {
-    final base = '/churches/$churchId/${s.path}';
-    return dept == null ? base : '$base?dept=$dept';
-  }
+  /// 교회 안의 메뉴.
+  static String section(String churchId, ChurchSection s) =>
+      '/churches/$churchId/${s.path}';
 
-  static String home(String churchId) => section(churchId, ChurchSection.home);
+  /// 교회의 첫 화면 (기도제목).
+  static String home(String churchId) =>
+      section(churchId, ChurchSection.prayer);
 
-  /// 교역자가 구성한 페이지. [dept]가 있으면 그 부서 전용 공간으로 본다.
-  static String page(String churchId, String pageId, {String? dept}) {
-    final base = '/churches/$churchId/p/$pageId';
-    return dept == null ? base : '$base?dept=$dept';
-  }
+  /// 말씀 상세 (교회 틀 밖의 전체 화면).
+  static String devotion(String churchId, String id) =>
+      '/churches/$churchId/devotion/$id';
 
-  /// 메인 콘텐츠 목록 (공지·일정·사진첩·설교영상·말씀묵상의 "더보기").
-  static String contentList(String churchId, ContentKind kind) =>
-      '/churches/$churchId/c/${kind.collection}';
-
-  static String contentDetail(String churchId, ContentKind kind, String id) =>
-      '${contentList(churchId, kind)}/$id';
-
-  /// 한 페이지의 구성(구조·디자인)을 고치는 화면.
-  static String pageEdit(String churchId, String pageId) =>
-      '${section(churchId, ChurchSection.content)}/p/$pageId';
-
-  /// 한 부서의 인원 관리 화면.
-  static String department(String churchId, String deptId) =>
-      '${section(churchId, ChurchSection.departments)}/$deptId';
-
-  /// 페이지 편집 화면 (페이지 목록).
-  static String pageList(String churchId) =>
-      section(churchId, ChurchSection.content);
-
-  /// 콘텐츠 관리 화면. [kind]를 주면 그 종류(공지·일정 …)의 글 관리 화면이 열린다.
-  static String contentEdit(String churchId, {ContentKind? kind}) {
-    final base = section(churchId, ChurchSection.contents);
-    return kind == null ? base : '$base?kind=${kind.collection}';
-  }
+  /// 모임 상세 (교회 틀 밖의 전체 화면).
+  static String meeting(String churchId, String id) =>
+      '/churches/$churchId/meeting/$id';
 
   static String prayer(String churchId, String prayerId) =>
       '/churches/$churchId/prayers/$prayerId';
 
-  static String newPrayer(String churchId, {String? dept}) {
-    final base = '/churches/$churchId/prayers/new';
-    return dept == null ? base : '$base?dept=$dept';
-  }
+  static String newPrayer(String churchId) => '/churches/$churchId/prayers/new';
 
   static String editPrayer(String churchId, String prayerId) =>
       '/churches/$churchId/prayers/$prayerId/edit';

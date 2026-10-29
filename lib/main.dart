@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 
 import 'app/app.dart';
+import 'app/list_style_controller.dart';
 import 'app/theme_mode_controller.dart';
 import 'firebase_options.dart';
 
@@ -14,5 +15,6 @@ Future<void> main() async {
   if (kIsWeb) await FirebaseAuth.instance.setPersistence(Persistence.LOCAL);
   // 저장된 화면 모드를 먼저 불러와 첫 화면부터 맞는 모드로 그린다.
   final themeMode = await ThemeModeController.load();
-  runApp(App(themeMode: themeMode));
+  final listStyle = await ListStyleController.load();
+  runApp(App(themeMode: themeMode, listStyle: listStyle));
 }

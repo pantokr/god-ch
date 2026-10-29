@@ -1,35 +1,62 @@
-import '../../../data/models/page_layout.dart';
-
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 
-import '../../../app/routes.dart';
-import '../../../data/models/church_content.dart';
-import '../../admin/view/department_detail_page.dart';
-import '../../admin/view/department_manage_page.dart';
 import '../../admin/view/church_info_manage_page.dart';
 import '../../admin/view/church_join_tab.dart';
 import '../../admin/view/church_members_tab.dart';
-import '../../home/view/content_detail_page.dart';
-import '../../home/view/content_edit_page.dart';
-import '../../home/view/content_list_page.dart';
-import '../../home/view/content_manage_page.dart';
-import '../../home/view/gallery_page.dart';
-import '../../home/view/group_hub_page.dart';
+import '../../bible/view/bible_page.dart';
 import '../../home/view/my_activity_page.dart';
-import '../../home/view/page_edit_page.dart';
-import '../../home/view/page_list_page.dart';
+import '../../meetings/view/meetings_page.dart';
+import '../../prayers/view/prayer_board_page.dart';
+import '../../prayers/view/prayer_settings_page.dart';
 import 'church_scope.dart';
 
 /// 교회 틀 안에 들어가는 메뉴별 페이지들. 필요한 정보는 [ChurchScope]에서 꺼낸다.
 
-/// 갤러리 탭: 사진첩의 사진만 모아 본다.
-class GallerySectionPage extends StatelessWidget {
-  const GallerySectionPage({super.key});
+/// 기도제목: 교회의 첫 화면.
+class PrayerSectionPage extends StatelessWidget {
+  const PrayerSectionPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final scope = ChurchScope.of(context);
+    return PrayerBoardPage(me: scope.me);
+  }
+}
+
+/// 모임: 노션에 정리한 모임 목록.
+class MeetingsSectionPage extends StatelessWidget {
+  const MeetingsSectionPage({super.key});
 
   @override
   Widget build(BuildContext context) =>
-      GalleryPage(me: ChurchScope.of(context).me);
+      MeetingsPage(me: ChurchScope.of(context).me);
+}
+
+/// 성경: 말씀 묵상.
+class BibleSectionPage extends StatelessWidget {
+  const BibleSectionPage({super.key});
+
+  @override
+  Widget build(BuildContext context) =>
+      BiblePage(me: ChurchScope.of(context).me);
+}
+
+/// "내 활동": 내가 쓴 기도제목과 묵상.
+class MineSectionPage extends StatelessWidget {
+  const MineSectionPage({super.key});
+
+  @override
+  Widget build(BuildContext context) =>
+      MyActivityPage(me: ChurchScope.of(context).me);
+}
+
+/// 기도 설정 (교회 운영자).
+class PrayerSettingsSectionPage extends StatelessWidget {
+  const PrayerSettingsSectionPage({super.key});
+
+  @override
+  Widget build(BuildContext context) =>
+      PrayerSettingsPage(me: ChurchScope.of(context).me);
 }
 
 class MemberManageSectionPage extends StatelessWidget {
@@ -46,182 +73,6 @@ class JoinManageSectionPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) =>
       ChurchJoinTab(me: ChurchScope.of(context).me);
-}
-
-class DepartmentManageSectionPage extends StatelessWidget {
-  const DepartmentManageSectionPage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    final me = ChurchScope.of(context).me;
-    return DepartmentManagePage(
-      me: me,
-      onOpen: (d) => context.push(Routes.department(me.churchId, d.id)),
-    );
-  }
-}
-
-class DepartmentDetailSectionPage extends StatelessWidget {
-  const DepartmentDetailSectionPage({super.key, required this.departmentId});
-
-  final String departmentId;
-
-  @override
-  Widget build(BuildContext context) => DepartmentDetailPage(
-    me: ChurchScope.of(context).me,
-    departmentId: departmentId,
-  );
-}
-
-/// 하단 가운데 "홈": 홈 자리의 페이지들을 이어 붙인다.
-class HomeSectionPage extends StatelessWidget {
-  const HomeSectionPage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    final scope = ChurchScope.of(context);
-    return GroupHubPage(
-      group: PageGroup.home,
-      pages: scope.pages,
-      me: scope.me,
-      choice: scope.departmentChoice,
-      department: scope.department,
-    );
-  }
-}
-
-/// 하단 탭 양옆 버튼: [group](왼쪽 · 오른쪽) 자리에 놓인 페이지 하나.
-class SlotSectionPage extends StatelessWidget {
-  const SlotSectionPage({super.key, required this.group});
-
-  final PageGroup group;
-
-  @override
-  Widget build(BuildContext context) {
-    final scope = ChurchScope.of(context);
-    return GroupHubPage(
-      group: group,
-      pages: scope.pages,
-      me: scope.me,
-      choice: scope.departmentChoice,
-      department: scope.department,
-    );
-  }
-}
-
-/// "내 활동": 기도 요청 · 말씀 묵상 페이지에 따라 자동으로 모이는 내 글.
-class MineSectionPage extends StatelessWidget {
-  const MineSectionPage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    final scope = ChurchScope.of(context);
-    return MyActivityPage(me: scope.me, pages: scope.pages);
-  }
-}
-
-/// 교역자가 구성한 페이지 하나 (주소 `/p/{페이지}`). 없는 페이지면 첫째 페이지로 본다.
-class PageSectionPage extends StatelessWidget {
-  const PageSectionPage({super.key, required this.pageId});
-
-  final String pageId;
-
-  @override
-  Widget build(BuildContext context) {
-    final scope = ChurchScope.of(context);
-    final page =
-        scope.pages.where((p) => p.id == pageId).firstOrNull ??
-        scope.pages.first;
-    return GroupHubPage(
-      key: ValueKey('page/${page.id}/${scope.department?.id}'),
-      group: PageGroup.drawer,
-      page: page,
-      pages: scope.pages,
-      me: scope.me,
-      choice: scope.departmentChoice,
-      department: scope.department,
-    );
-  }
-}
-
-/// 페이지 편집 (교역자·교회 운영자): 메뉴 페이지 목록.
-class PageListSectionPage extends StatelessWidget {
-  const PageListSectionPage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    final scope = ChurchScope.of(context);
-    return PageListPage(me: scope.me, pages: scope.pages);
-  }
-}
-
-/// 콘텐츠 관리 (교회 운영자): 종류를 주면 그 종류의 글 관리, 없으면 종류 목록.
-class ContentEditSectionPage extends StatelessWidget {
-  const ContentEditSectionPage({super.key, this.kind});
-
-  final ContentKind? kind;
-
-  @override
-  Widget build(BuildContext context) {
-    final scope = ChurchScope.of(context);
-    final k = kind;
-    return k == null
-        ? ContentManagePage(me: scope.me, pages: scope.pages)
-        : ContentEditPage(me: scope.me, kind: k);
-  }
-}
-
-/// 한 페이지의 구성 편집.
-class PageEditSectionPage extends StatelessWidget {
-  const PageEditSectionPage({super.key, required this.pageId, this.draft});
-
-  final String pageId;
-
-  /// 아직 저장하지 않은 새 페이지 (페이지 목록의 "페이지 추가"에서 넘어온다).
-  /// 저장 버튼을 눌러야 교회에 만들어진다.
-  final PageConfig? draft;
-
-  @override
-  Widget build(BuildContext context) {
-    final scope = ChurchScope.of(context);
-    final d = draft;
-    final isNew = d != null && !scope.pages.any((p) => p.id == d.id);
-    return PageEditPage(
-      me: scope.me,
-      pages: isNew ? [...scope.pages, d] : scope.pages,
-      pageId: pageId,
-      isNew: isNew,
-    );
-  }
-}
-
-/// 메인의 "더보기" 목록.
-class ContentListSectionPage extends StatelessWidget {
-  const ContentListSectionPage({super.key, required this.kind});
-
-  final ContentKind kind;
-
-  @override
-  Widget build(BuildContext context) =>
-      ContentListPage(me: ChurchScope.of(context).me, kind: kind);
-}
-
-class ContentDetailSectionPage extends StatelessWidget {
-  const ContentDetailSectionPage({
-    super.key,
-    required this.kind,
-    required this.contentId,
-  });
-
-  final ContentKind kind;
-  final String contentId;
-
-  @override
-  Widget build(BuildContext context) => ContentDetailPage(
-    me: ChurchScope.of(context).me,
-    kind: kind,
-    contentId: contentId,
-  );
 }
 
 class ChurchInfoSectionPage extends StatelessWidget {

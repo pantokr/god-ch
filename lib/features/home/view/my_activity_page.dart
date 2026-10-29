@@ -8,59 +8,58 @@ import '../../../core/layout/page_frame.dart';
 import '../../../core/mvvm/view_model_builder.dart';
 import '../../../core/theme.dart';
 import '../../../data/models/member.dart';
-import '../../../data/models/page_layout.dart';
 import '../../prayers/view/my_prayers_page.dart';
 import '../view_model/my_reflections_view_model.dart';
 import 'content_widgets.dart';
 
-/// 하단 탭 "내 활동": 기도 · 말씀 페이지 구성에 따라 자동으로 정해지는 내 글 모음.
-/// 기도 요청 페이지가 있으면 "내 기도제목", 말씀 묵상 페이지가 있으면 "내 묵상"이 생긴다.
+/// 내 활동에 모이는 내 글의 종류.
+enum MyActivity {
+  prayer('내 기도제목'),
+  devotion('내 묵상');
+
+  const MyActivity(this.label);
+
+  final String label;
+}
+
+/// "내 활동": 내가 쓴 기도제목과 내가 남긴 묵상 모음.
 class MyActivityPage extends StatefulWidget {
-  const MyActivityPage({super.key, required this.me, required this.pages});
+  const MyActivityPage({super.key, required this.me});
 
   final Member me;
-  final List<PageConfig> pages;
 
   @override
   State<MyActivityPage> createState() => _MyActivityPageState();
 }
 
 class _MyActivityPageState extends State<MyActivityPage> {
-  MyActivity? _selected;
+  MyActivity _current = MyActivity.prayer;
 
   @override
   Widget build(BuildContext context) {
-    final activities = MyActivity.from(widget.pages);
-    if (activities.isEmpty) {
-      return const PageFrame(child: EmptyHint('내 활동 없음'));
-    }
-    final current = activities.contains(_selected)
-        ? _selected!
-        : activities.first;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (activities.length > 1)
-          SizedBox(
-            height: 52,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              children: [
-                for (final a in activities)
-                  Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: ChoiceChip(
-                      label: Text(a.label),
-                      selected: a == current,
-                      onSelected: (_) => setState(() => _selected = a),
-                    ),
+        SizedBox(
+          height: 52,
+          child: ListView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            children: [
+              for (final a in MyActivity.values)
+                Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: ChoiceChip(
+                    label: Text(a.label),
+                    selected: a == _current,
+                    onSelected: (_) => setState(() => _current = a),
                   ),
-              ],
-            ),
+                ),
+            ],
           ),
+        ),
         Expanded(
-          child: switch (current) {
+          child: switch (_current) {
             MyActivity.prayer => MyPrayersPage(
               key: const ValueKey('mine/prayer'),
               me: widget.me,

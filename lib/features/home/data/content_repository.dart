@@ -10,11 +10,8 @@ import '../../../data/firestore_paths.dart';
 import '../../../data/models/church_content.dart';
 import '../../auth/data/auth_repository.dart';
 
-/// 교회 메인 페이지 콘텐츠(공지·일정·사진첩·설교·말씀묵상)를 읽고 쓴다.
-/// 글은 Firestore에, 이미지는 Firebase Storage(`churches/{id}/{종류}/...`)에 두고
-/// 글에는 이미지의 다운로드 주소만 저장한다.
-/// 읽기는 승인된 교인, 쓰기는 교역자·교회 운영자만 가능하다
-/// (`firestore.rules`와 `storage.rules`가 강제한다).
+/// 말씀묵상 글을 읽고 쓴다. 이미지 올리기(교회 · 회원 사진)도 여기서 한다.
+/// 읽기는 승인된 교인, 글쓰기는 교역자 · 교회 운영자만 가능하다 (`firestore.rules`가 강제한다).
 class ContentRepository {
   ContentRepository(FirebaseFirestore db, this._storage, this._auth)
     : _paths = FirestorePaths(db);
@@ -26,211 +23,91 @@ class ContentRepository {
   final FirebaseStorage _storage;
   final AuthRepository _auth;
 
-  Query<Json> _query(String churchId, ContentKind kind) =>
-      _paths.contents(churchId, kind.collection);
+  CollectionReference<Json> _col(String churchId) =>
+      _paths.contents(churchId, ContentKind.devotion.collection);
 
-  CollectionReference<Json> _areas(String churchId) =>
-      _paths.church(churchId).collection('contentAreas');
-
-  /// 만들어 둔 영역들 (지운 것은 뺀다).
-  Stream<List<ContentArea>> areas(String churchId) => _areas(churchId)
-      .snapshots()
-      .map(
-        (s) => [
-          for (final d in s.docs)
-            if (d.data()['deleted'] != true) ?ContentArea.fromDoc(d),
-        ],
-      );
-
-  /// [kind] 종류에 영역 [name]을 만든다. 같은 종류 안에서 이름이 겹치면 안 된다 ([existing]은 이미 있는 이름들).
-  Future<void> addArea(
-    String churchId,
-    ContentKind kind,
-    String name, {
-    required Iterable<String> existing,
-  }) {
-    final n = name.trim();
-    if (!kind.hasAreas) throw const AppException('이 종류에는 영역이 없어요.');
-    if (n.isEmpty) throw const AppException('영역 이름을 입력해 주세요.');
-    if (n.length > ChurchContent.maxCategoryLength) {
-      throw const AppException('영역 이름은 20자까지 쓸 수 있어요.');
-    }
-    if (existing.contains(n)) throw const AppException('이미 있는 영역이에요.');
-    return _areas(churchId).add({
-      'kind': kind.collection,
-      'name': n,
-      'createdBy': _auth.uid,
-      'createdAt': FieldValue.serverTimestamp(),
-    });
-  }
-
-  /// 영역을 지운 것으로 표시한다. 영역 안에 글이 하나라도 남아 있으면 지울 수 없다.
-  Future<void> deleteArea(
-    String churchId,
-    ContentKind kind,
-    String name,
-  ) async {
-    final posts = await _query(
-      churchId,
-      kind,
-    ).where('category', isEqualTo: name).get();
-    if (posts.docs.any((d) => d.data()['deleted'] != true)) {
-      throw const AppException('영역 안에 게시글이 있어 지울 수 없어요. 먼저 다른 영역으로 옮겨 주세요.');
-    }
-    final docs = await _areas(churchId)
-        .where('kind', isEqualTo: kind.collection)
-        .get();
-    final batch = _paths.db.batch();
-    for (final d in docs.docs) {
-      if (d.data()['name'] != name || d.data()['deleted'] == true) continue;
-      batch.update(d.reference, {
-        'deleted': true,
-        'deletedAt': FieldValue.serverTimestamp(),
-        'deletedBy': _auth.uid,
-      });
-    }
-    await batch.commit();
-  }
-
-  /// 글 [items]를 영역 [area]로 옮긴다 (비우면 영역 없음). 한 번에 여러 건도 된다.
-  Future<void> moveToArea(
-    String churchId,
-    List<ChurchContent> items,
-    String area,
-  ) async {
-    final a = area.trim();
-    if (a.length > ChurchContent.maxCategoryLength) {
-      throw const AppException('영역 이름은 20자까지 쓸 수 있어요.');
-    }
-    if (items.any((c) => !c.kind.hasAreas)) {
-      throw const AppException('이 종류에는 영역이 없어요.');
-    }
-    for (var i = 0; i < items.length; i += 400) {
-      final batch = _paths.db.batch();
-      for (final c in items.skip(i).take(400)) {
-        batch.update(_paths.contents(churchId, c.kind.collection).doc(c.id), {
-          'category': a,
-          'updatedAt': FieldValue.serverTimestamp(),
-        });
-      }
-      await batch.commit();
-    }
-  }
-
-  /// 지워진 글(deleted)은 목록에서 뺀다.
-  List<ChurchContent> _map(ContentKind kind, QuerySnapshot<Json> s) => s.docs
-      .map((d) => ChurchContent.fromDoc(kind, d))
-      .where((c) => !c.deleted)
-      .toList();
-
-  /// 날짜가 최근인 순. [limit]이 없으면 전부.
-  Stream<List<ChurchContent>> latest(
-    String churchId,
-    ContentKind kind, {
-    int? limit,
-  }) {
-    var q = _query(churchId, kind).orderBy('date', descending: true);
+  /// 날짜가 최근인 순. 지워진 글은 뺀다.
+  Stream<List<ChurchContent>> latest(String churchId, {int limit = 30}) {
     // 지워진 글이 섞여 있을 수 있어 조금 더 읽은 뒤 개수를 맞춘다.
-    if (limit != null) q = q.limit(limit + 20);
-    return q.snapshots().map((s) {
-      final items = _map(kind, s);
-      return limit == null ? items : items.take(limit).toList();
-    });
-  }
-
-  /// [month]가 속한 달의 일정을 날짜순으로.
-  Stream<List<ChurchContent>> eventsInMonth(String churchId, DateTime month) {
-    final start = DateTime(month.year, month.month);
-    final end = DateTime(month.year, month.month + 1);
-    return _query(churchId, ContentKind.event)
-        .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(start))
-        .where('date', isLessThan: Timestamp.fromDate(end))
-        .orderBy('date')
+    return _col(churchId)
+        .orderBy('date', descending: true)
+        .limit(limit + 20)
         .snapshots()
-        .map((s) => _map(ContentKind.event, s));
+        .map(
+          (s) => s.docs
+              .map((d) => ChurchContent.fromDoc(ContentKind.devotion, d))
+              .where((c) => !c.deleted)
+              .take(limit)
+              .toList(),
+        );
   }
 
-  Stream<ChurchContent?> one(String churchId, ContentKind kind, String id) =>
-      _paths.contents(churchId, kind.collection).doc(id).snapshots().map((s) {
+  /// 글 한 건. 지워졌거나 없으면 null.
+  Stream<ChurchContent?> one(String churchId, String id) =>
+      _col(churchId).doc(id).snapshots().map((s) {
         if (!s.exists) return null;
-        final c = ChurchContent.fromDoc(kind, s);
+        final c = ChurchContent.fromDoc(ContentKind.devotion, s);
         return c.deleted ? null : c;
+      });
+
+  /// 조회수를 하나 올린다 (글을 열 때마다). 규칙이 +1만 허용한다.
+  Future<void> addView(String churchId, String id) =>
+      _col(churchId).doc(id).update({'views': FieldValue.increment(1)});
+
+  /// 좋아요를 누르거나 취소한다. 누른 사람의 uid가 [ChurchContent.likedBy]에 담긴다.
+  Future<void> setLike(String churchId, String id, {required bool liked}) =>
+      _col(churchId).doc(id).update({
+        'likedBy': liked
+            ? FieldValue.arrayUnion([_auth.uid])
+            : FieldValue.arrayRemove([_auth.uid]),
       });
 
   /// [id]가 null이면 새로 만들고, 있으면 고친다.
   Future<void> save(
-    String churchId,
-    ContentKind kind, {
+    String churchId, {
     String? id,
     required String title,
     required String body,
+    required String meditation,
     required DateTime date,
-    List<String> imageUrls = const [],
-    String videoUrl = '',
-    String category = '',
   }) {
     final t = title.trim();
-    final cat = category.trim();
-    if (cat.length > ChurchContent.maxCategoryLength) {
-      throw const AppException('분류는 20자까지 쓸 수 있어요.');
-    }
     if (t.isEmpty) throw const AppException('제목을 입력해 주세요.');
     if (t.length > 100) throw const AppException('제목은 100자까지 쓸 수 있어요.');
     if (body.trim().length > 5000) {
       throw const AppException('내용은 5000자까지 쓸 수 있어요.');
     }
-    final images = imageUrls.map((u) => u.trim()).where((u) => u.isNotEmpty);
-    for (final u in images) {
-      if (!u.startsWith('https://')) {
-        throw const AppException('이미지는 올려서 사용해 주세요.');
-      }
-    }
-    final video = videoUrl.trim();
-    if (video.isNotEmpty && youtubeId(video) == null) {
-      throw const AppException('유튜브 주소를 입력해 주세요.');
+    if (meditation.trim().length > 5000) {
+      throw const AppException('묵상은 5000자까지 쓸 수 있어요.');
     }
     final data = {
       'title': t,
       'body': body.trim(),
+      'meditation': meditation.trim(),
       'date': Timestamp.fromDate(date),
-      'imageUrls': images.toList(),
-      'videoUrl': video,
-      'category': cat,
     };
-    final col = _paths.contents(churchId, kind.collection);
     if (id == null) {
-      return col.add({
+      return _col(churchId).add({
         ...data,
+        'views': 0,
+        'likedBy': <String>[],
         'createdBy': _auth.uid,
         'createdAt': FieldValue.serverTimestamp(),
       });
     }
-    return col.doc(id).update({
-      ...data,
-      'updatedAt': FieldValue.serverTimestamp(),
-    });
+    return _col(churchId)
+        .doc(id)
+        .update({...data, 'updatedAt': FieldValue.serverTimestamp()});
   }
 
-  /// 글을 지운 것으로 표시한다. 글과 함께 올린 이미지도 지우지 않고 그대로 둔다 (기록 보관).
-  Future<void> delete(String churchId, ContentKind kind, String id) =>
-      _paths.contents(churchId, kind.collection).doc(id).update({
+  /// 글을 지운 것으로 표시한다 (기록 보관).
+  Future<void> delete(String churchId, String id) => _col(churchId)
+      .doc(id)
+      .update({
         'deleted': true,
         'deletedAt': FieldValue.serverTimestamp(),
         'deletedBy': _auth.uid,
       });
-
-  /// 이미지를 Storage에 올리고 다운로드 주소를 돌려준다.
-  /// 휴대폰 사진처럼 큰 이미지는 올리기 전에 긴 변 2048px 이하의 JPEG로 줄인다.
-  Future<String> uploadImage(
-    String churchId,
-    ContentKind kind, {
-    required String fileName,
-    required Uint8List bytes,
-  }) => uploadImageTo(
-    'churches/$churchId/${kind.collection}',
-    fileName: fileName,
-    bytes: bytes,
-  );
 
   /// [folder] 아래에 이미지를 올린다 (교회 썸네일 · 회원 사진 등). 검사와 줄이기는 [uploadImage]와 같다.
   Future<String> uploadImageTo(

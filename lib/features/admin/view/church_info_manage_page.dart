@@ -5,6 +5,7 @@ import '../../../data/models/church.dart';
 import '../../../data/models/member.dart';
 import '../../platform/view/church_info_form.dart';
 import 'church_closure_card.dart';
+import 'sample_data_card.dart';
 
 /// 교회 정보 관리(교회 운영자): 이름 · 전화번호 · 주소 · 썸네일을 고치고, 맨 아래에서 폐쇄를 요청한다.
 class ChurchInfoManagePage extends StatefulWidget {
@@ -40,7 +41,14 @@ class _ChurchInfoManagePageState extends State<ChurchInfoManagePage> {
           title: '교회 정보 관리',
           footer: widget.me.isOperatorView
               ? null
-              : ChurchClosureCard(me: widget.me),
+              : Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    SampleDataCard(churchId: widget.me.churchId),
+                    const SizedBox(height: 12),
+                    ChurchClosureCard(me: widget.me),
+                  ],
+                ),
         );
       },
     );

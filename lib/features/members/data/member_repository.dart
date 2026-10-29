@@ -6,9 +6,8 @@ import '../../../data/models/app_notification.dart';
 import '../../../data/models/blocked_user.dart';
 import '../../../data/models/member.dart';
 import '../../auth/data/auth_repository.dart';
-import '../../church/data/admin_departments.dart' as admin_depts;
 
-/// 교회별 교인 목록과 승인·역할·소속 부서 변경.
+/// 교회별 교인 목록과 승인·역할 변경.
 class MemberRepository {
   MemberRepository(FirebaseFirestore db, this._auth)
     : _paths = FirestorePaths(db);
@@ -53,6 +52,14 @@ class MemberRepository {
         '$churchName 교회에서 추방되었어요',
         '다시 들어오려면 초대 코드로 새로 신청해야 해요.',
       );
+
+  /// 내가 이 교회에서 탈퇴한다. 교인 문서는 지우지 않고 removed 표시만 남긴다 (규칙이 강제한다).
+  Future<void> leave(String churchId) =>
+      _paths.members(churchId).doc(_auth.uid).update({
+        'status': MemberStatus.removed.name,
+        'removedAt': FieldValue.serverTimestamp(),
+        'removedBy': _auth.uid,
+      });
 
   Future<void> _removeAndNotify(
     String churchId,
@@ -161,7 +168,7 @@ class MemberRepository {
   Future<void> setRole(String churchId, String userId, Role role) =>
       _paths.members(churchId).doc(userId).update({'role': role.name});
 
-  /// 인원 상세 관리: 넘긴 항목만 저장한다. 이름·전화번호·소속 부서는 한 번에 쓰고,
+  /// 인원 상세 관리: 넘긴 항목만 저장한다. 이름·전화번호는 한 번에 쓰고,
   /// 역할·상태는 규칙이 따로 허용하므로 따로 쓴다.
   Future<void> saveMember(
     Member m, {
@@ -169,7 +176,6 @@ class MemberRepository {
     String? phone,
     String? address,
     String? birthDate,
-    List<String>? departmentIds,
     Role? role,
     MemberStatus? status,
   }) async {
@@ -201,39 +207,9 @@ class MemberRepository {
       }
       info['birthDate'] = b;
     }
-    if (departmentIds != null) info['departmentIds'] = departmentIds;
     final doc = _paths.members(m.churchId).doc(m.id);
     if (info.isNotEmpty) await doc.update(info);
-    if (role != null) {
-      await doc.update({'role': role.name});
-      // 교회 운영자가 되면 모든 부서에 자동으로 속한다.
-      if (role == Role.admin) {
-        await admin_depts.syncAdminDepartments(_paths, m.churchId);
-      }
-    }
+    if (role != null) await doc.update({'role': role.name});
     if (status != null) await doc.update({'status': status.name});
   }
-
-  /// 교회 운영자가 모든 부서에 속해 있게 맞춘다 (이미 맞으면 아무것도 쓰지 않는다).
-  Future<void> syncAdminDepartments(String churchId) =>
-      admin_depts.syncAdminDepartments(_paths, churchId);
-
-  /// 교역자가 교인을 부서에 넣는다 (이미 있으면 그대로).
-  Future<void> addToDepartment(String churchId, String userId, String deptId) =>
-      _paths.members(churchId).doc(userId).update({
-        'departmentIds': FieldValue.arrayUnion([deptId]),
-      });
-
-  /// 교역자가 교인을 부서에서 뺀다.
-  Future<void> removeFromDepartment(
-    String churchId,
-    String userId,
-    String deptId,
-  ) => _paths.members(churchId).doc(userId).update({
-    'departmentIds': FieldValue.arrayRemove([deptId]),
-  });
-
-  /// 내 소속 부서를 통째로 저장한다 (선택 사항이라 빈 목록도 가능).
-  Future<void> setMyDepartments(String churchId, List<String> ids) =>
-      _paths.members(churchId).doc(_auth.uid).update({'departmentIds': ids});
 }

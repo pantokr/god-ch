@@ -4,7 +4,6 @@ import '../../../app/app_scope.dart';
 import '../../../core/layout/page_frame.dart';
 import '../../../core/mvvm/view_model_builder.dart';
 import '../../../core/theme.dart';
-import '../../../data/models/department.dart';
 import '../../../data/models/member.dart';
 import '../view_model/member_admin_view_model.dart';
 import 'member_tile.dart';
@@ -23,7 +22,7 @@ class ChurchMembersTab extends StatelessWidget {
     return ViewModelBuilder<MemberAdminViewModel>(
       create: (context) {
         final scope = AppScope.read(context);
-        return MemberAdminViewModel(scope.members, scope.departments, me);
+        return MemberAdminViewModel(scope.members, me);
       },
       builder: (context, vm) => SingleChildScrollView(
         child: PageFrame(
@@ -45,14 +44,7 @@ class ChurchMembersTab extends StatelessWidget {
                       child: Center(child: CircularProgressIndicator()),
                     );
                   }
-                  return StreamBuilder<List<Department>>(
-                    stream: vm.departments,
-                    builder: (context, depts) => _List(
-                      vm: vm,
-                      all: snap.data!,
-                      departments: depts.data ?? const <Department>[],
-                    ),
-                  );
+                  return _List(vm: vm, all: snap.data!);
                 },
               ),
               const SizedBox(height: 32),
@@ -65,11 +57,10 @@ class ChurchMembersTab extends StatelessWidget {
 }
 
 class _List extends StatelessWidget {
-  const _List({required this.vm, required this.all, required this.departments});
+  const _List({required this.vm, required this.all});
 
   final MemberAdminViewModel vm;
   final List<Member> all;
-  final List<Department> departments;
 
   @override
   Widget build(BuildContext context) {
@@ -85,7 +76,6 @@ class _List extends StatelessWidget {
       ...existing,
     ];
     final recent = rows.length - existing.length;
-    final names = {for (final d in departments) d.id: d.name};
 
     return ListenableBuilder(
       listenable: vm,
@@ -115,16 +105,7 @@ class _List extends StatelessWidget {
                 children: [
                   for (var i = 0; i < requests.length; i++) ...[
                     if (i > 0) const Divider(),
-                    MemberTile(
-                      member: requests[i],
-                      vm: vm,
-                      isNew: true,
-                      departments: departments,
-                      departmentNames: [
-                        for (final id in requests[i].departmentIds)
-                          if (names[id] != null) names[id]!,
-                      ],
-                    ),
+                    MemberTile(member: requests[i], vm: vm, isNew: true),
                   ],
                 ],
               ),
@@ -153,16 +134,7 @@ class _List extends StatelessWidget {
                 children: [
                   for (var i = 0; i < rows.length; i++) ...[
                     if (i > 0) const Divider(),
-                    MemberTile(
-                      member: rows[i],
-                      vm: vm,
-                      isNew: i < recent,
-                      departments: departments,
-                      departmentNames: [
-                        for (final id in rows[i].departmentIds)
-                          if (names[id] != null) names[id]!,
-                      ],
-                    ),
+                    MemberTile(member: rows[i], vm: vm, isNew: i < recent),
                   ],
                 ],
               ),

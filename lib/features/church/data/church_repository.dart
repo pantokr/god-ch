@@ -67,13 +67,12 @@ class ChurchRepository {
       });
 
   /// 교역자가 새 초대 코드를 만든다. 기존 코드는 그대로 두고 만료되게 둔다.
-  /// [role]과 [departmentIds]는 이 코드로 들어오는 사람에게 그대로 적용된다.
+  /// [role]은 이 코드로 들어오는 사람에게 그대로 적용된다.
   /// 교역자 역할의 코드는 교회 관리자만 만들 수 있다 (규칙이 막는다).
   Future<String> createInviteCode(
     String churchId,
     String churchName, {
     Role role = Role.member,
-    List<String> departmentIds = const [],
     bool singleUse = false,
   }) async {
     if (role == Role.admin) {
@@ -89,7 +88,6 @@ class ChurchRepository {
                 churchId,
                 churchName,
                 role: role,
-                departmentIds: departmentIds,
                 singleUse: singleUse,
               ),
             );
@@ -118,9 +116,6 @@ class ChurchRepository {
                 role: d.data()['role'] == Role.staff.name
                     ? Role.staff
                     : Role.member,
-                departmentIds: List<String>.from(
-                  d.data()['departmentIds'] as List? ?? const [],
-                ),
                 singleUse: d.data()['singleUse'] == true,
               ),
         ]..sort((a, b) => b.expiresAt.compareTo(a.expiresAt)),
@@ -180,20 +175,16 @@ class ChurchRepository {
 
     final churchId = snap.data()!['churchId'] as String;
     final churchName = snap.data()!['churchName'] as String;
-    // 코드를 만들 때 정한 역할과 부서가 그대로 신청에 담긴다. (예전 코드에는 없으므로 교인·부서 없음)
+    // 코드를 만들 때 정한 역할이 그대로 신청에 담긴다. (예전 코드에는 없으므로 교인)
     final role = snap.data()!['role'] == Role.staff.name
         ? Role.staff
         : Role.member;
-    final departmentIds = List<String>.from(
-      snap.data()!['departmentIds'] as List? ?? const [],
-    );
     final singleUse = snap.data()!['singleUse'] == true;
     try {
       await _submitJoin(
         churchId: churchId,
         churchName: churchName,
         role: role,
-        departmentIds: departmentIds,
         address: address,
         birthDate: birthDate,
         code: code,
@@ -236,7 +227,6 @@ class ChurchRepository {
         churchId: church.id,
         churchName: church.name,
         role: Role.member,
-        departmentIds: const [],
         address: address,
         birthDate: birthDate,
       );
@@ -267,7 +257,6 @@ class ChurchRepository {
     required String churchId,
     required String churchName,
     required Role role,
-    required List<String> departmentIds,
     required String address,
     required String birthDate,
     String? code,
@@ -318,7 +307,6 @@ class ChurchRepository {
       birthDate: nextBirthDate,
       role: role,
       status: MemberStatus.pending,
-      departmentIds: departmentIds,
       inviteCode: code,
     );
     await _paths.db.runTransaction((tx) async {
@@ -342,13 +330,11 @@ class ChurchRepository {
     String churchId,
     String churchName, {
     required Role role,
-    required List<String> departmentIds,
     required bool singleUse,
   }) => {
     'churchId': churchId,
     'churchName': churchName,
     'role': role.name,
-    'departmentIds': departmentIds,
     'singleUse': singleUse,
     'createdBy': _auth.uid,
     'expiresAt': Timestamp.fromDate(DateTime.now().add(inviteValidity)),
@@ -365,7 +351,6 @@ class ChurchRepository {
     String birthDate = '',
     required Role role,
     required MemberStatus status,
-    List<String> departmentIds = const [],
     String? inviteCode,
   }) => {
     'uid': _auth.uid,
@@ -379,7 +364,6 @@ class ChurchRepository {
     if (birthDate.isNotEmpty) 'birthDate': birthDate,
     'role': role.name,
     'status': status.name,
-    'departmentIds': departmentIds,
     'createdAt': FieldValue.serverTimestamp(),
     // 입장 신청에 쓴 초대 코드. 규칙이 유효기간을 검사한다.
     'inviteCode': ?inviteCode,

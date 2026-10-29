@@ -1,3 +1,5 @@
+import '../../../core/icons.dart';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -18,8 +20,9 @@ import '../../auth/view/profile_extra_fields.dart';
 import '../../auth/view_model/account_view_model.dart';
 import '../../home/view/content_widgets.dart';
 import '../../notifications/view/notifications_button.dart';
-import '../../settings/view/settings_dialog.dart';
 import '../view_model/church_explore_view_model.dart';
+import 'church_request_dialog.dart';
+import 'join_church_dialog.dart';
 
 /// 주소 `/explore`: 교회 탐색. 교역자가 공개 탐색에 노출한 교회를 찾아 입장을 요청하고,
 /// 교역자가 승인하면 교인이 된다. 비공개 교회는 여기에 나오지 않고 초대 코드로만 들어온다.
@@ -38,7 +41,6 @@ class ChurchExplorePage extends StatelessWidget {
             builder: (context, account) => AccountRail(
               userName: account.userName,
               onProfile: () => context.push(Routes.account),
-              onSettings: () => showSettingsDialog(context),
               onSignOut: account.signOut,
               actions: const [NotificationsButton()],
             ),
@@ -64,6 +66,30 @@ class _ExploreBody extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text('교회 탐색', style: Theme.of(context).textTheme.titleLarge),
+            const SizedBox(height: 12),
+            // 교회에 들어가거나 새로 만드는 다른 길도 여기에 모은다.
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                OutlinedButton.icon(
+                  onPressed: () => showAppDialog<void>(
+                    context,
+                    child: const JoinChurchDialog(),
+                  ),
+                  icon: const Icon(AppIcons.key, size: 18),
+                  label: const Text('초대 코드로 입장'),
+                ),
+                OutlinedButton.icon(
+                  onPressed: () => showAppDialog<void>(
+                    context,
+                    child: const ChurchRequestDialog(),
+                  ),
+                  icon: const Icon(AppIcons.plus, size: 18),
+                  label: const Text('교회 생성 요청'),
+                ),
+              ],
+            ),
             const SizedBox(height: 12),
             AppSearchField(hint: '교회 이름 · 주소', onChanged: vm.setQuery),
             const SizedBox(height: 12),

@@ -5,19 +5,14 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/routes.dart';
 
-import '../../../core/layout/app_dialog.dart';
 import '../../../core/layout/card_grid.dart';
 import '../../../core/layout/page_frame.dart';
 import '../../../core/layout/sidebar_scaffold.dart';
 import '../../../core/theme.dart';
 import '../../../data/models/church_request.dart';
-import '../../../data/models/department.dart';
 import '../../../data/models/member.dart';
 import '../../notifications/view/notifications_button.dart';
-import '../../settings/view/settings_dialog.dart';
 import 'church_card.dart';
-import 'church_request_dialog.dart';
-import 'join_church_dialog.dart';
 
 /// 일반 회원의 "내가 속한 교회" 화면: 서랍 없이 뒤로가기와 계정 버튼만 있는 별도의 화면 + [MyChurchesBody].
 /// 교회 안(서랍이 있는 곳)에서 열면 그 위에 쌓인다.
@@ -37,7 +32,7 @@ class MyChurchesPage extends StatelessWidget {
   final List<ChurchRequest> requests;
   final String userName;
   final VoidCallback onSignOut;
-  final void Function(Member church, Department? department) onOpen;
+  final void Function(Member church) onOpen;
 
   @override
   Widget build(BuildContext context) {
@@ -79,7 +74,6 @@ class MyChurchesPage extends StatelessWidget {
           AccountRail(
             userName: userName,
             onProfile: () => context.push(Routes.account),
-            onSettings: () => showSettingsDialog(context),
             onSignOut: onSignOut,
             actions: const [NotificationsButton()],
           ),
@@ -89,7 +83,7 @@ class MyChurchesPage extends StatelessWidget {
   }
 }
 
-/// 내가 속한 교회와 소속 부서. 속한 교회가 없으면 큰 안내 영역을 보여준다.
+/// 내가 속한 교회. 속한 교회가 없으면 큰 안내 영역을 보여준다.
 /// 앱 운영자의 "입장" 화면도 같은 내용을 쓴다.
 class MyChurchesBody extends StatelessWidget {
   const MyChurchesBody({
@@ -108,7 +102,7 @@ class MyChurchesBody extends StatelessWidget {
 
   /// 내가 보낸 교회 생성 요청 중 아직 교회가 되지 않은 것(대기·거절).
   final List<ChurchRequest> requests;
-  final void Function(Member church, Department? department) onOpen;
+  final void Function(Member church) onOpen;
 
   @override
   Widget build(BuildContext context) {
@@ -135,7 +129,7 @@ class MyChurchesBody extends StatelessWidget {
   }
 }
 
-/// 초대 코드 입장 / 교회 생성 요청 버튼. 교회가 없으면 안내 영역 아래에 가운데 정렬된다.
+/// 교회 추가 버튼: 교회 탐색 화면으로 간다 (초대 코드 입장 · 교회 생성 요청도 거기에 있다). 교회가 없으면 안내 영역 아래에 가운데 정렬된다.
 class _Actions extends StatelessWidget {
   const _Actions({required this.centered});
 
@@ -150,20 +144,8 @@ class _Actions extends StatelessWidget {
       children: [
         FilledButton.icon(
           onPressed: () => context.push(Routes.explore),
-          icon: const Icon(AppIcons.compass, size: 18),
-          label: const Text('교회 탐색'),
-        ),
-        OutlinedButton.icon(
-          onPressed: () =>
-              showAppDialog<void>(context, child: const JoinChurchDialog()),
-          icon: const Icon(AppIcons.key, size: 18),
-          label: const Text('초대 코드로 입장'),
-        ),
-        OutlinedButton.icon(
-          onPressed: () =>
-              showAppDialog<void>(context, child: const ChurchRequestDialog()),
           icon: const Icon(AppIcons.plus, size: 18),
-          label: const Text('교회 생성 요청'),
+          label: const Text('교회 추가'),
         ),
       ],
     );
@@ -174,7 +156,7 @@ class _ChurchList extends StatelessWidget {
   const _ChurchList({required this.approved, required this.onOpen});
 
   final List<Member> approved;
-  final void Function(Member church, Department? department) onOpen;
+  final void Function(Member church) onOpen;
 
   @override
   Widget build(BuildContext context) {
@@ -216,12 +198,6 @@ class _NoChurchNotice extends StatelessWidget {
               style: theme.textTheme.displaySmall?.copyWith(
                 fontWeight: FontWeight.w800,
               ),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              '교회에서 받은 초대 코드로 입장하거나, 교회 생성을 요청해 보세요.',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: context.palette.muted, fontSize: 16),
             ),
           ],
         ),

@@ -29,9 +29,6 @@ class FirestorePaths {
   CollectionReference<Json> blocked(String churchId) =>
       church(churchId).collection('blocked');
 
-  CollectionReference<Json> departments(String churchId) =>
-      church(churchId).collection('departments');
-
   /// 기도 요청 글. 문서 ID가 시간 역순이라 이름순이 곧 최신순이다 ([PrayerRepository.newId]).
   /// 예전 'prayers' 컬렉션은 더 쓰지 않는다.
   CollectionReference<Json> prayers(String churchId) =>

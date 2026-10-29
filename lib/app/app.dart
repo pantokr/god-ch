@@ -12,9 +12,9 @@ import '../features/auth/data/profile_repository.dart';
 import '../features/church/data/church_closure_repository.dart';
 import '../features/church/data/church_repository.dart';
 import '../features/church/data/church_request_repository.dart';
-import '../features/church/data/department_repository.dart';
 import '../features/home/data/content_repository.dart';
-import '../features/home/data/page_layout_repository.dart';
+import '../features/admin/data/sample_data_repository.dart';
+import '../features/meetings/data/meeting_repository.dart';
 import '../features/home/data/reflection_repository.dart';
 import '../features/members/data/member_repository.dart';
 import '../features/platform/data/church_registry_repository.dart';
@@ -22,13 +22,17 @@ import '../features/prayers/data/prayer_repository.dart';
 import 'app_scope.dart';
 import 'router.dart';
 import 'session.dart';
+import 'list_style_controller.dart';
 import 'theme_mode_controller.dart';
 
 class App extends StatefulWidget {
-  const App({super.key, required this.themeMode});
+  const App({super.key, required this.themeMode, required this.listStyle});
 
   /// 저장된 화면 모드. 앱이 시작될 때 한 번 불러와 넘겨 준다.
   final ThemeModeController themeMode;
+
+  /// 목록 화면 모양(알록달록 · 심플).
+  final ListStyleController listStyle;
 
   @override
   State<App> createState() => _AppState();
@@ -60,10 +64,6 @@ class _AppState extends State<App> {
   );
   late final ChurchRegistryRepository _churchRegistry =
       ChurchRegistryRepository(_db, _auth, _contents);
-  late final DepartmentRepository _departments = DepartmentRepository(
-    _db,
-    _auth,
-  );
   late final ContentRepository _contents = ContentRepository(
     _db,
     FirebaseStorage.instance,
@@ -73,7 +73,11 @@ class _AppState extends State<App> {
     _db,
     _auth,
   );
-  late final PageLayoutRepository _pageLayouts = PageLayoutRepository(_db);
+  late final MeetingRepository _meetings = MeetingRepository(_db, _auth);
+  late final SampleDataRepository _sampleData = SampleDataRepository(
+    _db,
+    _auth,
+  );
   late final MemberRepository _members = MemberRepository(_db, _auth);
   late final PrayerRepository _prayers = PrayerRepository(_db, _auth);
   late final BibleRepository _bible = BibleRepository(FirebaseStorage.instance);
@@ -105,16 +109,17 @@ class _AppState extends State<App> {
   Widget build(BuildContext context) {
     return AppScope(
       themeMode: widget.themeMode,
+      listStyle: widget.listStyle,
       auth: _auth,
       profiles: _profiles,
       churches: _churches,
       churchRequests: _churchRequests,
       churchRegistry: _churchRegistry,
       churchClosures: _churchClosures,
-      departments: _departments,
       contents: _contents,
       reflections: _reflections,
-      pageLayouts: _pageLayouts,
+      meetings: _meetings,
+      sampleData: _sampleData,
       members: _members,
       prayers: _prayers,
       notifications: _notifications,

@@ -117,6 +117,48 @@ class AuthRepository {
     }
   }
 
+  /// 앱 탈퇴: 비밀번호로 다시 확인한 뒤, 속한 교회에서 모두 나가고 프로필 · 아이디를 지우고 계정을 삭제한다.
+  /// 교회 관리자인 교회가 있으면 먼저 관리자를 넘겨야 한다.
+  Future<void> deleteAccount(String password) async {
+    final user = _auth.currentUser;
+    if (user == null || !hasPassword) {
+      throw const AppException('아이디로 만든 계정만 탈퇴할 수 있어요.');
+    }
+    try {
+      await user.reauthenticateWithCredential(
+        EmailAuthProvider.credential(email: user.email!, password: password),
+      );
+    } on FirebaseAuthException catch (e) {
+      throw switch (e.code) {
+        'invalid-credential' ||
+        'wrong-password' => const AppException('비밀번호가 올바르지 않습니다.'),
+        _ => AppException(_message(e)),
+      };
+    }
+    final mine = await _db
+        .collectionGroup('members')
+        .where('uid', isEqualTo: user.uid)
+        .get();
+    final active = mine.docs.where((d) => d.data()['status'] != 'removed');
+    if (active.any((d) => d.data()['role'] == 'admin')) {
+      throw const AppException('교회 관리자인 교회가 있어요. 관리자를 넘긴 뒤 탈퇴해 주세요.');
+    }
+    for (final d in active) {
+      await d.reference.update({
+        'status': 'removed',
+        'removedAt': FieldValue.serverTimestamp(),
+        'removedBy': user.uid,
+      });
+    }
+    final profile = _db.collection('users').doc(user.uid);
+    final loginId = (await profile.get()).data()?['loginId'] as String?;
+    if (loginId != null && loginId.isNotEmpty) {
+      await _db.collection('loginIds').doc(loginId).delete();
+    }
+    await profile.delete();
+    await user.delete();
+  }
+
   /// 표시 이름을 바꾼다.
   Future<void> updateDisplayName(String name) async {
     final user = _auth.currentUser!;

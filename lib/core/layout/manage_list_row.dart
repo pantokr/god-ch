@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../theme.dart';
 import '../widgets/thumbnail_avatar.dart';
 
-/// 관리 목록(교회 · 회원 · 인원 · 부서)의 한 줄. 모든 목록이 같은 모양과 같은 높이를 쓴다.
+/// 관리 목록(교회 · 회원 · 인원)의 한 줄. 모든 목록이 같은 모양과 같은 높이를 쓴다.
 /// 제목 아래에 정해진 두 줄([line1], [line2])이 항상 자리를 차지하므로, 정보가 없으면
 /// 그 줄은 빈칸으로 남고 줄의 높이는 그대로다. 오른쪽에는 [trailing]을 놓는다.
 class ManageListRow extends StatelessWidget {

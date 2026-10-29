@@ -65,6 +65,8 @@ class PrayerDetailViewModel extends ViewModel {
   /// 비공개 글을 열었을 때: 작성자는 답변 확인을 표시하고,
   /// 교역자는 타인의 글 열람 기록을 남긴다. 실패해도 화면은 계속 보여준다.
   void _recordOpened(Prayer p) {
+    // 열 때마다 조회수를 하나 올린다 (실패해도 화면은 그대로).
+    if (!p.deleted) _prayers.addView(me.churchId, p.id).ignore();
     if (p.isPublic) return;
     if (p.authorId == me.id) {
       if (p.hasUnreadResponse) {

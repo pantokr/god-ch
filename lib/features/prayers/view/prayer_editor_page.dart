@@ -8,25 +8,16 @@ import '../../../app/routes.dart';
 import '../../../core/layout/sub_page.dart';
 import '../../../core/mvvm/view_model_builder.dart';
 import '../../../core/theme.dart';
-import '../../../data/models/department.dart';
 import '../../../data/models/member.dart';
 import '../../../data/models/prayer.dart';
-import '../../church/view_model/departments_view_model.dart';
 import '../view_model/prayer_editor_view_model.dart';
 
 /// 기도제목 작성 / 수정. [prayer]가 있으면 수정 모드.
 class PrayerEditorPage extends StatefulWidget {
-  const PrayerEditorPage({
-    super.key,
-    required this.me,
-    this.defaultDepartmentId,
-    this.prayer,
-  });
+  const PrayerEditorPage({super.key, required this.me, this.prayer});
 
   final Member me;
 
-  /// 새 글의 기본 게시 범위. null이면 교회 전체.
-  final String? defaultDepartmentId;
   final Prayer? prayer;
 
   @override
@@ -78,7 +69,6 @@ class _PrayerEditorPageState extends State<PrayerEditorPage> {
         AppScope.read(context).prayers,
         widget.me,
         existing: widget.prayer,
-        defaultDepartmentId: widget.defaultDepartmentId,
       ),
       builder: (context, vm) => SubPage(
         title: vm.isEditing ? '기도제목 수정' : '기도제목 쓰기',
@@ -122,7 +112,6 @@ class _PrayerEditorPageState extends State<PrayerEditorPage> {
                         ),
                         const SizedBox(height: 16),
                         // 게시 범위는 새 글을 쓸 때만 고를 수 있다.
-                        if (!vm.isEditing) _ScopePicker(vm: vm),
                         // 교회가 비공개를 허용하지 않으면 공개 범위를 고를 수 없다.
                         if (vm.settings.allowPrivate) _VisibilityPicker(vm: vm),
                         const SizedBox(height: 24),
@@ -147,48 +136,6 @@ class _PrayerEditorPageState extends State<PrayerEditorPage> {
                   ),
                 ),
               ),
-      ),
-    );
-  }
-}
-
-/// 게시 범위: 교회 전체 또는 내가 소속된 부서(교역자는 모든 부서).
-class _ScopePicker extends StatelessWidget {
-  const _ScopePicker({required this.vm});
-
-  final PrayerEditorViewModel vm;
-
-  @override
-  Widget build(BuildContext context) {
-    return ViewModelBuilder<DepartmentsViewModel>(
-      create: (context) => DepartmentsViewModel(
-        AppScope.read(context).departments,
-        vm.me.churchId,
-      ),
-      builder: (context, departments) => StreamBuilder<List<Department>>(
-        stream: departments.departments,
-        builder: (context, snap) {
-          final mine = (snap.data ?? const <Department>[])
-              .where((d) => vm.me.isStaff || vm.me.departmentIds.contains(d.id))
-              .toList();
-          // 선택할 부서가 없으면 항상 교회 전체이므로 입력란을 보여주지 않는다.
-          if (mine.isEmpty) return const SizedBox.shrink();
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 16),
-            child: DropdownButtonFormField<String?>(
-              initialValue: mine.any((d) => d.id == vm.departmentId)
-                  ? vm.departmentId
-                  : null,
-              decoration: const InputDecoration(labelText: '게시 범위'),
-              items: [
-                const DropdownMenuItem(value: null, child: Text('교회 전체')),
-                for (final d in mine)
-                  DropdownMenuItem(value: d.id, child: Text('${d.name} 전용')),
-              ],
-              onChanged: vm.setDepartment,
-            ),
-          );
-        },
       ),
     );
   }

@@ -1,33 +1,33 @@
 import '../../../core/icons.dart';
 
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
-import '../../../app/app_scope.dart';
-import '../../../core/layout/app_dialog.dart';
-import '../../../core/mvvm/view_model_builder.dart';
+import '../../../app/routes.dart';
+
 import '../../../core/theme.dart';
-import '../../../data/models/department.dart';
 import '../../../data/models/member.dart';
-import '../view_model/departments_view_model.dart';
-import 'department_picker_dialog.dart';
+import 'leave_church.dart';
 
-/// 내 교회 한 곳: 교회 전체로 들어가거나, 소속 부서로 바로 들어갈 수 있다.
+/// 내 교회 한 곳: 누르면 그 교회로 들어간다.
 class ChurchCard extends StatelessWidget {
   const ChurchCard({super.key, required this.member, required this.onOpen});
 
   final Member member;
-  final void Function(Member church, Department? department) onOpen;
+  final void Function(Member church) onOpen;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    // 카드 전체가 누르는 곳이다 (안의 교회 수정 · 교회 탈퇴 버튼은 각자 눌린다).
     return Card(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          InkWell(
-            onTap: () => onOpen(member, null),
-            child: Padding(
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () => onOpen(member),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
               padding: const EdgeInsets.all(20),
               child: Row(
                 children: [
@@ -66,66 +66,31 @@ class ChurchCard extends StatelessWidget {
                 ],
               ),
             ),
-          ),
-          const Divider(),
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: _DepartmentChips(member: member, onOpen: onOpen),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// 내가 소속을 선택한 부서 칩과 "부서 선택" 버튼. 소속은 선택 사항이다.
-class _DepartmentChips extends StatelessWidget {
-  const _DepartmentChips({required this.member, required this.onOpen});
-
-  final Member member;
-  final void Function(Member church, Department? department) onOpen;
-
-  @override
-  Widget build(BuildContext context) {
-    return ViewModelBuilder<DepartmentsViewModel>(
-      create: (context) => DepartmentsViewModel(
-        AppScope.read(context).departments,
-        member.churchId,
-      ),
-      builder: (context, vm) => StreamBuilder<List<Department>>(
-        stream: vm.departments,
-        builder: (context, snap) {
-          final all = snap.data ?? const <Department>[];
-          final mine = all
-              .where((d) => member.departmentIds.contains(d.id))
-              .toList();
-          return Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              for (final d in mine)
-                ActionChip(
-                  avatar: const Icon(AppIcons.usersThree, size: 18),
-                  label: Text(d.name),
-                  onPressed: () => onOpen(member, d),
-                ),
-              TextButton.icon(
-                onPressed: snap.hasData
-                    ? () => showAppDialog<void>(
-                        context,
-                        child: DepartmentPickerDialog(
-                          member: member,
-                          departments: all,
-                        ),
-                      )
-                    : null,
-                icon: const Icon(AppIcons.sliders, size: 18),
-                label: Text(mine.isEmpty ? '부서 선택 (선택 사항)' : '부서 변경'),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+              child: Wrap(
+                children: [
+                  // 교회 정보는 그 교회의 관리자만 고친다.
+                  if (member.role == Role.admin)
+                    TextButton.icon(
+                      onPressed: () => context.push(
+                        Routes.section(member.churchId, ChurchSection.info),
+                      ),
+                      icon: const Icon(AppIcons.pencilSimple, size: 18),
+                      label: const Text('교회 수정'),
+                    ),
+                  // 교회 관리자는 탈퇴할 수 없다 (맡을 사람이 없어지므로).
+                  if (member.role != Role.admin)
+                    TextButton.icon(
+                      onPressed: () => leaveChurch(context, member),
+                      icon: const Icon(AppIcons.signOut, size: 18),
+                      label: const Text('교회 탈퇴'),
+                    ),
+                ],
               ),
-            ],
-          );
-        },
+            ),
+          ],
+        ),
       ),
     );
   }

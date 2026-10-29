@@ -58,19 +58,15 @@ class PrayerRepository {
   static const pageSize = 100;
 
   /// 반드시 visibility/deleted 조건을 쿼리에 포함해야 규칙을 통과한다.
-  /// [departmentId]가 null이면 교회 전체 글, 값이 있으면 그 부서 전용 글만 가져온다. 최신 글부터.
-  Stream<List<Prayer>> publicFeed(
-    String churchId, {
-    String? departmentId,
-    int limit = pageSize,
-  }) => _paths
-      .prayers(churchId)
-      .where('visibility', isEqualTo: PrayerVisibility.public.name)
-      .where('deleted', isEqualTo: false)
-      .where('departmentId', isEqualTo: departmentId)
-      .limit(limit)
-      .snapshots()
-      .map(_toPrayers);
+  /// 공개 기도제목, 최신 글부터.
+  Stream<List<Prayer>> publicFeed(String churchId, {int limit = pageSize}) =>
+      _paths
+          .prayers(churchId)
+          .where('visibility', isEqualTo: PrayerVisibility.public.name)
+          .where('deleted', isEqualTo: false)
+          .limit(limit)
+          .snapshots()
+          .map(_toPrayers);
 
   Stream<List<Prayer>> myPrayers(String churchId, {int limit = pageSize}) =>
       _paths
@@ -109,14 +105,13 @@ class PrayerRepository {
     required String title,
     required String content,
     required PrayerVisibility visibility,
-    String? departmentId,
   }) => _paths.prayers(churchId).doc(newId()).set({
     'authorId': _auth.uid,
-    'departmentId': departmentId,
     'title': title,
     'content': content,
     'visibility': visibility.name,
     'deleted': false,
+    'views': 0,
     'createdAt': FieldValue.serverTimestamp(),
     'updatedAt': FieldValue.serverTimestamp(),
   });
@@ -169,6 +164,12 @@ class PrayerRepository {
         'deletedBy': FieldValue.delete(),
         'deleteReason': FieldValue.delete(),
       });
+
+  /// 기도제목을 열 때 조회수를 하나 올린다. 규칙이 +1만 허용한다.
+  Future<void> addView(String churchId, String id) => _paths
+      .prayers(churchId)
+      .doc(id)
+      .update({'views': FieldValue.increment(1)});
 
   Future<void> markResponsesSeen(String churchId, String id) => _paths
       .prayers(churchId)

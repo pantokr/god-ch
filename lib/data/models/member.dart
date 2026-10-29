@@ -21,7 +21,6 @@ class Member {
     this.address = '',
     this.birthDate = '',
     this.photoUrl = '',
-    this.departmentIds = const [],
     this.createdAt,
     this.isOperatorView = false,
   });
@@ -47,8 +46,6 @@ class Member {
   final Role role;
   final MemberStatus status;
 
-  /// 내가 소속을 선택한 부서 (선택 사항, 비어 있어도 된다).
-  final List<String> departmentIds;
   final DateTime? createdAt;
 
   /// 앱 개발자가 교회를 열었을 때 화면용으로 만든 정보인가. 저장되지 않으며 소속을 뜻하지 않는다.
@@ -81,7 +78,6 @@ class Member {
         d['status'],
         MemberStatus.pending,
       ),
-      departmentIds: List<String>.from(d['departmentIds'] as List? ?? const []),
       createdAt: toDate(d['createdAt']),
     );
   }

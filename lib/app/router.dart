@@ -2,17 +2,18 @@ import '../core/exit_guard.dart';
 import '../core/layout/profile_summary.dart';
 import '../core/splash_page.dart';
 import '../features/auth/view/account_page.dart';
-import '../data/models/page_layout.dart';
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-import '../data/models/church_content.dart';
 import '../data/models/prayer.dart';
 import '../features/auth/view/login_page.dart';
 import '../features/auth/view/profile_completion_page.dart';
 import '../features/auth/view/sign_up_page.dart';
+import '../features/bible/view/devotion_detail_page.dart';
 import '../features/church/view/church_explore_page.dart';
+import '../features/church/view/member_gate.dart';
+import '../features/meetings/view/meeting_detail_page.dart';
 import '../features/church/view/my_churches_route.dart';
 import '../features/platform/view/church_registry_page.dart';
 import '../features/platform/view/dashboard_page.dart';
@@ -80,10 +81,8 @@ GoRouter buildRouter(SessionNotifier session) {
       // 기도제목 상세·작성·수정은 교회 틀 밖의 전체 화면이다 (뒤로가기로 목록에 돌아온다).
       GoRoute(
         path: '/churches/:cid/prayers/new',
-        builder: (context, state) => PrayerCreateRoute(
-          churchId: state.pathParameters['cid']!,
-          departmentId: state.uri.queryParameters['dept'],
-        ),
+        builder: (context, state) =>
+            PrayerCreateRoute(churchId: state.pathParameters['cid']!),
       ),
       GoRoute(
         path: '/churches/:cid/prayers/:pid',
@@ -100,6 +99,23 @@ GoRouter buildRouter(SessionNotifier session) {
           prayerId: state.pathParameters['pid']!,
         ),
       ),
+      // 말씀 · 모임 상세도 교회 틀 밖의 전체 화면이다 (뒤로가기로 목록에 돌아온다).
+      GoRoute(
+        path: '/churches/:cid/devotion/:id',
+        builder: (context, state) => MemberGate(
+          churchId: state.pathParameters['cid']!,
+          builder: (context, me) =>
+              DevotionDetailPage(me: me, id: state.pathParameters['id']!),
+        ),
+      ),
+      GoRoute(
+        path: '/churches/:cid/meeting/:id',
+        builder: (context, state) => MemberGate(
+          churchId: state.pathParameters['cid']!,
+          builder: (context, me) =>
+              MeetingDetailPage(me: me, id: state.pathParameters['id']!),
+        ),
+      ),
       // 교회 틀(왼쪽 메뉴) 안의 메뉴들.
       ShellRoute(
         builder: (context, state, child) {
@@ -113,138 +129,48 @@ GoRouter buildRouter(SessionNotifier session) {
                   ChurchSection.fromPath(
                     segments.length > 2 ? segments[2] : '',
                   ) ??
-                  ChurchSection.home,
-              pageId:
-                  segments.length > 3 && segments[2] == ChurchSection.page.path
-                  ? segments[3]
-                  : null,
-              departmentId: state.uri.queryParameters['dept'],
+                  ChurchSection.prayer,
               child: child,
             ),
           );
         },
         routes: [
-          _sectionRoute(ChurchSection.home, const HomeSectionPage()),
-          GoRoute(
-            path: '/churches/:cid/${ChurchSection.page.path}/:pid',
-            pageBuilder: (context, state) => NoTransitionPage(
-              key: ValueKey(state.uri.path),
-              child: PageSectionPage(pageId: state.pathParameters['pid']!),
-            ),
-          ),
-          _sectionRoute(
-            ChurchSection.left,
-            const SlotSectionPage(group: PageGroup.left),
-          ),
-          _sectionRoute(
-            ChurchSection.right,
-            const SlotSectionPage(group: PageGroup.right),
-          ),
-          // 예전 주소(기도 · 말씀 탭)도 열린다.
-          GoRoute(
-            path: '/churches/:cid/intercession',
-            redirect: (context, state) => Routes.section(
-              state.pathParameters['cid']!,
-              ChurchSection.left,
-            ),
-          ),
-          GoRoute(
-            path: '/churches/:cid/word',
-            redirect: (context, state) => Routes.section(
-              state.pathParameters['cid']!,
-              ChurchSection.right,
-            ),
-          ),
+          _sectionRoute(ChurchSection.prayer, const PrayerSectionPage()),
+          _sectionRoute(ChurchSection.meetings, const MeetingsSectionPage()),
+          _sectionRoute(ChurchSection.bible, const BibleSectionPage()),
           _sectionRoute(ChurchSection.mine, const MineSectionPage()),
-          _sectionRoute(ChurchSection.gallery, const GallerySectionPage()),
+          _sectionRoute(
+            ChurchSection.prayerSettings,
+            const PrayerSettingsSectionPage(),
+          ),
           _sectionRoute(ChurchSection.members, const MemberManageSectionPage()),
           _sectionRoute(ChurchSection.join, const JoinManageSectionPage()),
           _sectionRoute(ChurchSection.info, const ChurchInfoSectionPage()),
-          // 예전 "교회 관리" 주소는 인원 관리로 보낸다.
-          GoRoute(
-            path: '/churches/:cid/manage',
-            redirect: (context, state) => Routes.section(
-              state.pathParameters['cid']!,
-              ChurchSection.members,
-            ),
-          ),
-          GoRoute(
-            path: '/churches/:cid/${ChurchSection.departments.path}',
-            // 부모와 자식 경로가 한 화면 스택에 함께 쌓이므로, 키는 각자 맞은 주소(matchedLocation)로 둔다.
-            // (둘 다 현재 주소 전체를 키로 쓰면 같은 키가 겹쳐 "keyReservation" 오류가 난다.)
-            pageBuilder: (context, state) => NoTransitionPage(
-              key: ValueKey(state.matchedLocation),
-              child: const DepartmentManageSectionPage(),
-            ),
-            routes: [
-              GoRoute(
-                path: ':did',
-                pageBuilder: (context, state) => NoTransitionPage(
-                  key: ValueKey(state.matchedLocation),
-                  child: DepartmentDetailSectionPage(
-                    departmentId: state.pathParameters['did']!,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          GoRoute(
-            path: '/churches/:cid/${ChurchSection.content.path}/p/:pid',
-            pageBuilder: (context, state) => NoTransitionPage(
-              key: ValueKey(state.uri.path),
-              child: PageEditSectionPage(
-                pageId: state.pathParameters['pid']!,
-                draft: state.extra is PageConfig
-                    ? state.extra as PageConfig
-                    : null,
+          // 예전 주소(홈 · 기도 · 말씀 탭, 페이지, 콘텐츠 관리 등)는 지금의 메뉴로 보낸다.
+          for (final old in const [
+            'home',
+            'left',
+            'intercession',
+            'content',
+            'contents',
+            'gallery',
+            'manage',
+          ])
+            GoRoute(
+              path: '/churches/:cid/$old',
+              redirect: (context, state) => Routes.section(
+                state.pathParameters['cid']!,
+                old == 'manage' ? ChurchSection.members : ChurchSection.prayer,
               ),
             ),
-          ),
-          GoRoute(
-            path: '/churches/:cid/${ChurchSection.content.path}',
-            pageBuilder: (context, state) => NoTransitionPage(
-              key: ValueKey('${state.pathParameters['cid']}/content'),
-              child: const PageListSectionPage(),
-            ),
-          ),
-          GoRoute(
-            path: '/churches/:cid/${ChurchSection.contents.path}',
-            pageBuilder: (context, state) => NoTransitionPage(
-              // 콘텐츠 관리 목록 위에 종류별 화면(?kind=)이 쌓이므로 쿼리까지 키에 넣는다 (같은 키가 겹치면 오류가 난다).
-              key: ValueKey(state.uri.toString()),
-              child: ContentEditSectionPage(
-                kind: ContentKind.fromPath(
-                  state.uri.queryParameters['kind'] ?? '',
-                ),
+          for (final old in const ['right', 'word'])
+            GoRoute(
+              path: '/churches/:cid/$old',
+              redirect: (context, state) => Routes.section(
+                state.pathParameters['cid']!,
+                ChurchSection.bible,
               ),
             ),
-          ),
-          // 메인의 "더보기" 목록과 상세. 왼쪽 메뉴는 그대로 둔 채 본문만 바뀐다.
-          GoRoute(
-            path: '/churches/:cid/c/:kind',
-            redirect: (context, state) =>
-                ContentKind.fromPath(state.pathParameters['kind']!) == null
-                ? Routes.home(state.pathParameters['cid']!)
-                : null,
-            pageBuilder: (context, state) => NoTransitionPage(
-              key: ValueKey(state.matchedLocation),
-              child: ContentListSectionPage(
-                kind: ContentKind.fromPath(state.pathParameters['kind']!)!,
-              ),
-            ),
-            routes: [
-              GoRoute(
-                path: ':id',
-                pageBuilder: (context, state) => NoTransitionPage(
-                  key: ValueKey(state.matchedLocation),
-                  child: ContentDetailSectionPage(
-                    kind: ContentKind.fromPath(state.pathParameters['kind']!)!,
-                    contentId: state.pathParameters['id']!,
-                  ),
-                ),
-              ),
-            ],
-          ),
         ],
       ),
 

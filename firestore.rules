@@ -31,22 +31,9 @@ service cloud.firestore {
     function prayer(cid, pid) {
       return get(/databases/$(database)/documents/churches/$(cid)/prayerPosts/$(pid)).data;
     }
-    // 부서 전용 글(departmentId != null)은 그 부서에 소속된 교인에게만 보인다.
-    function inDept(cid, deptId) {
-      return deptId == null || deptId in get(memberPath(cid)).data.get('departmentIds', []);
-    }
     function isOpen(cid, pid) {
       return prayer(cid, pid).visibility == 'public'
-        && prayer(cid, pid).deleted == false
-        && inDept(cid, prayer(cid, pid).get('departmentId', null));
-    }
-    // 부서별로 켜고 끄는 기능(기도 · 말씀 탭). 설정한 적이 없거나, 교역자이거나, 소속 부서가 없으면 허용.
-    // 소속 부서가 있으면 그중 하나라도 허용된 부서여야 한다. key: 'prayerDepartments' | 'wordDepartments'
-    function featureAllowed(cid, key) {
-      let p = /databases/$(database)/documents/churches/$(cid)/settings/features;
-      let mine = get(memberPath(cid)).data.get('departmentIds', []);
-      return isStaff(cid) || !exists(p) || mine.size() == 0
-        || !(key in get(p).data) || mine.hasAny(get(p).data[key]);
+        && prayer(cid, pid).deleted == false;
     }
     // 교회가 정한 기도 요청 운영 설정 (settings/prayer). 정한 적 없으면 기본값을 쓴다.
     function prayerOpt(cid, key, dflt) {
@@ -73,12 +60,9 @@ service cloud.firestore {
       let path = /databases/$(database)/documents/churches/$(cid);
       return !exists(path) || !get(path).data.get('closed', false);
     }
-    // 초대 코드에 담긴 역할·부서. 예전에 만든 코드에는 없으므로 교인·부서 없음으로 본다.
+    // 초대 코드에 담긴 역할. 예전에 만든 코드에는 없으므로 교인으로 본다.
     function inviteRole(code) {
       return get(/databases/$(database)/documents/inviteCodes/$(code)).data.get('role', 'member');
-    }
-    function inviteDepartments(code) {
-      return get(/databases/$(database)/documents/inviteCodes/$(code)).data.get('departmentIds', []);
     }
     // 주소·생년월일은 가입할 때 선택이고, 있으면 형식만 검사한다 (생년월일 YYYY-MM-DD).
     function extraValid(d) {
@@ -94,14 +78,22 @@ service cloud.firestore {
     function changed() {
       return request.resource.data.diff(resource.data).affectedKeys();
     }
-    // 메인 페이지 콘텐츠 한 건의 형식 검사.
+    // 말씀 묵상 글 한 건의 형식 검사.
     function contentValid(d) {
       return d.title is string && d.title.size() > 0 && d.title.size() <= 100
         && d.body is string && d.body.size() <= 5000
-        && d.date is timestamp
-        && d.imageUrls is list && d.imageUrls.size() <= 30
-        && d.videoUrl is string && d.videoUrl.size() <= 300
-        && d.get('category', '') is string && d.get('category', '').size() <= 20;
+        && d.get('meditation', '') is string && d.get('meditation', '').size() <= 5000
+        && d.date is timestamp;
+    }
+    // 목록(좋아요 · 참여자)에서 바뀐 사람이 나 하나뿐인가: 더하거나 빼는 것이 내 uid뿐이다.
+    function onlyMeDiff(before, after) {
+      return after.toSet().difference(before.toSet()).hasOnly([request.auth.uid])
+        && before.toSet().difference(after.toSet()).hasOnly([request.auth.uid])
+        && after.size() <= 1000;
+    }
+    // 조회수는 한 번에 하나씩만 오른다.
+    function viewBump() {
+      return request.resource.data.views == resource.data.get('views', 0) + 1;
     }
     // 앱 운영자: 계정에 platformAdmin 클레임이 있거나 admins/{uid} 문서가 있는 계정.
     // 둘 다 서버 관리자 권한으로만 만들 수 있다.
@@ -151,7 +143,9 @@ service cloud.firestore {
         && !(loginId in ['admin', 'administrator', 'root', 'system', 'operator'])
         && request.resource.data.keys().hasOnly(['uid'])
         && request.resource.data.uid == request.auth.uid;
-      allow update, delete: if false;
+      allow update: if false;
+      // 앱 탈퇴: 본인 계정의 아이디만 지워 다시 쓸 수 있게 한다.
+      allow delete: if signedIn() && resource.data.uid == request.auth.uid;
     }
 
     // 회원 프로필: 가입할 때 받은 이름·전화번호와 개인정보 제3자 제공 동의 기록.
@@ -178,7 +172,8 @@ service cloud.firestore {
         && request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 30
         && request.resource.data.phone is string
         && request.resource.data.phone.size() >= 8 && request.resource.data.phone.size() <= 20;
-      allow delete: if false;
+      // 앱 탈퇴: 본인 프로필만 지운다.
+      allow delete: if signedIn() && request.auth.uid == userId;
     }
 
     match /admins/{adminId} {
@@ -251,13 +246,11 @@ service cloud.firestore {
       // 그 교회의 교역자만 코드를 만들 수 있다. 유효기간은 최대 31일.
       allow create: if signedIn()
         && request.resource.data.keys().hasOnly(
-             ['churchId', 'churchName', 'expiresAt', 'createdBy', 'role', 'departmentIds', 'singleUse'])
+             ['churchId', 'churchName', 'expiresAt', 'createdBy', 'role', 'singleUse'])
         && request.resource.data.get('singleUse', false) is bool
         // 코드로 들어오는 사람의 역할: 교인, 또는 (교회 운영자만 만들 수 있는) 교역자.
         && request.resource.data.role in ['member', 'staff']
         && (request.resource.data.role == 'member' || isOwner(request.resource.data.churchId))
-        && request.resource.data.departmentIds is list
-        && request.resource.data.departmentIds.size() <= 20
         && request.resource.data.createdBy == request.auth.uid
         && request.resource.data.expiresAt is timestamp
         && request.resource.data.expiresAt > request.time
@@ -289,11 +282,6 @@ service cloud.firestore {
     match /{path=**}/members/{memberId} {
       // 앱 운영자는 회원 이름·전화번호를 고칠 때 그 회원의 모든 교회 정보를 찾는다.
       allow read: if signedIn() && (resource.data.uid == request.auth.uid || isPlatformAdmin());
-    }
-
-    // 앱 운영자가 회원 관리에서 회원의 소속 부서 이름을 보여주기 위한 collection group 조회.
-    match /{path=**}/departments/{deptId} {
-      allow read: if isPlatformAdmin();
     }
 
     match /churches/{churchId} {
@@ -374,7 +362,7 @@ service cloud.firestore {
           && churchOpen(churchId)
           && d.keys().hasOnly(
                ['uid', 'churchId', 'churchName', 'name', 'phone', 'loginId', 'address', 'birthDate', 'photoUrl',
-                'role', 'status', 'createdAt', 'departmentIds', 'inviteCode'])
+                'role', 'status', 'createdAt', 'inviteCode'])
           && extraValid(d)
           && d.get('loginId', '') is string
           && d.get('loginId', '').size() <= 20
@@ -384,7 +372,7 @@ service cloud.firestore {
           && d.name is string
           && d.name.size() > 0 && d.name.size() <= 30
           && (
-            // 본인이 유효기간 안의 초대 코드로 입장 신청: 코드에 담긴 역할·부서로, 항상 '승인 대기'
+            // 본인이 유효기간 안의 초대 코드로 입장 신청: 코드에 담긴 역할로, 항상 '승인 대기'
             // 앱 운영자는 교회 회원이 될 수 없다.
             (request.auth.uid == memberId && !isPlatformAdmin()
                 && d.status == 'pending'
@@ -395,15 +383,13 @@ service cloud.firestore {
                     || d.get('address', '').size() > 0)
                 && (!joinRequires(churchId, 'birthDate')
                     || d.get('birthDate', '').size() > 0)
-                && d.role == inviteRole(d.inviteCode)
-                && d.departmentIds == inviteDepartments(d.inviteCode))
+                && d.role == inviteRole(d.inviteCode))
 
-            // 공개 탐색에 노출된 교회에는 초대 코드 없이 입장을 요청할 수 있다: 항상 교인 역할, 부서 없이, '승인 대기'
+            // 공개 탐색에 노출된 교회에는 초대 코드 없이 입장을 요청할 수 있다: 항상 교인 역할, '승인 대기'
             || (request.auth.uid == memberId && !isPlatformAdmin()
                 && !('inviteCode' in d)
                 && d.status == 'pending'
                 && d.role == 'member'
-                && d.departmentIds == []
                 && churchListed(churchId)
                 && (!joinRequires(churchId, 'address')
                     || d.get('address', '').size() > 0)
@@ -413,7 +399,6 @@ service cloud.firestore {
             // 앱 운영자가 교회 생성 요청을 승인할 때: 요청한 사람을 교회 운영자로 등록
             || (isPlatformAdmin()
                 && d.role == 'admin' && d.status == 'approved'
-                && d.departmentIds == []
                 && churchRequest(churchId).status == 'pending'
                 && churchRequest(churchId).requesterId == memberId)
           );
@@ -425,6 +410,13 @@ service cloud.firestore {
           // 교회 운영자·앱 운영자: 교인을 내보낸다. 문서는 지우지 않고 status를 removed로 남긴다 (기록 보관).
           if (isOwner(churchId) && request.auth.uid != memberId
                 && resource.data.status != 'removed'
+                && changed().hasOnly(['status', 'removedAt', 'removedBy'])
+                && request.resource.data.status == 'removed'
+                && request.resource.data.removedBy == request.auth.uid)
+          // 본인 탈퇴: 교회 관리자는 빠질 수 없다. 문서는 남기고 removed 표시만 한다.
+          || (request.auth.uid == memberId
+                && resource.data.status != 'removed'
+                && resource.data.role != 'admin'
                 && changed().hasOnly(['status', 'removedAt', 'removedBy'])
                 && request.resource.data.status == 'removed'
                 && request.resource.data.removedBy == request.auth.uid)
@@ -451,26 +443,14 @@ service cloud.firestore {
                 && request.resource.data.churchName is string
                 && request.resource.data.churchName.size() > 0
                 && request.resource.data.churchName.size() <= 50)
-          // 교회 운영자·앱 운영자: 교인의 이름·전화번호·소속 부서 수정 (본인 계정은 내 정보에서)
+          // 교회 운영자·앱 운영자: 교인의 이름·전화번호 수정 (본인 계정은 내 정보에서)
           || (isOwner(churchId) && request.auth.uid != memberId
-                && changed().hasOnly(['name', 'phone', 'address', 'birthDate', 'photoUrl', 'departmentIds'])
+                && changed().hasOnly(['name', 'phone', 'address', 'birthDate', 'photoUrl'])
                 && extraValid(request.resource.data)
                 && request.resource.data.name is string
                 && request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 30
                 && request.resource.data.get('phone', '') is string
-                && request.resource.data.get('phone', '').size() <= 20
-                && request.resource.data.departmentIds is list
-                && request.resource.data.departmentIds.size() <= 20)
-          // 교역자·교회 운영자: 교인을 부서에 넣고 빼기
-          || (isManager(churchId)
-                && changed().hasOnly(['departmentIds'])
-                && request.resource.data.departmentIds is list
-                && request.resource.data.departmentIds.size() <= 20)
-          // 본인: 소속 부서 선택 (승인된 교인만)
-          || (isActive(churchId) && request.auth.uid == memberId
-                && changed().hasOnly(['departmentIds'])
-                && request.resource.data.departmentIds is list
-                && request.resource.data.departmentIds.size() <= 20);
+                && request.resource.data.get('phone', '').size() <= 20);
 
         // 교인 문서는 지우지 않는다 (추방은 위 update의 removed 표시).
         allow delete: if false;
@@ -484,17 +464,6 @@ service cloud.firestore {
           && request.resource.data.requiredFields is list
           && request.resource.data.requiredFields.size() <= 2
           && request.resource.data.requiredFields.hasOnly(['address', 'birthDate']);
-      }
-
-      // ---- 부서별 기능: 기도 · 말씀 탭을 쓸 수 있는 부서. 교인이 읽고 교역자 · 교회 운영자가 정한다 ----
-      match /settings/features {
-        allow get: if isActive(churchId) || isPlatformAdmin();
-        allow create, update: if isOwner(churchId)
-          && request.resource.data.keys().hasOnly(['prayerDepartments', 'wordDepartments'])
-          && request.resource.data.get('prayerDepartments', []) is list
-          && request.resource.data.get('prayerDepartments', []).size() <= 100
-          && request.resource.data.get('wordDepartments', []) is list
-          && request.resource.data.get('wordDepartments', []).size() <= 100;
       }
 
       // ---- 기도 요청 운영 설정: 교인이 읽고 교역자 · 교회 운영자가 정한다 ----
@@ -517,44 +486,24 @@ service cloud.firestore {
           && request.resource.data.logPrivateAccess is bool;
       }
 
-      // ---- 부서: 교역자가 만들고, 교인이 스스로 소속을 선택한다 ----
-      match /departments/{deptId} {
-        allow read: if isActive(churchId) || isPlatformAdmin();
-        allow create: if isOwner(churchId)
-          && request.resource.data.keys().hasOnly(['name', 'createdBy', 'createdAt'])
-          && request.resource.data.createdBy == request.auth.uid
-          && request.resource.data.name is string
-          && request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 30;
-        allow update: if isOwner(churchId)
-          && changed().hasOnly(['name'])
-          && request.resource.data.name is string
-          && request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 30;
-        allow delete: if false;
-      }
-
       // ---- 기도제목 ----
       match /prayerPosts/{prayerId} {
         // 일반 교인은 '공개 + 미삭제' 글과 본인의 미삭제 글만 읽을 수 있다.
         // 비공개 글은 쿼리 결과에도 포함되지 않는다.
         allow read: if isActive(churchId) && (
           isStaff(churchId)
-          || (featureAllowed(churchId, 'prayerDepartments') && (
-              (resource.data.visibility == 'public' && resource.data.deleted == false
-                && inDept(churchId, resource.data.get('departmentId', null)))
-              || (resource.data.authorId == request.auth.uid && resource.data.deleted == false)))
+          || (resource.data.visibility == 'public' && resource.data.deleted == false)
+          || (resource.data.authorId == request.auth.uid && resource.data.deleted == false)
         );
 
         allow create: if isActive(churchId)
-          && featureAllowed(churchId, 'prayerDepartments')
           && (prayerOpt(churchId, 'writers', 'member') == 'member' || isStaff(churchId))
           && (request.resource.data.visibility == 'public' || prayerOpt(churchId, 'allowPrivate', true))
           && request.resource.data.keys().hasOnly(
                ['authorId', 'title', 'content', 'visibility', 'createdAt', 'updatedAt', 'deleted',
-                'departmentId'])
-          // 교회 전체(null)이거나 내가 소속된 부서에만 쓸 수 있다.
-          && (request.resource.data.departmentId == null
-              || isStaff(churchId)
-              || request.resource.data.departmentId in get(memberPath(churchId)).data.get('departmentIds', []))
+                'views'])
+          // 조회수는 0에서 시작한다 (교역자가 만드는 견본 글만 예외).
+          && (request.resource.data.get('views', 0) == 0 || isStaff(churchId))
           && request.resource.data.authorId == request.auth.uid
           && request.resource.data.deleted == false
           && request.resource.data.visibility in ['public', 'private']
@@ -580,6 +529,11 @@ service cloud.firestore {
             && request.resource.data.title.size() > 0 && request.resource.data.title.size() <= 100
             && request.resource.data.content is string
             && request.resource.data.content.size() > 0 && request.resource.data.content.size() <= 3000)
+          // 교인: 읽을 수 있는 글의 조회수 +1
+          || (resource.data.deleted == false
+            && changed().hasOnly(['views']) && viewBump()
+            && (isStaff(churchId) || resource.data.authorId == request.auth.uid
+                || resource.data.visibility == 'public'))
           // 작성자: 본인 글 삭제 (소프트 삭제)
           || (resource.data.authorId == request.auth.uid && resource.data.deleted == false
             && prayerOpt(churchId, 'memberDelete', true)
@@ -650,65 +604,73 @@ service cloud.firestore {
         }
       }
 
-      // ---- 페이지 구성: 메뉴에 보이는 페이지와 각 페이지에 쌓인 구조 ----
-      // 승인된 교인이 읽고, 앱의 구성을 고치는 일이므로 교회 관리자(와 앱 개발자)만 만들고 고치고 지운다.
-      match /pages/{pageId} {
+      // ---- 모임: 교인이 만들면 모임장이 되고, 다른 교인은 참여를 신청한다 ----
+      // 정원은 규칙이 막는다 (참여자가 정원을 넘을 수 없다). 지우지 않고 deleted 표시만 남긴다.
+      match /meetings/{meetingId} {
         allow read: if isActive(churchId) || isPlatformAdmin();
-        allow create, update: if isOwner(churchId)
-          && request.resource.data.keys().hasOnly(['title', 'icon', 'order', 'group', 'layout', 'structures', 'updatedAt', 'deleted', 'deletedAt', 'deletedBy'])
+        allow create: if isActive(churchId)
+          && request.resource.data.keys().hasOnly(['title', 'description', 'place', 'date', 'capacity',
+               'leaderId', 'leaderName', 'participantIds', 'likedBy', 'views', 'deleted', 'createdAt'])
+          && request.resource.data.leaderId == request.auth.uid
           && request.resource.data.title is string
-          && request.resource.data.title.size() > 0 && request.resource.data.title.size() <= 30
-          && request.resource.data.icon is string && request.resource.data.icon.size() <= 20
-          && request.resource.data.order is int
-          && request.resource.data.get('group', 'home') in ['home', 'left', 'right', 'drawer', 'prayer', 'word']
-          && (!('layout' in request.resource.data) || request.resource.data.layout is map)
-          && (!('structures' in request.resource.data) || (request.resource.data.structures is list && request.resource.data.structures.size() <= 10));
-        // 페이지는 지우지 않고 deleted 표시만 남긴다.
+          && request.resource.data.title.size() > 0 && request.resource.data.title.size() <= 60
+          && request.resource.data.description is string && request.resource.data.description.size() <= 2000
+          && request.resource.data.place is string && request.resource.data.place.size() <= 100
+          && request.resource.data.date is timestamp
+          && request.resource.data.capacity is int
+          && request.resource.data.capacity >= 2 && request.resource.data.capacity <= 200
+          && request.resource.data.leaderName is string && request.resource.data.leaderName.size() <= 40
+          && request.resource.data.deleted == false
+          && request.resource.data.participantIds is list
+          && request.resource.data.participantIds.size() <= request.resource.data.capacity
+          && request.resource.data.likedBy is list && request.resource.data.likedBy.size() <= 1000
+          // 일반 교인은 자기 혼자 · 좋아요 0 · 조회수 0으로 시작한다 (교역자가 만드는 견본 모임만 예외).
+          && (isStaff(churchId)
+              || (request.resource.data.participantIds == [request.auth.uid]
+                  && request.resource.data.likedBy.size() == 0
+                  && request.resource.data.views == 0));
+        allow update: if isActive(churchId) && resource.data.deleted == false && (
+          // 모임장 · 교역자: 내용 수정 (정원은 이미 참여한 사람 수 이상) 또는 삭제 표시
+          ((resource.data.leaderId == request.auth.uid || isManager(churchId))
+            && changed().hasOnly(['title', 'description', 'place', 'date', 'capacity', 'updatedAt',
+                 'deleted', 'deletedAt', 'deletedBy'])
+            && request.resource.data.title.size() > 0 && request.resource.data.title.size() <= 60
+            && request.resource.data.description.size() <= 2000
+            && request.resource.data.place.size() <= 100
+            && request.resource.data.capacity >= 2 && request.resource.data.capacity <= 200
+            && request.resource.data.capacity >= resource.data.participantIds.size())
+          // 교인: 참여 신청 · 취소 (정원 안에서)
+          || (changed().hasOnly(['participantIds'])
+              && onlyMeDiff(resource.data.participantIds, request.resource.data.participantIds)
+              && request.resource.data.participantIds.size() <= resource.data.capacity)
+          // 교인: 좋아요 · 조회수
+          || (changed().hasOnly(['likedBy'])
+              && onlyMeDiff(resource.data.get('likedBy', []), request.resource.data.likedBy))
+          || (changed().hasOnly(['views']) && viewBump())
+        );
         allow delete: if false;
       }
 
-      // ---- 페이지 구성의 이전 모습: 저장할 때마다 하나씩 남기고, 교회 관리자가 되돌릴 때 읽는다. 고치거나 지울 수 없다 ----
-      match /pageRevisions/{revisionId} {
-        allow read: if isOwner(churchId) || isPlatformAdmin();
-        allow create: if isOwner(churchId)
-          && request.resource.data.keys().hasOnly(['savedAt', 'savedBy', 'pages'])
-          && request.resource.data.pages is list
-          && request.resource.data.pages.size() <= 30;
-        allow update, delete: if false;
-      }
-
-      // ---- 교회 메인 페이지 콘텐츠: 공지·일정·사진첩·설교영상·말씀묵상 ----
-      // 승인된 교인이 읽고, 교역자 · 교회 관리자(와 앱 개발자)가 글을 게시한다. 종류가 늘면 아래 목록도 함께 고친다.
-      match /{kind}/{contentId} {
-        allow read: if kind in ['notices', 'events', 'photos', 'sermons', 'devotions']
-          && (isActive(churchId) || isPlatformAdmin());
-        allow create: if kind in ['notices', 'events', 'photos', 'sermons', 'devotions']
-          && isManager(churchId)
-          && request.resource.data.keys().hasOnly(
-               ['title', 'body', 'date', 'imageUrls', 'videoUrl', 'category', 'createdBy', 'createdAt'])
-          && request.resource.data.createdBy == request.auth.uid
-          && contentValid(request.resource.data);
-        allow update: if kind in ['notices', 'events', 'photos', 'sermons', 'devotions']
-          && isManager(churchId)
-          && changed().hasOnly(['title', 'body', 'date', 'imageUrls', 'videoUrl', 'category', 'updatedAt', 'deleted', 'deletedAt', 'deletedBy'])
-          && contentValid(request.resource.data);
-        // 글은 지우지 않고 deleted 표시만 남긴다 (이미지 파일도 그대로 둔다).
-        allow delete: if false;
-      }
-
-      // ---- 콘텐츠 영역: 공지 · 사진첩 · 설교영상 글을 나누는 이름 ----
-      // 승인된 교인이 읽고, 교역자 · 교회 관리자가 만든다. 지우지 않고 deleted 표시만 남긴다
-      // (영역 안에 글이 없을 때만 지울 수 있다는 점은 앱이 확인한다).
-      match /contentAreas/{areaId} {
+      // ---- 말씀 묵상(성경): 승인된 교인이 읽고, 교역자 · 교회 관리자(와 앱 개발자)가 글을 게시한다 ----
+      match /devotions/{contentId} {
         allow read: if isActive(churchId) || isPlatformAdmin();
         allow create: if isManager(churchId)
-          && request.resource.data.keys().hasOnly(['kind', 'name', 'createdBy', 'createdAt'])
-          && request.resource.data.kind in ['notices', 'photos', 'sermons']
-          && request.resource.data.name is string
-          && request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 20
-          && request.resource.data.createdBy == request.auth.uid;
-        allow update: if isManager(churchId)
-          && changed().hasOnly(['deleted', 'deletedAt', 'deletedBy']);
+          && request.resource.data.keys().hasOnly(['title', 'body', 'meditation', 'date', 'views', 'likedBy', 'createdBy', 'createdAt'])
+          && request.resource.data.createdBy == request.auth.uid
+          && request.resource.data.get('views', 0) is int
+          && request.resource.data.get('likedBy', []) is list
+          && request.resource.data.get('likedBy', []).size() <= 1000
+          && contentValid(request.resource.data);
+        allow update: if (isManager(churchId)
+            && changed().hasOnly(['title', 'body', 'meditation', 'date', 'updatedAt', 'deleted', 'deletedAt', 'deletedBy'])
+            && contentValid(request.resource.data))
+          // 교인: 조회수 +1, 좋아요 누르기 · 취소 (한 번에 하나만)
+          || (isActive(churchId)
+            && resource.data.get('deleted', false) == false
+            && ((changed().hasOnly(['views']) && viewBump())
+                || (changed().hasOnly(['likedBy'])
+                    && onlyMeDiff(resource.data.get('likedBy', []), request.resource.data.likedBy))));
+        // 글은 지우지 않고 deleted 표시만 남긴다.
         allow delete: if false;
       }
 
@@ -717,7 +679,6 @@ service cloud.firestore {
       match /devotions/{devotionId}/reflections/{authorId} {
         allow read: if isActive(churchId) || isPlatformAdmin();
         allow create, update: if isActive(churchId)
-          && featureAllowed(churchId, 'wordDepartments')
           && request.auth.uid == authorId
           && request.resource.data.keys().hasOnly(['authorId', 'authorName', 'text', 'updatedAt', 'deleted', 'deletedAt', 'deletedBy'])
           && request.resource.data.authorId == request.auth.uid

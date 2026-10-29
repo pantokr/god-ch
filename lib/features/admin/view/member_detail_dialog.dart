@@ -6,7 +6,6 @@ import 'package:flutter/material.dart';
 
 import '../../../core/mvvm/view_model.dart';
 import '../../../core/theme.dart';
-import '../../../data/models/department.dart';
 import '../../../data/models/member.dart';
 import '../../../core/widgets/thumbnail_field.dart';
 import '../../auth/view/profile_extra_fields.dart';
@@ -16,34 +15,25 @@ import '../../../core/widgets/app_inputs.dart';
 class MembershipEditor {
   const MembershipEditor({
     required this.member,
-    required this.departments,
     this.canRole = false,
     this.canStatus = false,
   });
 
   final Member member;
 
-  /// 이 교회에 있는 부서 전체.
-  final List<Department> departments;
   final bool canRole;
   final bool canStatus;
 }
 
 /// 한 교회에서 바뀐 항목. 바뀌지 않은 항목은 null이다.
 class MembershipChange {
-  const MembershipChange(
-    this.member, {
-    this.departmentIds,
-    this.role,
-    this.status,
-  });
+  const MembershipChange(this.member, {this.role, this.status});
 
   final Member member;
-  final List<String>? departmentIds;
   final Role? role;
   final MemberStatus? status;
 
-  bool get isEmpty => departmentIds == null && role == null && status == null;
+  bool get isEmpty => role == null && status == null;
 }
 
 class MemberDetailResult {
@@ -64,7 +54,7 @@ class MemberDetailResult {
   final List<MembershipChange> changes;
 }
 
-/// 회원 상세 관리: 이름·전화번호와 교회별 소속 부서·역할·상태.
+/// 회원 상세 관리: 이름·전화번호와 교회별 역할·상태.
 /// 교회 운영자(교회 안)와 앱 운영자(전체 회원)가 같은 창을 쓴다.
 class MemberDetailDialog extends StatefulWidget {
   const MemberDetailDialog({
@@ -104,7 +94,7 @@ class MemberDetailDialog extends StatefulWidget {
   final List<MembershipEditor> memberships;
   final Future<bool> Function(MemberDetailResult result) onSave;
 
-  /// 이름·전화번호를 고칠 수 있는가 (교역자는 소속 부서만 고칠 수 있다).
+  /// 이름·전화번호를 고칠 수 있는가.
   final bool canEditProfile;
 
   /// 여러 교회에 속할 수 있는 화면(앱 운영자)에서 교회 이름을 제목으로 보여준다.
@@ -138,9 +128,6 @@ class _MemberDetailDialogState extends State<MemberDetailDialog> {
   late final _address = TextEditingController(text: widget.address);
   late final _birthDate = TextEditingController(text: widget.birthDate);
   late final _photo = TextEditingController(text: widget.photoUrl);
-  late final List<Set<String>> _depts = [
-    for (final m in widget.memberships) {...m.member.departmentIds},
-  ];
   late final List<Role> _roles = [
     for (final m in widget.memberships) m.member.role,
   ];
@@ -164,12 +151,6 @@ class _MemberDetailDialogState extends State<MemberDetailDialog> {
     super.dispose();
   }
 
-  bool _sameIds(Iterable<String> a, Iterable<String> b) {
-    final x = a.toSet();
-    final y = b.toSet();
-    return x.length == y.length && x.containsAll(y);
-  }
-
   Future<void> _save() async {
     final navigator = Navigator.of(context);
     final messenger = ScaffoldMessenger.of(context);
@@ -179,15 +160,6 @@ class _MemberDetailDialogState extends State<MemberDetailDialog> {
       final m = e.member;
       final change = MembershipChange(
         m,
-        departmentIds: _sameIds(_depts[i], m.departmentIds)
-            ? null
-            : [
-                for (final d in e.departments)
-                  if (_depts[i].contains(d.id)) d.id,
-                // 삭제되었거나 보이지 않는 부서는 그대로 둔다.
-                for (final id in m.departmentIds)
-                  if (!e.departments.any((d) => d.id == id)) id,
-              ],
         role: e.canRole && _roles[i] != m.role ? _roles[i] : null,
         status: e.canStatus && _statuses[i] != m.status ? _statuses[i] : null,
       );
@@ -320,31 +292,6 @@ class _MemberDetailDialogState extends State<MemberDetailDialog> {
                       ),
                   ],
                 ),
-              ),
-            const SizedBox(height: 12),
-            Text('소속 부서', style: muted),
-            if (widget.memberships[i].departments.isEmpty)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                child: Text('만들어진 부서가 없어요.', style: muted),
-              ),
-            for (final d in widget.memberships[i].departments)
-              CheckboxListTile(
-                dense: true,
-                contentPadding: EdgeInsets.zero,
-                controlAffinity: ListTileControlAffinity.leading,
-                title: Text(d.name),
-                // 교회 운영자는 모든 부서에 자동으로 속한다.
-                value: _roles[i] == Role.admin || _depts[i].contains(d.id),
-                onChanged: _roles[i] == Role.admin
-                    ? null
-                    : (v) => setState(() {
-                        if (v ?? false) {
-                          _depts[i].add(d.id);
-                        } else {
-                          _depts[i].remove(d.id);
-                        }
-                      }),
               ),
           ],
           if (widget.vm.error != null) ...[

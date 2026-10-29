@@ -17,7 +17,7 @@ import 'register_church_dialog.dart';
 import 'registered_churches.dart';
 
 /// 앱 운영자 > 교회 관리: 교회 생성 요청 처리와 등록된 교회 목록을 한 화면에 나열한다.
-/// 교회 상세 관리(정보·교인·초대 코드·부서)는 목록에서 교회의 "관리"를 눌러 연다.
+/// 교회 상세 관리(정보·교인·초대 코드)는 목록에서 교회의 "관리"를 눌러 연다.
 class ChurchRegistryPage extends StatelessWidget {
   const ChurchRegistryPage({super.key});
 
