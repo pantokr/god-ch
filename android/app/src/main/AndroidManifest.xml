@@ -1,4 +1,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- 릴리스 빌드에서도 Firebase·이미지·광고 통신이 되도록 인터넷 권한을 둔다. -->
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
     <application
         android:label="같이"
         android:name="${applicationName}"
