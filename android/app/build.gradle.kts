@@ -37,6 +37,9 @@ android {
             // TODO: Add your own signing config for the release build.
             // Signing with the debug keys for now, so `flutter run --release` works.
             signingConfig = signingConfigs.getByName("debug")
+            // R8가 Firebase·광고 플러그인 클래스를 지워 시작하자마자 죽는 것을 막는다.
+            isMinifyEnabled = false
+            isShrinkResources = false
         }
     }
 }
