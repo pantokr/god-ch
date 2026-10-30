@@ -18,6 +18,10 @@ Future<void> main() async {
   final themeMode = await ThemeModeController.load();
   final listStyle = await ListStyleController.load();
   // 광고(앱 종료 확인 창)는 켜 두고 기다리지 않는다. 웹에서는 쓰지 않는다.
-  if (!kIsWeb) MobileAds.instance.initialize().ignore();
+  if (!kIsWeb) {
+    try {
+      MobileAds.instance.initialize().then((_) {}, onError: (_) {});
+    } catch (_) {}
+  }
   runApp(App(themeMode: themeMode, listStyle: listStyle));
 }
