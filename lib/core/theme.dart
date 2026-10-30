@@ -175,7 +175,7 @@ class AppPalette extends ThemeExtension<AppPalette> {
     surface: Color(0xFF181B30),
     border: Color(0xFF2B2F4D),
     brand: Color(0xFFA37CFF),
-    onBrand: Color(0xFFFFFFFF),
+    onBrand: Color(0xFF0E1020),
     accent: Color(0xFFFF4FC3),
   );
 
