@@ -1,3 +1,4 @@
+import '../../../core/widgets/app_loader.dart';
 import '../../../core/icons.dart';
 
 import 'package:flutter/material.dart';
@@ -35,9 +36,7 @@ class MemberGate extends StatelessWidget {
             );
           }
           if (snap.connectionState == ConnectionState.waiting) {
-            return const Scaffold(
-              body: Center(child: CircularProgressIndicator()),
-            );
+            return const Scaffold(body: Center(child: AppLoader()));
           }
           final me = snap.data;
           if (me == null || !me.isApproved) {
@@ -45,9 +44,7 @@ class MemberGate extends StatelessWidget {
             WidgetsBinding.instance.addPostFrameCallback((_) {
               if (context.mounted) context.go(Routes.churches);
             });
-            return const Scaffold(
-              body: Center(child: CircularProgressIndicator()),
-            );
+            return const Scaffold(body: Center(child: AppLoader()));
           }
           return StreamBuilder<bool>(
             stream: vm.closed,

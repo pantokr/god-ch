@@ -86,7 +86,12 @@ class ChurchRequestRepository {
       .map((s) => _newestFirst(s.docs.map(ChurchRequest.fromDoc)));
 
   /// 요청을 승인한다. 요청 ID와 같은 ID로 교회를 만들고, 요청자를 교회 운영자로 등록한다.
-  Future<void> approve(ChurchRequest r) {
+  Future<void> approve(ChurchRequest r) async {
+    // 요청자의 로그인 아이디 · 이메일을 교인 정보에도 남겨 회원 목록에서 알아볼 수 있게 한다.
+    final profile = (await _db.collection('users').doc(r.requesterId).get())
+        .data();
+    final loginId = profile?['loginId'] as String? ?? '';
+    final email = profile?['email'] as String? ?? '';
     final batch = _db.batch();
     batch.set(_paths.church(r.id), {
       'name': r.name,
@@ -101,6 +106,8 @@ class ChurchRequestRepository {
       'churchName': r.name,
       'name': r.requesterName,
       if (r.requesterPhone.isNotEmpty) 'phone': r.requesterPhone,
+      if (loginId.isNotEmpty) 'loginId': loginId,
+      if (email.isNotEmpty) 'email': email,
       'role': Role.admin.name,
       'status': MemberStatus.approved.name,
       'affiliationIds': <String>[],
@@ -112,7 +119,7 @@ class ChurchRequestRepository {
       'reviewedBy': _auth.uid,
       'reviewedAt': FieldValue.serverTimestamp(),
     });
-    return batch.commit();
+    await batch.commit();
   }
 
   /// 요청을 거절하고, 요청자의 알림 탭에 거절 알림을 남긴다.

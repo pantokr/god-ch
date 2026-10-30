@@ -21,10 +21,11 @@ Flutter(웹 우선) + Firebase 앱. 개요와 환경 설정은 [README.md](READM
 - 로그인은 아이디+비밀번호. `loginIds/{id}`가 아이디→이메일을 연결한다. 예약 아이디(`admin` 등)는 가상 이메일(`LoginId.aliasEmail`)로 로그인한다.
 - 교회는 앱 운영자의 승인(`churchRequests`)이나 직접 등록으로만 만들어지고, 입장은 만료 있는 초대 코드(`inviteCodes`)로만 가능하다.
 - **기능은 기도제목 · 모임 · 성경 셋뿐이다.** 레이아웃 다양화·페이지 편집·공지/일정/사진첩/설교영상은 없앴다. 새 기능은 왼쪽 메뉴(서랍)나 하단 탭(`ChurchShell`)에 항목만 더한다.
-- 성경(말씀묵상) 글은 `churches/{id}/devotions`에 있고 `ContentKind`와 `firestore.rules`가 일치해야 한다. 이미지 업로드는 교회·회원 썸네일뿐이다(`storage.rules`).
-- 모임은 `churches/{id}/meetings`에 있다 (모임장 · 정원 · 참여자 · 좋아요 · 조회수). 목록 모양은 알록달록 / 심플 중 사용자가 고른다(`ListStyleController`).
+- 성경(말씀묵상) 글은 `churches/{id}/devotions`에 있고 `ContentKind`와 `firestore.rules`가 일치해야 한다. 이미지 업로드는 교회·회원·모임 썸네일뿐이다(`storage.rules`).
+- 모임은 `churches/{id}/meetings`에 있다 (모임장 · 정원 · 참여자 · 좋아요 · 조회수 · 썸네일 `imageUrl`, 제목 24자 · 장소 8자 제한은 `Meeting.maxTitle`/`maxPlace`와 규칙이 일치). 목록 모양은 알록달록 / 심플 중 사용자가 고른다(`ListStyleController`).
 - 말씀묵상 글(구절 한 단락)에는 교인이 자기 글을 남긴다: `churches/{id}/devotions/{글}/reflections/{uid}` (한 사람 한 편에 한 개, `firestore.rules`의 reflections 규칙, 길이 1000자는 `DevotionReflection.maxLength`와 일치).
-- 말씀묵상 글 쓰기는 교역자 이상, 기도 설정·교회 정보는 교회 운영자(`admin`)만 한다.
+- 권한은 역할 기본값 + **직급**(`positions`, 교회 운영자가 만들고 교인에게 준다)이다. 목록은 `lib/data/models/permission.dart`이고, 규칙은 `can(교회, 권한)`으로 막는다. 중보기도 설정 · 말씀묵상 설정 · 직급 권한 관리 · 교회 정보는 교회 운영자(`admin`)만 한다.
+- 화면에는 "기도" 대신 **중보기도**라고 쓴다.
 - 로그인하면 승인된 교회가 있을 때 `/churches`가 마지막 교회의 메인으로 바로 넘어간다. 목록을 보려면 `Routes.churchList`.
 - 새 필드를 추가하면 모델·저장소·`firestore.rules`의 `hasOnly([...])` 목록을 **같이** 고친다. 이모티콘 종류도 `lib/data/models/reaction.dart`와 규칙이 일치해야 한다.
 

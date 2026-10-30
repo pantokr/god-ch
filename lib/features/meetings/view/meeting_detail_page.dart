@@ -1,18 +1,25 @@
+import '../../../core/widgets/app_loader.dart';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/app_scope.dart';
 import '../../../app/routes.dart';
+import '../../../core/widgets/like_button.dart';
+import '../../../core/widgets/trash_icon.dart';
 import '../../../core/icons.dart';
 import '../../../core/layout/confirm_dialog.dart';
 import '../../../core/layout/sub_page.dart';
 import '../../../core/mvvm/view_model_builder.dart';
 import '../../../core/theme.dart';
 import '../../../core/widgets/stat_icons.dart';
+import '../../../data/models/permission.dart';
 import '../../../data/models/meeting.dart';
 import '../../../data/models/member.dart';
 import '../view_model/meeting_detail_view_model.dart';
+import 'meeting_comments_card.dart';
 import 'meeting_form.dart';
+import '../../home/view/content_widgets.dart';
 import 'meeting_format.dart';
 import 'meetings_page.dart' show seatLabel;
 
@@ -45,7 +52,7 @@ class MeetingDetailPage extends StatelessWidget {
               child: snap.connectionState == ConnectionState.waiting
                   ? const Padding(
                       padding: EdgeInsets.all(48),
-                      child: Center(child: CircularProgressIndicator()),
+                      child: Center(child: AppLoader()),
                     )
                   : const Card(
                       child: Padding(
@@ -55,7 +62,8 @@ class MeetingDetailPage extends StatelessWidget {
                     ),
             );
           }
-          final canManage = m.leaderId == me.id || me.isStaff;
+          final canManage =
+              m.leaderId == me.id || me.can(Permission.meetingDelete);
           return SubPage(
             title: m.title,
             fallbackLocation: back,
@@ -67,7 +75,8 @@ class MeetingDetailPage extends StatelessWidget {
                   onPressed: () => _edit(context, vm, m),
                 ),
                 TextButton.icon(
-                  icon: const Icon(AppIcons.trash, size: 18),
+                  style: TrashIcon.textStyle(context),
+                  icon: const TrashIcon(),
                   label: const Text('삭제'),
                   onPressed: () => _delete(context, vm, m, back),
                 ),
@@ -77,6 +86,9 @@ class MeetingDetailPage extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 _InfoCard(meeting: m),
+                const SizedBox(height: 12),
+                // 좋아요 · 조회수는 말씀묵상과 같은 반응 카드로 첫 카드 바로 아래에 둔다.
+                _ReactionCard(meeting: m, me: me, vm: vm),
                 if (m.description.isNotEmpty) ...[
                   const SizedBox(height: 12),
                   _Section(
@@ -91,7 +103,7 @@ class MeetingDetailPage extends StatelessWidget {
                 const SizedBox(height: 12),
                 _JoinCard(meeting: m, me: me, vm: vm),
                 const SizedBox(height: 12),
-                _ReactionCard(meeting: m, me: me, vm: vm),
+                MeetingCommentsCard(meetingId: m.id, me: me),
               ],
             ),
           );
@@ -105,7 +117,11 @@ class MeetingDetailPage extends StatelessWidget {
     MeetingDetailViewModel vm,
     Meeting m,
   ) async {
-    final result = await showMeetingForm(context, initial: m);
+    final result = await showMeetingForm(
+      context,
+      initial: m,
+      upload: vm.uploadImage,
+    );
     if (result == null || !context.mounted) return;
     final messenger = ScaffoldMessenger.of(context);
     if (!await vm.update(m, result) && vm.error != null) {
@@ -125,6 +141,7 @@ class MeetingDetailPage extends StatelessWidget {
       title: '모임 삭제',
       body: '"${m.title}"을(를) 삭제할까요?',
       confirmLabel: '삭제',
+      danger: true,
     );
     if (!ok) return;
     if (await vm.delete()) {
@@ -195,6 +212,16 @@ class _InfoCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            if (m.imageUrl.isNotEmpty) ...[
+              ClipRRect(
+                borderRadius: BorderRadius.circular(AppRadius.control),
+                child: AspectRatio(
+                  aspectRatio: 1.3,
+                  child: ContentImage(m.imageUrl),
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
             Text(m.title, style: Theme.of(context).textTheme.titleLarge),
             row(AppIcons.user, '모임장 ${m.leaderName}'),
             row(AppIcons.calendarDays, meetingWhen(m.date)),
@@ -224,9 +251,12 @@ class _JoinCard extends StatelessWidget {
       button = const SizedBox.shrink();
     } else if (isLeader) {
       button = const OutlinedButton(onPressed: null, child: Text('내가 모임장'));
+    } else if (!me.can(Permission.meetingJoin)) {
+      button = const OutlinedButton(onPressed: null, child: Text('참여 권한 없음'));
     } else if (joined) {
       button = OutlinedButton(
-        onPressed: vm.busy ? null : () => vm.setJoined(false),
+        // 이미 지난(종료된) 모임은 참여를 취소할 수 없다.
+        onPressed: vm.busy || m.ended ? null : () => vm.setJoined(false),
         child: const Text('참여 취소'),
       );
     } else {
@@ -271,6 +301,7 @@ class _JoinCard extends StatelessWidget {
   }
 }
 
+/// 반응: 좋아요 버튼과 조회수. 말씀묵상 상세의 반응 카드와 같은 모양이다.
 class _ReactionCard extends StatelessWidget {
   const _ReactionCard({
     required this.meeting,
@@ -291,14 +322,10 @@ class _ReactionCard extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
         child: Row(
           children: [
-            TextButton.icon(
-              onPressed: me.isOperatorView ? null : () => vm.setLike(!liked),
-              icon: Icon(
-                liked ? AppIcons.heartFill : AppIcons.heart,
-                size: 20,
-                color: liked ? const Color(0xFFE5484D) : muted,
-              ),
-              label: Text('좋아요 ${StatIcons.compact(meeting.likes)}'),
+            LikeButton(
+              liked: liked,
+              count: meeting.likes,
+              onTap: me.isOperatorView ? null : () => vm.setLike(!liked),
             ),
             const Spacer(),
             Icon(AppIcons.eyeCount, size: 16, color: muted),

@@ -1,3 +1,4 @@
+import '../../../core/widgets/app_loader.dart';
 import '../../../core/icons.dart';
 
 import 'package:flutter/material.dart';
@@ -104,7 +105,7 @@ class _ExploreBody extends StatelessWidget {
                   if (!snap.hasData) {
                     return const Padding(
                       padding: EdgeInsets.all(48),
-                      child: Center(child: CircularProgressIndicator()),
+                      child: Center(child: AppLoader()),
                     );
                   }
                   // 공개로 노출한 교회가 하나도 없는 것과, 검색에 맞는 교회가 없는 것은 다르다.

@@ -19,6 +19,10 @@ Color prayerBoardColor(BuildContext context) =>
 
 /// 기도 화면 배경 효과: 종이 같은 점 무늬 위로 은은한 빛무리가 천천히 떠다닌다.
 /// 시스템에서 애니메이션을 끈 경우에는 멈춰 있다.
+/// 기도 화면의 포스트잇(떠다니는 카드 · 게시판 배경) 사용 여부. false이면 알록달록을 골라도 카드 격자만 보인다.
+/// 다시 켜려면 true로 바꾼다 (스위치 · 배경이 함께 돌아온다).
+const kPostItEnabled = false;
+
 class PrayerBoardBackground extends StatefulWidget {
   const PrayerBoardBackground({super.key});
 
@@ -341,7 +345,7 @@ class PostItNote extends StatelessWidget {
                           Expanded(
                             child: Text(
                               [
-                                fmtDate(prayer.createdAt),
+                                fmtDateTime(prayer.createdAt),
                                 ?subtitle,
                               ].join(' · '),
                               maxLines: 1,

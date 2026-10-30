@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -9,6 +10,7 @@ import '../../../data/firestore_paths.dart';
 import '../../../data/models/church.dart';
 import '../../../data/models/invite_code.dart';
 import '../../../data/models/member.dart';
+import '../../../data/models/position.dart';
 import '../../../data/models/profile_field.dart';
 import '../../auth/data/auth_repository.dart';
 import '../../auth/data/profile_repository.dart';
@@ -58,13 +60,63 @@ class ChurchRepository {
   }
 
   /// 한 교회에서의 내 교인 정보. 입장을 신청한 적이 없으면 null.
-  Stream<Member?> membership(String churchId) =>
-      _paths.members(churchId).doc(_auth.uid).snapshots().map((s) {
-        if (!s.exists) return null;
-        final m = Member.fromDoc(s);
-        // 추방된 교인은 기록만 남아 있을 뿐 교인이 아니다.
-        return m.status == MemberStatus.removed ? null : m;
-      });
+  Stream<Member?> membership(String churchId) {
+    // 내 교인 문서와 기본 직급(교역자 · 회원)의 권한 문서를 함께 지켜보고, 하나로 합쳐 내보낸다.
+    // 기본 직급 문서는 아직 승인되지 않았거나 없으면 읽지 못하므로 기본값을 쓴다.
+    final positions = _paths.church(churchId).collection('positions');
+    late StreamController<Member?> out;
+    final subs = <StreamSubscription<dynamic>>[];
+    DocumentSnapshot<Json>? mine;
+    var haveMine = false;
+    DocumentSnapshot<Json>? staffDoc;
+    DocumentSnapshot<Json>? memberDoc;
+    void emit() {
+      if (!haveMine || out.isClosed) return;
+      if (mine == null || !mine!.exists) {
+        out.add(null);
+        return;
+      }
+      final m = Member.fromDoc(mine!);
+      // 추방된 교인은 기록만 남아 있을 뿐 교인이 아니다.
+      out.add(
+        m.status == MemberStatus.removed
+            ? null
+            : m.withRolePermissions(
+                RolePermissions.fromDocs(staffDoc, memberDoc),
+              ),
+      );
+    }
+
+    out = StreamController<Member?>(
+      onListen: () {
+        subs.add(
+          _paths.members(churchId).doc(_auth.uid).snapshots().listen((s) {
+            mine = s;
+            haveMine = true;
+            emit();
+          }, onError: out.addError),
+        );
+        subs.add(
+          positions.doc('staff').snapshots().listen((s) {
+            staffDoc = s;
+            emit();
+          }, onError: (_) {}),
+        );
+        subs.add(
+          positions.doc('member').snapshots().listen((s) {
+            memberDoc = s;
+            emit();
+          }, onError: (_) {}),
+        );
+      },
+      onCancel: () async {
+        for (final s in subs) {
+          await s.cancel();
+        }
+      },
+    );
+    return out.stream;
+  }
 
   /// 교역자가 새 초대 코드를 만든다. 기존 코드는 그대로 두고 만료되게 둔다.
   /// [role]과 [affiliationIds]는 이 코드로 들어오는 사람에게 그대로 적용된다.
@@ -313,6 +365,7 @@ class ChurchRepository {
       name: profile.name,
       phone: profile.phone,
       loginId: profile.loginId ?? '',
+      email: profile.email,
       photoUrl: profile.photoUrl,
       address: nextAddress,
       birthDate: nextBirthDate,
@@ -360,6 +413,7 @@ class ChurchRepository {
     required String name,
     required String phone,
     String loginId = '',
+    String email = '',
     String photoUrl = '',
     String address = '',
     String birthDate = '',
@@ -374,6 +428,7 @@ class ChurchRepository {
     'name': name,
     'phone': phone,
     if (loginId.isNotEmpty) 'loginId': loginId,
+    if (email.isNotEmpty) 'email': email,
     if (photoUrl.isNotEmpty) 'photoUrl': photoUrl,
     if (address.isNotEmpty) 'address': address,
     if (birthDate.isNotEmpty) 'birthDate': birthDate,

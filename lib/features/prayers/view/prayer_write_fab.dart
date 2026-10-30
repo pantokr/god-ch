@@ -6,7 +6,8 @@ import 'package:go_router/go_router.dart';
 import '../../../app/app_scope.dart';
 import '../../../app/routes.dart';
 import '../../../core/mvvm/view_model_builder.dart';
-import '../../../core/theme.dart';
+import '../../../core/widgets/create_fab.dart';
+import '../../../data/models/permission.dart';
 import '../../../data/models/affiliation.dart';
 import '../../../data/models/member.dart';
 import '../../../data/models/prayer_settings.dart';
@@ -36,60 +37,17 @@ class PrayerWriteFab extends StatelessWidget {
               (cfg.data ?? PrayerSettings.standard).writers ==
                   PrayerWriters.member ||
               me.isStaff;
+          final allowed = canWrite && me.can(Permission.prayerWrite);
           // 앱 개발자는 기도제목을 쓰지 않는다.
-          if (!canWrite || me.isOperatorView) return const SizedBox.shrink();
-          return _WriteButton(
+          if (!allowed || me.isOperatorView) return const SizedBox.shrink();
+          return CreateFab(
+            label: '중보기도 요청',
+            icon: AppIcons.pencilSimple,
             onTap: () => context.push(
               Routes.newPrayer(me.churchId, aff: affiliation?.id),
             ),
           );
         },
-      ),
-    );
-  }
-}
-
-/// 기본 플로팅 버튼 대신 앱의 네온 그라데이션으로 만든 기도 요청 버튼:
-/// 약한 모서리의 직사각형에 빛 번짐 그림자, 펜 아이콘과 이름.
-class _WriteButton extends StatelessWidget {
-  const _WriteButton({required this.onTap});
-
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final palette = context.palette;
-    final radius = BorderRadius.circular(AppRadius.card);
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        gradient: AppDepth.brand(context),
-        borderRadius: radius,
-        boxShadow: AppDepth.glow(context, strength: 0.9),
-      ),
-      child: Material(
-        type: MaterialType.transparency,
-        child: InkWell(
-          borderRadius: radius,
-          onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(AppIcons.pencilSimple, size: 20, color: palette.onBrand),
-                const SizedBox(width: 8),
-                Text(
-                  '기도 요청',
-                  style: TextStyle(
-                    color: palette.onBrand,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
       ),
     );
   }

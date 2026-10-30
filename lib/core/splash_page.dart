@@ -1,3 +1,4 @@
+import 'widgets/app_loader.dart';
 import 'icons.dart';
 
 import 'package:flutter/material.dart';
@@ -34,11 +35,7 @@ class SplashPage extends StatelessWidget {
                   ?.copyWith(fontWeight: FontWeight.w800),
             ),
             const SizedBox(height: 28),
-            const SizedBox(
-              width: 22,
-              height: 22,
-              child: CircularProgressIndicator(strokeWidth: 2.5),
-            ),
+            const SizedBox(width: 22, height: 22, child: AppLoader()),
           ],
         ),
       ),

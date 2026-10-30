@@ -19,9 +19,12 @@ class AppIcons {
   static const IconData caretUp = LucideIcons.chevronUp;
   static const IconData caretDown = LucideIcons.chevronDown;
   static const IconData caretRight = LucideIcons.chevronRight;
+  static const IconData caretLeft = LucideIcons.chevronLeft;
   static const IconData caretUpDown = LucideIcons.chevronsUpDown;
   static const IconData check = LucideIcons.check;
   static const IconData checkCircle = LucideIcons.circleCheck;
+  static const IconData checkCircleFill = LucideIcons600.circleCheck;
+  static const IconData crown = LucideIcons.crown;
   static const IconData church = LucideIcons.church;
   static const IconData churchFill = LucideIcons600.church;
   static const IconData circleFill = LucideIcons600.circle;
@@ -52,11 +55,13 @@ class AppIcons {
   static const IconData key = LucideIcons.keyRound;
   static const IconData keyFill = LucideIcons600.keyRound;
   static const IconData lock = LucideIcons.lock;
+  static const IconData paperPlaneRight = LucideIcons.send;
   static const IconData magnifyingGlass = LucideIcons.search;
   static const IconData moon = LucideIcons.moon;
   static const IconData pencilSimple = LucideIcons.pencil;
   static const IconData plus = LucideIcons.plus;
   static const IconData prohibit = LucideIcons.ban;
+  static const IconData refresh = LucideIcons.refreshCw;
   static const IconData shareNetwork = LucideIcons.share2;
   static const IconData shieldCheck = LucideIcons.shieldCheck;
   static const IconData shieldCheckFill = LucideIcons600.shieldCheck;
@@ -79,4 +84,5 @@ class AppIcons {
   static const IconData usersThreeFill = LucideIcons600.users;
   static const IconData warning = LucideIcons.triangleAlert;
   static const IconData x = LucideIcons.x;
+  static const IconData wifiOff = LucideIcons.wifiOff;
 }

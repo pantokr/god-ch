@@ -8,7 +8,7 @@ import 'member.dart';
 /// 설정한 적이 없는 기능은 모든 소속이 쓸 수 있다.
 /// `churches/{id}/settings/features`에 저장되고, `firestore.rules`가 같은 기준으로 막는다.
 enum PageFeature {
-  prayer('기도'),
+  prayer('중보기도'),
   word('성경');
 
   const PageFeature(this.label);

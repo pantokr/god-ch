@@ -1,3 +1,5 @@
+import '../../../core/widgets/app_loader.dart';
+
 import 'package:flutter/material.dart';
 
 import '../../../app/app_scope.dart';
@@ -14,7 +16,7 @@ class BiblePick {
   final String body;
 }
 
-/// 말씀 묵상에 넣을 성경 구절을 고른다: 번역 · 책 · 장 · 시작 절 · 끝 절.
+/// 말씀묵상에 넣을 성경 구절을 고른다: 번역 · 책 · 장 · 시작 절 · 끝 절.
 /// 성경 본문은 앱 운영자가 올려 둔 Storage 파일에서 가져온다.
 class BiblePickerDialog extends StatefulWidget {
   const BiblePickerDialog({super.key});
@@ -74,7 +76,7 @@ class _BiblePickerDialogState extends State<BiblePickerDialog> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                CircularProgressIndicator(),
+                AppLoader(),
                 SizedBox(height: 16),
                 Text('성경 본문을 불러오는 중이에요. 처음에는 조금 걸려요.'),
               ],

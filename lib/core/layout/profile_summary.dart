@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../theme.dart';
+import '../widgets/thumbnail_avatar.dart';
 import 'app_dialog.dart';
 
 /// 프로필에 덧붙여 보여줄 항목 한 줄 (예: 교회 / 역할).
@@ -32,18 +33,7 @@ class ProfileSummary extends StatelessWidget {
       children: [
         Row(
           children: [
-            CircleAvatar(
-              radius: 28,
-              backgroundColor: context.palette.brand.withValues(alpha: 0.12),
-              child: Text(
-                name.isEmpty ? '?' : name.characters.first,
-                style: TextStyle(
-                  fontSize: 22,
-                  color: context.palette.brand,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
+            ThumbnailAvatar(name: name, radius: 28),
             const SizedBox(width: 16),
             Expanded(
               child: Column(

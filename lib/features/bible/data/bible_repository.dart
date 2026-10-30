@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:flutter/services.dart' show rootBundle;
 
 import '../../../core/app_exception.dart';
 
@@ -47,7 +48,7 @@ class Bible {
 }
 
 /// 성경 본문(`bible/verse.csv`, Firebase Storage)을 올리고 읽는다.
-/// 파일은 앱 운영자가 한 번 올려 두고, 말씀 묵상을 쓸 때 구절을 골라 가져온다.
+/// 파일은 앱 운영자가 한 번 올려 두고, 말씀묵상을 쓸 때 구절을 골라 가져온다.
 class BibleRepository {
   BibleRepository(this._storage);
 
@@ -88,10 +89,32 @@ class BibleRepository {
     throw e;
   });
 
+  /// 앱에 담겨 있는 기본 성경.
+  static const _assetPath = 'assets/bible/bible_verses.csv';
+
+  /// Storage에 올라갈 수 있는 파일 이름 (앱이 올리는 이름, 원본 이름 그대로 올린 경우).
+  static const _remotePaths = [path, 'bible/bible_verses.csv'];
+
+  /// 기본은 앱에 담긴 파일이다. Storage에 올라간 파일의 크기가 다르면 그 내용으로 바꿔 읽는다.
+  /// Storage를 읽지 못해도(오프라인 등) 기본 성경으로 보여 준다.
   Future<Bible> _download() async {
-    final data = await _storage.ref(path).getData(_maxBytes);
-    if (data == null) throw const AppException('성경 파일을 읽지 못했어요.');
-    return parse(data);
+    final bundled = (await rootBundle.load(_assetPath)).buffer.asUint8List();
+    final remote = await _newerRemote(bundled.length);
+    return parse(remote ?? bundled);
+  }
+
+  Future<Uint8List?> _newerRemote(int bundledSize) async {
+    for (final p in _remotePaths) {
+      try {
+        final meta = await _storage.ref(p).getMetadata();
+        if (meta.size == bundledSize) return null;
+        return await _storage.ref(p).getData(_maxBytes);
+      } on FirebaseException catch (e) {
+        if (e.code == 'object-not-found') continue;
+        return null;
+      }
+    }
+    return null;
   }
 
   /// CSV 내용을 읽어 [Bible]로 만든다. 형식이 틀리면 [AppException].

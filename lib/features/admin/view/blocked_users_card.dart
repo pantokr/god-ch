@@ -1,3 +1,4 @@
+import '../../../core/widgets/app_loader.dart';
 import '../../../core/icons.dart';
 
 import 'package:flutter/material.dart';
@@ -124,7 +125,7 @@ class _BlockedUsersCardState extends State<BlockedUsersCard> {
                   if (snap.hasError) return Text('불러오지 못했습니다\n${snap.error}');
                   final items = snap.data;
                   if (items == null) {
-                    return const Center(child: CircularProgressIndicator());
+                    return const Center(child: AppLoader());
                   }
                   if (items.isEmpty) {
                     return Padding(

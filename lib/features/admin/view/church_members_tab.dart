@@ -1,3 +1,5 @@
+import '../../../core/widgets/app_loader.dart';
+
 import 'package:flutter/material.dart';
 
 import '../../../app/app_scope.dart';
@@ -42,7 +44,7 @@ class ChurchMembersTab extends StatelessWidget {
                   if (!snap.hasData) {
                     return const Padding(
                       padding: EdgeInsets.all(48),
-                      child: Center(child: CircularProgressIndicator()),
+                      child: Center(child: AppLoader()),
                     );
                   }
                   return StreamBuilder<List<Affiliation>>(

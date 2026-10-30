@@ -1,3 +1,4 @@
+import '../../../core/widgets/toast.dart';
 import '../../../core/icons.dart';
 
 import 'package:flutter/material.dart';
@@ -50,7 +51,7 @@ class _PrayerEditorPageState extends State<PrayerEditorPage> {
     if (router.canPop()) {
       router.pop();
     } else {
-      router.go(Routes.home(widget.me.churchId));
+      router.go(Routes.section(widget.me.churchId, ChurchSection.prayer));
     }
   }
 
@@ -64,6 +65,8 @@ class _PrayerEditorPageState extends State<PrayerEditorPage> {
     );
     if (ok) {
       _leave(router);
+      // 새로 쓴 글만 "추가되었습니다" (고친 글은 알리지 않는다).
+      if (!vm.isEditing) showToastOn(messenger, '추가되었습니다');
     } else {
       messenger.showSnackBar(
         SnackBar(content: Text('저장하지 못했습니다: ${vm.error}')),
@@ -82,7 +85,10 @@ class _PrayerEditorPageState extends State<PrayerEditorPage> {
       ),
       builder: (context, vm) => SubPage(
         title: vm.isEditing ? '기도제목 수정' : '기도제목 쓰기',
-        fallbackLocation: Routes.home(widget.me.churchId),
+        fallbackLocation: Routes.section(
+          widget.me.churchId,
+          ChurchSection.prayer,
+        ),
         child: !vm.canWrite
             ? const Card(
                 child: Padding(

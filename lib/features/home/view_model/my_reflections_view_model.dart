@@ -4,7 +4,7 @@ import '../../../data/models/devotion_reflection.dart';
 import '../data/content_repository.dart';
 import '../data/reflection_repository.dart';
 
-/// 내가 쓴 말씀 묵상 한 건과, 그 묵상이 달린 말씀묵상 글.
+/// 내가 쓴 댓글 한 건과, 그 댓글이 달린 말씀묵상 글.
 class MyReflection {
   const MyReflection(this.devotion, this.reflection);
 
@@ -12,20 +12,24 @@ class MyReflection {
   final DevotionReflection reflection;
 }
 
-/// 내 활동의 "내 묵상": 최근 말씀묵상 글들 중 내가 글을 남긴 것만 모은다. 스트림은 한 번만 만든다.
+/// 내 활동의 "내 묵상": 최근 말씀묵상 글들에 내가 단 댓글을 모은다 (한 글에 여러 개일 수 있다). 스트림은 한 번만 만든다.
 class MyReflectionsViewModel extends ViewModel {
   MyReflectionsViewModel(
     ContentRepository contents,
     ReflectionRepository reflections,
-    String churchId,
-  ) : items = contents.latest(churchId).asyncMap((devotions) async {
-        final mine = <MyReflection>[];
-        for (final d in devotions) {
-          final r = await reflections.mine(churchId, d.id);
-          if (r != null) mine.add(MyReflection(d, r));
-        }
-        return mine;
-      });
+    String churchId, {
+    bool includePrivate = false,
+  }) : items = contents
+           .latest(churchId, includePrivate: includePrivate)
+           .asyncMap((devotions) async {
+             final mine = <MyReflection>[];
+             for (final d in devotions) {
+               for (final r in await reflections.mineAll(churchId, d.id)) {
+                 mine.add(MyReflection(d, r));
+               }
+             }
+             return mine;
+           });
 
   final Stream<List<MyReflection>> items;
 }

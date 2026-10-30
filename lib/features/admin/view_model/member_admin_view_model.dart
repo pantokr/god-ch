@@ -6,10 +6,10 @@ import '../../members/data/member_repository.dart';
 import '../view/member_detail_dialog.dart';
 
 enum MemberSort {
-  newest('가입 최근 순'),
-  oldest('가입 오래된 순'),
-  name('이름 순'),
-  role('역할 순');
+  newest('가입최근순'),
+  oldest('가입오래된순'),
+  name('이름순'),
+  role('역할순');
 
   const MemberSort(this.label);
 
@@ -122,7 +122,7 @@ class MemberAdminViewModel extends ViewModel {
       MemberSort.newest => (a, b) => _byJoined(b, a),
       MemberSort.oldest => (a, b) => _byJoined(a, b),
       MemberSort.name => (a, b) => a.name.compareTo(b.name),
-      // 운영자 → 교역자 → 교인 순, 같으면 이름 순.
+      // 운영자 → 교역자 → 교인 순, 같으면 이름순.
       MemberSort.role => (a, b) {
         final r = b.role.index.compareTo(a.role.index);
         return r != 0 ? r : a.name.compareTo(b.name);

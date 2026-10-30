@@ -1,3 +1,4 @@
+import '../../../core/widgets/app_loader.dart';
 import '../../../core/icons.dart';
 
 import 'package:flutter/material.dart';
@@ -51,7 +52,7 @@ class RegisteredChurches extends StatelessWidget {
             else if (!snap.hasData)
               const Padding(
                 padding: EdgeInsets.all(32),
-                child: Center(child: CircularProgressIndicator()),
+                child: Center(child: AppLoader()),
               )
             else if (churches.isEmpty)
               Card(

@@ -1,3 +1,4 @@
+import '../../../core/widgets/app_loader.dart';
 import '../../../core/icons.dart';
 
 import 'package:flutter/material.dart';
@@ -47,7 +48,7 @@ class FeatureGate extends StatelessWidget {
           stream: vm.features,
           builder: (context, feat) {
             if (!affs.hasData || !feat.hasData) {
-              return const Center(child: CircularProgressIndicator());
+              return const Center(child: AppLoader());
             }
             final access = feat.data!.accessFor(feature, me, affs.data!);
             if (access.blocked) return _NotAllowed(feature: feature);

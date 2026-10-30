@@ -6,8 +6,8 @@ import '../../../data/firestore_paths.dart';
 import '../../../data/models/devotion_reflection.dart';
 import '../../auth/data/auth_repository.dart';
 
-/// 말씀묵상 글에 교인이 남기는 자기 글을 읽고 쓴다.
-/// 읽기는 승인된 교인 모두, 쓰기는 본인 글만 (삭제는 교역자도) 가능하다 (`firestore.rules`가 강제한다).
+/// 말씀묵상 글의 댓글을 읽고 쓴다. 읽기는 승인된 교인 모두, 쓰기는 댓글 권한이 있는 교인이고
+/// 지우기는 본인 댓글 또는 타인 댓글 삭제 권한이 있는 사람이다 (`firestore.rules`가 강제한다).
 class ReflectionRepository {
   ReflectionRepository(FirebaseFirestore db, this._auth)
     : _paths = FirestorePaths(db);
@@ -15,16 +15,14 @@ class ReflectionRepository {
   final FirestorePaths _paths;
   final AuthRepository _auth;
 
-  CollectionReference<Json> _col(String churchId, String devotionId) => _paths
-      .contents(churchId, 'devotions')
-      .doc(devotionId)
-      .collection('reflections');
+  CollectionReference<Json> _col(String churchId, String devotionId) =>
+      _paths.devotions(churchId).doc(devotionId).collection('reflections');
 
-  /// 최근에 쓰거나 고친 순. 쓴 사람 수가 많아도 [limit]까지만 읽는다.
+  /// 댓글: 최신 댓글이 위, 오래된 댓글이 아래로 이어진다. 최근 [limit]개까지만 읽는다. 지운 댓글은 뺀다.
   Stream<List<DevotionReflection>> latest(
     String churchId,
     String devotionId, {
-    int limit = 30,
+    int limit = 100,
   }) => _col(churchId, devotionId)
       .orderBy('updatedAt', descending: true)
       .limit(limit)
@@ -36,27 +34,58 @@ class ReflectionRepository {
             .toList(),
       );
 
-  /// 이 말씀묵상 글에 내가 쓴 글. 없으면 null.
-  Future<DevotionReflection?> mine(String churchId, String devotionId) async {
-    final doc = await _col(churchId, devotionId).doc(_auth.uid).get();
-    if (!doc.exists) return null;
-    final r = DevotionReflection.fromDoc(doc);
-    return r.deleted ? null : r;
+  /// 내가 쓴 댓글만 실시간으로 읽는다 (댓글을 비공개로 둔 교회에서 교인이 쓴다). 오래된 것이 위.
+  Stream<List<DevotionReflection>> onlyMine(
+    String churchId,
+    String devotionId,
+  ) => _col(churchId, devotionId)
+      .where('authorId', isEqualTo: _auth.uid)
+      .snapshots()
+      .map(
+        (s) =>
+            s.docs
+                .map(DevotionReflection.fromDoc)
+                .where((r) => !r.deleted)
+                .toList()
+              ..sort(
+                (a, b) => (a.updatedAt ?? DateTime(9999)).compareTo(
+                  b.updatedAt ?? DateTime(9999),
+                ),
+              ),
+      );
+
+  /// 이 말씀묵상 글에 내가 쓴 댓글들.
+  Future<List<DevotionReflection>> mineAll(
+    String churchId,
+    String devotionId,
+  ) async {
+    final s = await _col(
+      churchId,
+      devotionId,
+    ).where('authorId', isEqualTo: _auth.uid).get();
+    return [
+      for (final d in s.docs)
+        if (d.data()['deleted'] != true) DevotionReflection.fromDoc(d),
+    ]..sort(
+      (a, b) => (b.updatedAt ?? DateTime(9999)).compareTo(
+        a.updatedAt ?? DateTime(9999),
+      ),
+    );
   }
 
-  /// 내 글을 처음 쓰거나 고친다.
-  Future<void> saveMine(
+  /// 새 댓글을 더한다 (한 사람이 여러 개를 달 수 있다).
+  Future<void> add(
     String churchId,
     String devotionId, {
     required String authorName,
     required String text,
   }) {
     final t = text.trim();
-    if (t.isEmpty) throw const AppException('글을 입력해 주세요.');
+    if (t.isEmpty) throw const AppException('댓글을 입력해 주세요.');
     if (t.length > DevotionReflection.maxLength) {
-      throw AppException('글은 ${DevotionReflection.maxLength}자까지 쓸 수 있어요.');
+      throw AppException('댓글은 ${DevotionReflection.maxLength}자까지 쓸 수 있어요.');
     }
-    return _col(churchId, devotionId).doc(_auth.uid).set({
+    return _col(churchId, devotionId).add({
       'authorId': _auth.uid,
       'authorName': authorName,
       'text': t,
@@ -64,9 +93,9 @@ class ReflectionRepository {
     });
   }
 
-  /// 글을 지운 것으로 표시한다 (문서는 남긴다). 본인 글이거나 교역자·교회 운영자만 가능하다.
-  Future<void> delete(String churchId, String devotionId, String authorId) =>
-      _col(churchId, devotionId).doc(authorId).update({
+  /// 댓글을 지운 것으로 표시한다 (문서는 남긴다). 본인 댓글이거나 타인 댓글 삭제 권한이 있어야 한다.
+  Future<void> delete(String churchId, String devotionId, String commentId) =>
+      _col(churchId, devotionId).doc(commentId).update({
         'deleted': true,
         'deletedAt': FieldValue.serverTimestamp(),
         'deletedBy': _auth.uid,

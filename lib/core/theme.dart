@@ -219,6 +219,17 @@ class AppPalette extends ThemeExtension<AppPalette> {
 extension PaletteContext on BuildContext {
   /// 지금 테마(라이트/다크)의 색 팔레트.
   AppPalette get palette => Theme.of(this).extension<AppPalette>()!;
+
+  /// 카드의 연한 테두리색: 본문 글자색을 아주 옅게 깐 색이라 베이지 바탕 위에서도 또렷하다.
+  Color get cardEdge => palette.ink.withValues(
+    alpha: Theme.of(this).brightness == Brightness.dark ? 0.18 : 0.12,
+  );
+
+  /// 연한 테두리가 있는 카드 모양 (말씀묵상 카드들).
+  RoundedRectangleBorder get edgedCardShape => RoundedRectangleBorder(
+    borderRadius: BorderRadius.circular(AppRadius.card),
+    side: BorderSide(color: cardEdge),
+  );
 }
 
 /// 말씀 구절처럼 길게 읽는 글에 쓰는 명조 글꼴.
@@ -398,7 +409,8 @@ ThemeData buildTheme(Brightness brightness) {
         shape: shape,
         minimumSize: const Size(0, 40),
         textStyle: const TextStyle(fontWeight: FontWeight.w600),
-        foregroundColor: p.brand,
+        // 글자 버튼은 보라색이 아니라 본문 글자색(검은색)이다.
+        foregroundColor: p.ink,
       ),
     ),
     dialogTheme: DialogThemeData(

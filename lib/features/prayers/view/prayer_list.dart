@@ -1,4 +1,4 @@
-import '../../../core/icons.dart';
+import '../../../core/widgets/app_loader.dart';
 
 import 'package:flutter/material.dart';
 
@@ -10,40 +10,33 @@ import '../../../data/models/prayer.dart';
 import 'postit_card.dart';
 import 'prayer_card.dart';
 
-/// 제목 줄 + 반응형 카드 그리드. 피드와 내 기도제목이 함께 쓴다.
+/// 반응형 카드 그리드. 내 기도제목이 쓴다 (카드를 누르면 상세에서 조회 · 수정).
 class PrayerList extends StatelessWidget {
   const PrayerList({
     super.key,
     required this.prayers,
     required this.me,
-    required this.title,
     required this.emptyText,
     required this.showReactions,
-    required this.onWrite,
+    this.header,
   });
 
   final Stream<List<Prayer>> prayers;
   final Member me;
-  final String title;
   final String emptyText;
   final bool showReactions;
-  final VoidCallback onWrite;
+
+  /// 목록 위에 함께 스크롤되는 머리 (내 활동의 제목과 스위치).
+  final Widget? header;
 
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
       child: PageFrame(
+        header: header,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            PageTitle(
-              title: title,
-              action: FilledButton.icon(
-                onPressed: onWrite,
-                icon: const Icon(AppIcons.pencilSimple, size: 18),
-                label: const Text('기도제목 쓰기'),
-              ),
-            ),
             PrayerGrid(
               prayers: prayers,
               me: me,
@@ -93,7 +86,7 @@ class PrayerGrid extends StatelessWidget {
         if (!snap.hasData) {
           return const Padding(
             padding: EdgeInsets.all(48),
-            child: Center(child: CircularProgressIndicator()),
+            child: Center(child: AppLoader()),
           );
         }
         final items = where == null

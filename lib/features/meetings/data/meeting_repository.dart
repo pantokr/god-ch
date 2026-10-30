@@ -3,19 +3,51 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../core/app_exception.dart';
 import '../../../data/firestore_paths.dart';
 import '../../../data/models/meeting.dart';
+import '../../../data/models/meeting_comment.dart';
+
+import 'dart:typed_data';
+
 import '../../auth/data/auth_repository.dart';
+import '../../home/data/content_repository.dart';
 
 /// 교회 모임을 읽고 쓴다 (`churches/{id}/meetings`). 교인이 모임을 만들면 모임장이 되고,
 /// 다른 교인은 참여를 신청한다. 권한과 정원은 `firestore.rules`가 강제한다.
 class MeetingRepository {
-  MeetingRepository(FirebaseFirestore db, this._auth)
+  MeetingRepository(FirebaseFirestore db, this._auth, this._contents)
     : _paths = FirestorePaths(db);
 
   final FirestorePaths _paths;
   final AuthRepository _auth;
+  final ContentRepository _contents;
+
+  /// 앱 운영자가 Storage `examples/example_image1.jpg` ~ `example_image7.jpg`에 올려 둔 임시 이미지 수.
+  static const exampleCount = 7;
+
+  final _examples = <int, Future<String?>>{};
+
+  /// 썸네일이 없는 모임이 쓰는 임시 이미지 주소. 모임마다 같은 그림이 나오게 [seed]로 고른다.
+  /// 파일이 없으면 null (색 면으로 보인다).
+  Future<String?> exampleUrl(String seed) {
+    var h = 0;
+    for (final c in seed.codeUnits) {
+      h = (h * 31 + c) & 0x7fffffff;
+    }
+    final n = h % exampleCount + 1;
+    return _examples[n] ??= _contents.downloadUrl(
+      'examples/example_image$n.jpg',
+    );
+  }
+
+  /// 모임 썸네일을 올리고 주소를 돌려준다 (`churches/{id}/meetings`).
+  Future<String> uploadImage(String churchId, Uint8List bytes) =>
+      _contents.uploadThumbnailTo(
+        'churches/$churchId/meetings',
+        bytes: bytes,
+        size: 512,
+      );
 
   CollectionReference<Map<String, dynamic>> _col(String churchId) =>
-      _paths.church(churchId).collection('meetings');
+      _paths.meetings(churchId);
 
   /// 모임 날짜가 가까운 쪽이 위. 지워진 모임은 뺀다.
   Stream<List<Meeting>> latest(String churchId, {int limit = 100}) =>
@@ -65,9 +97,11 @@ class MeetingRepository {
     required String place,
     required DateTime date,
     required int capacity,
+    String imageUrl = '',
   }) {
     final t = _check(title, description, place, capacity);
     return _col(churchId).add({
+      'imageUrl': imageUrl,
       'title': t,
       'description': description.trim(),
       'place': place.trim(),
@@ -92,12 +126,14 @@ class MeetingRepository {
     required String place,
     required DateTime date,
     required int capacity,
+    String imageUrl = '',
   }) {
     final t = _check(title, description, place, capacity);
     if (capacity < m.joined) {
       throw AppException('이미 ${m.joined}명이 참여해서 정원을 그보다 줄일 수 없어요.');
     }
     return _col(churchId).doc(m.id).update({
+      'imageUrl': imageUrl,
       'title': t,
       'description': description.trim(),
       'place': place.trim(),
@@ -106,6 +142,53 @@ class MeetingRepository {
       'updatedAt': FieldValue.serverTimestamp(),
     });
   }
+
+  CollectionReference<Map<String, dynamic>> _comments(
+    String churchId,
+    String meetingId,
+  ) => _col(churchId).doc(meetingId).collection('comments');
+
+  /// 일정의 댓글: 오래된 순. 지운 표시가 있는 댓글은 뺀다.
+  Stream<List<MeetingComment>> comments(String churchId, String meetingId) =>
+      _comments(churchId, meetingId)
+          .orderBy('createdAt')
+          .snapshots()
+          .map(
+            (s) => [
+              for (final d in s.docs)
+                if (d.data()['deleted'] != true) MeetingComment.fromDoc(d),
+            ],
+          );
+
+  Future<void> addComment(
+    String churchId,
+    String meetingId, {
+    required String authorName,
+    required String text,
+  }) {
+    final t = text.trim();
+    if (t.isEmpty) throw const AppException('댓글을 입력해 주세요.');
+    if (t.length > MeetingComment.maxLength) {
+      throw AppException('댓글은 ${MeetingComment.maxLength}자까지 쓸 수 있어요.');
+    }
+    return _comments(churchId, meetingId).add({
+      'authorId': _auth.uid,
+      'authorName': authorName,
+      'text': t,
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  /// 댓글을 지운 것으로 표시한다 (기록 보관).
+  Future<void> deleteComment(
+    String churchId,
+    String meetingId,
+    String commentId,
+  ) => _comments(churchId, meetingId).doc(commentId).update({
+    'deleted': true,
+    'deletedAt': FieldValue.serverTimestamp(),
+    'deletedBy': _auth.uid,
+  });
 
   /// 모임을 지운 것으로 표시한다 (기록 보관).
   Future<void> delete(String churchId, String id) => _col(churchId)

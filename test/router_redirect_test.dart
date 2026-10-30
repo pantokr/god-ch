@@ -11,10 +11,7 @@ void main() {
     test('확인 중에는 어떤 주소든 /loading으로 가고, 원래 주소를 기억한다', () {
       final r = go(SessionStatus.loading, '/churches/abc/home?x=1')!;
       expect(Uri.parse(r).path, Routes.loading);
-      expect(
-        Uri.parse(r).queryParameters['from'],
-        '/churches/abc/home?x=1',
-      );
+      expect(Uri.parse(r).queryParameters['from'], '/churches/abc/home?x=1');
       expect(go(SessionStatus.loading, Routes.loading), isNull);
     });
 
@@ -76,7 +73,7 @@ void main() {
   group('주소 만들기', () {
     test('교회 안의 메뉴 주소를 만든다', () {
       expect(Routes.section('c1', ChurchSection.prayer), '/churches/c1/prayer');
-      expect(Routes.home('c1'), '/churches/c1/prayer');
+      expect(Routes.home('c1'), '/churches/c1/meetings');
       expect(ChurchSection.fromPath('meetings'), ChurchSection.meetings);
       expect(ChurchSection.fromPath('nope'), isNull);
     });

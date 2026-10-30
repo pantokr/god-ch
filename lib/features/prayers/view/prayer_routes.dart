@@ -1,3 +1,5 @@
+import '../../../core/widgets/app_loader.dart';
+
 import 'package:flutter/material.dart';
 
 import '../../../app/app_scope.dart';
@@ -84,9 +86,7 @@ class PrayerEditRoute extends StatelessWidget {
           builder: (context, snap) {
             if (snap.connectionState == ConnectionState.waiting &&
                 !snap.hasData) {
-              return const Scaffold(
-                body: Center(child: CircularProgressIndicator()),
-              );
+              return const Scaffold(body: Center(child: AppLoader()));
             }
             final prayer = snap.data;
             // 없는 글이거나 내 글이 아니면(규칙상 수정할 수 없다) 고칠 수 없다.

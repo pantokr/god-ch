@@ -1,214 +1,197 @@
 import 'package:flutter/material.dart';
 
 import '../../../app/app_scope.dart';
+import '../../../core/format.dart';
 import '../../../core/icons.dart';
 import '../../../core/mvvm/view_model_builder.dart';
 import '../../../core/theme.dart';
+import '../../../core/widgets/comment_composer.dart';
+import '../../../core/widgets/toast.dart';
+import '../../../core/widgets/trash_icon.dart';
 import '../../../data/models/devotion_reflection.dart';
 import '../../../data/models/member.dart';
+import '../../../data/models/permission.dart';
 import '../../home/view_model/devotion_reflections_view_model.dart';
 
-/// 말씀 한 편의 댓글: 내 묵상 쓰는 칸과 교인들이 남긴 글. 한 사람이 한 편에 하나를 쓰고 고친다.
-/// 남겨진 글은 저장소에서 실시간으로 읽는다. 교역자는 남의 글도 지울 수 있다.
+/// 말씀 한 편의 댓글: 위에 교인들의 댓글이 오래된 순으로 이어지고, 맨 아래에 글쓰기 칸과 오른쪽 보내기 아이콘이 있다.
+/// 한 사람이 여러 댓글을 달 수 있고, 새 댓글은 목록 아래에 덧붙는다. 지우기는 댓글마다 있는 휴지통이다
+/// (본인 댓글은 본인 댓글 삭제 권한, 남의 댓글은 타인 댓글 삭제 권한).
 class ReflectionsCard extends StatelessWidget {
   const ReflectionsCard({
     super.key,
     required this.devotionId,
     required this.me,
+    this.publicList = true,
+    this.canWrite = true,
   });
 
   final String devotionId;
   final Member me;
 
+  /// 댓글을 다른 교인에게도 보여 주는가. 아니면 교인은 내 댓글만 본다.
+  final bool publicList;
+
+  /// 댓글 허용 설정. 꺼져 있으면 쓰는 칸 없이 남겨진 댓글만 보인다.
+  final bool canWrite;
+
   @override
   Widget build(BuildContext context) {
+    final palette = context.palette;
     return ViewModelBuilder<DevotionReflectionsViewModel>(
-      key: ValueKey('$devotionId/${me.id}'),
+      key: ValueKey('$devotionId/${me.id}/$publicList'),
       create: (context) => DevotionReflectionsViewModel(
         AppScope.read(context).reflections,
         me,
         devotionId,
+        publicList: publicList,
       ),
-      builder: (context, vm) => StreamBuilder<List<DevotionReflection>>(
-        stream: vm.reflections,
-        builder: (context, snap) => _Body(
-          reflections: snap.data ?? const [],
-          me: me,
-          busy: vm.busy,
-          error: vm.error,
-          onSave: vm.save,
-          onDelete: vm.delete,
+      builder: (context, vm) => Card(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: StreamBuilder<List<DevotionReflection>>(
+            stream: vm.reflections,
+            builder: (context, snap) {
+              final items = snap.data ?? const <DevotionReflection>[];
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        AppIcons.messageCircle,
+                        size: 18,
+                        color: palette.accent,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        '댓글 ${items.length}',
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  if (snap.hasError)
+                    Text('불러오지 못했습니다', style: TextStyle(color: palette.muted))
+                  else if (items.isEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Text(
+                        '댓글 없음',
+                        style: TextStyle(color: palette.muted),
+                      ),
+                    ),
+                  for (final r in items)
+                    _Comment(
+                      reflection: r,
+                      canDelete: me.can(
+                        r.authorId == me.id
+                            ? Permission.devotionCommentDeleteOwn
+                            : Permission.devotionCommentDeleteOthers,
+                      ),
+                      busy: vm.busy,
+                      onDelete: () => vm.delete(r.id),
+                    ),
+                  if (canWrite && !me.isOperatorView) ...[
+                    const SizedBox(height: 6),
+                    CommentComposer(
+                      hint: '댓글 쓰기',
+                      maxLength: DevotionReflection.maxLength,
+                      busy: vm.busy,
+                      onSend: (text) async {
+                        final ok = await vm.add(text);
+                        if (ok && context.mounted) showAddedToast(context);
+                        return ok;
+                      },
+                    ),
+                  ],
+                  if (vm.error != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: Text(
+                        vm.error!,
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.error,
+                        ),
+                      ),
+                    ),
+                ],
+              );
+            },
+          ),
         ),
       ),
     );
   }
 }
 
-class _Body extends StatefulWidget {
-  const _Body({
-    required this.reflections,
-    required this.me,
+/// 댓글 한 줄: 쓴 사람, 시각, 내용, 오른쪽의 휴지통(지울 수 있을 때만).
+class _Comment extends StatelessWidget {
+  const _Comment({
+    required this.reflection,
+    required this.canDelete,
     required this.busy,
-    required this.error,
-    required this.onSave,
     required this.onDelete,
   });
 
-  final List<DevotionReflection> reflections;
-  final Member me;
+  final DevotionReflection reflection;
+  final bool canDelete;
   final bool busy;
-  final String? error;
-  final Future<bool> Function(String text) onSave;
-  final Future<bool> Function(String authorId) onDelete;
-
-  @override
-  State<_Body> createState() => _BodyState();
-}
-
-class _BodyState extends State<_Body> {
-  late final TextEditingController _text = TextEditingController(
-    text: _mine?.text,
-  );
-
-  DevotionReflection? get _mine {
-    for (final r in widget.reflections) {
-      if (r.authorId == widget.me.id) return r;
-    }
-    return null;
-  }
-
-  @override
-  void didUpdateWidget(_Body old) {
-    super.didUpdateWidget(old);
-    // 내 글이 나중에 도착하면(처음 불러올 때) 쓰는 칸에 채워 준다. 쓰던 글은 건드리지 않는다.
-    if (_text.text.isEmpty && _mine != null) _text.text = _mine!.text;
-  }
-
-  @override
-  void dispose() {
-    _text.dispose();
-    super.dispose();
-  }
-
-  Future<void> _save() async {
-    final ok = await widget.onSave(_text.text);
-    if (ok && mounted) FocusScope.of(context).unfocus();
-  }
+  final VoidCallback onDelete;
 
   @override
   Widget build(BuildContext context) {
     final palette = context.palette;
-    final mine = _mine;
-    final others = [
-      for (final r in widget.reflections)
-        if (r.authorId != widget.me.id) r,
-    ].take(20).toList();
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              children: [
-                Icon(AppIcons.messageCircle, size: 18, color: palette.accent),
-                const SizedBox(width: 8),
-                Text(
-                  '댓글 ${widget.reflections.length}',
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-              ],
-            ),
-            const SizedBox(height: 14),
-            TextField(
-              controller: _text,
-              minLines: 2,
-              maxLines: 6,
-              maxLength: DevotionReflection.maxLength,
-              decoration: const InputDecoration(
-                labelText: '내 묵상',
-                alignLabelWithHint: true,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                if (mine != null)
-                  TextButton(
-                    onPressed: widget.busy
-                        ? null
-                        : () async {
-                            if (await widget.onDelete(mine.authorId)) {
-                              _text.clear();
-                            }
-                          },
-                    child: const Text('지우기'),
-                  ),
-                const SizedBox(width: 8),
-                FilledButton(
-                  onPressed: widget.busy ? null : _save,
-                  child: Text(mine == null ? '남기기' : '고치기'),
-                ),
-              ],
-            ),
-            if (widget.error != null)
-              Padding(
-                padding: const EdgeInsets.only(top: 8),
-                child: Text(
-                  widget.error!,
-                  style: TextStyle(color: Theme.of(context).colorScheme.error),
-                ),
-              ),
-            if (others.isNotEmpty) const SizedBox(height: 12),
-            for (final r in others)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: Color.alphaBlend(
-                      palette.brand.withValues(alpha: 0.05),
-                      palette.surface,
-                    ),
-                    borderRadius: BorderRadius.circular(AppRadius.control),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(14, 10, 8, 12),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+    final r = reflection;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: Color.alphaBlend(
+            palette.brand.withValues(alpha: 0.05),
+            palette.surface,
+          ),
+          borderRadius: BorderRadius.circular(AppRadius.control),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(14, 10, 8, 12),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
                       children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                r.authorName.isEmpty ? '이름 없음' : r.authorName,
-                                style: TextStyle(
-                                  color: palette.brand,
-                                  fontWeight: FontWeight.w800,
-                                  fontSize: 13,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(r.text),
-                            ],
+                        Text(
+                          r.authorName.isEmpty ? '이름 없음' : r.authorName,
+                          style: TextStyle(
+                            color: palette.brand,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 13,
                           ),
                         ),
-                        if (widget.me.isStaff)
-                          IconButton(
-                            tooltip: '지우기',
-                            visualDensity: VisualDensity.compact,
-                            icon: const Icon(AppIcons.trash, size: 18),
-                            onPressed: widget.busy
-                                ? null
-                                : () => widget.onDelete(r.authorId),
-                          ),
+                        const SizedBox(width: 8),
+                        Text(
+                          fmtDateTime(r.updatedAt),
+                          style: TextStyle(color: palette.muted, fontSize: 12),
+                        ),
                       ],
                     ),
-                  ),
+                    const SizedBox(height: 4),
+                    Text(r.text),
+                  ],
                 ),
               ),
-          ],
+              if (canDelete)
+                IconButton(
+                  tooltip: '지우기',
+                  visualDensity: VisualDensity.compact,
+                  icon: const TrashIcon(),
+                  onPressed: busy ? null : onDelete,
+                ),
+            ],
+          ),
         ),
       ),
     );

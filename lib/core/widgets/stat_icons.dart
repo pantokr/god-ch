@@ -13,7 +13,15 @@ class StatIcons extends StatelessWidget {
     required this.likes,
     this.liked = false,
     this.color,
+    this.showViews = true,
+    this.horizontal = false,
   });
+
+  /// 조회수를 보여 주는가 (교회 설정). 끄면 좋아요만 나온다.
+  final bool showViews;
+
+  /// true이면 위아래가 아니라 좌우로 놓는다: 좋아요(하트)가 왼쪽, 조회수가 오른쪽.
+  final bool horizontal;
 
   final int views;
   final int likes;
@@ -43,12 +51,31 @@ class StatIcons extends StatelessWidget {
         ),
       ],
     );
+    final heart = item(
+      liked ? AppIcons.heartFill : AppIcons.heart,
+      likes,
+      tint: liked ? const Color(0xFFE5484D) : null,
+    );
+    if (horizontal) {
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          heart,
+          if (showViews) ...[
+            const SizedBox(width: 12),
+            item(AppIcons.eyeCount, views),
+          ],
+        ],
+      );
+    }
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
-        item(AppIcons.eyeCount, views),
-        const SizedBox(height: 8),
+        if (showViews) ...[
+          item(AppIcons.eyeCount, views),
+          const SizedBox(height: 8),
+        ],
         item(
           liked ? AppIcons.heartFill : AppIcons.heart,
           likes,

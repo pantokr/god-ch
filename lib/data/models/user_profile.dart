@@ -10,16 +10,21 @@ class UserProfile {
     required this.phone,
     required this.consentThirdParty,
     this.loginId,
+    this.email = '',
     this.address = '',
     this.birthDate = '',
     this.photoUrl = '',
     this.createdAt,
+    this.withdrawn = false,
   });
 
   final String uid;
 
   /// 로그인 ID. Google로 가입한 회원은 없다.
   final String? loginId;
+
+  /// Google로 가입한 회원의 이메일. ID로 가입한 회원은 없다.
+  final String email;
   final String name;
   final String phone;
 
@@ -36,11 +41,15 @@ class UserProfile {
   final bool consentThirdParty;
   final DateTime? createdAt;
 
+  /// 앱 탈퇴한 회원. 기록은 남고 목록에서만 빠진다.
+  final bool withdrawn;
+
   factory UserProfile.fromDoc(DocumentSnapshot<Json> doc) {
     final d = doc.data() ?? const {};
     return UserProfile(
       uid: doc.id,
       loginId: d['loginId'] as String?,
+      email: d['email'] as String? ?? '',
       name: d['name'] as String? ?? '',
       phone: d['phone'] as String? ?? '',
       address: d['address'] as String? ?? '',
@@ -48,6 +57,7 @@ class UserProfile {
       photoUrl: d['photoUrl'] as String? ?? '',
       consentThirdParty: d['consentThirdParty'] as bool? ?? false,
       createdAt: toDate(d['createdAt']),
+      withdrawn: d['withdrawn'] as bool? ?? false,
     );
   }
 }

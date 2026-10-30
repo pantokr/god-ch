@@ -2,10 +2,11 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../firestore_codec.dart';
 
-/// 말씀묵상 한 편에 교인이 남기는 자기 글. 한 사람이 한 편에 한 개를 쓰고 고친다.
-/// 문서 ID가 쓴 사람의 uid다 (`churches/{id}/devotions/{글}/reflections/{uid}`).
+/// 말씀묵상 한 편에 교인이 남기는 댓글 한 건. 한 사람이 여러 개를 달 수 있다.
+/// `churches/{id}/devotions/{글}/reflections/{댓글}`에 저장된다. (예전 글은 문서 ID가 쓴 사람의 uid다.)
 class DevotionReflection {
   const DevotionReflection({
+    required this.id,
     required this.authorId,
     required this.authorName,
     required this.text,
@@ -13,10 +14,15 @@ class DevotionReflection {
     this.deleted = false,
   });
 
-  /// 쓴 사람의 uid (문서 ID와 같다).
+  /// 댓글 문서 ID.
+  final String id;
+
+  /// 쓴 사람의 uid.
   final String authorId;
   final String authorName;
   final String text;
+
+  /// 댓글을 쓴 시각.
   final DateTime? updatedAt;
 
   /// 지워진 글인가 (지우지 않고 표시만 남긴다).
@@ -28,7 +34,8 @@ class DevotionReflection {
   factory DevotionReflection.fromDoc(DocumentSnapshot<Json> doc) {
     final d = doc.data()!;
     return DevotionReflection(
-      authorId: doc.id,
+      id: doc.id,
+      authorId: d['authorId'] as String? ?? doc.id,
       authorName: d['authorName'] as String? ?? '',
       text: d['text'] as String? ?? '',
       updatedAt: toDate(d['updatedAt']),

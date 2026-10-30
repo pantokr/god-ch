@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import '../../../core/mvvm/view_model.dart';
+import '../../../data/models/permission.dart';
 import '../../../data/models/member.dart';
 import '../../../data/models/prayer.dart';
 import '../../../data/models/prayer_settings.dart';
@@ -51,12 +52,17 @@ class PrayerDetailViewModel extends ViewModel {
 
   bool canDelete(Prayer p) =>
       !p.deleted &&
-      ((isAuthor(p) && _settings.memberDelete) || (me.isStaff && !isAuthor(p)));
+      ((isAuthor(p) &&
+              _settings.memberDelete &&
+              me.can(Permission.prayerDeleteOwn)) ||
+          (!isAuthor(p) && me.can(Permission.prayerDeleteOthers)));
 
-  bool canRestore(Prayer p) => p.deleted && me.isStaff;
+  bool canRestore(Prayer p) =>
+      p.deleted && me.can(Permission.prayerDeleteOthers);
 
   /// 삭제되었거나 더 이상 볼 수 없게 된 글인가.
-  bool isHidden(Prayer? p) => p == null || (p.deleted && !me.isStaff);
+  bool isHidden(Prayer? p) =>
+      p == null || (p.deleted && !me.can(Permission.prayerViewPrivate));
 
   /// 타인의 글을 교역자가 지울 때는 사유를 반드시 기록한다.
   bool needsDeleteReason(Prayer p) =>
@@ -85,6 +91,18 @@ class PrayerDetailViewModel extends ViewModel {
 
   Future<bool> restore(Prayer p) =>
       run(() => _prayers.restore(me.churchId, p.id));
+
+  /// 이 댓글을 지울 수 있는가: 본인 댓글은 본인 댓글 삭제, 타인 댓글은 타인 댓글 삭제 권한.
+  bool canDeleteComment(TextEntry e) => me.can(
+    e.authorId == me.id
+        ? Permission.prayerCommentDeleteOwn
+        : Permission.prayerCommentDeleteOthers,
+  );
+
+  Future<bool> deleteComment(Prayer p, TextEntry e) => run(
+    () => _prayers.deleteComment(me.churchId, p.id, e.id),
+    blocking: false,
+  );
 
   Future<bool> addComment(Prayer p, String text) =>
       run(() => _prayers.addComment(me.churchId, p.id, text));

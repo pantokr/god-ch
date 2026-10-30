@@ -15,6 +15,7 @@ class Meeting {
     required this.capacity,
     required this.leaderId,
     required this.leaderName,
+    this.imageUrl = '',
     this.participantIds = const [],
     this.likedBy = const [],
     this.views = 0,
@@ -23,9 +24,9 @@ class Meeting {
   });
 
   /// 글자 수 제한 (`firestore.rules`와 같아야 한다).
-  static const maxTitle = 60;
+  static const maxTitle = 24;
   static const maxDescription = 2000;
-  static const maxPlace = 100;
+  static const maxPlace = 8;
   static const maxCapacity = 200;
 
   final String id;
@@ -40,6 +41,9 @@ class Meeting {
   final int capacity;
   final String leaderId;
   final String leaderName;
+
+  /// 카드에 보이는 썸네일 주소. 없으면 빈 글자.
+  final String imageUrl;
   final List<String> participantIds;
   final List<String> likedBy;
   final int views;
@@ -72,6 +76,7 @@ class Meeting {
       capacity: (d['capacity'] as num?)?.toInt() ?? 1,
       leaderId: d['leaderId'] as String? ?? '',
       leaderName: d['leaderName'] as String? ?? '',
+      imageUrl: d['imageUrl'] as String? ?? '',
       participantIds: List<String>.from(
         d['participantIds'] as List? ?? const [],
       ),

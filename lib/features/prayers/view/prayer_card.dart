@@ -71,7 +71,7 @@ class PrayerCard extends StatelessWidget {
             ),
             const SizedBox(height: 4),
             Text(
-              [fmtDate(prayer.createdAt), ?subtitle].join(' · '),
+              [fmtDateTime(prayer.createdAt), ?subtitle].join(' · '),
               style: TextStyle(color: context.palette.muted, fontSize: 13),
             ),
             const SizedBox(height: 12),

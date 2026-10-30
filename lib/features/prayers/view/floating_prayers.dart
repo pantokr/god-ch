@@ -1,3 +1,5 @@
+import '../../../core/widgets/app_loader.dart';
+
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -34,10 +36,7 @@ class FloatingPrayers extends StatelessWidget {
       builder: (context, snap) {
         if (snap.hasError) return Text('불러오지 못했습니다\n${snap.error}');
         if (!snap.hasData) {
-          return const SizedBox(
-            height: 240,
-            child: Center(child: CircularProgressIndicator()),
-          );
+          return const SizedBox(height: 240, child: Center(child: AppLoader()));
         }
         final items = snap.data!.take(count).toList();
         if (items.isEmpty) return _EmptyStage(fullScreen: fullScreen);

@@ -1,3 +1,4 @@
+import '../../../core/widgets/app_loader.dart';
 import '../../../core/icons.dart';
 
 import 'package:flutter/material.dart';
@@ -87,7 +88,7 @@ class NotificationsPage extends StatelessWidget {
                       else if (!snap.hasData)
                         const Padding(
                           padding: EdgeInsets.all(48),
-                          child: Center(child: CircularProgressIndicator()),
+                          child: Center(child: AppLoader()),
                         )
                       else if (items.isEmpty)
                         Card(

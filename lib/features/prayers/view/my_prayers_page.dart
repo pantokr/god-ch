@@ -8,10 +8,12 @@ import 'prayer_list.dart';
 
 /// 내가 쓴 기도제목. 비공개 글도 여기서는 보인다.
 class MyPrayersPage extends StatelessWidget {
-  const MyPrayersPage({super.key, required this.me, required this.onWrite});
+  const MyPrayersPage({super.key, required this.me, this.header});
 
   final Member me;
-  final VoidCallback onWrite;
+
+  /// 내 활동의 제목과 스위치. 목록과 함께 스크롤된다.
+  final Widget? header;
 
   @override
   Widget build(BuildContext context) {
@@ -22,10 +24,9 @@ class MyPrayersPage extends StatelessWidget {
       builder: (context, vm) => PrayerList(
         prayers: vm.prayers,
         me: me,
-        title: '내 기도제목',
         emptyText: '작성한 기도제목이 없어요.',
         showReactions: false,
-        onWrite: onWrite,
+        header: header,
       ),
     );
   }

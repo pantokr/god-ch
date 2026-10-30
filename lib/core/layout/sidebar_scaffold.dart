@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../app/app_scope.dart';
 import '../theme.dart';
+import '../widgets/thumbnail_avatar.dart';
 import 'responsive.dart';
 
 /// 왼쪽 메뉴 한 칸.
@@ -66,9 +67,13 @@ class SidebarScaffold extends StatelessWidget {
     this.topBarTrailing,
     this.backgroundColor,
     this.backdrop,
+    this.onBack,
   });
 
   final List<SidebarGroup> groups;
+
+  /// 있으면 위쪽 바에 뒤로가기 버튼이 생기고 좁은 화면의 하단 탭이 사라진다 (탭에 없는 메뉴 화면용).
+  final VoidCallback? onBack;
 
   /// 상단 바 · 내용 · 하단 바 뒤에 한 장으로 깔리는 배경 (예: 기도 화면의 게시판 무늬).
   /// 있으면 상단 바가 투명해져서 배경이 끊기지 않고 이어진다.
@@ -124,9 +129,12 @@ class SidebarScaffold extends StatelessWidget {
           child: SafeArea(child: panel),
         ),
         rail: rail,
-        bottomBar: tabs.isEmpty ? null : _PillTabBar(items: tabs),
+        bottomBar: tabs.isEmpty || onBack != null
+            ? null
+            : _PillTabBar(items: tabs),
         topBarTrailing: topBarTrailing,
         backdrop: backdrop,
+        onBack: onBack,
         child: child,
       );
     } else {
@@ -135,6 +143,7 @@ class SidebarScaffold extends StatelessWidget {
         rail: rail,
         topBarTrailing: topBarTrailing,
         backdrop: backdrop,
+        onBack: onBack,
         child: child,
       );
     }
@@ -246,18 +255,7 @@ class _AvatarButton extends StatelessWidget {
         message: '내 정보',
         child: Padding(
           padding: const EdgeInsets.all(8),
-          child: CircleAvatar(
-            radius: 15,
-            backgroundColor: context.palette.brand.withValues(alpha: 0.12),
-            child: Text(
-              name.isEmpty ? '?' : name.characters.first,
-              style: TextStyle(
-                fontSize: 13,
-                color: context.palette.brand,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
+          child: ThumbnailAvatar(name: name, radius: 15),
         ),
       ),
     );
@@ -492,6 +490,9 @@ class _PillTabBar extends StatelessWidget {
 
   static const _bar = 62.0;
 
+  /// 탭이 화면 아래에서 차지하는 높이 (탭 + 아래 여백). 내용은 이만큼 위로 비켜 선다.
+  static const inset = _bar + 12 + 12;
+
   @override
   Widget build(BuildContext context) {
     final palette = context.palette;
@@ -558,13 +559,14 @@ class _SideTab extends StatelessWidget {
   }
 }
 
-/// 위쪽 바: 화면 배경색과 같은 색에 메뉴 버튼만 있다 (제목은 넣지 않는다).
+/// 위쪽 바: 화면 배경색과 같은 색에 메뉴 버튼(메뉴에서 들어온 화면은 뒤로가기)만 있다 (제목은 넣지 않는다).
 class _TopBar extends StatelessWidget {
   const _TopBar({
     required this.icon,
     required this.tooltip,
     required this.onTap,
     this.trailing,
+    this.onBack,
     this.transparent = false,
   });
 
@@ -572,6 +574,7 @@ class _TopBar extends StatelessWidget {
   final String tooltip;
   final VoidCallback onTap;
   final Widget? trailing;
+  final VoidCallback? onBack;
 
   /// 뒤에 깔린 배경이 비쳐 보이게 한다.
   final bool transparent;
@@ -589,7 +592,19 @@ class _TopBar extends StatelessWidget {
           height: SidebarScaffold.menuBarHeight,
           child: Row(
             children: [
-              IconButton(tooltip: tooltip, icon: Icon(icon), onPressed: onTap),
+              // 메뉴에서 들어온 화면은 뒤로가기만 둔다 (메뉴 버튼은 필요 없다).
+              if (onBack != null)
+                IconButton(
+                  tooltip: '뒤로',
+                  icon: const Icon(AppIcons.arrowLeft),
+                  onPressed: onBack,
+                )
+              else
+                IconButton(
+                  tooltip: tooltip,
+                  icon: Icon(icon),
+                  onPressed: onTap,
+                ),
               const Spacer(),
               ?trailing,
             ],
@@ -610,8 +625,10 @@ class _NarrowFrame extends StatefulWidget {
     this.bottomBar,
     this.topBarTrailing,
     this.backdrop,
+    this.onBack,
   });
 
+  final VoidCallback? onBack;
   final Widget panel;
   final Widget rail;
   final Widget child;
@@ -649,10 +666,43 @@ class _NarrowFrameState extends State<_NarrowFrame> {
                   tooltip: '메뉴',
                   onTap: () => _setOpen(true),
                   trailing: widget.topBarTrailing,
+                  onBack: widget.onBack,
                   transparent: widget.backdrop != null,
                 ),
-                Expanded(child: widget.child),
-                ?widget.bottomBar,
+                // 하단 탭은 내용 위에 떠 있다: 알약 둘레는 완전히 투명해서 내용이 그대로 비친다.
+                // 내용에는 탭이 가린 만큼 아래 여백을 알려 주어(MediaQuery) 목록 끝과 떠 있는 버튼이 탭 위로 올라온다.
+                Expanded(
+                  child: Stack(
+                    children: [
+                      Positioned.fill(
+                        child: widget.bottomBar == null
+                            ? widget.child
+                            : Builder(
+                                builder: (context) {
+                                  final mq = MediaQuery.of(context);
+                                  return MediaQuery(
+                                    data: mq.copyWith(
+                                      padding: mq.padding.copyWith(
+                                        bottom:
+                                            mq.padding.bottom +
+                                            _PillTabBar.inset,
+                                      ),
+                                    ),
+                                    child: widget.child,
+                                  );
+                                },
+                              ),
+                      ),
+                      if (widget.bottomBar != null)
+                        Positioned(
+                          left: 0,
+                          right: 0,
+                          bottom: 0,
+                          child: widget.bottomBar!,
+                        ),
+                    ],
+                  ),
+                ),
               ],
             ),
             Positioned.fill(
@@ -709,8 +759,10 @@ class _WideFrame extends StatefulWidget {
     required this.child,
     this.topBarTrailing,
     this.backdrop,
+    this.onBack,
   });
 
+  final VoidCallback? onBack;
   final Widget sidebar;
   final Widget rail;
   final Widget child;
@@ -761,6 +813,7 @@ class _WideFrameState extends State<_WideFrame> {
                       tooltip: _open ? '메뉴 접기' : '메뉴 펼치기',
                       onTap: () => setState(() => _open = !_open),
                       trailing: widget.topBarTrailing,
+                      onBack: widget.onBack,
                       transparent: widget.backdrop != null,
                     ),
                     Expanded(child: widget.child),

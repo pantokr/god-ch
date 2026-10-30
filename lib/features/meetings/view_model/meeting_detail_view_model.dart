@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import '../../../core/mvvm/view_model.dart';
 import '../../../data/models/meeting.dart';
 import '../data/meeting_repository.dart';
@@ -31,8 +33,15 @@ class MeetingDetailViewModel extends ViewModel {
       place: v.place,
       date: v.date,
       capacity: v.capacity,
+      imageUrl: v.imageUrl,
     ),
   );
+
+  Future<String?> uploadImage(String fileName, Uint8List bytes) async {
+    String? url;
+    await run(() async => url = await _repo.uploadImage(churchId, bytes));
+    return url;
+  }
 
   Future<bool> delete() => run(() => _repo.delete(churchId, id));
 }

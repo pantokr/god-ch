@@ -1,3 +1,4 @@
+import '../../../core/widgets/app_loader.dart';
 import '../../../core/icons.dart';
 
 import 'package:flutter/material.dart';
@@ -65,7 +66,7 @@ class AffiliationDetailBody extends StatelessWidget {
         stream: vm.affiliations,
         builder: (context, affs) {
           if (!affs.hasData) {
-            return const Center(child: CircularProgressIndicator());
+            return const Center(child: AppLoader());
           }
           final affiliation = affs.data!
               .where((d) => d.id == affiliationId)

@@ -1,3 +1,4 @@
+import '../../../core/widgets/app_loader.dart';
 import '../../../core/icons.dart';
 
 import 'package:file_picker/file_picker.dart';
@@ -8,8 +9,8 @@ import '../../../core/app_exception.dart';
 import '../../../core/theme.dart';
 import '../../bible/data/bible_repository.dart';
 
-/// 앱 운영자 대시보드: 말씀 묵상에서 쓸 성경 본문(verse.csv)을 Storage에 올린다.
-/// 한 번 올려 두면 모든 교회가 말씀 묵상에서 구절을 골라 가져올 수 있다.
+/// 앱 운영자 대시보드: 말씀묵상에서 쓸 성경 본문(verse.csv)을 Storage에 올린다.
+/// 한 번 올려 두면 모든 교회가 말씀묵상에서 구절을 골라 가져올 수 있다.
 class BibleUploadCard extends StatefulWidget {
   const BibleUploadCard({super.key});
 
@@ -67,7 +68,7 @@ class _BibleUploadCardState extends State<BibleUploadCard> {
             ),
             const SizedBox(height: 8),
             Text(
-              '말씀 묵상을 쓸 때 구절을 골라 가져오는 데 쓰는 verse.csv 파일이에요. '
+              '말씀묵상을 쓸 때 구절을 골라 가져오는 데 쓰는 verse.csv 파일이에요. '
               '(개역한글 · 개역개정 · 새번역 · KJV · NIV)',
               style: TextStyle(color: palette.muted),
             ),
@@ -95,11 +96,7 @@ class _BibleUploadCardState extends State<BibleUploadCard> {
                 ),
                 if (_busy) ...[
                   const SizedBox(width: 12),
-                  const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  ),
+                  const SizedBox(width: 20, height: 20, child: AppLoader()),
                 ],
               ],
             ),

@@ -1,3 +1,5 @@
+import '../../../core/widgets/app_loader.dart';
+import '../../../core/widgets/trash_icon.dart';
 import '../../../core/icons.dart';
 
 import 'package:flutter/material.dart';
@@ -9,6 +11,7 @@ import '../../../core/format.dart';
 import '../../../core/layout/sub_page.dart';
 import '../../../core/mvvm/view_model_builder.dart';
 import '../../../core/theme.dart';
+import '../../../data/models/permission.dart';
 import '../../../data/models/member.dart';
 import '../../../data/models/prayer.dart';
 import '../view_model/prayer_detail_view_model.dart';
@@ -32,7 +35,7 @@ class PrayerDetailPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final back = Routes.home(me.churchId);
+    final back = Routes.section(me.churchId, ChurchSection.prayer);
     return ViewModelBuilder<PrayerDetailViewModel>(
       create: (context) =>
           PrayerDetailViewModel(AppScope.read(context).prayers, me, prayerId),
@@ -49,7 +52,7 @@ class PrayerDetailPage extends StatelessWidget {
               fallbackLocation: back,
               child: const Padding(
                 padding: EdgeInsets.all(48),
-                child: Center(child: CircularProgressIndicator()),
+                child: Center(child: AppLoader()),
               ),
             );
           }
@@ -90,7 +93,8 @@ class PrayerDetailPage extends StatelessWidget {
       ),
     if (vm.canDelete(p))
       TextButton.icon(
-        icon: const Icon(AppIcons.trash, size: 18),
+        style: TrashIcon.textStyle(context),
+        icon: const TrashIcon(),
         label: const Text('삭제'),
         onPressed: () => _confirmDelete(context, vm, p),
       ),
@@ -119,7 +123,7 @@ class PrayerDetailPage extends StatelessWidget {
       if (router.canPop()) {
         router.pop();
       } else {
-        router.go(Routes.home(me.churchId));
+        router.go(Routes.section(me.churchId, ChurchSection.prayer));
       }
     }
   }
@@ -162,7 +166,10 @@ class _Body extends StatelessWidget {
                 const SizedBox(height: 20),
                 // 기도제목 본문은 책처럼 읽히도록 명조로 보여준다.
                 SelectableText(p.content, style: readingStyle(context)),
-                if (p.isPublic && !p.deleted && vm.settings.reactionsOn) ...[
+                if (p.isPublic &&
+                    !p.deleted &&
+                    vm.settings.reactionsOn &&
+                    vm.me.can(Permission.prayerInteract)) ...[
                   const SizedBox(height: 24),
                   const Divider(),
                   const SizedBox(height: 16),
@@ -177,9 +184,11 @@ class _Body extends StatelessWidget {
           EntrySection(
             title: '교역자 댓글',
             entries: vm.comments,
-            canWrite: vm.me.isStaff,
+            canWrite: vm.me.canPrayerComment,
             hint: '교역자 댓글',
             onSend: (text) => vm.addComment(p, text),
+            canDelete: (e) => vm.canDeleteComment(e),
+            onDelete: (e) => vm.deleteComment(p, e),
             errorOf: () => vm.error,
           ),
         if (!p.isPublic && vm.settings.privateResponses)
@@ -206,7 +215,7 @@ class _MetaRow extends StatelessWidget {
     final muted = TextStyle(color: context.palette.muted);
     return Row(
       children: [
-        Text(fmtDate(prayer.createdAt), style: muted),
+        Text(fmtDateTime(prayer.createdAt), style: muted),
         const SizedBox(width: 10),
         Icon(AppIcons.eyeCount, size: 14, color: context.palette.muted),
         Text(' 조회 ${prayer.views}', style: muted),

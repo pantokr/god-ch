@@ -45,9 +45,11 @@ class ProfileRepository {
     if (!consentThirdParty) {
       throw const AppException('개인정보 제3자 제공에 동의해야 가입할 수 있어요.');
     }
+    final email = _auth.email;
     return _users.doc(_auth.uid).set({
       'name': name.trim(),
       'phone': phone.trim(),
+      if (email != null && email.isNotEmpty) 'email': email,
       'consentThirdParty': true,
       'consentAt': FieldValue.serverTimestamp(),
       'createdAt': FieldValue.serverTimestamp(),

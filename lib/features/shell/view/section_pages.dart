@@ -7,7 +7,9 @@ import '../../admin/view/affiliation_manage_page.dart';
 import '../../admin/view/church_info_manage_page.dart';
 import '../../admin/view/church_join_tab.dart';
 import '../../admin/view/church_members_tab.dart';
+import '../../admin/view/position_manage_page.dart';
 import '../../bible/view/bible_page.dart';
+import '../../bible/view/devotion_settings_page.dart';
 import '../../home/view/my_activity_page.dart';
 import '../../meetings/view/meetings_page.dart';
 import '../../prayers/view/prayer_board_page.dart';
@@ -16,7 +18,7 @@ import 'church_scope.dart';
 
 /// 교회 틀 안에 들어가는 메뉴별 페이지들. 필요한 정보는 [ChurchScope]에서 꺼낸다.
 
-/// 기도제목: 교회의 첫 화면.
+/// 기도제목.
 class PrayerSectionPage extends StatelessWidget {
   const PrayerSectionPage({super.key});
 
@@ -36,7 +38,7 @@ class MeetingsSectionPage extends StatelessWidget {
       MeetingsPage(me: ChurchScope.of(context).me);
 }
 
-/// 성경: 말씀 묵상.
+/// 성경: 말씀묵상.
 class BibleSectionPage extends StatelessWidget {
   const BibleSectionPage({super.key});
 
@@ -56,7 +58,25 @@ class MineSectionPage extends StatelessWidget {
       MyActivityPage(me: ChurchScope.of(context).me);
 }
 
-/// 기도 설정 (교회 운영자).
+/// 직급 관리 (교회 운영자).
+class PositionManageSectionPage extends StatelessWidget {
+  const PositionManageSectionPage({super.key});
+
+  @override
+  Widget build(BuildContext context) =>
+      PositionManagePage(me: ChurchScope.of(context).me);
+}
+
+/// 말씀묵상 설정 (교회 운영자).
+class DevotionSettingsSectionPage extends StatelessWidget {
+  const DevotionSettingsSectionPage({super.key});
+
+  @override
+  Widget build(BuildContext context) =>
+      DevotionSettingsPage(me: ChurchScope.of(context).me);
+}
+
+/// 중보기도 설정 (교회 운영자).
 class PrayerSettingsSectionPage extends StatelessWidget {
   const PrayerSettingsSectionPage({super.key});
 

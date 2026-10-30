@@ -1,3 +1,4 @@
+import '../../../core/widgets/app_loader.dart';
 import '../../../core/icons.dart';
 
 import 'package:flutter/material.dart';
@@ -58,7 +59,7 @@ class ChurchVisibilityCard extends StatelessWidget {
                   if (!snap.hasData) {
                     return const Padding(
                       padding: EdgeInsets.all(16),
-                      child: Center(child: CircularProgressIndicator()),
+                      child: Center(child: AppLoader()),
                     );
                   }
                   return RadioGroup<bool>(

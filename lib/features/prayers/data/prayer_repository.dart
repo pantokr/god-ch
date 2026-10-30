@@ -248,11 +248,14 @@ class PrayerRepository {
   ) {
     final list = [
       for (final d in s.docs)
-        TextEntry(
-          d.id,
-          d.data()['content'] as String? ?? '',
-          toDate(d.data()['createdAt']),
-        ),
+        // 지운 표시가 있는 댓글은 보이지 않는다.
+        if (d.data()['deleted'] != true)
+          TextEntry(
+            d.id,
+            d.data()['content'] as String? ?? '',
+            toDate(d.data()['createdAt']),
+            authorId: d.data()['authorId'] as String? ?? '',
+          ),
     ];
     // 오래된 순. 서버가 시각을 확정하기 전의 글은 맨 뒤.
     list.sort(
@@ -268,6 +271,22 @@ class PrayerRepository {
         'authorId': _auth.uid,
         'content': content,
         'createdAt': FieldValue.serverTimestamp(),
+      });
+
+  /// 댓글을 지운 것으로 표시한다 (기록 보관).
+  Future<void> deleteComment(
+    String churchId,
+    String prayerId,
+    String commentId,
+  ) => _paths
+      .prayers(churchId)
+      .doc(prayerId)
+      .collection('comments')
+      .doc(commentId)
+      .update({
+        'deleted': true,
+        'deletedAt': FieldValue.serverTimestamp(),
+        'deletedBy': _auth.uid,
       });
 
   Future<void> addResponse(

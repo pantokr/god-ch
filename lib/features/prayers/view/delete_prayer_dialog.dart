@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/widgets/trash_icon.dart';
 import '../../../core/layout/app_dialog.dart';
 
 /// 삭제 확인 대화상자. 삭제하면 사유(본인 글이면 빈 문자열)를, 취소하면 null을 돌려준다.
@@ -60,6 +61,7 @@ class _DeletePrayerFormState extends State<_DeletePrayerForm> {
             ),
             const SizedBox(width: 8),
             FilledButton(
+              style: TrashIcon.filledStyle(context),
               onPressed: _canSubmit
                   ? () => Navigator.pop(context, _reason.text.trim())
                   : null,

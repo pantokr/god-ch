@@ -7,6 +7,7 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 
 import '../core/theme.dart';
+import '../features/admin/data/position_repository.dart';
 import '../features/auth/data/auth_repository.dart';
 import '../features/auth/data/profile_repository.dart';
 import '../features/church/data/affiliation_repository.dart';
@@ -14,13 +15,14 @@ import '../features/church/data/church_closure_repository.dart';
 import '../features/church/data/church_repository.dart';
 import '../features/church/data/church_request_repository.dart';
 import '../features/home/data/content_repository.dart';
-import '../features/admin/data/sample_data_repository.dart';
 import '../features/meetings/data/meeting_repository.dart';
 import '../features/home/data/reflection_repository.dart';
 import '../features/members/data/member_repository.dart';
 import '../features/platform/data/church_registry_repository.dart';
 import '../features/prayers/data/prayer_repository.dart';
+import '../core/widgets/offline_banner.dart';
 import 'app_scope.dart';
+import 'connectivity_controller.dart';
 import 'router.dart';
 import 'session.dart';
 import 'list_style_controller.dart';
@@ -78,11 +80,12 @@ class _AppState extends State<App> {
     _db,
     _auth,
   );
-  late final MeetingRepository _meetings = MeetingRepository(_db, _auth);
-  late final SampleDataRepository _sampleData = SampleDataRepository(
+  late final MeetingRepository _meetings = MeetingRepository(
     _db,
     _auth,
+    _contents,
   );
+  late final PositionRepository _positions = PositionRepository(_db, _auth);
   late final MemberRepository _members = MemberRepository(_db, _auth);
   late final PrayerRepository _prayers = PrayerRepository(_db, _auth);
   late final BibleRepository _bible = BibleRepository(FirebaseStorage.instance);
@@ -103,9 +106,13 @@ class _AppState extends State<App> {
   );
   late final _router = buildRouter(_session);
 
+  // 인터넷 연결 여부: 끊기면 모든 페이지 맨 위에 "인터넷 연결 없음" 띠가 붙는다.
+  late final ConnectivityController _connectivity = ConnectivityController();
+
   @override
   void dispose() {
     _router.dispose();
+    _connectivity.dispose();
     _session.dispose();
     super.dispose();
   }
@@ -125,7 +132,7 @@ class _AppState extends State<App> {
       contents: _contents,
       reflections: _reflections,
       meetings: _meetings,
-      sampleData: _sampleData,
+      positions: _positions,
       members: _members,
       prayers: _prayers,
       notifications: _notifications,
@@ -149,7 +156,13 @@ class _AppState extends State<App> {
                 top: false,
                 left: false,
                 right: false,
-                child: child!,
+                child: ListenableBuilder(
+                  listenable: _connectivity,
+                  builder: (context, _) => OfflineBanner(
+                    visible: !_connectivity.online,
+                    child: child!,
+                  ),
+                ),
               ),
             ),
           ),

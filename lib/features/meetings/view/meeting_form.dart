@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+
 import 'package:flutter/services.dart';
 
 import '../../../core/icons.dart';
 import '../../../core/layout/app_dialog.dart';
+import '../../../core/widgets/thumbnail_field.dart';
 import '../../../data/models/meeting.dart';
 import 'meeting_format.dart';
 
@@ -14,8 +16,10 @@ class MeetingFormResult {
     required this.place,
     required this.date,
     required this.capacity,
+    this.imageUrl = '',
   });
 
+  final String imageUrl;
   final String title;
   final String description;
   final String place;
@@ -27,16 +31,18 @@ class MeetingFormResult {
 Future<MeetingFormResult?> showMeetingForm(
   BuildContext context, {
   Meeting? initial,
+  required Future<String?> Function(String fileName, Uint8List bytes) upload,
 }) => showAppDialog<MeetingFormResult>(
   context,
   maxWidth: 520,
-  child: _Form(initial: initial),
+  child: _Form(initial: initial, upload: upload),
 );
 
 class _Form extends StatefulWidget {
-  const _Form({this.initial});
+  const _Form({this.initial, required this.upload});
 
   final Meeting? initial;
+  final Future<String?> Function(String fileName, Uint8List bytes) upload;
 
   @override
   State<_Form> createState() => _FormState();
@@ -44,6 +50,7 @@ class _Form extends StatefulWidget {
 
 class _FormState extends State<_Form> {
   late final _title = TextEditingController(text: widget.initial?.title);
+  late final _image = TextEditingController(text: widget.initial?.imageUrl);
   late final _place = TextEditingController(text: widget.initial?.place);
   late final _description = TextEditingController(
     text: widget.initial?.description,
@@ -65,6 +72,7 @@ class _FormState extends State<_Form> {
 
   @override
   void dispose() {
+    _image.dispose();
     _title.dispose();
     _place.dispose();
     _description.dispose();
@@ -107,9 +115,16 @@ class _FormState extends State<_Form> {
           style: Theme.of(context).textTheme.titleLarge,
         ),
         const SizedBox(height: 16),
+        ThumbnailField(
+          controller: _image,
+          name: _title.text,
+          upload: widget.upload,
+          label: '썸네일',
+          aspectRatio: meetingThumbRatio,
+        ),
+        const SizedBox(height: 16),
         TextField(
           controller: _title,
-          autofocus: true,
           maxLength: Meeting.maxTitle,
           decoration: const InputDecoration(labelText: '제목'),
         ),
@@ -159,6 +174,7 @@ class _FormState extends State<_Form> {
                   place: _place.text,
                   date: _date,
                   capacity: int.tryParse(_capacity.text) ?? 0,
+                  imageUrl: _image.text,
                 ),
               ),
               child: const Text('저장'),

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/format.dart';
+import '../../../core/icons.dart';
 import '../../../core/layout/app_dialog.dart';
 import '../../../core/layout/manage_list_row.dart';
 import '../../../data/models/affiliation.dart';
@@ -36,9 +38,11 @@ class MemberTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final pending = member.status == MemberStatus.pending;
     final isSelf = member.id == vm.me.id;
-    final name = member.loginId.isEmpty
-        ? member.name
-        : '${member.name}  (${member.loginId})';
+    // 괄호 안: ID로 가입했으면 아이디, Google로 가입했으면 줄인 이메일.
+    final account = member.loginId.isNotEmpty
+        ? member.loginId
+        : shortEmail(member.email);
+    final name = account.isEmpty ? member.name : '${member.name}  ($account)';
     // 새로 들어온 인원이든 등록된 인원이든 같은 줄 모양을 쓴다: 이름 · 소속 교회 · [승인] [관리].
     return ManageListRow(
       leading: ManageListRow.avatar(
@@ -47,6 +51,13 @@ class MemberTile extends StatelessWidget {
         imageUrl: member.photoUrl,
       ),
       title: name,
+      // 교회 관리자는 이름 앞에 왕관으로 따로 표시한다.
+      titleMark: member.role == Role.admin && !member.isAppOperator
+          ? const Tooltip(
+              message: '교회 관리자',
+              child: Icon(AppIcons.crown, size: 18, color: Color(0xFFE0A100)),
+            )
+          : null,
       badge: isSelf
           ? '본인'
           : isNew

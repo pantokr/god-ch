@@ -132,3 +132,6 @@ app.*.symbols
 
 # 성경 원본 파일 (앱 운영자가 대시보드에서 Storage로 올린다)
 /data/bible/*.csv
+
+# 모임 썸네일 임시 확인용 이미지 (앱에 넣지 않는다)
+/samples/meetings/

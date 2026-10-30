@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../../app/app_scope.dart';
 import '../../../app/list_style_controller.dart';
 import '../../../app/routes.dart';
+import '../../../core/back_navigation.dart';
 import '../../../core/layout/profile_summary.dart';
 import '../../../core/layout/sidebar_scaffold.dart';
 import '../../../core/mvvm/view_model_builder.dart';
@@ -47,15 +48,17 @@ class ChurchShell extends StatelessWidget {
   final AffiliationChoice affiliationChoice;
 
   static const _labels = {
-    ChurchSection.prayer: '기도제목',
+    ChurchSection.prayer: '중보기도',
     ChurchSection.meetings: '모임',
-    ChurchSection.bible: '성경',
+    ChurchSection.bible: '말씀묵상',
     ChurchSection.mine: '내 활동',
-    ChurchSection.prayerSettings: '기도 설정',
+    ChurchSection.prayerSettings: '중보기도 설정',
+    ChurchSection.devotionSettings: '말씀묵상 설정',
+    ChurchSection.positions: '직급 권한 관리',
     ChurchSection.members: '교회 회원 관리',
     ChurchSection.join: '교회 입장 관리',
     ChurchSection.info: '교회 정보 관리',
-    ChurchSection.affiliations: '소속 관리',
+    ChurchSection.affiliations: '회원 소속 관리',
   };
 
   static const _icons = {
@@ -64,6 +67,8 @@ class ChurchShell extends StatelessWidget {
     ChurchSection.bible: (AppIcons.bookOpen, AppIcons.bookOpenFill),
     ChurchSection.mine: (AppIcons.user, AppIcons.userFill),
     ChurchSection.prayerSettings: (AppIcons.sliders, AppIcons.sliders),
+    ChurchSection.devotionSettings: (AppIcons.sliders, AppIcons.sliders),
+    ChurchSection.positions: (AppIcons.shieldCheck, AppIcons.shieldCheckFill),
     ChurchSection.members: (AppIcons.users, AppIcons.usersFill),
     ChurchSection.join: (AppIcons.key, AppIcons.keyFill),
     ChurchSection.info: (AppIcons.church, AppIcons.churchFill),
@@ -78,13 +83,18 @@ class ChurchShell extends StatelessWidget {
   ];
 
   /// 교회 관리자에게만 보이는 메뉴: 앱을 고치는 일 (기도 설정 · 교회 정보).
-  static const _adminOnly = [ChurchSection.prayerSettings, ChurchSection.info];
+  static const _adminOnly = [
+    ChurchSection.prayerSettings,
+    ChurchSection.devotionSettings,
+    ChurchSection.positions,
+    ChurchSection.info,
+  ];
 
   /// 하단 탭의 이름 (서랍의 이름과 다르다): 모임 화면은 "일정"으로 부른다.
   static const _tabLabels = {
     ChurchSection.meetings: '일정',
-    ChurchSection.prayer: '기도',
-    ChurchSection.bible: '말씀',
+    ChurchSection.prayer: '중보기도',
+    ChurchSection.bible: '말씀묵상',
     ChurchSection.mine: '내 활동',
   };
 
@@ -110,7 +120,7 @@ class ChurchShell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // 권한이 없는 메뉴 주소로 들어왔다면 첫 화면으로 보낸다 (예: 교인이 인원 관리 주소를 직접 열었을 때).
-    if ((_staffOnly.contains(section) && !me.isStaff) ||
+    if ((_staffOnly.contains(section) && !me.canManage) ||
         (_adminOnly.contains(section) && !me.isAdmin)) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (context.mounted) context.go(Routes.home(me.churchId));
@@ -119,6 +129,9 @@ class ChurchShell extends StatelessWidget {
 
     // 목록 모양(알록달록 · 심플)은 기도제목 · 모임 · 성경이 함께 따르고, 위쪽 탭에서 바꾼다.
     final listStyle = AppScope.read(context).listStyle;
+    // 서랍에서만 들어가는 메뉴(관리 · 기도 설정)에서는 하단 탭 대신 뒤로가기 버튼이 있다.
+    final fromDrawer =
+        _staffOnly.contains(section) || _adminOnly.contains(section);
     final hasList = const {
       ChurchSection.prayer,
       ChurchSection.meetings,
@@ -129,6 +142,7 @@ class ChurchShell extends StatelessWidget {
       builder: (context, _) {
         // 알록달록 기도제목은 상단 바까지 게시판 색 하나로 통일한다. 심플은 일반 배경이다.
         final board =
+            kPostItEnabled &&
             section == ChurchSection.prayer &&
             listStyle.style == ListStyle.colorful;
         return SidebarScaffold(
@@ -136,6 +150,9 @@ class ChurchShell extends StatelessWidget {
           onProfile: () =>
               context.push(Routes.account, extra: profileDetailsOf(me)),
           onSignOut: onSignOut,
+          onBack: fromDrawer
+              ? () => context.goBack(Routes.home(me.churchId))
+              : null,
           backgroundColor: board ? prayerBoardColor(context) : null,
           // 무늬와 빛무리도 상단 바 뒤까지 한 장으로 깔아 배경이 끊기지 않게 한다.
           backdrop: board ? const PrayerBoardBackground() : null,
@@ -154,7 +171,10 @@ class ChurchShell extends StatelessWidget {
                         me: me,
                         choice: affiliationChoice,
                       ),
-                    const ListStyleToggle(),
+                    // 말씀묵상은 하나의 모양이라 스위치가 없다.
+                    if (section == ChurchSection.meetings ||
+                        (kPostItEnabled && section == ChurchSection.prayer))
+                      const ListStyleToggle(),
                   ],
                 ),
           railActions: [
@@ -214,7 +234,7 @@ class ChurchShell extends StatelessWidget {
                   ),
                 ],
               ),
-            if (me.isStaff)
+            if (me.canManage)
               SidebarGroup(
                 title: '관리',
                 items: [
@@ -222,8 +242,12 @@ class ChurchShell extends StatelessWidget {
                   _item(context, ChurchSection.members, badge: pending),
                   _item(context, ChurchSection.join),
                   _item(context, ChurchSection.affiliations),
-                  // 앱을 고치는 일은 교회 관리자만: 기도 설정 · 교회 정보.
+                  // 직급 관리는 소속 관리 바로 다음이다 (교회 관리자만).
+                  if (me.isAdmin) _item(context, ChurchSection.positions),
+                  // 앱을 고치는 일은 교회 관리자만: 중보기도 설정 · 말씀묵상 설정 · 교회 정보.
                   if (me.isAdmin) _item(context, ChurchSection.prayerSettings),
+                  if (me.isAdmin)
+                    _item(context, ChurchSection.devotionSettings),
                   if (me.isAdmin) _item(context, ChurchSection.info),
                 ],
               ),
@@ -238,7 +262,7 @@ class ChurchShell extends StatelessWidget {
       userName: userName,
       onSignOut: onSignOut,
       affiliationChoice: affiliationChoice,
-      child: me.isStaff
+      child: me.canManage
           ? ViewModelBuilder<PendingMembersViewModel>(
               create: (context) => PendingMembersViewModel(
                 AppScope.read(context).members,

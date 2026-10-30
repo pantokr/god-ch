@@ -1,3 +1,5 @@
+import '../../../core/widgets/app_loader.dart';
+
 import 'package:flutter/material.dart';
 
 import '../../../app/app_scope.dart';
@@ -5,7 +7,6 @@ import '../../../data/models/church.dart';
 import '../../../data/models/member.dart';
 import '../../platform/view/church_info_form.dart';
 import 'church_closure_card.dart';
-import 'sample_data_card.dart';
 
 /// 교회 정보 관리(교회 운영자): 이름 · 전화번호 · 주소 · 썸네일을 고치고, 맨 아래에서 폐쇄를 요청한다.
 class ChurchInfoManagePage extends StatefulWidget {
@@ -32,7 +33,7 @@ class _ChurchInfoManagePageState extends State<ChurchInfoManagePage> {
         }
         final church = snap.data;
         if (church == null) {
-          return const Center(child: CircularProgressIndicator());
+          return const Center(child: AppLoader());
         }
         return ChurchInfoForm(
           // 저장 후 새 값으로 다시 그리지 않도록 교회 한 곳에는 같은 폼을 쓴다.
@@ -41,14 +42,7 @@ class _ChurchInfoManagePageState extends State<ChurchInfoManagePage> {
           title: '교회 정보 관리',
           footer: widget.me.isOperatorView
               ? null
-              : Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    SampleDataCard(churchId: widget.me.churchId),
-                    const SizedBox(height: 12),
-                    ChurchClosureCard(me: widget.me),
-                  ],
-                ),
+              : ChurchClosureCard(me: widget.me),
         );
       },
     );

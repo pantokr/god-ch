@@ -48,6 +48,9 @@ class AuthRepository {
 
   String get uid => _auth.currentUser!.uid;
 
+  /// 로그인한 계정의 이메일 (Google 계정). 없으면 null.
+  String? get email => _auth.currentUser?.email;
+
   String get displayName {
     final user = _auth.currentUser;
     if (user == null) return '';
@@ -117,7 +120,8 @@ class AuthRepository {
     }
   }
 
-  /// 앱 탈퇴: 비밀번호로 다시 확인한 뒤, 속한 교회에서 모두 나가고 프로필 · 아이디를 지우고 계정을 삭제한다.
+  /// 앱 탈퇴: 비밀번호로 다시 확인한 뒤, 속한 교회에서 모두 나가고 프로필에 탈퇴 표시를 남기고 로그인 계정만 없앤다.
+  /// 프로필 · 아이디 기록은 지우지 않는다.
   /// 교회 관리자인 교회가 있으면 먼저 관리자를 넘겨야 한다.
   Future<void> deleteAccount(String password) async {
     final user = _auth.currentUser;
@@ -150,12 +154,10 @@ class AuthRepository {
         'removedBy': user.uid,
       });
     }
-    final profile = _db.collection('users').doc(user.uid);
-    final loginId = (await profile.get()).data()?['loginId'] as String?;
-    if (loginId != null && loginId.isNotEmpty) {
-      await _db.collection('loginIds').doc(loginId).delete();
-    }
-    await profile.delete();
+    await _db.collection('users').doc(user.uid).update({
+      'withdrawn': true,
+      'withdrawnAt': FieldValue.serverTimestamp(),
+    });
     await user.delete();
   }
 

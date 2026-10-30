@@ -1,3 +1,5 @@
+import 'app_loader.dart';
+import 'trash_icon.dart';
 import '../icons.dart';
 
 import 'dart:typed_data';
@@ -6,6 +8,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
 import '../theme.dart';
+import '../../features/home/view/content_widgets.dart';
 import 'thumbnail_avatar.dart';
 
 /// 썸네일 이미지 입력란. [controller]의 글자가 이미지 주소다 (비어 있으면 이미지가 없는 것).
@@ -19,6 +22,7 @@ class ThumbnailField extends StatefulWidget {
     required this.upload,
     this.label = '썸네일',
     this.enabled = true,
+    this.aspectRatio,
   });
 
   final TextEditingController controller;
@@ -30,6 +34,12 @@ class ThumbnailField extends StatefulWidget {
   final Future<String?> Function(String fileName, Uint8List bytes) upload;
   final String label;
   final bool enabled;
+
+  /// 있으면 원 대신 이 가로:세로 비의 사각형으로 미리 보여 준다 (실제로 게시되는 모양과 같게).
+  final double? aspectRatio;
+
+  /// 사각형 미리보기의 가로 길이.
+  static const previewWidth = 128.0;
 
   @override
   State<ThumbnailField> createState() => _ThumbnailFieldState();
@@ -73,26 +83,53 @@ class _ThumbnailFieldState extends State<ThumbnailField> {
         const SizedBox(height: 8),
         Row(
           children: [
-            ThumbnailAvatar(name: widget.name, url: url, radius: 36),
-            const SizedBox(width: 16),
-            if (_uploading)
-              const SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              )
-            else if (widget.enabled) ...[
-              OutlinedButton.icon(
-                onPressed: _pick,
-                icon: const Icon(AppIcons.image, size: 18),
-                label: Text(url.isEmpty ? '이미지 선택' : '이미지 변경'),
-              ),
-              if (url.isNotEmpty)
-                TextButton(
-                  onPressed: () => setState(() => widget.controller.clear()),
-                  child: const Text('삭제'),
+            if (widget.aspectRatio == null)
+              ThumbnailAvatar(name: widget.name, url: url, radius: 36)
+            else
+              Container(
+                width: ThumbnailField.previewWidth,
+                height: ThumbnailField.previewWidth / widget.aspectRatio!,
+                clipBehavior: Clip.antiAlias,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(AppRadius.control),
+                  border: Border.all(color: palette.border),
                 ),
-            ],
+                child: ContentImage(url),
+              ),
+            const SizedBox(width: 16),
+            // 좁은 화면(대화상자)에서도 넘치지 않게 버튼들은 줄바꿈된다.
+            Expanded(
+              child: _uploading
+                  ? const Align(
+                      alignment: Alignment.centerLeft,
+                      child: SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: AppLoader(),
+                      ),
+                    )
+                  : widget.enabled
+                  ? Wrap(
+                      spacing: 8,
+                      runSpacing: 4,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        OutlinedButton.icon(
+                          onPressed: _pick,
+                          icon: const Icon(AppIcons.image, size: 18),
+                          label: Text(url.isEmpty ? '이미지 선택' : '이미지 변경'),
+                        ),
+                        if (url.isNotEmpty)
+                          TextButton(
+                            style: TrashIcon.textStyle(context),
+                            onPressed: () =>
+                                setState(() => widget.controller.clear()),
+                            child: const Text('삭제'),
+                          ),
+                      ],
+                    )
+                  : const SizedBox.shrink(),
+            ),
           ],
         ),
         if (_error != null)

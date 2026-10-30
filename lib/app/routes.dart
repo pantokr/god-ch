@@ -1,19 +1,25 @@
 /// 교회 안의 메뉴. 주소의 마지막 부분이 [path]다. 왼쪽 메뉴(서랍)에서 고른다.
 enum ChurchSection {
-  /// 기도제목: 공개 기도제목이 포스트잇 카드로 떠다닌다. 교회의 첫 화면이다.
+  /// 기도제목: 공개 기도제목이 포스트잇 카드로 떠다닌다.
   prayer('prayer'),
 
-  /// 모임: 노션에 정리한 교회 모임 목록.
+  /// 모임(일정): 노션에 정리한 교회 모임 목록. 교회의 첫 화면이다.
   meetings('meetings'),
 
-  /// 성경: 말씀 묵상 글과 내 묵상.
+  /// 성경: 말씀묵상 글과 내 묵상.
   bible('bible'),
 
   /// 내 활동: 내가 쓴 기도제목과 묵상.
   mine('mine'),
 
-  /// 기도 설정 (교회 운영자만): 기도제목 운영 방식.
+  /// 중보기도 설정 (교회 운영자만): 중보기도 운영 방식.
   prayerSettings('prayer-settings'),
+
+  /// 말씀묵상 설정 (교회 운영자만): 좋아요 · 댓글 · 조회수 · 글쓴이 운영 방식.
+  devotionSettings('devotion-settings'),
+
+  /// 직급 관리 (교회 운영자만): 직급 만들기 · 수정 · 삭제 · 권한 부여와 교인에게 직급 주기.
+  positions('positions'),
 
   /// 인원 관리 (교역자·교회 운영자): 새로 등록된 인원 승인, 등록 인원 조회.
   members('members'),
@@ -90,9 +96,9 @@ class Routes {
   static String affiliation(String churchId, String affId) =>
       '${section(churchId, ChurchSection.affiliations)}/$affId';
 
-  /// 교회의 첫 화면 (기도제목).
+  /// 교회의 첫 화면 (일정).
   static String home(String churchId) =>
-      section(churchId, ChurchSection.prayer);
+      section(churchId, ChurchSection.meetings);
 
   /// 말씀 상세 (교회 틀 밖의 전체 화면).
   static String devotion(String churchId, String id) =>

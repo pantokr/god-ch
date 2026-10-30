@@ -1,3 +1,5 @@
+import '../../../core/widgets/app_loader.dart';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -38,9 +40,7 @@ class MyChurchesRoute extends StatelessWidget {
             );
           }
           if (!snap.hasData) {
-            return const Scaffold(
-              body: Center(child: CircularProgressIndicator()),
-            );
+            return const Scaffold(body: Center(child: AppLoader()));
           }
           final memberships = snap.data!;
           final approved = memberships.where((m) => m.isApproved).toList();
@@ -99,5 +99,5 @@ class _EnterChurchState extends State<_EnterChurch> {
 
   @override
   Widget build(BuildContext context) =>
-      const Scaffold(body: Center(child: CircularProgressIndicator()));
+      const Scaffold(body: Center(child: AppLoader()));
 }

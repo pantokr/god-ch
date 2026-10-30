@@ -12,6 +12,7 @@ class ManageListRow extends StatelessWidget {
     required this.leading,
     required this.title,
     this.badge,
+    this.titleMark,
     this.line1 = '',
     this.line2 = '',
     this.trailing = const [],
@@ -26,6 +27,9 @@ class ManageListRow extends StatelessWidget {
 
   /// 제목 옆의 작은 표시 (예: NEW).
   final String? badge;
+
+  /// 제목 앞의 표시 (예: 교회 관리자의 왕관).
+  final Widget? titleMark;
   final String line1;
   final String line2;
   final List<Widget> trailing;
@@ -67,6 +71,10 @@ class ManageListRow extends StatelessWidget {
                   children: [
                     Row(
                       children: [
+                        if (titleMark != null) ...[
+                          titleMark!,
+                          const SizedBox(width: 6),
+                        ],
                         Flexible(
                           child: Text(
                             title,

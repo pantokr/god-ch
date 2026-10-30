@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme.dart';
+import '../../../core/widgets/panel_surface.dart';
 import '../../../core/widgets/app_inputs.dart';
 import '../../../data/models/prayer.dart';
 import '../../../data/models/prayer_settings.dart';
@@ -21,14 +22,7 @@ class PrayerSettingsPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final s = settings;
-    final palette = context.palette;
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: palette.surface,
-        border: Border.all(color: palette.border),
-        borderRadius: BorderRadius.circular(AppRadius.card),
-      ),
+    return PanelSurface(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [

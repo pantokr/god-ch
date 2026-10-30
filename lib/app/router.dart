@@ -131,7 +131,7 @@ GoRouter buildRouter(SessionNotifier session) {
                   ChurchSection.fromPath(
                     segments.length > 2 ? segments[2] : '',
                   ) ??
-                  ChurchSection.prayer,
+                  ChurchSection.meetings,
               child: child,
             ),
           );
@@ -144,6 +144,14 @@ GoRouter buildRouter(SessionNotifier session) {
           _sectionRoute(
             ChurchSection.prayerSettings,
             const PrayerSettingsSectionPage(),
+          ),
+          _sectionRoute(
+            ChurchSection.devotionSettings,
+            const DevotionSettingsSectionPage(),
+          ),
+          _sectionRoute(
+            ChurchSection.positions,
+            const PositionManageSectionPage(),
           ),
           _sectionRoute(ChurchSection.members, const MemberManageSectionPage()),
           _sectionRoute(ChurchSection.join, const JoinManageSectionPage()),
@@ -181,7 +189,9 @@ GoRouter buildRouter(SessionNotifier session) {
               path: '/churches/:cid/$old',
               redirect: (context, state) => Routes.section(
                 state.pathParameters['cid']!,
-                old == 'manage' ? ChurchSection.members : ChurchSection.prayer,
+                old == 'manage'
+                    ? ChurchSection.members
+                    : ChurchSection.meetings,
               ),
             ),
           for (final old in const ['right', 'word'])

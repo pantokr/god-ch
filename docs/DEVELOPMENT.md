@@ -27,7 +27,7 @@
   | | 교회 관리자 | 교역자 | 회원 |
   |---|---|---|---|
   | 앱 수정 (소속 만들기/이름 · 소속별 기도·성경 켜기 · 노출 · 입장 시 필수 정보 · 기도 설정 · 교회 정보 · 폐쇄 요청 · 차단) | ✅ | ❌ | ❌ |
-  | 글 게시 (성경: 말씀 묵상 글) | ✅ | ✅ | ❌ |
+  | 글 게시 (성경: 말씀묵상 글) | ✅ | ✅ | ❌ |
   | 조회 · 교역자 업무 (인원 관리 · 입장 요청 승인 · 소속 인원 배치 · 초대 코드(교인용) · 비공개 기도제목 열람/응답 · 삭제 사유 기록) | ✅ | ✅ | ❌ |
   | 교역자/관리자 역할 지정 · 교인 정보 수정 · 추방 · 교역자용 초대 코드 | ✅ | ❌ | ❌ |
   | 기도 · 말씀 이용, 이모티콘 응원, 기도제목 쓰기 | ✅ | ✅ | ✅ (소속 허용 시) |
@@ -47,6 +47,58 @@
 - 이미지는 교회 · 회원 썸네일(Storage, 256px 정사각 JPEG)뿐이다.
 - **새 필드를 추가하면 모델 · 저장소 · `firestore.rules`의 `hasOnly([...])`를 같이 고친다.** 새 쿼리가 복합 조건이면 `firestore.indexes.json`도 고친다.
 
+### 권한과 직급 (`lib/data/models/permission.dart`)
+
+**기본 직급 세 개: 교회 관리자(총괄) > 교역자 > 회원.** 삭제할 수 없다. 교회 관리자는 그 교회에서 모든 권한(절대 권한)을 가지며 고칠 수 없고, 교역자 · 회원은 `positions/staff` · `positions/member` 문서에 권한을 정한다(없으면 교역자는 줄 수 있는 권한 전부, 회원은 없음). 이름은 고정이다.
+
+역할(교인 · 교역자 · 교회 운영자)은 기본 권한을 정하고, **직급**(`churches/{id}/positions`)은 교회 관리자가 만드는 이름 있는 권한 묶음이다.
+교인에게 직급을 주면 권한이 교인 문서의 `permissions`에 복사되고, `firestore.rules`의 `can(교회, 권한)`이 같은 기준으로 막는다.
+직급을 고치거나 지우면 그 직급의 교인 문서도 함께 고친다 (지운 직급은 `deleted` 표시만 남는다).
+
+| 묶음 | 권한 | 내용 | 교역자 기본 | 회원 기본 |
+|---|---|---|---|---|
+| 인원 | `member.approve` | 인원 승인 · 상태 변경 | ✅ |  |
+| 인원 | `invite.manage` | 초대 코드 관리 | ✅ |  |
+| 인원 | `affiliation.assign` | 소속 인원 배치 | ✅ |  |
+| 중보기도 | `prayer.write` | 글 작성 | ✅ | ✅ |
+| 중보기도 | `prayer.viewPrivate` | 비공개 조회 | ✅ |  |
+| 중보기도 | `prayer.interact` | 댓글 작성 · 좋아요 (댓글은 교역자나 직접 받은 교인만) | ✅ | ✅ |
+| 중보기도 | `prayer.commentDeleteOwn / Others` | 본인 / 타인 댓글 삭제 | ✅ | 본인만 |
+| 중보기도 | `prayer.deleteOwn / Others` | 본인 / 타인 글 삭제 | ✅ | 본인만 |
+| 말씀묵상 | `devotion.write` | 글 작성 | ✅ |  |
+| 말씀묵상 | `devotion.viewPrivate` | 비공개(소속 전용) 조회 (화면에서만 거름) | ✅ |  |
+| 말씀묵상 | `devotion.interact` | 댓글 작성 · 좋아요 | ✅ | ✅ |
+| 말씀묵상 | `devotion.commentDeleteOwn / Others` | 본인 / 타인 댓글 삭제 | ✅ | 본인만 |
+| 말씀묵상 | `devotion.deleteOwn / Others` | 본인 / 타인 글 삭제 | ✅ |  |
+| 일정 | `meeting.create` | 일정 생성 | ✅ |  |
+| 일정 | `meeting.delete` | 일정 삭제 (타인 일정 포함) | ✅ |  |
+| 일정 | `meeting.join` | 일정 참여 | ✅ | ✅ |
+| 관리자 고정 | `member.role` `affiliation.manage` `position.manage` `prayer.moderate` `settings` `church.info` | 역할 변경 · 회원 소속 관리 · 직급 권한 관리 · 중보기도 타인 글 수정 · 설정 · 교회 정보 | (`prayer.moderate`만 교역자) | 불가 |
+
+새 권한을 직급으로 줄 수 있게 하려면 `Permission`(앱)과 `firestore.rules`의 `delegable()` 목록을 함께 고치고, 그 권한을 쓰는 규칙을 `can()`으로 바꾼다.
+
+### 컬렉션 구조 (`lib/data/firestore_paths.dart`)
+
+```
+users/{uid}                          프로필
+  notifications/{id}                 내 알림
+loginIds/{아이디}                    아이디 → 이메일
+admins/{uid}                         앱 운영자
+churchRequests/{id}                  교회 생성 요청
+churchClosureRequests/{id}           교회 폐쇄 요청
+inviteCodes/{코드}                   초대 코드 (입장 전에 읽어야 해서 최상위)
+churches/{churchId}
+  members/{uid}  affiliations/{id}  blocked/{uid}
+  settings/{join | features | prayer | devotion}
+  positions/{id}
+  prayers/{id}  reactions · comments · responses
+  devotions/{id}  reflections/{uid}
+  meetings/{id}
+  accessLogs/{id}
+```
+
+settings 세 문서는 읽는 사람이 달라서(join은 입장 신청자도 읽는다) 나누어 둔다. 폐쇄 요청은 요청 형식과 읽는 사람이 달라 생성 요청과 따로 둔다.
+
 ## 3. 정보 구조
 
 **기능은 기도제목 · 모임 · 성경 셋뿐이다.** 레이아웃을 고르는 방식(페이지 편집 · 디자인 갤러리 · 스타일/팔레트)과 공지 · 일정 · 사진첩 · 설교영상은 없앴다. 새 기능은 하단 탭이나 서랍에 항목만 더하고, 화면마다 모양은 하나다.
@@ -57,7 +109,7 @@
 |---|---|---|
 | 일정 | 모임 | 교회 모임 카드 (모임장 · 정원 · 참여) |
 | 기도 | 기도제목 | 공개 기도제목이 포스트잇 카드로 떠다닌다. 교회의 첫 화면 |
-| 말씀 | 성경 | 말씀 묵상 글과 내 묵상 |
+| 말씀 | 성경 | 말씀묵상 글과 내 묵상 |
 | 내 활동 | 내 활동 | 내 기도제목 · 내 묵상 (앱 개발자에게는 없다) |
 
 - 하단 바는 알약 모양이고 네 칸이 같은 크기다 (`_PillTabBar`). 홈은 없다.
@@ -78,7 +130,6 @@
   - 모임 `/churches/:cid/meeting/:id`: 정보 · 소개 · 참여(정원 막대, 신청 · 취소) · 반응. 교인이 만들면 모임장이 되고, 참여자는 `participantIds`에 담기며 정원은 규칙이 막는다. 모임장 · 교역자는 고치고 지운다.
   - 기도제목: 기존 상세(본문 + 이모티콘 응원 + 교역자 댓글)에 `views`가 더해졌다. 목록의 "좋아요"는 이모티콘 응원의 합이다.
 - 조회수는 상세를 열 때 +1, 좋아요 · 참여는 내 uid를 `likedBy` · `participantIds`에 더하고 빼는 것만 규칙이 허용한다 (`onlyMeDiff`, `viewBump`).
-- 교회 정보 관리의 **샘플 데이터** 버튼은 기도제목 8 · 말씀 8 · 모임 7개를 넣는다 (`SampleDataRepository`, 교역자는 견본에 한해 조회수 · 좋아요 · 참여자를 채워 만들 수 있다).
 
 ### 기도 설정
 

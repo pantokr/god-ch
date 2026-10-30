@@ -1,3 +1,5 @@
+import '../../../core/widgets/app_loader.dart';
+
 import 'package:flutter/material.dart';
 
 import '../../../app/app_scope.dart';
@@ -9,7 +11,7 @@ import '../../../data/models/prayer_settings.dart';
 import '../data/prayer_repository.dart';
 import 'prayer_settings_panel.dart';
 
-/// 기도 설정 (교회 운영자): 기도제목을 누가 쓰고 어떻게 운영할지 정한다.
+/// 중보기도 설정 (교회 운영자): 중보기도를 누가 쓰고 어떻게 운영할지 정한다.
 class PrayerSettingsPage extends StatelessWidget {
   const PrayerSettingsPage({super.key, required this.me});
 
@@ -26,7 +28,7 @@ class PrayerSettingsPage extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const PageTitle(title: '기도 설정'),
+              const PageTitle(title: '중보기도 설정'),
               FutureBuilder<PrayerSettings>(
                 future: vm.loaded,
                 builder: (context, snap) {
@@ -36,7 +38,7 @@ class PrayerSettingsPage extends StatelessWidget {
                   if (!snap.hasData) {
                     return const Padding(
                       padding: EdgeInsets.all(48),
-                      child: Center(child: CircularProgressIndicator()),
+                      child: Center(child: AppLoader()),
                     );
                   }
                   final current = vm.edited ?? snap.data!;

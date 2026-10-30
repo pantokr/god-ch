@@ -1,3 +1,4 @@
+import '../../../core/widgets/app_loader.dart';
 import '../../../core/icons.dart';
 
 import 'package:flutter/material.dart';
@@ -68,7 +69,7 @@ class AffiliationManagePage extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              PageTitle(title: '소속 관리'),
+              PageTitle(title: '회원 소속 관리'),
               // 제목 옆이 아니라 다음 줄에 둔다.
               // 소속을 만들고 고치는 것은 앱을 고치는 일이라 교회 관리자만 한다 (교역자는 조회와 인원 배치).
               if (me.isAdmin) ...[
@@ -90,7 +91,7 @@ class AffiliationManagePage extends StatelessWidget {
                   }
                   final items = affs.data;
                   if (items == null) {
-                    return const Center(child: CircularProgressIndicator());
+                    return const Center(child: AppLoader());
                   }
                   if (items.isEmpty) {
                     return const EmptyHint('만들어진 소속이 없어요.');
@@ -224,7 +225,7 @@ class _AffiliationCard extends StatelessWidget {
           borderRadius: radius,
           onTap: onOpen,
           child: SizedBox(
-            height: 184,
+            height: 216,
             child: Stack(
               children: [
                 Padding(

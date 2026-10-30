@@ -32,6 +32,12 @@ class ChurchContent {
     this.meditation = '',
     this.views = 0,
     this.likedBy = const [],
+    this.readBy = const [],
+    this.visibility = 'public',
+    this.authorId = '',
+    this.authorName = '',
+    this.authorPhotoUrl = '',
+    this.affiliationId,
     this.createdAt,
     this.deleted = false,
   });
@@ -46,6 +52,22 @@ class ChurchContent {
   final String meditation;
   final int views;
   final List<String> likedBy;
+
+  /// 글을 열어 본 사람의 uid들 (목록의 읽음 표시에 쓴다).
+  final List<String> readBy;
+
+  /// 'public'(교인 모두) 또는 'private'(비공개: 말씀묵상 비공개 조회 권한이 있는 사람만).
+  final String visibility;
+
+  bool get isPrivate => visibility == 'private';
+
+  /// 글쓴이. 이름과 프로필 사진 주소는 글을 쓸 때 함께 저장한다.
+  final String authorId;
+  final String authorName;
+  final String authorPhotoUrl;
+
+  /// 글을 분류한 소속. 없으면 교회 전체다.
+  final String? affiliationId;
   final DateTime? createdAt;
 
   int get likes => likedBy.length;
@@ -65,6 +87,12 @@ class ChurchContent {
       meditation: d['meditation'] as String? ?? '',
       views: (d['views'] as num?)?.toInt() ?? 0,
       likedBy: List<String>.from(d['likedBy'] as List? ?? const []),
+      readBy: List<String>.from(d['readBy'] as List? ?? const []),
+      visibility: d['visibility'] == 'private' ? 'private' : 'public',
+      authorId: d['createdBy'] as String? ?? '',
+      authorName: d['authorName'] as String? ?? '',
+      authorPhotoUrl: d['authorPhotoUrl'] as String? ?? '',
+      affiliationId: d['affiliationId'] as String?,
       createdAt: created,
       deleted: d['deleted'] == true,
     );
