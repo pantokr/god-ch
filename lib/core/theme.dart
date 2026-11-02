@@ -30,6 +30,22 @@ class AppField {
 
   /// [gap]만큼 띄우는 빈 칸.
   static const spacer = SizedBox(height: gap);
+
+  /// 입력칸의 모서리: 세 모서리는 둥글고 왼쪽 아래 한 모서리만 작게 각졌다 (말풍선 꼬리처럼).
+  /// 모든 입력칸이 이 모양 하나를 쓴다.
+  static const radius = BorderRadius.only(
+    topLeft: Radius.circular(14),
+    topRight: Radius.circular(14),
+    bottomRight: Radius.circular(14),
+    bottomLeft: Radius.circular(3),
+  );
+
+  /// 입력칸 테두리: 가는 선과 [radius] 모서리.
+  static OutlineInputBorder border(Color color, {double width = 1}) =>
+      OutlineInputBorder(
+        borderRadius: radius,
+        borderSide: BorderSide(color: color, width: width),
+      );
 }
 
 /// 면을 살짝 띄우는 부드러운 그림자 (두 겹: 넓고 옅은 것 + 가깝고 또렷한 것).
@@ -158,7 +174,8 @@ class AppPalette extends ThemeExtension<AppPalette> {
   /// 소프트 인디고: 연한 라벤더 바탕에 흰 카드, 인디고 포인트와 코랄 강조.
   static const light = AppPalette(
     ink: Color(0xFF191B2E),
-    muted: Color(0xFF636886),
+    // 보조 글자도 회색 없이 글자색(검정)과 같다. 모든 화면의 글씨가 검정으로 보인다.
+    muted: Color(0xFF191B2E),
     bg: Color(0xFFF3F4FB),
     surface: Color(0xFFFFFFFF),
     border: Color(0xFFE3E5F2),
@@ -170,7 +187,8 @@ class AppPalette extends ThemeExtension<AppPalette> {
   /// 딥 인디고: 남색에 가까운 먹색 바탕에 밝은 인디고와 코랄.
   static const dark = AppPalette(
     ink: Color(0xFFECEDF8),
-    muted: Color(0xFF9A9EBD),
+    // 어두운 모드에서도 보조 글자는 글자색(밝은색)과 같다.
+    muted: Color(0xFFECEDF8),
     bg: Color(0xFF0E1020),
     surface: Color(0xFF181B30),
     border: Color(0xFF2B2F4D),
@@ -222,7 +240,7 @@ extension PaletteContext on BuildContext {
 
   /// 카드의 연한 테두리색: 본문 글자색을 아주 옅게 깐 색이라 베이지 바탕 위에서도 또렷하다.
   Color get cardEdge => palette.ink.withValues(
-    alpha: Theme.of(this).brightness == Brightness.dark ? 0.18 : 0.12,
+    alpha: Theme.of(this).brightness == Brightness.dark ? 0.28 : 0.22,
   );
 
   /// 연한 테두리가 있는 카드 모양 (말씀묵상 카드들).
@@ -278,7 +296,17 @@ ThemeData buildTheme(Brightness brightness) {
     headlineMedium: serif(base.headlineMedium),
     headlineSmall: serif(base.headlineSmall),
     titleLarge: serif(base.titleLarge),
-    titleMedium: base.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+    titleMedium: base.titleMedium?.copyWith(
+      fontWeight: FontWeight.w700,
+      height: 1.5,
+    ),
+    titleSmall: base.titleSmall?.copyWith(height: 1.5),
+    // 본문 · 라벨 글자의 행간을 기본보다 넉넉히 둔다.
+    bodyLarge: base.bodyLarge?.copyWith(height: 1.6),
+    bodyMedium: base.bodyMedium?.copyWith(height: 1.6),
+    bodySmall: base.bodySmall?.copyWith(height: 1.55),
+    labelLarge: base.labelLarge?.copyWith(height: 1.5),
+    labelMedium: base.labelMedium?.copyWith(height: 1.5),
   );
 
   return ThemeData(
@@ -322,37 +350,29 @@ ThemeData buildTheme(Brightness brightness) {
         side: BorderSide(color: p.border.withValues(alpha: 0.7)),
       ),
     ),
-    // 입력란은 미니멀하게: 채움과 상자 없이 밑줄 하나, 낮은 높이. 글자 수 표시는 숨기고,
-    // 안내 문구는 각 입력란의 suffixText·hintText 안에 넣는다 (한도는 maxLength가 그대로 막는다).
+    // 입력란은 미니멀하게: 카드 바탕색 면에 가는 테두리 하나. 모서리는 세 곳이 둥글고 왼쪽 아래만 각졌다 ([AppField.radius]).
+    // 포커스를 받아도 면은 그대로이고 테두리만 강조색으로 또렷해진다.
+    // 글자 수 표시는 숨기고, 안내 문구는 각 입력란의 suffixText·hintText 안에 넣는다 (한도는 maxLength가 그대로 막는다).
     inputDecorationTheme: InputDecorationTheme(
       isDense: true,
-      filled: false,
-      contentPadding: const EdgeInsets.symmetric(vertical: 10),
+      filled: true,
+      fillColor: p.surface,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       // 모든 입력칸의 최소 높이를 같게 한다 (한 줄 · 드롭다운 · 검색란이 나란히 놓여도 키가 같다).
       constraints: const BoxConstraints(minHeight: AppField.height),
-      prefixIconConstraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-      suffixIconConstraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+      prefixIconConstraints: const BoxConstraints(minWidth: 40, minHeight: 32),
+      suffixIconConstraints: const BoxConstraints(minWidth: 40, minHeight: 32),
       prefixIconColor: WidgetStateColor.resolveWith(
         (states) => states.contains(WidgetState.focused) ? p.brand : p.muted,
       ),
       suffixIconColor: p.muted,
       counterStyle: const TextStyle(fontSize: 0, height: 0),
-      border: UnderlineInputBorder(borderSide: BorderSide(color: p.border)),
-      enabledBorder: UnderlineInputBorder(
-        borderSide: BorderSide(color: p.border),
-      ),
-      disabledBorder: UnderlineInputBorder(
-        borderSide: BorderSide(color: p.border.withValues(alpha: 0.5)),
-      ),
-      focusedBorder: UnderlineInputBorder(
-        borderSide: BorderSide(color: p.brand, width: 1.5),
-      ),
-      errorBorder: UnderlineInputBorder(
-        borderSide: BorderSide(color: scheme.error),
-      ),
-      focusedErrorBorder: UnderlineInputBorder(
-        borderSide: BorderSide(color: scheme.error, width: 1.5),
-      ),
+      border: AppField.border(p.border),
+      enabledBorder: AppField.border(p.border),
+      disabledBorder: AppField.border(p.border.withValues(alpha: 0.5)),
+      focusedBorder: AppField.border(p.brand, width: 1.5),
+      errorBorder: AppField.border(scheme.error),
+      focusedErrorBorder: AppField.border(scheme.error, width: 1.5),
       suffixStyle: TextStyle(color: p.muted, fontSize: 12),
       // 힌트(예시 글자)는 아주 옅게 해서 입력한 값과 확실히 구별되게 한다.
       hintStyle: TextStyle(color: p.muted.withValues(alpha: 0.45)),
@@ -374,7 +394,8 @@ ThemeData buildTheme(Brightness brightness) {
         textStyle: const TextStyle(fontWeight: FontWeight.w700),
         elevation: 0,
         foregroundColor: p.onBrand,
-        disabledForegroundColor: p.muted,
+        // 눌리지 않는 버튼은 회색으로 둔다 (보조 글자색이 검정이 되었어도).
+        disabledForegroundColor: p.ink.withValues(alpha: 0.38),
         backgroundColor: Colors.transparent,
         shadowColor: Colors.transparent,
         backgroundBuilder: (context, states, child) {

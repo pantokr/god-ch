@@ -1,5 +1,7 @@
 import '../../../core/icons.dart';
 
+import '../../../core/layout/responsive.dart';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -248,7 +250,9 @@ class _ApplicationStatus extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('신청 현황', style: Theme.of(context).textTheme.titleMedium),
+        Gutter(
+          child: Text('신청 현황', style: Theme.of(context).textTheme.titleMedium),
+        ),
         const SizedBox(height: 8),
         Card(
           child: Column(

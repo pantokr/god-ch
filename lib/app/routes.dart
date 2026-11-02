@@ -18,6 +18,9 @@ enum ChurchSection {
   /// 말씀묵상 설정 (교회 운영자만): 좋아요 · 댓글 · 조회수 · 글쓴이 운영 방식.
   devotionSettings('devotion-settings'),
 
+  /// 모임 일정 설정 (교회 운영자만): 좋아요 · 댓글 · 조회수 운영 방식.
+  meetingSettings('meeting-settings'),
+
   /// 직급 관리 (교회 운영자만): 직급 만들기 · 수정 · 삭제 · 권한 부여와 교인에게 직급 주기.
   positions('positions'),
 
@@ -30,8 +33,20 @@ enum ChurchSection {
   /// 교회 정보 관리 (교회 운영자만): 교회 정보 수정과 폐쇄 요청.
   info('info'),
 
+  /// 입장 · 탈퇴 기록 (교회 운영자만): 누가 언제 입장하고 탈퇴했는지.
+  memberLog('member-log'),
+
   /// 소속 관리 (교역자·교회 운영자): 소속 목록과 소속별 인원 (주소 `/affiliations/{소속}`).
-  affiliations('affiliations');
+  affiliations('affiliations'),
+
+  /// 우리 소속 (모든 교인): 내가 속한 소속의 사람들.
+  people('people'),
+
+  /// 달력 (모든 교인): 모임 일정과 생일.
+  calendar('calendar'),
+
+  /// 내 일정 (내 활동의 자세히 보기): 참여 예정 · 관심 · 완료 일정.
+  myMeetings('my-meetings');
 
   const ChurchSection(this.path);
 

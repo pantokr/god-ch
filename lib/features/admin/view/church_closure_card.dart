@@ -1,6 +1,9 @@
 import '../../../core/icons.dart';
 
 import 'package:flutter/material.dart';
+
+import '../../../core/widgets/labeled_field.dart';
+
 import 'package:flutter/services.dart';
 
 import '../../../app/app_scope.dart';
@@ -148,34 +151,37 @@ class _ClosureFormState extends State<_ClosureForm> {
       children: [
         Text('교회 폐쇄를 요청할까요?', style: Theme.of(context).textTheme.titleLarge),
         AppField.spacer,
-        TextField(
-          controller: _reason,
-          autofocus: true,
-          // 줄 수를 고정해서 입력 중에도, 커서가 옮겨 다녀도 칸 크기가 변하지 않게 한다.
-          minLines: 4,
-          maxLines: 4,
-          inputFormatters: [
-            LengthLimitingTextInputFormatter(
-              ChurchClosureRequest.maxReasonLength,
-            ),
-          ],
-          decoration: const InputDecoration(
-            labelText: '폐쇄 사유',
-            alignLabelWithHint: true,
+        LabeledField(
+          label: '폐쇄 사유',
+          alignTop: true,
+          child: TextField(
+            controller: _reason,
+            autofocus: true,
+            // 줄 수를 고정해서 입력 중에도, 커서가 옮겨 다녀도 칸 크기가 변하지 않게 한다.
+            minLines: 4,
+            maxLines: 4,
+            inputFormatters: [
+              LengthLimitingTextInputFormatter(
+                ChurchClosureRequest.maxReasonLength,
+              ),
+            ],
+            decoration: const InputDecoration(alignLabelWithHint: true),
+            onChanged: (_) => setState(() {}),
           ),
-          onChanged: (_) => setState(() {}),
         ),
         AppField.spacer,
-        TextField(
-          controller: _confirm,
-          maxLines: 1,
-          decoration: InputDecoration(
-            labelText: '확인을 위해 교회 이름을 입력하세요',
-            hintText: widget.churchName,
-            // 안내 글자가 생기고 사라져도 칸 높이가 바뀌지 않게 한다.
-            hintMaxLines: 1,
+        LabeledField(
+          label: '교회 이름 확인',
+          child: TextField(
+            controller: _confirm,
+            maxLines: 1,
+            decoration: InputDecoration(
+              hintText: widget.churchName,
+              // 안내 글자가 생기고 사라져도 칸 높이가 바뀌지 않게 한다.
+              hintMaxLines: 1,
+            ),
+            onChanged: (_) => setState(() {}),
           ),
-          onChanged: (_) => setState(() {}),
         ),
         const SizedBox(height: 20),
         Row(

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/widgets/labeled_field.dart';
+
 import '../../../app/app_scope.dart';
 import '../../../core/formatters/korean_phone.dart';
 import '../../../core/mvvm/view_model_builder.dart';
@@ -76,27 +78,32 @@ class _ProfileCompletionPageState extends State<ProfileCompletionPage> {
                             style: TextStyle(color: context.palette.muted),
                           ),
                           const SizedBox(height: 20),
-                          TextFormField(
-                            controller: _name,
-                            maxLength: 30,
-                            decoration: const InputDecoration(labelText: '이름'),
-                            validator: (v) => (v == null || v.trim().isEmpty)
-                                ? '이름을 입력해 주세요'
-                                : null,
+                          LabeledField(
+                            label: '이름',
+                            child: TextFormField(
+                              controller: _name,
+                              maxLength: 30,
+                              decoration: const InputDecoration(),
+                              validator: (v) => (v == null || v.trim().isEmpty)
+                                  ? '이름을 입력해 주세요'
+                                  : null,
+                            ),
                           ),
                           AppField.spacer,
-                          TextFormField(
-                            controller: _phone,
-                            keyboardType: TextInputType.phone,
-                            inputFormatters: const [KoreanPhoneFormatter()],
-                            decoration: const InputDecoration(
-                              labelText: '전화번호',
-                              hintText: '010-1234-5678',
+                          LabeledField(
+                            label: '전화번호',
+                            child: TextFormField(
+                              controller: _phone,
+                              keyboardType: TextInputType.phone,
+                              inputFormatters: const [KoreanPhoneFormatter()],
+                              decoration: const InputDecoration(
+                                hintText: '010-1234-5678',
+                              ),
+                              validator: (v) =>
+                                  (v == null || !isValidKoreanPhone(v))
+                                  ? '전화번호 형식이 올바르지 않아요'
+                                  : null,
                             ),
-                            validator: (v) =>
-                                (v == null || !isValidKoreanPhone(v))
-                                ? '전화번호 형식이 올바르지 않아요'
-                                : null,
                           ),
                           const SizedBox(height: 16),
                           const Divider(),

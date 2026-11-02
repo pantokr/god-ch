@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../../../data/firestore_paths.dart';
+import '../../../data/person_card_sync.dart';
 import '../../../data/models/member.dart';
 
 /// 교회 운영자(admin)는 자동으로 모든 소속에 속한다: 아직 속하지 않은 소속을 소속에 더한다.
@@ -29,5 +30,10 @@ Future<void> syncAdminAffiliations(
     });
     writes++;
   }
-  if (writes > 0) await batch.commit();
+  if (writes > 0) {
+    await batch.commit();
+    for (final doc in admins.docs) {
+      await mirrorPersonCard(paths, churchId, doc.id);
+    }
+  }
 }

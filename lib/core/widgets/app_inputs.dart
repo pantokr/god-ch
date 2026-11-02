@@ -1,8 +1,11 @@
 import '../icons.dart';
 
+import '../layout/responsive.dart';
+
 import 'package:flutter/material.dart';
 
 import '../theme.dart';
+import 'labeled_field.dart';
 
 /// 고르기 칸. 모든 화면에서 같은 높이·테두리·화살표로 보이도록 드롭다운은 이것만 쓴다.
 class AppDropdown<T> extends StatelessWidget {
@@ -27,18 +30,21 @@ class AppDropdown<T> extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return DropdownButtonFormField<T>(
-      initialValue: value,
-      isExpanded: true,
-      menuMaxHeight: menuMaxHeight,
-      borderRadius: BorderRadius.circular(AppRadius.card),
-      icon: const Icon(AppIcons.caretDown),
-      decoration: InputDecoration(
-        labelText: label,
-        prefixIcon: icon == null ? null : Icon(icon),
+    // 이름표는 왼쪽, 고르는 칸은 오른쪽.
+    return LabeledField(
+      label: label,
+      child: DropdownButtonFormField<T>(
+        initialValue: value,
+        isExpanded: true,
+        menuMaxHeight: menuMaxHeight,
+        borderRadius: BorderRadius.circular(AppRadius.card),
+        icon: const Icon(AppIcons.caretDown),
+        decoration: InputDecoration(
+          prefixIcon: icon == null ? null : Icon(icon),
+        ),
+        items: items,
+        onChanged: onChanged,
       ),
-      items: items,
-      onChanged: onChanged,
     );
   }
 }
@@ -51,8 +57,11 @@ class AppSearchField extends StatelessWidget {
     required this.onChanged,
     this.controller,
     this.autofocus = false,
+    this.inset = false,
   });
 
+  /// 페이지에서 쓸 때 true: 바깥 박스는 화면 너비를 채우고 입력칸은 그 안쪽 좌우 여백 안에 놓인다.
+  final bool inset;
   final String hint;
   final ValueChanged<String> onChanged;
   final TextEditingController? controller;
@@ -60,13 +69,18 @@ class AppSearchField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final field = _field();
+    return inset ? Gutter(child: field) : field;
+  }
+
+  Widget _field() {
     return TextField(
       controller: controller,
       autofocus: autofocus,
       onChanged: onChanged,
       textInputAction: TextInputAction.search,
       decoration: InputDecoration(
-        prefixIcon: const Icon(AppIcons.magnifyingGlass),
+        suffixIcon: const Icon(AppIcons.magnifyingGlass),
         hintText: hint,
       ),
     );

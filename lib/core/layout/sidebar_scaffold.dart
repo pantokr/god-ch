@@ -61,6 +61,7 @@ class SidebarScaffold extends StatelessWidget {
     required this.onProfile,
     required this.onSignOut,
     required this.child,
+    this.userPhotoUrl = '',
     this.sidebarHeader,
     this.railActions = const [],
     this.tabs = const [],
@@ -68,7 +69,15 @@ class SidebarScaffold extends StatelessWidget {
     this.backgroundColor,
     this.backdrop,
     this.onBack,
+    this.title,
+    this.footer,
   });
+
+  /// 왼쪽 메뉴 맨 아래에 놓는 위젯 (예: 앱 광고).
+  final Widget? footer;
+
+  /// 위쪽 바에 놓는 탭 제목 (없으면 비운다).
+  final String? title;
 
   final List<SidebarGroup> groups;
 
@@ -95,6 +104,9 @@ class SidebarScaffold extends StatelessWidget {
   /// 화면 바탕색을 바꾼다 (예: 기도 화면의 게시판 색). 상단 바 · 하단 바까지 같은 색이 되어 배경색이 하나로 보인다.
   final Color? backgroundColor;
   final String userName;
+
+  /// 내 프로필 사진 주소 (오른쪽 계정 띠의 둥근 사진).
+  final String userPhotoUrl;
   final VoidCallback onProfile;
   final VoidCallback onSignOut;
   final Widget child;
@@ -111,11 +123,13 @@ class SidebarScaffold extends StatelessWidget {
           ? groups
           : [SidebarGroup(items: tabs), ...groups],
       header: sidebarHeader,
+      footer: footer,
       // 서랍 안에서는 메뉴를 고르면 서랍을 닫는다.
       closeOnTap: narrow,
     );
     final rail = AccountRail(
       userName: userName,
+      userPhotoUrl: userPhotoUrl,
       onProfile: onProfile,
       onSignOut: onSignOut,
       actions: railActions,
@@ -135,6 +149,7 @@ class SidebarScaffold extends StatelessWidget {
         topBarTrailing: topBarTrailing,
         backdrop: backdrop,
         onBack: onBack,
+        title: title,
         child: child,
       );
     } else {
@@ -144,6 +159,7 @@ class SidebarScaffold extends StatelessWidget {
         topBarTrailing: topBarTrailing,
         backdrop: backdrop,
         onBack: onBack,
+        title: title,
         child: child,
       );
     }
@@ -165,9 +181,13 @@ class AccountRail extends StatelessWidget {
     required this.onProfile,
     required this.onSignOut,
     this.actions = const [],
+    this.userPhotoUrl = '',
   });
 
   final String userName;
+
+  /// 내 프로필 사진 주소. 없으면 이름의 머리글자를 보여준다.
+  final String userPhotoUrl;
   final VoidCallback onProfile;
   final VoidCallback onSignOut;
 
@@ -192,7 +212,11 @@ class AccountRail extends StatelessWidget {
                 child: Column(
                   children: [
                     const SizedBox(height: 8),
-                    _AvatarButton(name: userName, onTap: onProfile),
+                    _AvatarButton(
+                      name: userName,
+                      url: userPhotoUrl,
+                      onTap: onProfile,
+                    ),
                     ...actions,
                     _LogoutButton(onSignOut: onSignOut),
                     const Spacer(),
@@ -241,9 +265,14 @@ class _LogoutButton extends StatelessWidget {
 
 /// 동그란 프로필 버튼. 누르면 내 정보 · 화면 모드 대화상자가 열린다.
 class _AvatarButton extends StatelessWidget {
-  const _AvatarButton({required this.name, required this.onTap});
+  const _AvatarButton({
+    required this.name,
+    required this.url,
+    required this.onTap,
+  });
 
   final String name;
+  final String url;
   final VoidCallback onTap;
 
   @override
@@ -255,7 +284,7 @@ class _AvatarButton extends StatelessWidget {
         message: '내 정보',
         child: Padding(
           padding: const EdgeInsets.all(8),
-          child: ThumbnailAvatar(name: name, radius: 15),
+          child: ThumbnailAvatar(name: name, url: url, radius: 15),
         ),
       ),
     );
@@ -273,10 +302,12 @@ class _SidebarPanel extends StatelessWidget {
     required this.groups,
     required this.header,
     required this.closeOnTap,
+    this.footer,
   });
 
   final List<SidebarGroup> groups;
   final Widget? header;
+  final Widget? footer;
   final bool closeOnTap;
 
   @override
@@ -371,6 +402,11 @@ class _SidebarPanel extends StatelessWidget {
               ],
             ),
           ),
+          if (footer != null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              child: footer,
+            ),
         ],
       ),
     );
@@ -567,8 +603,11 @@ class _TopBar extends StatelessWidget {
     required this.onTap,
     this.trailing,
     this.onBack,
+    this.title,
     this.transparent = false,
   });
+
+  final String? title;
 
   final IconData icon;
   final String tooltip;
@@ -581,10 +620,16 @@ class _TopBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ColoredBox(
-      color: transparent
-          ? Colors.transparent
-          : Theme.of(context).scaffoldBackgroundColor,
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: transparent
+            ? Colors.transparent
+            : Theme.of(context).brightness == Brightness.dark
+            ? context.palette.surface
+            : Colors.white,
+        // 상단 탭 아래에 얇은 테두리선.
+        border: Border(bottom: BorderSide(color: context.palette.border)),
+      ),
       child: SafeArea(
         bottom: false,
         right: false,
@@ -605,7 +650,20 @@ class _TopBar extends StatelessWidget {
                   icon: Icon(icon),
                   onPressed: onTap,
                 ),
-              const Spacer(),
+              Expanded(
+                child: title == null
+                    ? const SizedBox.shrink()
+                    : Padding(
+                        padding: const EdgeInsets.only(left: 4),
+                        child: Text(
+                          title!,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.titleLarge
+                              ?.copyWith(fontWeight: FontWeight.w800),
+                        ),
+                      ),
+              ),
               ?trailing,
             ],
           ),
@@ -626,8 +684,10 @@ class _NarrowFrame extends StatefulWidget {
     this.topBarTrailing,
     this.backdrop,
     this.onBack,
+    this.title,
   });
 
+  final String? title;
   final VoidCallback? onBack;
   final Widget panel;
   final Widget rail;
@@ -667,6 +727,7 @@ class _NarrowFrameState extends State<_NarrowFrame> {
                   onTap: () => _setOpen(true),
                   trailing: widget.topBarTrailing,
                   onBack: widget.onBack,
+                  title: widget.title,
                   transparent: widget.backdrop != null,
                 ),
                 // 하단 탭은 내용 위에 떠 있다: 알약 둘레는 완전히 투명해서 내용이 그대로 비친다.
@@ -760,8 +821,10 @@ class _WideFrame extends StatefulWidget {
     this.topBarTrailing,
     this.backdrop,
     this.onBack,
+    this.title,
   });
 
+  final String? title;
   final VoidCallback? onBack;
   final Widget sidebar;
   final Widget rail;
@@ -814,6 +877,7 @@ class _WideFrameState extends State<_WideFrame> {
                       onTap: () => setState(() => _open = !_open),
                       trailing: widget.topBarTrailing,
                       onBack: widget.onBack,
+                      title: widget.title,
                       transparent: widget.backdrop != null,
                     ),
                     Expanded(child: widget.child),

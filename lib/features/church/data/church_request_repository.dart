@@ -1,5 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import '../../../data/person_card_sync.dart';
+
 import '../../../core/app_exception.dart';
 import '../../../data/firestore_paths.dart';
 import '../../../data/models/app_notification.dart';
@@ -120,6 +122,7 @@ class ChurchRequestRepository {
       'reviewedAt': FieldValue.serverTimestamp(),
     });
     await batch.commit();
+    await mirrorPersonCard(_paths, r.id, r.requesterId);
   }
 
   /// 요청을 거절하고, 요청자의 알림 탭에 거절 알림을 남긴다.

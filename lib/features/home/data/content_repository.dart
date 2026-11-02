@@ -106,6 +106,9 @@ class ContentRepository {
     if (body.trim().length > 5000) {
       throw const AppException('내용은 5000자까지 쓸 수 있어요.');
     }
+    if (meditation.trim().length < ChurchContent.minMeditation) {
+      throw const AppException('묵상은 ${ChurchContent.minMeditation}자 이상 써 주세요.');
+    }
     if (meditation.trim().length > 5000) {
       throw const AppException('묵상은 5000자까지 쓸 수 있어요.');
     }
@@ -141,42 +144,6 @@ class ContentRepository {
         'deletedAt': FieldValue.serverTimestamp(),
         'deletedBy': _auth.uid,
       });
-
-  /// [folder] 아래에 이미지를 올린다 (교회 썸네일 · 회원 사진 등). 검사와 줄이기는 [uploadImage]와 같다.
-  Future<String> uploadImageTo(
-    String folder, {
-    required String fileName,
-    required Uint8List bytes,
-  }) async {
-    var data = bytes;
-    var ext = _imageExtension(bytes, fileName);
-    if (ext == null) {
-      throw const AppException(
-        'JPG, PNG, GIF, WEBP 이미지만 올릴 수 있어요. (아이폰 HEIC 사진은 카메라 설정에서 "호환성 우선"으로 찍거나 JPG로 바꿔 주세요.)',
-      );
-    }
-    if (ext != 'gif' && bytes.length > resizeAboveBytes) {
-      final shrunk = _shrink(bytes);
-      if (shrunk != null) {
-        data = shrunk;
-        ext = 'jpg';
-      }
-    }
-    if (data.length > maxImageBytes) {
-      throw const AppException('이미지는 10MB 이하만 올릴 수 있어요.');
-    }
-    final contentType = switch (ext) {
-      'png' => 'image/png',
-      'gif' => 'image/gif',
-      'webp' => 'image/webp',
-      _ => 'image/jpeg',
-    };
-    // 파일 이름이 겹치지 않도록 시각을 붙인다. 한글 이름은 쓰지 않는다.
-    final name = '${DateTime.now().microsecondsSinceEpoch}.$ext';
-    final ref = _storage.ref('$folder/$name');
-    await ref.putData(data, SettableMetadata(contentType: contentType));
-    return ref.getDownloadURL();
-  }
 
   /// Storage 파일의 내려받기 주소. 파일이 없거나 읽을 수 없으면 null.
   Future<String?> downloadUrl(String path) async {
@@ -246,24 +213,5 @@ class ContentRepository {
       return 'webp';
     }
     return null;
-  }
-
-  /// 긴 변이 2048px을 넘지 않는 JPEG로 줄인다. 해석하지 못하면 null (원본 그대로 올린다).
-  static Uint8List? _shrink(Uint8List bytes) {
-    try {
-      final image = img.decodeImage(bytes);
-      if (image == null) return null;
-      final longest = image.width > image.height ? image.width : image.height;
-      final resized = longest > 2048
-          ? img.copyResize(
-              image,
-              width: image.width >= image.height ? 2048 : null,
-              height: image.height > image.width ? 2048 : null,
-            )
-          : image;
-      return Uint8List.fromList(img.encodeJpg(resized, quality: 85));
-    } catch (_) {
-      return null;
-    }
   }
 }

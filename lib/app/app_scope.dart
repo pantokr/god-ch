@@ -1,5 +1,7 @@
 import 'package:flutter/widgets.dart';
 
+import '../features/people/data/people_repository.dart';
+
 import '../features/admin/data/position_repository.dart';
 import '../features/auth/data/auth_repository.dart';
 import '../features/bible/data/bible_repository.dart';
@@ -36,6 +38,7 @@ class AppScope extends InheritedWidget {
     required this.meetings,
     required this.positions,
     required this.members,
+    required this.people,
     required this.prayers,
     required this.notifications,
     required this.bible,
@@ -59,6 +62,7 @@ class AppScope extends InheritedWidget {
   final MeetingRepository meetings;
   final PositionRepository positions;
   final MemberRepository members;
+  final PeopleRepository people;
   final PrayerRepository prayers;
   final NotificationRepository notifications;
   final BibleRepository bible;

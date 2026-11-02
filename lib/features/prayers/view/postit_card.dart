@@ -304,8 +304,8 @@ class PostItNote extends StatelessWidget {
                         const SizedBox(height: 3),
                       ],
                       Text(
-                        prayer.title,
-                        maxLines: 2,
+                        prayer.authorName,
+                        maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
                           color: _ink,

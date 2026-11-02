@@ -62,16 +62,11 @@ class PrayerCard extends StatelessWidget {
               const SizedBox(height: 8),
             ],
             Text(
-              prayer.title,
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w700,
-              ),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-            const SizedBox(height: 4),
-            Text(
-              [fmtDateTime(prayer.createdAt), ?subtitle].join(' · '),
+              [
+                if (prayer.authorName.isNotEmpty) prayer.authorName,
+                fmtDateTime(prayer.createdAt),
+                ?subtitle,
+              ].join(' · '),
               style: TextStyle(color: context.palette.muted, fontSize: 13),
             ),
             const SizedBox(height: 12),

@@ -10,8 +10,13 @@ import '../../admin/view/church_members_tab.dart';
 import '../../admin/view/position_manage_page.dart';
 import '../../bible/view/bible_page.dart';
 import '../../bible/view/devotion_settings_page.dart';
+import '../../admin/view/membership_log_page.dart';
+import '../../meetings/view/meeting_settings_page.dart';
 import '../../home/view/my_activity_page.dart';
+import '../../home/view/my_meetings_page.dart';
 import '../../meetings/view/meetings_page.dart';
+import '../../people/view/affiliation_people_page.dart';
+import '../../people/view/calendar_page.dart';
 import '../../prayers/view/prayer_board_page.dart';
 import '../../prayers/view/prayer_settings_page.dart';
 import 'church_scope.dart';
@@ -58,6 +63,35 @@ class MineSectionPage extends StatelessWidget {
       MyActivityPage(me: ChurchScope.of(context).me);
 }
 
+/// 내 일정: 내 활동의 자세히 보기 (참여 예정 · 관심 · 완료).
+class MyMeetingsSectionPage extends StatelessWidget {
+  const MyMeetingsSectionPage({super.key});
+
+  @override
+  Widget build(BuildContext context) =>
+      MyMeetingsPage(me: ChurchScope.of(context).me);
+}
+
+/// 우리 소속: 내가 속한 소속의 사람들 (모든 교인).
+class PeopleSectionPage extends StatelessWidget {
+  const PeopleSectionPage({super.key});
+
+  @override
+  Widget build(BuildContext context) => AffiliationPeoplePage(
+    me: ChurchScope.of(context).me,
+    choice: ChurchScope.of(context).affiliationChoice,
+  );
+}
+
+/// 달력: 모임 일정과 생일 (모든 교인).
+class CalendarSectionPage extends StatelessWidget {
+  const CalendarSectionPage({super.key});
+
+  @override
+  Widget build(BuildContext context) =>
+      CalendarPage(me: ChurchScope.of(context).me);
+}
+
 /// 직급 관리 (교회 운영자).
 class PositionManageSectionPage extends StatelessWidget {
   const PositionManageSectionPage({super.key});
@@ -65,6 +99,24 @@ class PositionManageSectionPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) =>
       PositionManagePage(me: ChurchScope.of(context).me);
+}
+
+/// 입장 · 탈퇴 기록 (교회 운영자).
+class MembershipLogSectionPage extends StatelessWidget {
+  const MembershipLogSectionPage({super.key});
+
+  @override
+  Widget build(BuildContext context) =>
+      MembershipLogPage(me: ChurchScope.of(context).me);
+}
+
+/// 모임 일정 설정 (교회 운영자).
+class MeetingSettingsSectionPage extends StatelessWidget {
+  const MeetingSettingsSectionPage({super.key});
+
+  @override
+  Widget build(BuildContext context) =>
+      MeetingSettingsPage(me: ChurchScope.of(context).me);
 }
 
 /// 말씀묵상 설정 (교회 운영자).

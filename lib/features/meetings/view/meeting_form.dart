@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/widgets/labeled_field.dart';
+
 import 'package:flutter/services.dart';
 
 import '../../../core/icons.dart';
 import '../../../core/layout/app_dialog.dart';
+import '../../../core/widgets/app_date_picker.dart';
 import '../../../core/widgets/thumbnail_field.dart';
 import '../../../data/models/meeting.dart';
 import 'meeting_format.dart';
@@ -81,15 +84,16 @@ class _FormState extends State<_Form> {
   }
 
   Future<void> _pickDate() async {
-    final day = await showDatePicker(
-      context: context,
+    final day = await showAppDatePicker(
+      context,
       initialDate: _date,
       firstDate: DateTime(2020),
       lastDate: DateTime(2100),
+      title: '모임 날짜',
     );
     if (day == null || !mounted) return;
-    final time = await showTimePicker(
-      context: context,
+    final time = await showAppTimePicker(
+      context,
       initialTime: TimeOfDay.fromDateTime(_date),
     );
     if (!mounted) return;
@@ -123,10 +127,13 @@ class _FormState extends State<_Form> {
           aspectRatio: meetingThumbRatio,
         ),
         const SizedBox(height: 16),
-        TextField(
-          controller: _title,
-          maxLength: Meeting.maxTitle,
-          decoration: const InputDecoration(labelText: '제목'),
+        LabeledField(
+          label: '제목',
+          child: TextField(
+            controller: _title,
+            maxLength: Meeting.maxTitle,
+            decoration: const InputDecoration(),
+          ),
         ),
         OutlinedButton.icon(
           onPressed: _pickDate,
@@ -134,26 +141,33 @@ class _FormState extends State<_Form> {
           label: Text(meetingWhen(_date)),
         ),
         const SizedBox(height: 16),
-        TextField(
-          controller: _place,
-          maxLength: Meeting.maxPlace,
-          decoration: const InputDecoration(labelText: '장소'),
+        LabeledField(
+          label: '장소',
+          child: TextField(
+            controller: _place,
+            maxLength: Meeting.maxPlace,
+            decoration: const InputDecoration(),
+          ),
         ),
-        TextField(
-          controller: _capacity,
-          keyboardType: TextInputType.number,
-          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-          decoration: const InputDecoration(labelText: '정원 (모임장 포함)'),
+        LabeledField(
+          label: '정원',
+          child: TextField(
+            controller: _capacity,
+            keyboardType: TextInputType.number,
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            decoration: const InputDecoration(hintText: '모임장 포함'),
+          ),
         ),
         const SizedBox(height: 16),
-        TextField(
-          controller: _description,
-          minLines: 3,
-          maxLines: 8,
-          maxLength: Meeting.maxDescription,
-          decoration: const InputDecoration(
-            labelText: '소개',
-            alignLabelWithHint: true,
+        LabeledField(
+          label: '소개',
+          alignTop: true,
+          child: TextField(
+            controller: _description,
+            minLines: 3,
+            maxLines: 8,
+            maxLength: Meeting.maxDescription,
+            decoration: const InputDecoration(alignLabelWithHint: true),
           ),
         ),
         const SizedBox(height: 8),

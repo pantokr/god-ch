@@ -1,7 +1,10 @@
 import 'dart:typed_data';
 
+import 'dart:async';
+
 import '../../../core/mvvm/view_model.dart';
 import '../../../data/models/meeting.dart';
+import '../../../data/models/meeting_settings.dart';
 import '../data/meeting_repository.dart';
 import '../view/meeting_form.dart';
 
@@ -11,6 +14,21 @@ class MeetingDetailViewModel extends ViewModel {
     : meeting = _repo.one(churchId, id) {
     // 조회수 기록이 실패해도 글을 보는 데는 영향이 없다.
     _repo.addView(churchId, id).catchError((Object _) {});
+    _settingsSub = _repo.settings(churchId).listen((v) {
+      settings = v;
+      notifyListeners();
+    }, onError: (_) {});
+  }
+
+  late final StreamSubscription<MeetingSettings> _settingsSub;
+
+  /// 교회가 정한 모임 일정 운영 설정 (좋아요 · 댓글 · 조회수). 정한 적 없으면 모두 허용 · 공개.
+  MeetingSettings settings = MeetingSettings.standard;
+
+  @override
+  void dispose() {
+    _settingsSub.cancel();
+    super.dispose();
   }
 
   final MeetingRepository _repo;

@@ -10,6 +10,7 @@ import '../../home/data/content_repository.dart';
 /// 목록 정렬 기준.
 enum DevotionSort {
   latest('최신순'),
+  oldest('오래된순'),
   views('조회순'),
   likes('좋아요순');
 
@@ -28,6 +29,7 @@ class DevotionsViewModel extends ViewModel {
     this.authorPhotoUrl = '',
     this.affiliations = const Stream.empty(),
     bool includePrivate = false,
+    this.readerId = '',
   }) : items = _repo.latest(
          churchId,
          limit: 100,
@@ -56,26 +58,28 @@ class DevotionsViewModel extends ViewModel {
   /// 새 글에 남기는 글쓴이 (로그인한 교인).
   final String authorName;
   final String authorPhotoUrl;
+
+  /// 읽음 여부를 가릴 교인 (로그인한 교인).
+  final String readerId;
   final Stream<List<ChurchContent>> items;
 
   /// 분류에 쓰는 교회의 소속들.
   final Stream<List<Affiliation>> affiliations;
 
-  /// 지금 고른 소속. null이면 모든 글을 본다.
-  String? _affiliationId;
-  String? get affiliationId => _affiliationId;
-
-  void setAffiliation(String? id) {
-    if (_affiliationId == id) return;
-    _affiliationId = id;
-    notifyListeners();
-  }
-
   String _query = '';
   DevotionSort _sort = DevotionSort.latest;
+  bool _hideRead = false;
 
   String get query => _query;
   DevotionSort get sort => _sort;
+
+  /// 이미 읽은 글을 빼고 보는가.
+  bool get hideRead => _hideRead;
+
+  void toggleHideRead() {
+    _hideRead = !_hideRead;
+    notifyListeners();
+  }
 
   void setQuery(String value) {
     _query = value.trim().toLowerCase();
@@ -89,20 +93,44 @@ class DevotionsViewModel extends ViewModel {
   }
 
   /// 검색어(제목 · 말씀 · 묵상 · 글쓴이)에 맞는 글을 정렬 기준대로 돌려준다.
-  List<ChurchContent> apply(List<ChurchContent> all) {
+  /// [affiliationId]가 있으면 교회 전체 글과 그 소속의 글만, null이면(전체) 모든 글을 본다.
+  List<ChurchContent> apply(List<ChurchContent> all, {String? affiliationId}) =>
+      filter(
+        all,
+        query: _query,
+        sort: _sort,
+        affiliationId: affiliationId,
+        hideReadBy: _hideRead ? readerId : null,
+      );
+
+  /// [apply]의 계산 부분 (내 활동 같은 다른 화면도 같은 검색 · 정렬을 쓴다). [query]는 소문자로 다듬은 검색어.
+  static List<ChurchContent> filter(
+    List<ChurchContent> all, {
+    String query = '',
+    DevotionSort sort = DevotionSort.latest,
+    String? affiliationId,
+    String? hideReadBy,
+  }) {
     final list = [
       for (final c in all)
-        if ((_affiliationId == null || c.affiliationId == _affiliationId) &&
-            (_query.isEmpty ||
-                c.title.toLowerCase().contains(_query) ||
-                c.body.toLowerCase().contains(_query) ||
-                c.meditation.toLowerCase().contains(_query) ||
-                c.authorName.toLowerCase().contains(_query)))
+        if ((hideReadBy == null ||
+                hideReadBy.isEmpty ||
+                !c.readBy.contains(hideReadBy)) &&
+            (affiliationId == null ||
+                c.affiliationId == null ||
+                c.affiliationId == affiliationId) &&
+            (query.isEmpty ||
+                c.title.toLowerCase().contains(query) ||
+                c.body.toLowerCase().contains(query) ||
+                c.meditation.toLowerCase().contains(query) ||
+                c.authorName.toLowerCase().contains(query)))
           c,
     ];
-    switch (_sort) {
+    switch (sort) {
       case DevotionSort.latest:
         break; // 읽어 올 때 이미 날짜 최신순이다.
+      case DevotionSort.oldest:
+        return list.reversed.toList();
       case DevotionSort.views:
         list.sort((a, b) => b.views.compareTo(a.views));
       case DevotionSort.likes:

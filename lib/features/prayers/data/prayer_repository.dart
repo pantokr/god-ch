@@ -81,10 +81,6 @@ class PrayerRepository {
           .snapshots()
           .map(_toPrayers);
 
-  /// 교역자 전용: 비공개·삭제된 글 포함 전체.
-  Stream<List<Prayer>> allPrayers(String churchId, {int limit = pageSize}) =>
-      _paths.prayers(churchId).limit(limit).snapshots().map(_toPrayers);
-
   Stream<Prayer?> prayer(String churchId, String id) => _paths
       .prayers(churchId)
       .doc(id)
@@ -106,14 +102,14 @@ class PrayerRepository {
 
   Future<void> create(
     String churchId, {
-    required String title,
+    required String authorName,
     required String content,
     required PrayerVisibility visibility,
     String? affiliationId,
   }) => _paths.prayers(churchId).doc(newId()).set({
     'authorId': _auth.uid,
+    'authorName': authorName,
     'affiliationId': affiliationId,
-    'title': title,
     'content': content,
     'visibility': visibility.name,
     'deleted': false,
@@ -125,28 +121,12 @@ class PrayerRepository {
   Future<void> update(
     String churchId,
     String id, {
-    required String title,
     required String content,
     required PrayerVisibility visibility,
   }) => _paths.prayers(churchId).doc(id).update({
-    'title': title,
     'content': content,
     'visibility': visibility.name,
     'updatedAt': FieldValue.serverTimestamp(),
-  });
-
-  /// 교역자가 공개 글의 제목·내용을 고친다 (유해하거나 고쳐야 할 내용). 기록은 moderatedBy/At에 남는다.
-  Future<void> editByStaff(
-    String churchId,
-    String id, {
-    required String title,
-    required String content,
-  }) => _paths.prayers(churchId).doc(id).update({
-    'title': title,
-    'content': content,
-    'updatedAt': FieldValue.serverTimestamp(),
-    'moderatedBy': _auth.uid,
-    'moderatedAt': FieldValue.serverTimestamp(),
   });
 
   Future<void> deleteOwn(String churchId, String id) =>
@@ -176,6 +156,12 @@ class PrayerRepository {
       .prayers(churchId)
       .doc(id)
       .update({'views': FieldValue.increment(1)});
+
+  /// 글을 읽었다고 표시한다 (내 uid만 더한다).
+  Future<void> markRead(String churchId, String id) =>
+      _paths.prayers(churchId).doc(id).update({
+        'readBy': FieldValue.arrayUnion([_auth.uid]),
+      });
 
   Future<void> markResponsesSeen(String churchId, String id) => _paths
       .prayers(churchId)
@@ -255,6 +241,7 @@ class PrayerRepository {
             d.data()['content'] as String? ?? '',
             toDate(d.data()['createdAt']),
             authorId: d.data()['authorId'] as String? ?? '',
+            authorName: d.data()['authorName'] as String? ?? '',
           ),
     ];
     // 오래된 순. 서버가 시각을 확정하기 전의 글은 맨 뒤.
@@ -266,12 +253,17 @@ class PrayerRepository {
     return list;
   });
 
-  Future<void> addComment(String churchId, String prayerId, String content) =>
-      _paths.prayers(churchId).doc(prayerId).collection('comments').add({
-        'authorId': _auth.uid,
-        'content': content,
-        'createdAt': FieldValue.serverTimestamp(),
-      });
+  Future<void> addComment(
+    String churchId,
+    String prayerId,
+    String content, {
+    required String authorName,
+  }) => _paths.prayers(churchId).doc(prayerId).collection('comments').add({
+    'authorId': _auth.uid,
+    'authorName': authorName,
+    'content': content,
+    'createdAt': FieldValue.serverTimestamp(),
+  });
 
   /// 댓글을 지운 것으로 표시한다 (기록 보관).
   Future<void> deleteComment(

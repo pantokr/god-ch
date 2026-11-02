@@ -15,7 +15,7 @@ import 'affiliation_select.dart';
 
 /// 기도제목 · 성경 화면의 입구: 교역자가 소속별로 켜고 끈 기능([ChurchFeatures])을 확인한다.
 /// - 속한 소속이 모두 꺼져 있으면 서비스가 허용되지 않았다는 안내만 보인다.
-/// - 아니면 위쪽 탭에서 고른 소속([choice])을 [builder]에 넘긴다. 속한 소속이 없으면 null(교회 전체)이다.
+/// - 아니면 위쪽 탭에서 고른 소속([choice])을 [builder]에 넘긴다. 속한 소속이 없거나 교역자가 "전체"를 고르면 null(교회 전체)이다.
 class FeatureGate extends StatelessWidget {
   const FeatureGate({
     super.key,
@@ -55,7 +55,7 @@ class FeatureGate extends StatelessWidget {
             return ListenableBuilder(
               listenable: choice,
               builder: (context, _) =>
-                  builder(context, chosenAffiliation(access, choice)),
+                  builder(context, chosenAffiliation(access, choice, me)),
             );
           },
         ),

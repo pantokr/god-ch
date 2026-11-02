@@ -56,10 +56,14 @@ class PositionRepository {
     String churchId, {
     required String name,
     required Set<String> permissions,
+    String icon = 'shield',
+    int color = 0xFF6C63FF,
   }) {
     final n = _checkName(name);
     return _col(churchId).add({
       'name': n,
+      'icon': icon,
+      'color': color,
       'permissions': _clean(permissions),
       'deleted': false,
       'createdBy': _auth.uid,
@@ -73,11 +77,15 @@ class PositionRepository {
     Position p, {
     required String name,
     required Set<String> permissions,
+    String? icon,
+    int? color,
   }) async {
     final n = _checkName(name);
     final keys = _clean(permissions);
     await _col(churchId).doc(p.id).update({
       'name': n,
+      'icon': ?icon,
+      'color': ?color,
       'permissions': keys,
       'updatedAt': FieldValue.serverTimestamp(),
     });
@@ -117,14 +125,18 @@ class PositionRepository {
   Future<void> saveBuiltIn(
     String churchId,
     BuiltInPosition position,
-    Set<String> permissions,
-  ) {
+    Set<String> permissions, {
+    String? icon,
+    int? color,
+  }) {
     if (position == BuiltInPosition.admin) {
       throw const AppException('교회 관리자는 모든 권한을 가져요.');
     }
     return _col(churchId).doc(position.id).set({
       'name': position.name,
       'permissions': _clean(permissions),
+      'icon': ?icon,
+      'color': ?color,
       'builtIn': true,
       'updatedAt': FieldValue.serverTimestamp(),
     });

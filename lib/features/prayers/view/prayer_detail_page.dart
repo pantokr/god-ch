@@ -1,4 +1,5 @@
 import '../../../core/widgets/app_loader.dart';
+import '../../people/view/person_avatar.dart';
 import '../../../core/widgets/trash_icon.dart';
 import '../../../core/icons.dart';
 
@@ -8,6 +9,7 @@ import 'package:go_router/go_router.dart';
 import '../../../app/app_scope.dart';
 import '../../../app/routes.dart';
 import '../../../core/format.dart';
+import '../../home/view/post_meta.dart';
 import '../../../core/layout/sub_page.dart';
 import '../../../core/mvvm/view_model_builder.dart';
 import '../../../core/theme.dart';
@@ -70,9 +72,9 @@ class PrayerDetailPage extends StatelessWidget {
             );
           }
           return SubPage(
-            title: p!.title,
+            title: '기도제목',
             fallbackLocation: back,
-            actions: _actions(context, vm, p),
+            actions: _actions(context, vm, p!),
             child: _Body(vm: vm, prayer: p),
           );
         },
@@ -148,14 +150,6 @@ class _Body extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  p.title,
-                  style: theme.textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                _MetaRow(prayer: p),
                 if (p.deleted) ...[
                   const SizedBox(height: 12),
                   Text(
@@ -166,10 +160,41 @@ class _Body extends StatelessWidget {
                 const SizedBox(height: 20),
                 // 기도제목 본문은 책처럼 읽히도록 명조로 보여준다.
                 SelectableText(p.content, style: readingStyle(context)),
+                const SizedBox(height: 20),
+                const Divider(height: 1),
+                const SizedBox(height: 14),
+                // 본문 아래에: 이름 → 날짜와 각종 정보 (말씀묵상과 같은 순서와 모양).
+                Row(
+                  children: [
+                    PersonAvatar(
+                      churchId: vm.me.churchId,
+                      uid: p.authorId,
+                      name: p.authorName.isEmpty ? '?' : p.authorName,
+                      radius: 13,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        p.authorName.isEmpty ? '이름 없음' : p.authorName,
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                PostMeta(
+                  churchId: vm.me.churchId,
+                  date: fmtDateTime(p.createdAt),
+                  views: p.views,
+                  isPrivate: !p.isPublic,
+                  affiliationId: p.affiliationId,
+                ),
                 if (p.isPublic &&
                     !p.deleted &&
                     vm.settings.reactionsOn &&
-                    vm.me.can(Permission.prayerInteract)) ...[
+                    vm.me.can(Permission.prayerReact)) ...[
                   const SizedBox(height: 24),
                   const Divider(),
                   const SizedBox(height: 16),
@@ -180,12 +205,12 @@ class _Body extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 16),
-        if (p.isPublic && !p.deleted && vm.settings.staffComments)
+        if (p.isPublic && !p.deleted)
           EntrySection(
-            title: '교역자 댓글',
+            title: '댓글',
             entries: vm.comments,
-            canWrite: vm.me.canPrayerComment,
-            hint: '교역자 댓글',
+            canWrite: vm.me.canPrayerComment && vm.settings.allowComments,
+            hint: '댓글 쓰기',
             onSend: (text) => vm.addComment(p, text),
             canDelete: (e) => vm.canDeleteComment(e),
             onDelete: (e) => vm.deleteComment(p, e),
@@ -200,40 +225,6 @@ class _Body extends StatelessWidget {
             onSend: (text) => vm.addResponse(p, text),
             errorOf: () => vm.error,
           ),
-      ],
-    );
-  }
-}
-
-class _MetaRow extends StatelessWidget {
-  const _MetaRow({required this.prayer});
-
-  final Prayer prayer;
-
-  @override
-  Widget build(BuildContext context) {
-    final muted = TextStyle(color: context.palette.muted);
-    return Row(
-      children: [
-        Text(fmtDateTime(prayer.createdAt), style: muted),
-        const SizedBox(width: 10),
-        Icon(AppIcons.eyeCount, size: 14, color: context.palette.muted),
-        Text(' 조회 ${prayer.views}', style: muted),
-        if (prayer.affiliationId != null) ...[
-          const SizedBox(width: 10),
-          Icon(AppIcons.usersThree, size: 14, color: context.palette.muted),
-          Text(' 소속 전용', style: muted),
-        ],
-        if (prayer.affiliationId != null) ...[
-          const SizedBox(width: 10),
-          Icon(AppIcons.usersThree, size: 14, color: context.palette.muted),
-          Text(' 소속 전용', style: muted),
-        ],
-        if (!prayer.isPublic) ...[
-          const SizedBox(width: 10),
-          Icon(AppIcons.lock, size: 14, color: context.palette.muted),
-          Text(' 교역자 전용', style: muted),
-        ],
       ],
     );
   }

@@ -88,7 +88,9 @@ class MeetingDetailPage extends StatelessWidget {
                 _InfoCard(meeting: m),
                 const SizedBox(height: 12),
                 // 좋아요 · 조회수는 말씀묵상과 같은 반응 카드로 첫 카드 바로 아래에 둔다.
-                _ReactionCard(meeting: m, me: me, vm: vm),
+                if (vm.settings.allowLikes || vm.settings.showViews) ...[
+                  _ReactionCard(meeting: m, me: me, vm: vm),
+                ],
                 if (m.description.isNotEmpty) ...[
                   const SizedBox(height: 12),
                   _Section(
@@ -103,7 +105,12 @@ class MeetingDetailPage extends StatelessWidget {
                 const SizedBox(height: 12),
                 _JoinCard(meeting: m, me: me, vm: vm),
                 const SizedBox(height: 12),
-                MeetingCommentsCard(meetingId: m.id, me: me),
+                MeetingCommentsCard(
+                  meetingId: m.id,
+                  me: me,
+                  canWrite: vm.settings.allowComments,
+                  publicList: vm.settings.commentsPublic,
+                ),
               ],
             ),
           );
@@ -322,18 +329,22 @@ class _ReactionCard extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
         child: Row(
           children: [
-            LikeButton(
-              liked: liked,
-              count: meeting.likes,
-              onTap: me.isOperatorView ? null : () => vm.setLike(!liked),
-            ),
+            if (vm.settings.allowLikes)
+              LikeButton(
+                liked: liked,
+                count: meeting.likes,
+                showCount: vm.settings.showLikeCount,
+                onTap: me.isOperatorView ? null : () => vm.setLike(!liked),
+              ),
             const Spacer(),
-            Icon(AppIcons.eyeCount, size: 16, color: muted),
-            const SizedBox(width: 4),
-            Text(
-              '조회 ${StatIcons.compact(meeting.views)}',
-              style: TextStyle(color: muted, fontSize: 13),
-            ),
+            if (vm.settings.showViews) ...[
+              Icon(AppIcons.eyeCount, size: 16, color: muted),
+              const SizedBox(width: 4),
+              Text(
+                '조회 ${StatIcons.compact(meeting.views)}',
+                style: TextStyle(color: muted, fontSize: 13),
+              ),
+            ],
           ],
         ),
       ),

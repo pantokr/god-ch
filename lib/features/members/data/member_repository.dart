@@ -2,10 +2,13 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../../../core/app_exception.dart';
 import '../../../data/firestore_paths.dart';
+import '../../../data/person_card_sync.dart';
 import '../../church/data/admin_affiliations.dart' as admin_affs;
 import '../../../data/models/app_notification.dart';
 import '../../../data/models/blocked_user.dart';
 import '../../../data/models/member.dart';
+import '../../../data/models/membership_event.dart';
+import '../../../data/firestore_codec.dart';
 import '../../auth/data/auth_repository.dart';
 
 /// 교회별 교인 목록과 승인·역할 변경.
@@ -37,6 +40,53 @@ class MemberRepository {
         );
   }
 
+  /// 입장 · 탈퇴 기록: 이 교회에 입장 신청한 시각, 입장한 사람, 탈퇴 · 추방된 시각을 최근 순으로.
+  /// 교인 문서를 지우지 않고 남기므로 그 문서의 가입 · 탈퇴 시각에서 만든다. 앱 운영자 계정은 뺀다.
+  Stream<List<MembershipEvent>> membershipLog(String churchId) =>
+      _paths.members(churchId).snapshots().map((s) {
+        final events = <MembershipEvent>[];
+        for (final doc in s.docs) {
+          final d = doc.data();
+          final id = doc.id;
+          final loginId = d['loginId'] as String? ?? '';
+          if (id == 'app-operator-admin' || loginId == 'admin') continue;
+          final name = d['name'] as String? ?? '';
+          final status = d['status'] as String? ?? '';
+          final joinedAt = toDate(d['createdAt']);
+          events.add(
+            MembershipEvent(
+              uid: id,
+              name: name,
+              loginId: loginId,
+              // 아직 승인 전이면 "입장 신청", 그 밖(승인됨 · 비활성 · 나중에 나간 사람)은 "입장".
+              kind: status == MemberStatus.pending.name
+                  ? MembershipEventKind.requested
+                  : MembershipEventKind.joined,
+              at: joinedAt,
+            ),
+          );
+          if (status == MemberStatus.removed.name) {
+            final by = d['removedBy'] as String? ?? '';
+            events.add(
+              MembershipEvent(
+                uid: id,
+                name: name,
+                loginId: loginId,
+                kind: by == id || by.isEmpty
+                    ? MembershipEventKind.left
+                    : MembershipEventKind.removed,
+                at: toDate(d['removedAt']),
+                by: by,
+              ),
+            );
+          }
+        }
+        events.sort(
+          (a, b) => (b.at ?? DateTime.now()).compareTo(a.at ?? DateTime.now()),
+        );
+        return events;
+      });
+
   /// 승인을 기다리는 입장 요청 수.
   Stream<int> pendingCount(String churchId) => _paths
       .members(churchId)
@@ -55,12 +105,18 @@ class MemberRepository {
       );
 
   /// 내가 이 교회에서 탈퇴한다. 교인 문서는 지우지 않고 removed 표시만 남긴다 (규칙이 강제한다).
-  Future<void> leave(String churchId) =>
-      _paths.members(churchId).doc(_auth.uid).update({
-        'status': MemberStatus.removed.name,
-        'removedAt': FieldValue.serverTimestamp(),
-        'removedBy': _auth.uid,
-      });
+  Future<void> leave(String churchId) async {
+    await _paths.members(churchId).doc(_auth.uid).update({
+      'status': MemberStatus.removed.name,
+      'removedAt': FieldValue.serverTimestamp(),
+      'removedBy': _auth.uid,
+    });
+    await _mirror(churchId, _auth.uid);
+  }
+
+  /// 사람 목록용 복사본을 교인 문서에 맞춘다.
+  Future<void> _mirror(String churchId, String uid) =>
+      mirrorPersonCard(_paths, churchId, uid);
 
   Future<void> _removeAndNotify(
     String churchId,
@@ -68,7 +124,7 @@ class MemberRepository {
     String title,
     String body, {
     Map<String, dynamic>? block,
-  }) {
+  }) async {
     final batch = _paths.db.batch();
     batch.set(
       _paths.db
@@ -92,7 +148,8 @@ class MemberRepository {
       'removedAt': FieldValue.serverTimestamp(),
       'removedBy': _auth.uid,
     });
-    return batch.commit();
+    await batch.commit();
+    await _mirror(churchId, userId);
   }
 
   // ---- 차단 목록 ----
@@ -163,11 +220,19 @@ class MemberRepository {
     'createdAt': FieldValue.serverTimestamp(),
   };
 
-  Future<void> setStatus(String churchId, String userId, MemberStatus status) =>
-      _paths.members(churchId).doc(userId).update({'status': status.name});
+  Future<void> setStatus(
+    String churchId,
+    String userId,
+    MemberStatus status,
+  ) async {
+    await _paths.members(churchId).doc(userId).update({'status': status.name});
+    await _mirror(churchId, userId);
+  }
 
-  Future<void> setRole(String churchId, String userId, Role role) =>
-      _paths.members(churchId).doc(userId).update({'role': role.name});
+  Future<void> setRole(String churchId, String userId, Role role) async {
+    await _paths.members(churchId).doc(userId).update({'role': role.name});
+    await _mirror(churchId, userId);
+  }
 
   /// 인원 상세 관리: 넘긴 항목만 저장한다. 이름·전화번호는 한 번에 쓰고,
   /// 역할·상태는 규칙이 따로 허용하므로 따로 쓴다.
@@ -220,6 +285,7 @@ class MemberRepository {
       }
     }
     if (status != null) await doc.update({'status': status.name});
+    await _mirror(m.churchId, m.id);
   }
 
   /// 교회 운영자가 모든 소속에 속해 있게 맞춘다 (이미 맞으면 아무것도 쓰지 않는다).
@@ -227,17 +293,26 @@ class MemberRepository {
       admin_affs.syncAdminAffiliations(_paths, churchId);
 
   /// 교역자가 교인을 소속에 넣는다 (이미 있으면 그대로).
-  Future<void> addToAffiliation(String churchId, String userId, String affId) =>
-      _paths.members(churchId).doc(userId).update({
-        'affiliationIds': FieldValue.arrayUnion([affId]),
-      });
+  Future<void> addToAffiliation(
+    String churchId,
+    String userId,
+    String affId,
+  ) async {
+    await _paths.members(churchId).doc(userId).update({
+      'affiliationIds': FieldValue.arrayUnion([affId]),
+    });
+    await _mirror(churchId, userId);
+  }
 
   /// 교역자가 교인을 소속에서 뺀다.
   Future<void> removeFromAffiliation(
     String churchId,
     String userId,
     String affId,
-  ) => _paths.members(churchId).doc(userId).update({
-    'affiliationIds': FieldValue.arrayRemove([affId]),
-  });
+  ) async {
+    await _paths.members(churchId).doc(userId).update({
+      'affiliationIds': FieldValue.arrayRemove([affId]),
+    });
+    await _mirror(churchId, userId);
+  }
 }

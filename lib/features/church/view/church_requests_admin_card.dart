@@ -2,6 +2,8 @@ import '../../../core/icons.dart';
 
 import 'package:flutter/material.dart';
 
+import '../../../core/widgets/labeled_field.dart';
+
 import '../../../app/app_scope.dart';
 import '../../../core/format.dart';
 import '../../../core/layout/app_dialog.dart';
@@ -162,12 +164,16 @@ class RejectReasonFormState extends State<RejectReasonForm> {
       children: [
         Text('요청을 거절할까요?', style: Theme.of(context).textTheme.titleLarge),
         AppField.spacer,
-        TextField(
-          controller: _reason,
-          autofocus: true,
-          maxLines: 2,
-          decoration: const InputDecoration(labelText: '거절 사유 (요청자에게 보여요)'),
-          onChanged: (_) => setState(() {}),
+        LabeledField(
+          label: '거절 사유',
+          alignTop: true,
+          child: TextField(
+            controller: _reason,
+            autofocus: true,
+            maxLines: 2,
+            decoration: const InputDecoration(hintText: '요청자에게 보여요'),
+            onChanged: (_) => setState(() {}),
+          ),
         ),
         const SizedBox(height: 20),
         Row(

@@ -1,4 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+
+import '../../../data/firestore_paths.dart';
+import '../../../data/person_card_sync.dart';
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 
@@ -153,6 +157,11 @@ class AuthRepository {
         'removedAt': FieldValue.serverTimestamp(),
         'removedBy': user.uid,
       });
+      // 사람 목록에서도 빠지게 한다.
+      final churchId = d.reference.parent.parent?.id;
+      if (churchId != null) {
+        await mirrorPersonCard(FirestorePaths(_db), churchId, d.id);
+      }
     }
     await _db.collection('users').doc(user.uid).update({
       'withdrawn': true,

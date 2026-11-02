@@ -1,9 +1,6 @@
 import '../../../core/icons.dart';
 
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
-
-import '../../../app/routes.dart';
 
 import '../../../core/theme.dart';
 import '../../../data/models/member.dart';
@@ -19,7 +16,7 @@ class ChurchCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    // 카드 전체가 누르는 곳이다 (안의 교회 수정 · 교회 탈퇴 버튼은 각자 눌린다).
+    // 카드 전체가 누르는 곳이다 (안의 교회 탈퇴 버튼은 따로 눌린다. 교회 정보 수정은 서랍의 교회 정보 관리에서 한다).
     return Card(
       clipBehavior: Clip.antiAlias,
       child: InkWell(
@@ -70,15 +67,6 @@ class ChurchCard extends StatelessWidget {
               padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
               child: Wrap(
                 children: [
-                  // 교회 정보는 그 교회의 관리자만 고친다.
-                  if (member.role == Role.admin)
-                    TextButton.icon(
-                      onPressed: () => context.push(
-                        Routes.section(member.churchId, ChurchSection.info),
-                      ),
-                      icon: const Icon(AppIcons.pencilSimple, size: 18),
-                      label: const Text('교회 수정'),
-                    ),
                   // 교회 관리자는 탈퇴할 수 없다 (맡을 사람이 없어지므로).
                   if (member.role != Role.admin)
                     TextButton.icon(

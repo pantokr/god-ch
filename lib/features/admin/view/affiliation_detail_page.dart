@@ -1,12 +1,15 @@
 import '../../../core/widgets/app_loader.dart';
+import '../../../core/layout/responsive.dart';
 import '../../../core/icons.dart';
 
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../../app/app_scope.dart';
-import '../../../app/routes.dart';
 import '../../../core/layout/app_dialog.dart';
+import '../../../data/models/permission.dart';
+import '../../../core/widgets/labeled_field.dart';
+import '../../../core/widgets/trash_icon.dart';
+import '../../../core/layout/confirm_dialog.dart';
 import '../../../core/layout/manage_list_row.dart';
 import '../../../core/layout/page_frame.dart';
 import '../../../core/mvvm/view_model_builder.dart';
@@ -14,7 +17,10 @@ import '../../../core/theme.dart';
 import '../../../data/models/affiliation.dart';
 import '../../../data/models/member.dart';
 import '../../home/view/content_widgets.dart';
+import '../../../core/widgets/sort_pad.dart';
 import '../view_model/affiliation_manage_view_model.dart';
+import '../view_model/member_admin_view_model.dart' show MemberSort;
+import 'pending_member_dialogs.dart';
 import '../../../core/widgets/app_inputs.dart';
 
 /// 한 소속의 인원 관리 (주소 `/churches/{교회}/affiliations/{소속}`). 목록으로 돌아가는 버튼이 있다.
@@ -29,27 +35,31 @@ class AffiliationDetailPage extends StatelessWidget {
   final String affiliationId;
 
   @override
-  Widget build(BuildContext context) => AffiliationDetailBody(
-    me: me,
-    affiliationId: affiliationId,
-    onBack: () => context.canPop()
-        ? context.pop()
-        : context.go(Routes.section(me.churchId, ChurchSection.affiliations)),
-  );
+  Widget build(BuildContext context) =>
+      AffiliationDetailBody(me: me, affiliationId: affiliationId);
 }
 
-/// 소속 상세의 본문. 앱 운영자 패널에서는 [onBack] 없이 쓴다(앱 바의 뒤로가기를 쓴다).
-class AffiliationDetailBody extends StatelessWidget {
+/// 소속 상세의 본문. 뒤로가기는 바깥 화면(상단 바)의 버튼 하나만 쓴다.
+/// 제목 줄 오른쪽에서 다른 소속으로 바로 바꿔 볼 수 있다 (중보기도 탭의 소속 선택과 같다).
+class AffiliationDetailBody extends StatefulWidget {
   const AffiliationDetailBody({
     super.key,
     required this.me,
     required this.affiliationId,
-    this.onBack,
   });
 
   final Member me;
   final String affiliationId;
-  final VoidCallback? onBack;
+
+  @override
+  State<AffiliationDetailBody> createState() => _AffiliationDetailBodyState();
+}
+
+class _AffiliationDetailBodyState extends State<AffiliationDetailBody> {
+  /// 지금 보고 있는 소속 (제목 줄의 선택으로 바뀐다).
+  late String affiliationId = widget.affiliationId;
+
+  Member get me => widget.me;
 
   @override
   Widget build(BuildContext context) {
@@ -81,34 +91,69 @@ class AffiliationDetailBody extends StatelessWidget {
             stream: vm.members,
             builder: (context, members) {
               final all = members.data ?? const <Member>[];
-              final people = vm.inAffiliation(all, affiliationId);
+              final everyone = vm.inAffiliation(all, affiliationId);
+              final people = vm.shownIn(all, affiliationId);
               return SingleChildScrollView(
                 child: PageFrame(
+                  // 이 화면은 내용 전체가 좌우 여백 안에 놓인다.
+                  inset: true,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      if (onBack != null)
-                        Align(
-                          alignment: Alignment.centerLeft,
-                          child: TextButton.icon(
-                            onPressed: onBack,
-                            icon: const Icon(AppIcons.arrowLeft, size: 18),
-                            label: const Text('소속 목록'),
-                          ),
-                        ),
+                      // 제목은 소속 이름이고, 오른쪽 소속 선택으로 다른 소속의 인원을 본다.
                       PageTitle(
                         title: affiliation.name,
-                        action: FilledButton.icon(
-                          onPressed: vm.busy
-                              ? null
-                              : () => _add(context, vm, all),
-                          icon: const Icon(AppIcons.userPlus, size: 18),
-                          label: const Text('인원 추가'),
-                        ),
+                        action: affs.data!.length < 2
+                            ? null
+                            : _AffiliationPicker(
+                                items: affs.data!,
+                                value: affiliationId,
+                                onChanged: (id) =>
+                                    setState(() => affiliationId = id),
+                              ),
                       ),
+                      // 이 소속의 모든 관리가 여기에 있다: 인원 추가 · 이름 변경 · 삭제.
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          FilledButton.icon(
+                            onPressed: vm.busy
+                                ? null
+                                : () => _add(context, vm, all),
+                            icon: const Icon(AppIcons.userPlus, size: 18),
+                            label: const Text('인원 추가'),
+                          ),
+                          // 이름 변경은 교회 관리자만 한다.
+                          if (me.isAdmin)
+                            OutlinedButton.icon(
+                              onPressed: vm.busy
+                                  ? null
+                                  : () => _rename(context, vm, affiliation),
+                              icon: const Icon(AppIcons.pencilSimple, size: 18),
+                              label: const Text('이름 변경'),
+                            ),
+                          // 소속 삭제 권한이 있는 사람만 삭제한다.
+                          if (me.can(Permission.affiliationDelete))
+                            OutlinedButton.icon(
+                              style: TrashIcon.textStyle(context),
+                              onPressed: vm.busy
+                                  ? null
+                                  : () => _delete(context, vm, affiliation),
+                              icon: const TrashIcon(),
+                              label: const Text('삭제'),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
                       if (vm.error != null)
                         Padding(
-                          padding: const EdgeInsets.only(bottom: 12),
+                          padding: EdgeInsets.fromLTRB(
+                            textGutter(context),
+                            0,
+                            textGutter(context),
+                            12,
+                          ),
                           child: Text(
                             vm.error!,
                             style: TextStyle(
@@ -116,8 +161,29 @@ class AffiliationDetailBody extends StatelessWidget {
                             ),
                           ),
                         ),
+                      // 검색 · 정렬은 회원 관리와 같다: 이름순 · ID순 · 등록순 · 직급순.
+                      AppSearchField(
+                        inset: true,
+                        hint: '이름, 아이디, 전화번호 검색',
+                        onChanged: vm.setQuery,
+                      ),
+                      const SizedBox(height: 12),
+                      SortStrip(
+                        options: [
+                          for (final s in MemberSort.values)
+                            PadOption(
+                              s.label,
+                              selected: vm.sort == s,
+                              onTap: () => vm.setSort(s),
+                            ),
+                        ],
+                      ),
                       if (people.isEmpty)
-                        const EmptyHint('이 소속에 속한 인원이 없어요.')
+                        EmptyHint(
+                          everyone.isEmpty
+                              ? '이 소속에 속한 인원이 없어요.'
+                              : '해당하는 인원이 없어요.',
+                        )
                       else
                         Card(
                           child: Column(
@@ -127,8 +193,19 @@ class AffiliationDetailBody extends StatelessWidget {
                                 _PersonRow(
                                   member: people[i],
                                   busy: vm.busy,
-                                  onRemove: () =>
-                                      vm.remove(affiliationId, people[i]),
+                                  onRemove: () async {
+                                    // 소속에서 제외하기 전에 한 번 더 묻는다.
+                                    final ok = await confirmChange(
+                                      context,
+                                      title:
+                                          '${people[i].name}님을 ${affiliation.name}에서 제외할까요?',
+                                      confirmLabel: '제외',
+                                      danger: true,
+                                    );
+                                    if (ok) {
+                                      await vm.remove(affiliationId, people[i]);
+                                    }
+                                  },
                                 ),
                               ],
                             ],
@@ -146,6 +223,39 @@ class AffiliationDetailBody extends StatelessWidget {
     );
   }
 
+  /// 이름 변경: 이름 입력 창을 띄우고 바뀐 이름을 저장한다.
+  Future<void> _rename(
+    BuildContext context,
+    AffiliationManageViewModel vm,
+    Affiliation affiliation,
+  ) async {
+    final name = await showAppDialog<String>(
+      context,
+      maxWidth: 420,
+      child: _RenameForm(initial: affiliation.name),
+    );
+    if (name == null || name.trim().isEmpty) return;
+    await vm.rename(affiliation.id, name);
+  }
+
+  /// 삭제: 확인 팝업 뒤에 소속을 지우고(인원의 기록은 남는다) 목록으로 돌아간다.
+  Future<void> _delete(
+    BuildContext context,
+    AffiliationManageViewModel vm,
+    Affiliation affiliation,
+  ) async {
+    final navigator = Navigator.of(context);
+    final ok = await confirmChange(
+      context,
+      title: '"${affiliation.name}" 소속을 삭제할까요?',
+      body: '목록에서 사라져요. 이 소속에 있던 인원은 그대로예요.',
+      confirmLabel: '삭제',
+      danger: true,
+    );
+    if (!ok) return;
+    if (await vm.delete(affiliation.id)) navigator.maybePop();
+  }
+
   Future<void> _add(
     BuildContext context,
     AffiliationManageViewModel vm,
@@ -161,6 +271,101 @@ class AffiliationDetailBody extends StatelessWidget {
   }
 }
 
+/// 제목 줄 오른쪽의 소속 선택: 테두리 없이 이름과 ▾만 보이는 중보기도 탭의 소속 선택과 같은 모양.
+/// 소속 이름 입력 창 내용. 저장하면 입력한 이름을 돌려준다.
+class _RenameForm extends StatefulWidget {
+  const _RenameForm({required this.initial});
+
+  final String initial;
+
+  @override
+  State<_RenameForm> createState() => _RenameFormState();
+}
+
+class _RenameFormState extends State<_RenameForm> {
+  late final _controller = TextEditingController(text: widget.initial);
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text('소속 이름 변경', style: Theme.of(context).textTheme.titleLarge),
+        AppField.spacer,
+        LabeledField(
+          label: '소속 이름',
+          child: TextField(
+            controller: _controller,
+            autofocus: true,
+            maxLength: 30,
+            decoration: const InputDecoration(),
+            onSubmitted: (v) => Navigator.pop(context, v),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('취소'),
+            ),
+            const SizedBox(width: 8),
+            FilledButton(
+              onPressed: () => Navigator.pop(context, _controller.text),
+              child: const Text('저장'),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _AffiliationPicker extends StatelessWidget {
+  const _AffiliationPicker({
+    required this.items,
+    required this.value,
+    required this.onChanged,
+  });
+
+  final List<Affiliation> items;
+  final String value;
+  final ValueChanged<String> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = context.palette;
+    return DropdownButtonHideUnderline(
+      child: DropdownButton<String>(
+        value: value,
+        isDense: true,
+        style: TextStyle(
+          color: palette.ink,
+          fontSize: 15,
+          fontWeight: FontWeight.w700,
+        ),
+        icon: Icon(AppIcons.caretDown, color: palette.muted),
+        borderRadius: BorderRadius.circular(AppRadius.card),
+        items: [
+          for (final d in items)
+            DropdownMenuItem(value: d.id, child: Text(d.name)),
+        ],
+        onChanged: (v) {
+          if (v != null) onChanged(v);
+        },
+      ),
+    );
+  }
+}
+
 class _PersonRow extends StatelessWidget {
   const _PersonRow({
     required this.member,
@@ -170,26 +375,32 @@ class _PersonRow extends StatelessWidget {
 
   final Member member;
   final bool busy;
-  final VoidCallback onRemove;
+  final Future<void> Function() onRemove;
 
   @override
   Widget build(BuildContext context) {
-    // 다른 관리 목록과 같은 줄 모양: 이름 · 소속 교회 · 소속(이 소속) · [빼기].
+    // 다른 관리 목록과 같은 줄 모양: 이름 · 소속 교회 · 전화번호 · [제외]. 줄을 누르면 상세가 열린다.
     return ManageListRow(
-      leading: ManageListRow.avatar(context, member.name),
+      onTap: () => showAppDialog(
+        context,
+        child: PendingMemberInfoDialog(member: member, dateLabel: '등록일'),
+      ),
+      leading: ManageListRow.avatar(
+        context,
+        member.name,
+        imageUrl: member.photoUrl,
+      ),
       title: member.loginId.isEmpty
           ? member.name
           : '${member.name}  (${member.loginId})',
       line1: member.churchName,
-      line2: member.phone,
+      line2: member.phone.isEmpty ? '미제공' : member.phone,
       trailing: [
-        // 교회 운영자는 모든 소속에 자동으로 속하므로 뺄 수 없다.
-        if (member.role == Role.admin)
-          Text('자동 소속', style: TextStyle(color: context.palette.muted))
-        else
+        // 교회 운영자는 모든 소속에 자동으로 속하므로 뺄 수 없다: 그 칸은 비워 둔다.
+        if (member.role != Role.admin)
           TextButton(
             onPressed: busy ? null : onRemove,
-            child: const Text('빼기'),
+            child: const Text('제외'),
           ),
       ],
     );

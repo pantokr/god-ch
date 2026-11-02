@@ -1,12 +1,14 @@
 import '../../../core/icons.dart';
 
 import 'package:flutter/material.dart';
+
+import '../../../core/widgets/labeled_field.dart';
+
 import 'package:flutter/services.dart';
 
 import '../../../core/address/address_search.dart';
 import '../../../core/formatters/korean_phone.dart';
 import '../../../core/widgets/blur_validated_field.dart';
-import '../../../core/widgets/required_label.dart';
 import '../../../core/theme.dart';
 
 /// 교회 이름 · 전화번호(형식 자동) · 주소(도로명 주소 검색) 입력란.
@@ -42,7 +44,7 @@ class _ChurchInfoFieldsState extends State<ChurchInfoFields> {
   Future<void> _searchAddress() async {
     setState(() => _searchError = null);
     try {
-      final result = await searchRoadAddress();
+      final result = await searchRoadAddress(context);
       if (result == null || !mounted) return;
       setState(() => widget.address.text = result.roadAddress);
       // 주소를 고르면 이전에 떠 있던 "주소를 입력해 주세요" 오류를 지운다.
@@ -65,27 +67,32 @@ class _ChurchInfoFieldsState extends State<ChurchInfoFields> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         // 이름·전화번호는 입력란을 벗어날 때 그 칸만 검사해서 오류를 보여준다.
-        BlurValidatedField(
-          controller: widget.name,
-          maxLength: 50,
-          decoration: const InputDecoration(label: RequiredLabel('교회 이름')),
-          validator: (v) {
-            final text = (v ?? '').trim();
-            if (text.isEmpty) return '교회 이름을 입력해 주세요';
-            if (text.length < 2) return '교회 이름은 2자 이상 입력해 주세요';
-            return null;
-          },
+        LabeledField(
+          label: '이름',
+          required: true,
+          child: BlurValidatedField(
+            controller: widget.name,
+            maxLength: 50,
+            decoration: const InputDecoration(),
+            validator: (v) {
+              final text = (v ?? '').trim();
+              if (text.isEmpty) return '교회 이름을 입력해 주세요';
+              if (text.length < 2) return '교회 이름은 2자 이상 입력해 주세요';
+              return null;
+            },
+          ),
         ),
         AppField.spacer,
-        BlurValidatedField(
-          controller: widget.phone,
-          keyboardType: TextInputType.phone,
-          inputFormatters: const [KoreanPhoneFormatter()],
-          decoration: InputDecoration(
-            label: RequiredLabel('교회 전화번호', required: widget.phoneRequired),
-            hintText: '02-1234-5678',
+        LabeledField(
+          label: '전화번호',
+          required: widget.phoneRequired,
+          child: BlurValidatedField(
+            controller: widget.phone,
+            keyboardType: TextInputType.phone,
+            inputFormatters: const [KoreanPhoneFormatter()],
+            decoration: InputDecoration(hintText: '02-1234-5678'),
+            validator: _validatePhone,
           ),
-          validator: _validatePhone,
         ),
         const SizedBox(height: 16),
         // 오류 문구는 입력창 바깥(아래)에 따로 보여준다. 그래야 오류가 떠도
@@ -97,42 +104,47 @@ class _ChurchInfoFieldsState extends State<ChurchInfoFields> {
           builder: (state) => Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // 버튼을 입력창과 같은 높이로 늘린다 (높이를 숫자로 고정하지 않는다).
-              IntrinsicHeight(
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: widget.address,
-                        // 검색으로 고른 주소만 쓰도록 직접 수정은 막는다. 검색을 못 쓰는 플랫폼은 직접 입력.
-                        readOnly: isAddressSearchSupported,
-                        onTap:
-                            isAddressSearchSupported &&
-                                widget.address.text.isEmpty
-                            ? _searchAddress
-                            : null,
-                        onChanged: (_) => state.didChange(widget.address.text),
-                        inputFormatters: [
-                          LengthLimitingTextInputFormatter(200),
-                        ],
-                        decoration: InputDecoration(
-                          label: const RequiredLabel('교회 주소'),
-                          hintText: isAddressSearchSupported
-                              ? '주소 검색을 눌러 도로명 주소를 선택하세요'
-                              : '도로명 주소를 입력하세요',
+              // 이름표는 입력칸 + 검색 버튼 줄 위에 한 번만 놓는다. 줄 높이는 입력칸 높이로 고정한다
+              // (버튼 안의 LayoutBuilder는 IntrinsicHeight를 못 쓴다).
+              LabeledField(
+                label: '주소',
+                required: true,
+                child: SizedBox(
+                  height: AppField.height,
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: widget.address,
+                          // 검색으로 고른 주소만 쓰도록 직접 수정은 막는다. 검색을 못 쓰는 플랫폼은 직접 입력.
+                          readOnly: isAddressSearchSupported,
+                          onTap:
+                              isAddressSearchSupported &&
+                                  widget.address.text.isEmpty
+                              ? _searchAddress
+                              : null,
+                          onChanged: (_) =>
+                              state.didChange(widget.address.text),
+                          inputFormatters: [
+                            LengthLimitingTextInputFormatter(200),
+                          ],
+                          decoration: InputDecoration(
+                            hintText: isAddressSearchSupported
+                                ? '주소 검색'
+                                : '도로명 주소',
+                          ),
                         ),
                       ),
-                    ),
-                    if (isAddressSearchSupported) ...[
-                      const SizedBox(width: 8),
-                      OutlinedButton.icon(
-                        onPressed: _searchAddress,
-                        icon: const Icon(AppIcons.magnifyingGlass, size: 18),
-                        label: const Text('주소 검색'),
-                      ),
+                      if (isAddressSearchSupported) ...[
+                        const SizedBox(width: 8),
+                        OutlinedButton(
+                          onPressed: _searchAddress,
+                          child: const Icon(AppIcons.magnifyingGlass, size: 18),
+                        ),
+                      ],
                     ],
-                  ],
+                  ),
                 ),
               ),
               if (state.hasError)

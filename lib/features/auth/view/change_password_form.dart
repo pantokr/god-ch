@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/widgets/labeled_field.dart';
+
 import '../../../app/app_scope.dart';
 import '../../../core/mvvm/view_model_builder.dart';
 import '../../../core/widgets/blur_validated_field.dart';
-import '../../../core/widgets/required_label.dart';
 import '../data/password_rule.dart';
 import '../view_model/change_password_view_model.dart';
 
@@ -58,29 +59,37 @@ class _ChangePasswordFormState extends State<ChangePasswordForm> {
           children: [
             Text('비밀번호 수정', style: theme.textTheme.titleLarge),
             const SizedBox(height: 16),
-            BlurValidatedField(
-              controller: _current,
-              obscureText: true,
-              decoration: InputDecoration(
-                label: const RequiredLabel('현재 비밀번호'),
+            LabeledField(
+              label: '현재 비밀번호',
+              required: true,
+              child: BlurValidatedField(
+                controller: _current,
+                obscureText: true,
+                decoration: InputDecoration(),
+                validator: (v) =>
+                    (v == null || v.isEmpty) ? '현재 비밀번호를 입력해 주세요' : null,
               ),
-              validator: (v) =>
-                  (v == null || v.isEmpty) ? '현재 비밀번호를 입력해 주세요' : null,
             ),
-            BlurValidatedField(
-              controller: _next,
-              onChanged: (_) => setState(() {}),
-              obscureText: true,
-              decoration: InputDecoration(label: const RequiredLabel('새 비밀번호')),
-              validator: PasswordRule.validate,
-            ),
-            BlurValidatedField(
-              controller: _confirm,
-              obscureText: true,
-              decoration: InputDecoration(
-                label: const RequiredLabel('새 비밀번호 확인'),
+            LabeledField(
+              label: '새 비밀번호',
+              required: true,
+              child: BlurValidatedField(
+                controller: _next,
+                onChanged: (_) => setState(() {}),
+                obscureText: true,
+                decoration: InputDecoration(),
+                validator: PasswordRule.validate,
               ),
-              validator: (v) => PasswordRule.confirm(v, _next.text),
+            ),
+            LabeledField(
+              label: '새 비밀번호 확인',
+              required: true,
+              child: BlurValidatedField(
+                controller: _confirm,
+                obscureText: true,
+                decoration: InputDecoration(),
+                validator: (v) => PasswordRule.confirm(v, _next.text),
+              ),
             ),
             if (vm.error != null) ...[
               const SizedBox(height: 12),

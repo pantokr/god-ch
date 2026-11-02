@@ -1,5 +1,7 @@
 import '../../../core/widgets/app_loader.dart';
 
+import '../../../core/layout/responsive.dart';
+
 import 'package:flutter/material.dart';
 
 import '../../../app/app_scope.dart';
@@ -8,17 +10,31 @@ import '../../../core/mvvm/view_model_builder.dart';
 import '../../../core/theme.dart';
 import '../../../data/models/affiliation.dart';
 import '../../../data/models/member.dart';
+import '../../../data/models/position.dart';
 import '../view_model/member_admin_view_model.dart';
 import 'member_tile.dart';
 import '../../../core/widgets/app_inputs.dart';
+import '../../../core/widgets/sort_pad.dart';
 
 /// 교회 회원 관리: 앱 운영자의 "회원 관리"와 같은 구성 (제목 → 검색 → 개수 머리글 → 목록).
 /// 새로 들어온 인원(승인 대기 · 최근 가입)이 맨 위에 NEW로 나오고, 줄의 "관리"로 상세 관리 창을 연다.
 /// 교회 운영자의 인원 관리와 앱 운영자의 교회 상세 화면이 같이 쓴다.
-class ChurchMembersTab extends StatelessWidget {
+class ChurchMembersTab extends StatefulWidget {
   const ChurchMembersTab({super.key, required this.me});
 
   final Member me;
+
+  @override
+  State<ChurchMembersTab> createState() => _ChurchMembersTabState();
+}
+
+class _ChurchMembersTabState extends State<ChurchMembersTab> {
+  Member get me => widget.me;
+
+  // 직급 목록은 이름 앞 아이콘에 쓰며 한 번만 구독한다. 읽지 못해도(권한 등) 아이콘만 빠진다.
+  late final Stream<List<Position>> _positions = AppScope.read(context)
+      .positions
+      .positions(widget.me.churchId);
 
   @override
   Widget build(BuildContext context) {
@@ -32,9 +48,27 @@ class ChurchMembersTab extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const PageTitle(title: '교회 회원 관리'),
-              AppSearchField(hint: '이름, 아이디, 전화번호 검색', onChanged: vm.setQuery),
-              const SizedBox(height: 16),
+              const PageTitle(title: '회원 관리'),
+              AppSearchField(
+                inset: true,
+                hint: '이름, 아이디, 전화번호 검색',
+                onChanged: vm.setQuery,
+              ),
+              const SizedBox(height: 12),
+              // 정렬: 이름순 · ID순 · 등록순 · 직급순.
+              ListenableBuilder(
+                listenable: vm,
+                builder: (context, _) => SortStrip(
+                  options: [
+                    for (final s in MemberSort.values)
+                      PadOption(
+                        s.label,
+                        selected: vm.sort == s,
+                        onTap: () => vm.setSort(s),
+                      ),
+                  ],
+                ),
+              ),
               StreamBuilder<List<Member>>(
                 stream: vm.members,
                 builder: (context, snap) {
@@ -49,10 +83,17 @@ class ChurchMembersTab extends StatelessWidget {
                   }
                   return StreamBuilder<List<Affiliation>>(
                     stream: vm.affiliations,
-                    builder: (context, affs) => _List(
-                      vm: vm,
-                      all: snap.data!,
-                      affiliations: affs.data ?? const <Affiliation>[],
+                    builder: (context, affs) => StreamBuilder<List<Position>>(
+                      stream: _positions,
+                      builder: (context, pos) => _List(
+                        vm: vm,
+                        all: snap.data!,
+                        affiliations: affs.data ?? const <Affiliation>[],
+                        positions: {
+                          for (final p in pos.data ?? const <Position>[])
+                            p.id: p,
+                        },
+                      ),
                     ),
                   );
                 },
@@ -71,8 +112,11 @@ class _List extends StatelessWidget {
     required this.vm,
     required this.all,
     required this.affiliations,
+    required this.positions,
   });
 
+  /// 직급 아이디 → 직급 (이름 앞 아이콘에 쓴다).
+  final Map<String, Position> positions;
   final MemberAdminViewModel vm;
   final List<Member> all;
   final List<Affiliation> affiliations;
@@ -86,11 +130,11 @@ class _List extends StatelessWidget {
     final requests = newcomers
         .where((m) => m.status == MemberStatus.pending)
         .toList();
+    // 최근 가입한 사람도 고른 정렬 기준에 따라 다른 회원과 한 목록에 섞어 정렬한다 (NEW 표시만 따로 붙는다).
     final rows = [
       ...newcomers.where((m) => m.status != MemberStatus.pending),
       ...existing,
-    ];
-    final recent = rows.length - existing.length;
+    ]..sort(vm.sorter);
     final names = {for (final a in affiliations) a.id: a.name};
 
     return ListenableBuilder(
@@ -98,9 +142,11 @@ class _List extends StatelessWidget {
       builder: (context, _) => Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            '신규 입장 요청 (${requests.length})',
-            style: Theme.of(context).textTheme.titleMedium,
+          Gutter(
+            child: Text(
+              '신규 입장 요청 (${requests.length})',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
           ),
           const SizedBox(height: 8),
           if (requests.isEmpty)
@@ -123,6 +169,7 @@ class _List extends StatelessWidget {
                     if (i > 0) const Divider(),
                     MemberTile(
                       member: requests[i],
+                      position: positions[requests[i].positionId],
                       vm: vm,
                       isNew: true,
                       affiliations: affiliations,
@@ -136,9 +183,11 @@ class _List extends StatelessWidget {
               ),
             ),
           const SizedBox(height: 24),
-          Text(
-            '교회 회원 (${all.length})',
-            style: Theme.of(context).textTheme.titleMedium,
+          Gutter(
+            child: Text(
+              '교회 회원 (${all.length})',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
           ),
           const SizedBox(height: 8),
           if (rows.isEmpty)
@@ -161,8 +210,9 @@ class _List extends StatelessWidget {
                     if (i > 0) const Divider(),
                     MemberTile(
                       member: rows[i],
+                      position: positions[rows[i].positionId],
                       vm: vm,
-                      isNew: i < recent,
+                      isNew: vm.isNewcomer(rows[i]),
                       affiliations: affiliations,
                       affiliationNames: [
                         for (final id in rows[i].affiliationIds)

@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+
+import '../../../core/widgets/labeled_field.dart';
+
 import 'package:go_router/go_router.dart';
 
 import '../../../app/app_scope.dart';
@@ -7,7 +10,6 @@ import '../../../core/formatters/korean_phone.dart';
 import '../../../core/mvvm/view_model_builder.dart';
 import '../../../core/theme.dart';
 import '../../../core/widgets/blur_validated_field.dart';
-import '../../../core/widgets/required_label.dart';
 import '../data/auth_repository.dart';
 import '../data/login_id.dart';
 import '../data/password_rule.dart';
@@ -89,33 +91,40 @@ class _SignUpPageState extends State<SignUpPage> {
                         _FieldGroup(
                           title: '로그인 정보',
                           children: [
-                            BlurValidatedField(
-                              controller: _loginId,
-                              autocorrect: false,
-                              maxLength: 20,
-                              decoration: InputDecoration(
-                                label: const RequiredLabel('아이디'),
+                            LabeledField(
+                              label: '아이디',
+                              required: true,
+                              child: BlurValidatedField(
+                                controller: _loginId,
+                                autocorrect: false,
+                                maxLength: 20,
+                                decoration: InputDecoration(),
+                                validator: (v) => LoginId.validate(v ?? ''),
                               ),
-                              validator: (v) => LoginId.validate(v ?? ''),
                             ),
-                            BlurValidatedField(
-                              controller: _password,
-                              onChanged: (_) => setState(() {}),
-                              obscureText: true,
-                              decoration: InputDecoration(
-                                label: const RequiredLabel('비밀번호'),
-                                suffixText: '8자 이상',
+                            LabeledField(
+                              label: '비밀번호',
+                              required: true,
+                              child: BlurValidatedField(
+                                controller: _password,
+                                onChanged: (_) => setState(() {}),
+                                obscureText: true,
+                                decoration: InputDecoration(
+                                  suffixText: '8자 이상',
+                                ),
+                                validator: PasswordRule.validate,
                               ),
-                              validator: PasswordRule.validate,
                             ),
-                            BlurValidatedField(
-                              controller: _passwordConfirm,
-                              obscureText: true,
-                              decoration: InputDecoration(
-                                label: const RequiredLabel('비밀번호 확인'),
+                            LabeledField(
+                              label: '비밀번호 확인',
+                              required: true,
+                              child: BlurValidatedField(
+                                controller: _passwordConfirm,
+                                obscureText: true,
+                                decoration: InputDecoration(),
+                                validator: (v) =>
+                                    PasswordRule.confirm(v, _password.text),
                               ),
-                              validator: (v) =>
-                                  PasswordRule.confirm(v, _password.text),
                             ),
                           ],
                         ),
@@ -123,28 +132,34 @@ class _SignUpPageState extends State<SignUpPage> {
                         _FieldGroup(
                           title: '기본 정보',
                           children: [
-                            BlurValidatedField(
-                              controller: _name,
-                              maxLength: 30,
-                              decoration: InputDecoration(
-                                label: const RequiredLabel('이름'),
+                            LabeledField(
+                              label: '이름',
+                              required: true,
+                              child: BlurValidatedField(
+                                controller: _name,
+                                maxLength: 30,
+                                decoration: InputDecoration(),
+                                validator: (v) =>
+                                    (v == null || v.trim().isEmpty)
+                                    ? '이름을 입력해 주세요'
+                                    : null,
                               ),
-                              validator: (v) => (v == null || v.trim().isEmpty)
-                                  ? '이름을 입력해 주세요'
-                                  : null,
                             ),
-                            BlurValidatedField(
-                              controller: _phone,
-                              keyboardType: TextInputType.phone,
-                              inputFormatters: const [KoreanPhoneFormatter()],
-                              decoration: InputDecoration(
-                                label: const RequiredLabel('전화번호'),
-                                hintText: '010-1234-5678',
+                            LabeledField(
+                              label: '전화번호',
+                              required: true,
+                              child: BlurValidatedField(
+                                controller: _phone,
+                                keyboardType: TextInputType.phone,
+                                inputFormatters: const [KoreanPhoneFormatter()],
+                                decoration: InputDecoration(
+                                  hintText: '010-1234-5678',
+                                ),
+                                validator: (v) =>
+                                    (v == null || !isValidKoreanPhone(v))
+                                    ? '전화번호 형식이 올바르지 않아요'
+                                    : null,
                               ),
-                              validator: (v) =>
-                                  (v == null || !isValidKoreanPhone(v))
-                                  ? '전화번호 형식이 올바르지 않아요'
-                                  : null,
                             ),
                           ],
                         ),

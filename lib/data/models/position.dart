@@ -25,12 +25,28 @@ enum BuiltInPosition {
 /// 기본 직급(교역자 · 회원)에 교회가 정해 둔 권한. null이면 정한 적이 없어 기본값을 쓴다
 /// (교역자는 직급으로 줄 수 있는 권한 전부, 회원은 없음).
 class RolePermissions {
-  const RolePermissions({this.staff, this.member});
+  const RolePermissions({
+    this.staff,
+    this.member,
+    this.staffStyle,
+    this.memberStyle,
+  });
 
   static const defaults = RolePermissions();
 
   final Set<String>? staff;
   final Set<String>? member;
+
+  /// 교회가 정한 교역자 · 회원 직급의 아이콘과 색. 정한 적이 없으면 null (기본 모양을 쓴다).
+  final BuiltInStyle? staffStyle;
+  final BuiltInStyle? memberStyle;
+
+  /// [position] 직급의 모양 (정한 적이 없으면 기본 모양).
+  BuiltInStyle styleOf(BuiltInPosition position) => switch (position) {
+    BuiltInPosition.staff => staffStyle ?? BuiltInStyle.staffDefault,
+    BuiltInPosition.member => memberStyle ?? BuiltInStyle.memberDefault,
+    BuiltInPosition.admin => BuiltInStyle.adminDefault,
+  };
 
   /// 교역자가 이 권한을 갖는가 (직급으로 줄 수 있는 권한 기준).
   bool staffHas(Permission p) => staff?.contains(p.key) ?? p.staffDefault;
@@ -43,10 +59,36 @@ class RolePermissions {
     return Set<String>.from(d['permissions'] as List);
   }
 
+  static BuiltInStyle? _style(DocumentSnapshot<Json>? doc) {
+    final d = doc?.data();
+    if (d == null || d['icon'] is! String) return null;
+    return BuiltInStyle(
+      d['icon'] as String,
+      (d['color'] as num?)?.toInt() ?? BuiltInStyle.staffDefault.color,
+    );
+  }
+
   factory RolePermissions.fromDocs(
     DocumentSnapshot<Json>? staff,
     DocumentSnapshot<Json>? member,
-  ) => RolePermissions(staff: _read(staff), member: _read(member));
+  ) => RolePermissions(
+    staff: _read(staff),
+    member: _read(member),
+    staffStyle: _style(staff),
+    memberStyle: _style(member),
+  );
+}
+
+/// 기본 직급의 아이콘(키)과 색(ARGB 정수).
+class BuiltInStyle {
+  const BuiltInStyle(this.icon, this.color);
+
+  final String icon;
+  final int color;
+
+  static const staffDefault = BuiltInStyle('shield', 0xFF6C63FF);
+  static const memberDefault = BuiltInStyle('users', 0xFF7A8794);
+  static const adminDefault = BuiltInStyle('crown', 0xFFE0A100);
 }
 
 /// 직급: 교회 관리자가 만드는 이름 있는 권한 묶음. 교인에게 하나 줄 수 있다.
@@ -57,6 +99,8 @@ class Position {
     required this.id,
     required this.name,
     this.permissions = const {},
+    this.icon = 'shield',
+    this.color = 0xFF6C63FF,
   });
 
   /// 이름 길이 제한 (`firestore.rules`와 같다).
@@ -64,6 +108,10 @@ class Position {
 
   final String id;
   final String name;
+
+  /// 직급 아이콘의 키 (`PositionStyle.icons`)와 색(ARGB 정수).
+  final String icon;
+  final int color;
 
   /// 줄 수 있는 권한의 키들 ([Permission.key]).
   final Set<String> permissions;
@@ -80,6 +128,8 @@ class Position {
       id: doc.id,
       name: d['name'] as String? ?? '',
       permissions: Set<String>.from(d['permissions'] as List? ?? const []),
+      icon: d['icon'] as String? ?? 'shield',
+      color: (d['color'] as num?)?.toInt() ?? 0xFF6C63FF,
     );
   }
 }

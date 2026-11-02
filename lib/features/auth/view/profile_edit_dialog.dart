@@ -5,7 +5,7 @@ import '../../../core/layout/profile_summary.dart';
 import '../../../core/mvvm/view_model_builder.dart';
 import '../../../core/theme.dart';
 import '../../../core/widgets/thumbnail_field.dart';
-import '../../../core/widgets/required_label.dart';
+import '../../../core/widgets/labeled_field.dart';
 import '../view_model/profile_edit_view_model.dart';
 import 'profile_extra_fields.dart';
 
@@ -93,19 +93,22 @@ class _ProfileEditDialogState extends State<ProfileEditDialog> {
               ),
               gap,
             ],
-            TextField(
-              controller: _name,
-              maxLength: 30,
-              decoration: InputDecoration(label: const RequiredLabel('이름')),
+            LabeledField(
+              label: '이름',
+              required: true,
+              child: TextField(controller: _name, maxLength: 30),
             ),
             if (hasProfile) ...[
               gap,
-              TextField(
-                controller: _phone,
-                keyboardType: TextInputType.phone,
-                maxLength: 20,
-                decoration: InputDecoration(label: const RequiredLabel('전화번호')),
-                onSubmitted: (_) => _save(vm),
+              LabeledField(
+                label: '전화번호',
+                required: true,
+                child: TextField(
+                  controller: _phone,
+                  keyboardType: TextInputType.phone,
+                  maxLength: 20,
+                  onSubmitted: (_) => _save(vm),
+                ),
               ),
               gap,
               ProfileExtraFields(address: _address, birthDate: _birthDate),

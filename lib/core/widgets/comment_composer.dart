@@ -86,8 +86,6 @@ class _CommentComposerState extends State<CommentComposer> {
             decoration: InputDecoration(
               hintText: widget.hint,
               hintStyle: TextStyle(color: palette.muted, fontSize: 13),
-              filled: true,
-              fillColor: palette.surface,
             ),
           ),
         ),

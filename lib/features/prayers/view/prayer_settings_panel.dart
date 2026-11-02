@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/widgets/choice_row.dart';
+
 import '../../../core/theme.dart';
 import '../../../core/widgets/panel_surface.dart';
-import '../../../core/widgets/app_inputs.dart';
-import '../../../data/models/prayer.dart';
 import '../../../data/models/prayer_settings.dart';
 import '../../../data/models/reaction.dart';
 
@@ -28,71 +28,65 @@ class PrayerSettingsPanel extends StatelessWidget {
         children: [
           Text('운영 설정', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 12),
-          // ---- 작성 ----
-          const _Group('작성'),
-          RadioGroup<PrayerWriters>(
-            groupValue: s.writers,
-            onChanged: (v) {
-              if (v != null) onChanged(s.copyWith(writers: v));
-            },
-            child: Column(
-              children: [
-                for (final w in PrayerWriters.values)
-                  RadioListTile<PrayerWriters>(
-                    value: w,
-                    dense: true,
-                    contentPadding: EdgeInsets.zero,
-                    title: Text(w.label),
-                  ),
-              ],
-            ),
-          ),
           // ---- 공개 범위 ----
           const _Group('공개 범위'),
           _Check(
-            label: '교역자 전용 비공개 허용',
+            label: '교역자 전용(비공개) 글 허용',
             value: s.allowPrivate,
             onChanged: (v) => onChanged(s.copyWith(allowPrivate: v)),
           ),
-          const SizedBox(height: 8),
-          AppDropdown<PrayerVisibility>(
-            label: '기본 공개 범위',
-            value: s.allowPrivate
-                ? s.defaultVisibility
-                : PrayerVisibility.public,
-            items: const [
-              DropdownMenuItem(
-                value: PrayerVisibility.public,
-                child: Text('공개'),
-              ),
-              DropdownMenuItem(
-                value: PrayerVisibility.private,
-                child: Text('교역자 전용'),
-              ),
-            ],
-            onChanged: s.allowPrivate
-                ? (v) {
-                    if (v != null) onChanged(s.copyWith(defaultVisibility: v));
-                  }
-                : null,
+          // ---- 공개 ----
+          const _Group('공개'),
+          _Check(
+            label: '조회수 공개',
+            value: s.showViews,
+            onChanged: (v) => onChanged(s.copyWith(showViews: v)),
           ),
-          // ---- 응원 ----
-          const _Group('이모티콘 응원'),
+          _Check(
+            label: '글쓴이 공개',
+            value: s.showAuthor,
+            onChanged: (v) => onChanged(s.copyWith(showAuthor: v)),
+          ),
+          // ---- 댓글 ----
+          const _Group('댓글'),
+          _Check(
+            label: '댓글 허용',
+            value: s.allowComments,
+            onChanged: (v) => onChanged(s.copyWith(allowComments: v)),
+          ),
+          // ---- 반응: 허용한 이모티콘마다 세부 설정 ----
+          const _Group('반응'),
+          _Check(
+            label: '반응 허용',
+            value: s.reactionsOn,
+            // 켜면 이모티콘 전부, 끄면 모두 끈다.
+            onChanged: (on) => onChanged(
+              s.copyWith(
+                reactions: on
+                    ? {for (final r in reactionTypes) r.id}
+                    : const {},
+              ),
+            ),
+          ),
           for (final r in reactionTypes)
             _Check(
               label: '${r.emoji} ${r.label}',
               value: s.reactions.contains(r.id),
-              onChanged: (on) => onChanged(
-                s.copyWith(
-                  reactions: on
-                      ? {...s.reactions, r.id}
-                      : {...s.reactions}.difference({r.id}),
-                ),
-              ),
+              indent: true,
+              onChanged: !s.reactionsOn
+                  ? null
+                  : (on) => onChanged(
+                      s.copyWith(
+                        reactions: on
+                            ? {...s.reactions, r.id}
+                            : {...s.reactions}.difference({r.id}),
+                      ),
+                    ),
             ),
           _Check(
             label: '이모티콘별 개수 표시',
             value: s.showCounts,
+            indent: true,
             onChanged: s.reactionsOn
                 ? (v) => onChanged(s.copyWith(showCounts: v))
                 : null,
@@ -100,22 +94,12 @@ class PrayerSettingsPanel extends StatelessWidget {
           // ---- 삭제 ----
           const _Group('삭제'),
           _Check(
-            label: '교인 본인 글 삭제 허용',
-            value: s.memberDelete,
-            onChanged: (v) => onChanged(s.copyWith(memberDelete: v)),
-          ),
-          _Check(
             label: '교역자 삭제 시 사유 필수',
             value: s.requireDeleteReason,
             onChanged: (v) => onChanged(s.copyWith(requireDeleteReason: v)),
           ),
           // ---- 교역자 ----
           const _Group('교역자'),
-          _Check(
-            label: '공개 글에 교역자 댓글',
-            value: s.staffComments,
-            onChanged: (v) => onChanged(s.copyWith(staffComments: v)),
-          ),
           _Check(
             label: '비공개 글에 교역자 응답',
             value: s.privateResponses,
@@ -157,19 +141,21 @@ class _Check extends StatelessWidget {
     required this.label,
     required this.value,
     required this.onChanged,
+    this.indent = false,
   });
 
   final String label;
   final bool value;
   final ValueChanged<bool>? onChanged;
 
+  /// 허용 항목에 딸린 세부 설정이면 안으로 들여 쓴다.
+  final bool indent;
+
   @override
-  Widget build(BuildContext context) => CheckboxListTile(
-    dense: true,
-    contentPadding: EdgeInsets.zero,
-    controlAffinity: ListTileControlAffinity.leading,
+  Widget build(BuildContext context) => OnOffRow(
+    label: label,
     value: value,
-    onChanged: onChanged == null ? null : (v) => onChanged!(v ?? false),
-    title: Text(label),
+    onChanged: onChanged,
+    indent: indent,
   );
 }

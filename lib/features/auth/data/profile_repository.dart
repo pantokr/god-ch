@@ -1,5 +1,8 @@
 import 'dart:typed_data';
 
+import '../../../data/firestore_paths.dart';
+import '../../../data/person_card_sync.dart';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../../../core/app_exception.dart';
@@ -113,6 +116,13 @@ class ProfileRepository {
         batch.update(m.reference, {'name': n, 'phone': p, ...extra});
       }
       await batch.commit();
+      // 사람 목록에 보이는 이름 · 사진 · 생일도 함께 맞춘다.
+      for (final m in mine.docs) {
+        final churchId = m.reference.parent.parent?.id;
+        if (churchId != null) {
+          await mirrorPersonCard(FirestorePaths(_db), churchId, m.id);
+        }
+      }
     }
     await _auth.updateDisplayName(n);
   }

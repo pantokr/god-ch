@@ -1,4 +1,6 @@
 import '../../../core/widgets/toast.dart';
+import '../../../core/layout/responsive.dart';
+import '../../people/view/person_avatar.dart';
 import '../../../core/widgets/app_loader.dart';
 
 import 'package:flutter/material.dart';
@@ -10,16 +12,16 @@ import '../../../app/routes.dart';
 import '../../../core/icons.dart';
 import '../../../core/layout/page_frame.dart';
 import '../../../core/mvvm/view_model_builder.dart';
-import '../../../core/widgets/toggle_chip.dart';
+import '../../../core/widgets/shadow_switch.dart';
 import '../../../core/widgets/like_heart.dart';
 import '../../../core/widgets/create_fab.dart';
 import '../../../core/widgets/refresh_scope.dart';
 import '../../../core/widgets/sort_pad.dart';
-import '../../../core/widgets/thumbnail_avatar.dart';
 import '../../../core/theme.dart';
 import '../../../core/widgets/stat_icons.dart';
 import '../../../data/models/permission.dart';
 import '../../../data/models/meeting.dart';
+import '../../../data/models/meeting_settings.dart';
 import '../../../data/models/member.dart';
 import '../../home/view/content_widgets.dart';
 import '../view_model/meetings_view_model.dart';
@@ -55,59 +57,75 @@ class MeetingsPage extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        PageTitle(
-                          gap: PageTitle.panelGap,
-                          title: '모임',
-                          description: '교회 안의 모임을 한눈에 봅니다. 마음에 드는 모임에 참여를 신청하고, 하트로 모아 둘 수 있어요. 정원이 찼거나 지난 모임은 마감으로 표시됩니다.',
-                        ),
+                        // 검색 필드는 탭 설명 위에 있다.
                         _SortPanel(vm: vm),
                         const SizedBox(height: 16),
-                        // 패널 영역과 목록 영역을 가르는 선, 그 아래 목록 윗부분 오른쪽에 새로고침.
-                        Divider(height: 1, color: context.palette.border),
-                        // 마감 제외는 일정에만 있어서 새로고침의 반대편(왼쪽)에 둔다.
-                        Row(
-                          children: [
-                            // 눌러서 켜고 끄는 조건: 테두리 알약에 체크 표시.
-                            Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 6),
-                              child: ToggleChip(
-                                label: '마감 제외',
-                                on: vm.hideClosed,
-                                onTap: vm.toggleHideClosed,
-                              ),
-                            ),
-                            const Spacer(),
-                            refresh,
-                          ],
+                        PageTitle(
+                          gap: 32,
+                          title: '',
+                          description:
+                              '교회 안에서 열리는 모임의 일정입니다. 날짜와 장소, 모집 현황을 한눈에 봅니다.',
                         ),
-                        StreamBuilder<List<Meeting>>(
-                          stream: vm.items,
-                          builder: (context, snap) {
-                            if (snap.hasError) {
-                              return EmptyHint('불러오지 못했습니다\n${snap.error}');
-                            }
-                            final all = snap.data;
-                            if (all == null) {
-                              return const Padding(
-                                padding: EdgeInsets.all(48),
-                                child: Center(child: AppLoader()),
-                              );
-                            }
-                            final items = vm.apply(all);
-                            if (items.isEmpty) {
-                              return EmptyHint(
-                                all.isEmpty ? '모임 없음' : '해당 모임 없음',
-                              );
-                            }
-                            return MeetingListView(
-                              meetings: items,
-                              me: me,
-                              onLike: me.isOperatorView
-                                  ? null
-                                  : (m, liked) =>
-                                        vm.setLike(m.id, liked: liked),
-                            );
-                          },
+                        BleedBox(
+                          padding: const EdgeInsets.only(top: 20),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Center(
+                                child: ShadowSwitch<MeetingFilter>(
+                                  values: MeetingFilter.values,
+                                  selected: vm.filter,
+                                  onChanged: vm.setFilter,
+                                  labelOf: (f) => f.label,
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              // 정렬 순서는 격자 바로 위에 붙는다.
+                              SortStrip(
+                                options: [
+                                  for (final s in MeetingSort.values)
+                                    PadOption(
+                                      s.label,
+                                      selected: vm.sort == s,
+                                      onTap: () => vm.setSort(s),
+                                    ),
+                                ],
+                              ),
+                              SortBody(
+                                child: StreamBuilder<List<Meeting>>(
+                                  stream: vm.items,
+                                  builder: (context, snap) {
+                                    if (snap.hasError) {
+                                      return EmptyHint(
+                                        '불러오지 못했습니다\n${snap.error}',
+                                      );
+                                    }
+                                    final all = snap.data;
+                                    if (all == null) {
+                                      return const Padding(
+                                        padding: EdgeInsets.all(48),
+                                        child: Center(child: AppLoader()),
+                                      );
+                                    }
+                                    final items = vm.apply(all);
+                                    if (items.isEmpty) {
+                                      return EmptyHint(
+                                        all.isEmpty ? '모임 없음' : '해당 모임 없음',
+                                      );
+                                    }
+                                    return MeetingListView(
+                                      meetings: items,
+                                      me: me,
+                                      onLike: me.isOperatorView
+                                          ? null
+                                          : (m, liked) =>
+                                                vm.setLike(m.id, liked: liked),
+                                    );
+                                  },
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ],
                     ),
@@ -144,7 +162,7 @@ class MeetingsPage extends StatelessWidget {
 
 /// 모임 목록 본체: 알록달록은 2열 카드 격자, 심플은 글 중심 줄이다 ([ListStyleController]).
 /// 일정 탭과 내 활동의 일정이 같은 모양으로 쓴다. [onLike]가 없으면 하트를 눌러도 반응하지 않는다.
-class MeetingListView extends StatelessWidget {
+class MeetingListView extends StatefulWidget {
   const MeetingListView({
     super.key,
     required this.meetings,
@@ -157,34 +175,57 @@ class MeetingListView extends StatelessWidget {
   final void Function(Meeting meeting, bool liked)? onLike;
 
   @override
+  State<MeetingListView> createState() => _MeetingListViewState();
+}
+
+class _MeetingListViewState extends State<MeetingListView> {
+  // 스트림은 한 번만 만든다 (build마다 새로 만들면 다시 구독되어 깜빡인다).
+  late final Stream<MeetingSettings> _settings = AppScope.read(context).meetings
+      .settings(widget.me.churchId);
+
+  @override
   Widget build(BuildContext context) {
+    final meetings = widget.meetings;
+    final me = widget.me;
+    final onLike = widget.onLike;
     final style = AppScope.read(context).listStyle;
-    return ListenableBuilder(
-      listenable: style,
-      builder: (context, _) => style.style == ListStyle.colorful
-          ? _CardGrid(
-              children: [
-                for (final m in meetings)
-                  _ColorfulCard(
-                    meeting: m,
-                    me: me,
-                    onLike: onLike == null
-                        ? null
-                        : (liked) => onLike!(m, liked),
+    return StreamBuilder<MeetingSettings>(
+      stream: _settings,
+      initialData: MeetingSettings.standard,
+      builder: (context, snap) {
+        final settings = snap.data ?? MeetingSettings.standard;
+        return Gutter(
+          child: ListenableBuilder(
+            listenable: style,
+            builder: (context, _) => style.style == ListStyle.colorful
+                ? _CardGrid(
+                    children: [
+                      for (final m in meetings)
+                        _ColorfulCard(
+                          meeting: m,
+                          me: me,
+                          settings: settings,
+                          onLike: onLike == null
+                              ? null
+                              : (liked) => onLike(m, liked),
+                        ),
+                    ],
+                  )
+                : Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      for (var i = 0; i < meetings.length; i++)
+                        _MinimalRow(
+                          meeting: meetings[i],
+                          me: me,
+                          settings: settings,
+                          last: i == meetings.length - 1,
+                        ),
+                    ],
                   ),
-              ],
-            )
-          : Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                for (var i = 0; i < meetings.length; i++)
-                  _MinimalRow(
-                    meeting: meetings[i],
-                    me: me,
-                    last: i == meetings.length - 1,
-                  ),
-              ],
-            ),
+          ),
+        );
+      },
     );
   }
 }
@@ -211,18 +252,17 @@ class _SortPanelState extends State<_SortPanel> {
   @override
   Widget build(BuildContext context) {
     final vm = widget.vm;
-    return SortPad(
+    return PadSearchField(
       // 말씀묵상 · 중보기도와 같은 검색창 (제목 · 장소 · 모임장 · 소개).
-      header: TextField(
+      child: TextField(
         controller: _search,
         onChanged: vm.setQuery,
         textInputAction: TextInputAction.search,
         decoration: InputDecoration(
-          hintText: '검색',
+          hintText: '모임명을 입력하세요',
           isDense: true,
-          prefixIcon: const Icon(AppIcons.magnifyingGlass, size: 18),
           suffixIcon: vm.query.isEmpty
-              ? null
+              ? const Icon(AppIcons.magnifyingGlass, size: 18)
               : IconButton(
                   icon: const Icon(AppIcons.x, size: 18),
                   onPressed: () {
@@ -232,16 +272,6 @@ class _SortPanelState extends State<_SortPanel> {
                 ),
         ),
       ),
-      groups: [
-        PadGroup(label: '정렬 순서', [
-          for (final s in MeetingSort.values)
-            PadOption(
-              s.label,
-              selected: vm.sort == s,
-              onTap: () => vm.setSort(s),
-            ),
-        ]),
-      ],
     );
   }
 }
@@ -264,6 +294,7 @@ class _CardGrid extends StatelessWidget {
         final width = (box.maxWidth - gap) / 2;
         final scale = MediaQuery.textScalerOf(context).scale(1);
         return GridView.count(
+          padding: EdgeInsets.zero,
           crossAxisCount: 2,
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
@@ -287,10 +318,16 @@ String seatLabel(Meeting m) => m.ended
 
 /// 알록달록: 색이 있는 윗부분에 남은 자리 배지와 하트, 아래에 제목 · 모임장 · 날짜와 장소.
 class _ColorfulCard extends StatelessWidget {
-  const _ColorfulCard({required this.meeting, required this.me, this.onLike});
+  const _ColorfulCard({
+    required this.meeting,
+    required this.me,
+    required this.settings,
+    this.onLike,
+  });
 
   final Meeting meeting;
   final Member me;
+  final MeetingSettings settings;
 
   /// 하트를 눌렀을 때 (누른 뒤의 상태). 앱 개발자는 교인이 아니라 null이다.
   final void Function(bool liked)? onLike;
@@ -310,7 +347,7 @@ class _ColorfulCard extends StatelessWidget {
       child: Ink(
         decoration: BoxDecoration(
           color: palette.surface,
-          border: Border.all(color: palette.border),
+          border: Border.all(color: context.cardEdge),
           borderRadius: BorderRadius.circular(AppRadius.card),
         ),
         child: Column(
@@ -364,27 +401,28 @@ class _ColorfulCard extends StatelessWidget {
                       ],
                     ),
                   ),
-                  Positioned(
-                    right: 0,
-                    top: 0,
-                    // 버튼처럼 보이지 않게: 배경 · 툴팁 · 눌림 효과 없이 하트만 이미지 위에 둔다 (눌러서 바꾸는 것은 그대로).
-                    child: GestureDetector(
-                      behavior: HitTestBehavior.opaque,
-                      onTap: onLike == null ? null : () => onLike!(!liked),
-                      child: Padding(
-                        padding: const EdgeInsets.all(10),
-                        child: LikeHeart(
-                          liked: liked,
-                          size: 22,
-                          likedColor: const Color(0xFFFF6B7A),
-                          unlikedColor: Colors.white,
-                          shadows: const [
-                            Shadow(blurRadius: 6, color: Color(0x73000000)),
-                          ],
+                  if (settings.allowLikes)
+                    Positioned(
+                      right: 0,
+                      top: 0,
+                      // 버튼처럼 보이지 않게: 배경 · 툴팁 · 눌림 효과 없이 하트만 이미지 위에 둔다 (눌러서 바꾸는 것은 그대로).
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: onLike == null ? null : () => onLike!(!liked),
+                        child: Padding(
+                          padding: const EdgeInsets.all(10),
+                          child: LikeHeart(
+                            liked: liked,
+                            size: 22,
+                            likedColor: const Color(0xFFFF6B7A),
+                            unlikedColor: Colors.white,
+                            shadows: const [
+                              Shadow(blurRadius: 6, color: Color(0x73000000)),
+                            ],
+                          ),
                         ),
                       ),
                     ),
-                  ),
                 ],
               ),
             ),
@@ -415,21 +453,11 @@ class _ColorfulCard extends StatelessWidget {
                     const SizedBox(height: 8),
                     Row(
                       children: [
-                        Container(
-                          foregroundDecoration: avatarRing(context, 9),
-                          child: CircleAvatar(
-                            radius: 9,
-                            backgroundColor: hue,
-                            child: Text(
-                              m.leaderName.isEmpty
-                                  ? '?'
-                                  : m.leaderName.characters.first,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 10,
-                              ),
-                            ),
-                          ),
+                        PersonAvatar(
+                          churchId: me.churchId,
+                          uid: m.leaderId,
+                          name: m.leaderName.isEmpty ? '?' : m.leaderName,
+                          radius: 9,
                         ),
                         const SizedBox(width: 6),
                         Expanded(
@@ -521,11 +549,13 @@ class _MinimalRow extends StatelessWidget {
   const _MinimalRow({
     required this.meeting,
     required this.me,
+    required this.settings,
     required this.last,
   });
 
   final Meeting meeting;
   final Member me;
+  final MeetingSettings settings;
   final bool last;
 
   @override
@@ -566,7 +596,7 @@ class _MinimalRow extends StatelessWidget {
                       const SizedBox(height: 4),
                       Text(
                         '${m.leaderName} · ${meetingLine(m.date, m.place)}',
-                        maxLines: 2,
+                        maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(color: palette.muted, fontSize: 13),
                       ),
@@ -586,6 +616,8 @@ class _MinimalRow extends StatelessWidget {
                 ),
                 const SizedBox(width: 16),
                 StatIcons(
+                  showViews: settings.showViews,
+                  showLikeCount: settings.showLikeCount,
                   views: m.views,
                   likes: m.likes,
                   liked: m.likedByUser(me.id),
@@ -594,7 +626,7 @@ class _MinimalRow extends StatelessWidget {
             ),
           ),
         ),
-        if (!last) Divider(height: 1, color: palette.border),
+        if (!last) Divider(height: 1, color: context.cardEdge),
       ],
     );
   }

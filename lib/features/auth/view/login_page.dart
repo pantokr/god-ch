@@ -1,6 +1,9 @@
 import '../../../core/icons.dart';
 
 import 'package:flutter/material.dart';
+
+import '../../../core/widgets/labeled_field.dart';
+
 import 'package:go_router/go_router.dart';
 
 import '../../../app/app_scope.dart';
@@ -78,24 +81,30 @@ class _LoginPageState extends State<LoginPage> {
                         ),
                       ),
                       const SizedBox(height: 24),
-                      TextFormField(
-                        controller: _loginId,
-                        autofillHints: const [AutofillHints.username],
-                        autocorrect: false,
-                        decoration: const InputDecoration(labelText: '아이디'),
-                        validator: (v) => (v == null || v.trim().isEmpty)
-                            ? '아이디를 입력해 주세요'
-                            : null,
+                      LabeledField(
+                        label: '아이디',
+                        child: TextFormField(
+                          controller: _loginId,
+                          autofillHints: const [AutofillHints.username],
+                          autocorrect: false,
+                          decoration: const InputDecoration(),
+                          validator: (v) => (v == null || v.trim().isEmpty)
+                              ? '아이디를 입력해 주세요'
+                              : null,
+                        ),
                       ),
                       AppField.spacer,
-                      TextFormField(
-                        controller: _password,
-                        obscureText: true,
-                        autofillHints: const [AutofillHints.password],
-                        decoration: const InputDecoration(labelText: '비밀번호'),
-                        validator: (v) =>
-                            (v == null || v.isEmpty) ? '비밀번호를 입력해 주세요' : null,
-                        onFieldSubmitted: (_) => _submit(vm),
+                      LabeledField(
+                        label: '비밀번호',
+                        child: TextFormField(
+                          controller: _password,
+                          obscureText: true,
+                          autofillHints: const [AutofillHints.password],
+                          decoration: const InputDecoration(),
+                          validator: (v) =>
+                              (v == null || v.isEmpty) ? '비밀번호를 입력해 주세요' : null,
+                          onFieldSubmitted: (_) => _submit(vm),
+                        ),
                       ),
                       if (vm.error != null) ...[
                         const SizedBox(height: 12),

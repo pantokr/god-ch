@@ -1,9 +1,10 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import '../theme.dart';
 
-/// 큼직한 그림자가 있는 각진 전환 스위치: 옅은 바탕 위에 고른 항목이 흰 판으로 떠오른다.
-/// 고른 항목의 판은 스위치 바탕보다 사방으로 조금 더 크고, 글자는 강조색 굵은 글씨다.
+/// 테두리만으로 이루어진 알약 전환 스위치: 옅은 회색 바탕 안에서, 고른 항목만 흰 판에 진한 테두리로 둘러싼다.
 /// 항목은 같은 폭으로 나뉜다.
 class ShadowSwitch<T> extends StatelessWidget {
   const ShadowSwitch({
@@ -19,87 +20,99 @@ class ShadowSwitch<T> extends StatelessWidget {
   final ValueChanged<T> onChanged;
   final String Function(T value) labelOf;
 
-  /// 각진 모서리.
-  static const _radius = 4.0;
+  /// 알약 모양의 둥근 모서리.
+  static const _radius = 999.0;
+
+  /// 항목 하나의 최소 너비. 가장 긴 글자에 맞춰 더 넓어진다 (스위치는 항목 수만큼만 폭을 쓴다).
+  static const _itemWidth = 92.0;
 
   /// 고른 판이 바탕 밖으로 튀어나오는 정도.
-  static const _grow = Offset(4, 6);
+  static const _grow = Offset(4, 4);
 
   @override
   Widget build(BuildContext context) {
     final palette = context.palette;
-    final dark = Theme.of(context).brightness == Brightness.dark;
-    final shadow = dark ? Colors.black : const Color(0xFF2A2F6B);
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: palette.brand.withValues(alpha: dark ? 0.16 : 0.07),
-        borderRadius: BorderRadius.circular(_radius),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(6),
-        child: Row(
-          children: [
-            for (final v in values)
-              Expanded(
-                child: GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onTap: () => onChanged(v),
-                  child: Stack(
-                    clipBehavior: Clip.none,
-                    alignment: Alignment.center,
-                    children: [
-                      Positioned(
-                        left: -_grow.dx,
-                        right: -_grow.dx,
-                        top: -_grow.dy,
-                        bottom: -_grow.dy,
-                        child: AnimatedOpacity(
-                          duration: const Duration(milliseconds: 180),
-                          opacity: v == selected ? 1 : 0,
-                          child: DecoratedBox(
-                            decoration: BoxDecoration(
-                              color: palette.surface,
-                              borderRadius: BorderRadius.circular(_radius),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: shadow.withValues(
-                                    alpha: dark ? 0.55 : 0.2,
-                                  ),
-                                  blurRadius: 24,
-                                  offset: const Offset(0, 10),
+    return Center(
+      child: ConstrainedBox(
+        // 글자가 길면 항목이 넓어져 답답하지 않게 한다 (글자 한 자 약 15, 좌우 여백 포함).
+        constraints: BoxConstraints(
+          maxWidth:
+              math.max(
+                _itemWidth,
+                (values.map((v) => labelOf(v).length).reduce(math.max) * 15 +
+                        40)
+                    .toDouble(),
+              ) *
+              values.length,
+        ),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: palette.ink.withValues(alpha: 0.06),
+            borderRadius: BorderRadius.circular(_radius),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(4),
+            child: Row(
+              children: [
+                for (final v in values)
+                  Expanded(
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: () => onChanged(v),
+                      child: Stack(
+                        clipBehavior: Clip.none,
+                        alignment: Alignment.center,
+                        children: [
+                          Positioned(
+                            left: -_grow.dx,
+                            right: -_grow.dx,
+                            top: -_grow.dy,
+                            bottom: -_grow.dy,
+                            child: AnimatedOpacity(
+                              duration: const Duration(milliseconds: 180),
+                              opacity: v == selected ? 1 : 0,
+                              child: DecoratedBox(
+                                decoration: BoxDecoration(
+                                  color: palette.surface,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withValues(
+                                        alpha: 0.2,
+                                      ),
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ],
+                                  borderRadius: BorderRadius.circular(_radius),
                                 ),
-                                BoxShadow(
-                                  color: shadow.withValues(
-                                    alpha: dark ? 0.4 : 0.1,
-                                  ),
-                                  blurRadius: 6,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ],
+                              ),
                             ),
                           ),
-                        ),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        child: Text(
-                          labelOf(v),
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: v == selected
-                                ? FontWeight.w800
-                                : FontWeight.w500,
-                            color: v == selected
-                                ? palette.brand
-                                : palette.muted,
+                          Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 6,
+                            ),
+                            child: Text(
+                              labelOf(v),
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: v == selected
+                                    ? FontWeight.w800
+                                    : FontWeight.w500,
+                                color: v == selected
+                                    ? palette.ink
+                                    : palette.muted,
+                              ),
+                            ),
                           ),
-                        ),
+                        ],
                       ),
-                    ],
+                    ),
                   ),
-                ),
-              ),
-          ],
+              ],
+            ),
+          ),
         ),
       ),
     );

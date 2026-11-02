@@ -9,14 +9,13 @@ class AppIcons {
 
   static const IconData arrowLeft = LucideIcons.arrowLeft;
   static const IconData arrowRight = LucideIcons.arrowRight;
-  static const IconData arrowSquareOut = LucideIcons.externalLink;
   static const IconData arrowUUpLeft = LucideIcons.undo2;
   static const IconData bell = LucideIcons.bell;
   static const IconData bookOpen = LucideIcons.bookOpen;
   static const IconData bookOpenFill = LucideIcons600.bookOpen;
   static const IconData calendar = LucideIcons.calendarDays;
+  static const IconData cake = LucideIcons.cake;
   static const IconData calendarBlank = LucideIcons.calendar;
-  static const IconData caretUp = LucideIcons.chevronUp;
   static const IconData caretDown = LucideIcons.chevronDown;
   static const IconData caretRight = LucideIcons.chevronRight;
   static const IconData caretLeft = LucideIcons.chevronLeft;
@@ -30,13 +29,21 @@ class AppIcons {
   static const IconData circleFill = LucideIcons600.circle;
   static const IconData clipboardText = LucideIcons.clipboardList;
   static const IconData compass = LucideIcons.compass;
-  static const IconData compassFill = LucideIcons600.compass;
   static const IconData copy = LucideIcons.copy;
-  static const IconData dotsThree = LucideIcons.ellipsis;
   static const IconData eyeCount = LucideIcons.eye;
   static const IconData heart = LucideIcons.heart;
   static const IconData heartFill = LucideIcons600.heart;
   static const IconData listView = LucideIcons.list;
+  static const IconData history = LucideIcons.history;
+  static const IconData star = LucideIcons.star;
+  static const IconData flame = LucideIcons.flame;
+  static const IconData music = LucideIcons.music;
+  static const IconData flag = LucideIcons.flag;
+  static const IconData award = LucideIcons.award;
+  static const IconData sprout = LucideIcons.sprout;
+  static const IconData megaphone = LucideIcons.megaphone;
+  static const IconData gem = LucideIcons.gem;
+  static const IconData handshake = LucideIcons.handshake;
   static const IconData colorful = LucideIcons.palette;
   static const IconData mapPin = LucideIcons.mapPin;
   static const IconData calendarDays = LucideIcons.calendarDays;
@@ -44,7 +51,6 @@ class AppIcons {
   static const IconData messageCircle = LucideIcons.messageCircle;
   static const IconData envelopeSimple = LucideIcons.mail;
   static const IconData fileArrowUp = LucideIcons.fileUp;
-  static const IconData gear = LucideIcons.settings;
   static const IconData globe = LucideIcons.globe;
   static const IconData globeHemisphereEast = LucideIcons.globe;
   static const IconData googleLogo = LucideIcons.logIn;

@@ -1,4 +1,5 @@
 import '../features/bible/data/bible_repository.dart';
+import '../features/people/data/people_repository.dart';
 import '../features/notifications/data/notification_repository.dart';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -87,6 +88,7 @@ class _AppState extends State<App> {
   );
   late final PositionRepository _positions = PositionRepository(_db, _auth);
   late final MemberRepository _members = MemberRepository(_db, _auth);
+  late final PeopleRepository _people = PeopleRepository(_db);
   late final PrayerRepository _prayers = PrayerRepository(_db, _auth);
   late final BibleRepository _bible = BibleRepository(FirebaseStorage.instance);
   late final NotificationRepository _notifications = NotificationRepository(
@@ -134,6 +136,7 @@ class _AppState extends State<App> {
       meetings: _meetings,
       positions: _positions,
       members: _members,
+      people: _people,
       prayers: _prayers,
       notifications: _notifications,
       bible: _bible,

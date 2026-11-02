@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/routes.dart';
-import '../../../core/layout/profile_summary.dart';
 import '../../../core/layout/sidebar_scaffold.dart';
 import '../../notifications/view/notifications_button.dart';
 
@@ -42,10 +41,7 @@ class PlatformShell extends StatelessWidget {
   Widget build(BuildContext context) {
     return SidebarScaffold(
       userName: userName,
-      onProfile: () => context.push(
-        Routes.account,
-        extra: const [ProfileDetail('역할', '앱 운영자')],
-      ),
+      onProfile: () => context.push(Routes.account),
       onSignOut: onSignOut,
       railActions: const [NotificationsButton()],
       groups: [

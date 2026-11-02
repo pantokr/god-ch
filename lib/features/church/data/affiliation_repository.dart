@@ -20,9 +20,12 @@ class AffiliationRepository {
       .orderBy('createdAt')
       .snapshots()
       .map(
-        (s) => s.docs
-            .map((d) => Affiliation(d.id, d.data()['name'] as String? ?? ''))
-            .toList(),
+        (s) => [
+          for (final d in s.docs)
+            // 지운 소속은 문서를 남기고 목록에서만 뺀다.
+            if (d.data()['deleted'] != true)
+              Affiliation(d.id, d.data()['name'] as String? ?? ''),
+        ],
       );
 
   DocumentReference<Map<String, dynamic>> _features(String churchId) =>
@@ -46,8 +49,19 @@ class AffiliationRepository {
           'createdBy': _auth.uid,
           'createdAt': FieldValue.serverTimestamp(),
         })
-        .then((_) => syncAdminAffiliations(_paths, churchId));
+        // 교회 관리자가 아닌 사람이 만들 때는 맞추기가 막힐 수 있다: 소속 생성은 이미 끝났으니 오류로 보지 않는다.
+        .then(
+          (_) => syncAdminAffiliations(_paths, churchId).catchError((_) {}),
+        );
   }
+
+  /// 소속을 지운 것으로 표시한다 (문서와 교인의 소속 기록은 남기고 목록에서만 사라진다).
+  Future<void> delete(String churchId, String id) =>
+      _paths.affiliations(churchId).doc(id).update({
+        'deleted': true,
+        'deletedAt': FieldValue.serverTimestamp(),
+        'deletedBy': _auth.uid,
+      });
 
   Future<void> rename(String churchId, String id, String name) {
     final trimmed = name.trim();

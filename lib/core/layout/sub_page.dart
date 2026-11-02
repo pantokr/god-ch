@@ -28,7 +28,6 @@ class SubPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final pad = pagePadding(context);
     return Scaffold(
       body: SafeArea(
         child: SingleChildScrollView(
@@ -38,8 +37,12 @@ class SubPage extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Transform.translate(
-                  offset: Offset(-(pad > 8 ? 8.0 : pad), 0),
+                Padding(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: textGutter(context) > 8
+                        ? textGutter(context) - 8
+                        : 0,
+                  ),
                   child: Row(
                     children: [
                       IconButton(

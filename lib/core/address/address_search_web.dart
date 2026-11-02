@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:js_interop';
 import 'dart:js_interop_unsafe';
 
+import 'package:flutter/widgets.dart' show BuildContext;
+
 import '../app_exception.dart';
 import 'address_result.dart';
 
@@ -18,7 +20,7 @@ extension type _DaumPostcode._(JSObject _) implements JSObject {
 /// 카카오(다음) 우편번호 서비스 창을 열고, 사용자가 고른 도로명 주소를 돌려준다.
 /// 창을 선택 없이 닫으면 null을 돌려준다.
 /// web/index.html에 우편번호 스크립트가 있어야 한다.
-Future<AddressResult?> searchRoadAddress() {
+Future<AddressResult?> searchRoadAddress(BuildContext context) {
   final completer = Completer<AddressResult?>();
   try {
     final options = JSObject()

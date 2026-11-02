@@ -13,7 +13,7 @@ import '../../../core/layout/confirm_dialog.dart';
 import '../../../core/layout/sub_page.dart';
 import '../../../core/mvvm/view_model_builder.dart';
 import '../../../core/theme.dart';
-import '../../../core/widgets/stat_icons.dart';
+import '../../home/view/post_meta.dart';
 import '../../../core/widgets/thumbnail_avatar.dart';
 import '../../../data/models/permission.dart';
 import '../../../data/models/affiliation.dart';
@@ -72,10 +72,10 @@ class DevotionDetailPage extends StatelessWidget {
                   label: const Text('수정'),
                   onPressed: () => _edit(context, vm, c),
                 ),
-              // 삭제: 본인 글은 본인 글 삭제 권한, 타인 글은 타인 글 삭제 권한.
+              // 삭제: 본인 글은 글을 쓸 수 있으면 누구나, 타인 글은 타인 글 삭제 권한이 있어야 한다.
               if (me.can(
                 c.authorId == me.id
-                    ? Permission.devotionDeleteOwn
+                    ? Permission.devotionWrite
                     : Permission.devotionDeleteOthers,
               ))
                 TextButton.icon(
@@ -88,7 +88,12 @@ class DevotionDetailPage extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                _VerseCard(content: c, showAuthor: vm.settings.showAuthor),
+                _VerseCard(
+                  content: c,
+                  churchId: me.churchId,
+                  showAuthor: vm.settings.showAuthor,
+                  showViews: vm.settings.showViews,
+                ),
                 const SizedBox(height: 12),
                 _MeditationCard(content: c),
                 // 하트 · 조회수 줄은 위 내용과 여유를 둔다.
@@ -108,7 +113,7 @@ class DevotionDetailPage extends StatelessWidget {
                     publicList: vm.settings.reflectionsPublic,
                     canWrite:
                         vm.settings.allowReflections &&
-                        me.can(Permission.devotionInteract),
+                        me.can(Permission.devotionComment),
                   ),
               ],
             ),
@@ -206,9 +211,18 @@ class _Section extends StatelessWidget {
 /// 성경 본문 카드: 색이 깊게 깔린 큰 카드에 인용 부호, 구절 이름표, 본문을 크게 앉힌다.
 /// 글쓴이와 날짜는 아래쪽 줄에 둔다.
 class _VerseCard extends StatelessWidget {
-  const _VerseCard({required this.content, this.showAuthor = true});
+  const _VerseCard({
+    required this.content,
+    required this.churchId,
+    this.showAuthor = true,
+    this.showViews = true,
+  });
 
   final ChurchContent content;
+  final String churchId;
+
+  /// 조회수 공개 설정.
+  final bool showViews;
 
   /// 글쓴이 공개 설정.
   final bool showAuthor;
@@ -304,34 +318,37 @@ class _VerseCard extends StatelessWidget {
                   const SizedBox(height: 20),
                   Divider(color: onColor.withValues(alpha: 0.25), height: 1),
                   const SizedBox(height: 14),
-                  Row(
-                    children: [
-                      if (content.authorName.isNotEmpty && showAuthor) ...[
+                  // 본문 아래에: 이름 → 날짜와 각종 정보 (중보기도와 같은 순서와 모양).
+                  if (content.authorName.isNotEmpty && showAuthor) ...[
+                    Row(
+                      children: [
                         ThumbnailAvatar(
                           name: content.authorName,
                           url: content.authorPhotoUrl,
                           radius: 13,
                         ),
                         const SizedBox(width: 8),
-                        Text(
-                          content.authorName,
-                          style: TextStyle(
-                            color: onColor,
-                            fontWeight: FontWeight.w700,
-                            fontSize: 13.5,
+                        Expanded(
+                          child: Text(
+                            content.authorName,
+                            style: TextStyle(
+                              color: onColor,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 16,
+                            ),
                           ),
                         ),
-                        const Spacer(),
-                      ] else
-                        const Spacer(),
-                      Text(
-                        fmtDateAt(content.date, content.createdAt),
-                        style: TextStyle(
-                          color: onColor.withValues(alpha: 0.8),
-                          fontSize: 12.5,
-                        ),
-                      ),
-                    ],
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                  ],
+                  PostMeta(
+                    churchId: churchId,
+                    date: fmtDateAt(content.date, content.createdAt),
+                    views: showViews ? content.views : null,
+                    isPrivate: content.isPrivate,
+                    affiliationId: content.affiliationId,
+                    color: onColor.withValues(alpha: 0.8),
                   ),
                 ],
               ),
@@ -375,28 +392,20 @@ class _ReactionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final liked = content.likedBy.contains(me.id);
-    final muted = context.palette.muted;
     return Card(
       shape: context.edgedCardShape,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
         child: Row(
           children: [
-            if (settings.allowLikes && me.can(Permission.devotionInteract))
+            if (settings.allowLikes && me.can(Permission.devotionReact))
               LikeButton(
                 liked: liked,
                 count: content.likes,
+                showCount: settings.showLikeCount,
                 onTap: () => vm.setLike(!liked),
               ),
             const Spacer(),
-            if (settings.showViews) ...[
-              Icon(AppIcons.eyeCount, size: 16, color: muted),
-              const SizedBox(width: 4),
-              Text(
-                '조회 ${StatIcons.compact(content.views)}',
-                style: TextStyle(color: muted, fontSize: 13),
-              ),
-            ],
           ],
         ),
       ),

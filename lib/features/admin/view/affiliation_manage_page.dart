@@ -1,14 +1,16 @@
 import '../../../core/widgets/app_loader.dart';
+import '../../../core/layout/responsive.dart';
 import '../../../core/icons.dart';
 
 import 'package:flutter/material.dart';
 
+import '../../../core/widgets/labeled_field.dart';
+
 import '../../../app/app_scope.dart';
 import '../../../core/layout/app_dialog.dart';
-import '../../../core/layout/confirm_dialog.dart';
+import '../../../data/models/permission.dart';
 import '../../../core/layout/page_frame.dart';
 import '../../../core/mvvm/view_model_builder.dart';
-import '../../../data/models/church_features.dart';
 import '../../../data/models/affiliation.dart';
 import '../../../data/models/member.dart';
 import '../../home/view/content_widgets.dart';
@@ -24,6 +26,7 @@ class AffiliationManagePage extends StatelessWidget {
   final Member me;
   final void Function(Affiliation affiliation)? onOpen;
 
+  /// 소속 카드를 누르면 바로 그 소속의 인원 화면으로 간다.
   void _open(BuildContext context, Affiliation d) {
     final open = onOpen;
     if (open != null) return open(d);
@@ -66,13 +69,15 @@ class AffiliationManagePage extends StatelessWidget {
       },
       builder: (context, vm) => SingleChildScrollView(
         child: PageFrame(
+          // 이 화면은 내용 전체가 좌우 여백 안에 놓인다.
+          inset: true,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              PageTitle(title: '회원 소속 관리'),
+              PageTitle(title: '소속 관리'),
               // 제목 옆이 아니라 다음 줄에 둔다.
               // 소속을 만들고 고치는 것은 앱을 고치는 일이라 교회 관리자만 한다 (교역자는 조회와 인원 배치).
-              if (me.isAdmin) ...[
+              if (me.can(Permission.affiliationCreate)) ...[
                 Align(
                   alignment: Alignment.centerLeft,
                   child: FilledButton.icon(
@@ -93,55 +98,29 @@ class AffiliationManagePage extends StatelessWidget {
                   if (items == null) {
                     return const Center(child: AppLoader());
                   }
-                  if (items.isEmpty) {
-                    return const EmptyHint('만들어진 소속이 없어요.');
-                  }
                   return StreamBuilder<List<Member>>(
                     stream: vm.members,
                     builder: (context, members) {
                       final all = members.data ?? const <Member>[];
                       // 소속마다 카드 한 장: 격자로 늘어놓는다 (좁은 화면에서도 두 열).
-                      return StreamBuilder<ChurchFeatures>(
-                        stream: vm.features,
-                        builder: (context, feat) {
-                          final features =
-                              feat.data ?? ChurchFeatures.unconfigured;
-                          return ColumnWrap(
-                            wide: 2,
-                            narrow: 2,
-                            children: [
-                              for (final d in items)
-                                _AffiliationCard(
-                                  affiliation: d,
-                                  count: vm.inAffiliation(all, d.id).length,
-                                  features: features,
-                                  canEdit: me.isAdmin,
-                                  onOpen: () => _open(context, d),
-                                  onRename: () =>
-                                      _edit(context, vm, affiliation: d),
-                                  onFeature: (group, on) async {
-                                    final ok = await confirmChange(
-                                      context,
-                                      title:
-                                          '${d.name}의 ${group.label} 서비스를 ${on ? '켤까요' : '끌까요'}?',
-                                      body: on
-                                          ? '이 소속 교인이 ${group.label} 탭을 쓸 수 있어요.'
-                                          : '이 소속 교인은 ${group.label} 탭을 쓸 수 없어요. 다른 소속에서 허용되면 계속 쓸 수 있어요.',
-                                    );
-                                    if (ok) {
-                                      await vm.setFeature(
-                                        features,
-                                        items,
-                                        d,
-                                        group,
-                                        on,
-                                      );
-                                    }
-                                  },
-                                ),
-                            ],
-                          );
-                        },
+                      return ColumnWrap(
+                        wide: 2,
+                        narrow: 2,
+                        children: [
+                          // 기본 소속 "미배정": 소속 없이 입장한 교인이 있다. 이름 변경 · 삭제가 없다.
+                          _UnassignedCard(
+                            count: [
+                              for (final m in all)
+                                if (m.isApproved && m.isUnassigned) m,
+                            ].length,
+                          ),
+                          for (final d in items)
+                            _AffiliationCard(
+                              affiliation: d,
+                              count: vm.inAffiliation(all, d.id).length,
+                              onEdit: () => _open(context, d),
+                            ),
+                        ],
                       );
                     },
                   );
@@ -149,7 +128,12 @@ class AffiliationManagePage extends StatelessWidget {
               ),
               if (vm.error != null)
                 Padding(
-                  padding: const EdgeInsets.only(top: 12),
+                  padding: EdgeInsets.fromLTRB(
+                    textGutter(context),
+                    12,
+                    textGutter(context),
+                    0,
+                  ),
                   child: Text(
                     vm.error!,
                     style: TextStyle(
@@ -189,24 +173,14 @@ class _AffiliationCard extends StatelessWidget {
   const _AffiliationCard({
     required this.affiliation,
     required this.count,
-    required this.features,
-    required this.canEdit,
-    required this.onOpen,
-    required this.onRename,
-    required this.onFeature,
+    required this.onEdit,
   });
 
   final Affiliation affiliation;
   final int count;
-  final ChurchFeatures features;
 
-  /// 이름 변경과 기도 · 말씀 켜기/끄기는 교회 관리자만 한다. 교역자는 보기만 한다.
-  final bool canEdit;
-  final VoidCallback onOpen;
-  final VoidCallback onRename;
-
-  /// 이 소속의 기도 · 말씀 탭을 켜거나 끈다.
-  final void Function(PageFeature feature, bool on) onFeature;
+  /// 오른쪽 위 수정 버튼: 그 소속의 관리 화면으로 간다. 카드의 나머지 부분은 눌러도 아무 일도 없다.
+  final VoidCallback onEdit;
 
   @override
   Widget build(BuildContext context) {
@@ -219,83 +193,111 @@ class _AffiliationCard extends StatelessWidget {
         border: Border.all(color: palette.border.withValues(alpha: 0.7)),
         boxShadow: AppShadow.soft(context),
       ),
-      child: Material(
-        type: MaterialType.transparency,
-        child: InkWell(
-          borderRadius: radius,
-          onTap: onOpen,
-          child: SizedBox(
-            height: 216,
-            child: Stack(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(
-                        width: 40,
-                        height: 40,
-                        decoration: BoxDecoration(
-                          gradient: AppDepth.brand(context),
-                          borderRadius: BorderRadius.circular(
-                            AppRadius.control,
-                          ),
-                        ),
-                        child: Icon(
-                          AppIcons.usersThree,
-                          size: 22,
-                          color: palette.onBrand,
-                        ),
-                      ),
-                      const Spacer(),
-                      Text(
-                        affiliation.name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w800,
-                          fontSize: 16,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        '$count명',
-                        style: TextStyle(color: palette.muted, fontSize: 13),
-                      ),
-                      const SizedBox(height: 8),
-                      // 이 소속이 기도 · 말씀 탭을 쓸 수 있는지.
-                      Wrap(
-                        spacing: 6,
-                        children: [
-                          for (final g in PageFeature.values)
-                            FilterChip(
-                              visualDensity: VisualDensity.compact,
-                              label: Text(g.label),
-                              selected: features.allows(g, affiliation.id),
-                              onSelected: canEdit
-                                  ? (on) => onFeature(g, on)
-                                  : null,
-                            ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                if (canEdit)
-                  Positioned(
-                    top: 4,
-                    right: 4,
-                    child: IconButton(
-                      tooltip: '이름 변경',
-                      icon: const Icon(AppIcons.pencilSimple, size: 20),
-                      onPressed: onRename,
+      child: SizedBox(
+        height: 156,
+        child: Stack(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      gradient: AppDepth.brand(context),
+                      borderRadius: BorderRadius.circular(AppRadius.control),
+                    ),
+                    child: Icon(
+                      AppIcons.usersThree,
+                      size: 22,
+                      color: palette.onBrand,
                     ),
                   ),
-              ],
+                  const Spacer(),
+                  Text(
+                    affiliation.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 16,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    '$count명',
+                    style: TextStyle(color: palette.muted, fontSize: 13),
+                  ),
+                ],
+              ),
             ),
-          ),
+            Positioned(
+              top: 4,
+              right: 4,
+              child: IconButton(
+                tooltip: '수정',
+                icon: const Icon(AppIcons.pencilSimple, size: 20),
+                onPressed: onEdit,
+              ),
+            ),
+          ],
         ),
+      ),
+    );
+  }
+}
+
+/// 기본 소속 "미배정" 카드: 입장할 때 소속을 고르지 않은 교인의 수. 지울 수 없고 눌러도 열리지 않는다.
+class _UnassignedCard extends StatelessWidget {
+  const _UnassignedCard({required this.count});
+
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = context.palette;
+    return Container(
+      height: 156,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: palette.surface,
+        borderRadius: BorderRadius.circular(AppRadius.card),
+        border: Border.all(color: palette.border.withValues(alpha: 0.7)),
+        boxShadow: AppShadow.soft(context),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: palette.muted.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(AppRadius.control),
+            ),
+            child: Icon(AppIcons.usersThree, size: 22, color: palette.muted),
+          ),
+          const Spacer(),
+          Text(
+            Affiliation.unassignedName,
+            style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+          ),
+          const SizedBox(height: 2),
+          Text('$count명', style: TextStyle(color: palette.muted, fontSize: 13)),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Icon(AppIcons.lock, size: 14, color: palette.muted),
+              const SizedBox(width: 4),
+              Text(
+                '기본',
+                style: TextStyle(color: palette.muted, fontSize: 12.5),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -331,12 +333,15 @@ class _AffiliationNameFormState extends State<_AffiliationNameForm> {
           style: Theme.of(context).textTheme.titleLarge,
         ),
         AppField.spacer,
-        TextField(
-          controller: _controller,
-          autofocus: true,
-          maxLength: 30,
-          decoration: const InputDecoration(labelText: '소속 이름'),
-          onSubmitted: (v) => Navigator.pop(context, v),
+        LabeledField(
+          label: '소속 이름',
+          child: TextField(
+            controller: _controller,
+            autofocus: true,
+            maxLength: 30,
+            decoration: const InputDecoration(),
+            onSubmitted: (v) => Navigator.pop(context, v),
+          ),
         ),
         const SizedBox(height: 8),
         Row(

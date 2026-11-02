@@ -50,6 +50,9 @@ class ChurchContent {
 
   /// 말씀에 대한 묵상 글 (교역자가 쓴다).
   final String meditation;
+
+  /// 묵상 최소 글자 수. `firestore.rules`의 제한과 같아야 한다.
+  static const minMeditation = 10;
   final int views;
   final List<String> likedBy;
 

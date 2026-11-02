@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../theme.dart';
 import '../widgets/thumbnail_avatar.dart';
-import 'app_dialog.dart';
 
 /// 프로필에 덧붙여 보여줄 항목 한 줄 (예: 교회 / 역할).
 class ProfileDetail {
@@ -74,37 +73,3 @@ class ProfileSummary extends StatelessWidget {
     );
   }
 }
-
-/// 데스크톱에서 "내 정보" 버튼을 눌렀을 때 뜨는 대화상자.
-Future<void> showProfileDialog(
-  BuildContext context, {
-  required String name,
-  List<ProfileDetail> details = const [],
-  Widget? extras,
-}) => showAppDialog<void>(
-  context,
-  maxWidth: 420,
-  child: Column(
-    mainAxisSize: MainAxisSize.min,
-    crossAxisAlignment: CrossAxisAlignment.stretch,
-    children: [
-      Text('내 정보', style: Theme.of(context).textTheme.titleMedium),
-      const SizedBox(height: 16),
-      ProfileSummary(name: name, details: details),
-      if (extras != null) ...[
-        const SizedBox(height: 16),
-        const Divider(),
-        const SizedBox(height: 16),
-        extras,
-      ],
-      const SizedBox(height: 16),
-      Align(
-        alignment: Alignment.centerRight,
-        child: FilledButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('닫기'),
-        ),
-      ),
-    ],
-  ),
-);

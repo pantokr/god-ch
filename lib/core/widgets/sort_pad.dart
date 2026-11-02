@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../layout/responsive.dart';
 import '../icons.dart';
+import '../layout/page_frame.dart';
 import '../theme.dart';
 
 /// 정렬 패드의 선택지 하나: 고른 것은 굵고 밑줄, 나머지는 보통 굵기. 글자는 모두 검은색이다.
@@ -22,7 +24,7 @@ class PadGroup {
 }
 
 /// 목록 위의 정렬 · 분류 패드. 일정 · 중보기도 · 말씀묵상 · 내 활동이 같은 모양을 쓴다.
-/// 각진 테두리 상자 안에 [header](검색창 등)와 줄들이 같은 간격으로 쌓이고, 쓰는 필드만 줄로 넣는다.
+/// [header](검색창 등)는 패널 밖 바로 위에 따로 놓이고, 각진 테두리 상자 안에는 줄들이 쌓인다. 쓰는 필드만 줄로 넣는다.
 /// 줄마다 왼쪽에 설명 글자가 있고 선택지는 텍스트 버튼이고, 한 줄에 다 안 들어가면 줄바꿈 없이 좌우로 민다. 글자는 검은색(본문 글자색)이다.
 class SortPad extends StatelessWidget {
   const SortPad({super.key, this.header, required this.groups});
@@ -36,8 +38,8 @@ class SortPad extends StatelessWidget {
   /// 모서리 반지름 (각진 모양).
   static const radius = 4.0;
 
-  /// 검색창(머리)과 첫 줄 사이 간격.
-  static const headerGap = 44.0;
+  /// 검색창(머리)과 패널 사이 간격.
+  static const headerGap = 12.0;
 
   /// 줄(소속 · 정렬 순서 등) 한 줄의 높이와 줄 사이 간격. 글자 버튼 높이(40)에 맞춘 원래 간격이다.
   static const rowHeight = 40.0;
@@ -54,37 +56,19 @@ class SortPad extends StatelessWidget {
         if (g.options.isNotEmpty) g,
     ];
     final hasLabels = rows.any((g) => g.label != null);
-    return DecoratedBox(
+    final box = DecoratedBox(
       decoration: BoxDecoration(
         color: palette.surface,
         border: Border.all(color: palette.border),
         borderRadius: BorderRadius.circular(radius),
       ),
       child: Padding(
-        // 패널을 키운다: 안쪽 여백을 넉넉히 주고, 검색창은 높게 한다 (아래 줄과는 [headerGap]만큼 띄운다).
         padding: const EdgeInsets.fromLTRB(16, 20, 16, 20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            if (header != null)
-              Theme(
-                data: Theme.of(context).copyWith(
-                  inputDecorationTheme: Theme.of(context).inputDecorationTheme
-                      .copyWith(
-                        contentPadding: const EdgeInsets.symmetric(
-                          vertical: 18,
-                          horizontal: 14,
-                        ),
-                      ),
-                ),
-                child: header!,
-              ),
             for (var i = 0; i < rows.length; i++) ...[
-              // 검색창과 첫 줄 사이는 넉넉히, 줄끼리는 좁게.
-              if (i == 0 && header != null)
-                const SizedBox(height: headerGap)
-              else if (i > 0)
-                const SizedBox(height: rowGap),
+              if (i > 0) const SizedBox(height: rowGap),
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -124,6 +108,42 @@ class SortPad extends StatelessWidget {
             ],
           ],
         ),
+      ),
+    );
+    if (header != null) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          PadSearchField(child: header!),
+          if (rows.isNotEmpty) ...[const SizedBox(height: headerGap), box],
+        ],
+      );
+    }
+    // 줄이 하나도 없으면 빈 상자를 그리지 않는다.
+    return rows.isEmpty ? const SizedBox.shrink() : box;
+  }
+}
+
+/// 검색 필드: 다른 입력칸과 같은 모양에 안쪽 여백만 넉넉하다. 안의 [TextField]에 입힌다.
+class PadSearchField extends StatelessWidget {
+  const PadSearchField({super.key, required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Gutter(
+      child: Theme(
+        data: theme.copyWith(
+          inputDecorationTheme: theme.inputDecorationTheme.copyWith(
+            contentPadding: const EdgeInsets.symmetric(
+              vertical: 18,
+              horizontal: 18,
+            ),
+          ),
+        ),
+        child: child,
       ),
     );
   }
@@ -262,6 +282,182 @@ class _SlideRowState extends State<_SlideRow> {
           if (_more) edge(right: true),
         ],
       ),
+    );
+  }
+}
+
+/// 패널 없이 목록 위에 붙여 놓는 정렬 줄: 글자 버튼이 가운데에 모여 같은 너비로 나뉜다.
+class SortStrip extends StatelessWidget {
+  const SortStrip({super.key, required this.options});
+
+  final List<PadOption> options;
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = context.palette;
+    final ink = palette.ink;
+    // 정렬 줄의 배경: 라이트 모드는 흰색, 다크 모드는 카드 바탕색 (검색 필드와 같다).
+    final fill = Theme.of(context).brightness == Brightness.dark
+        ? palette.surface
+        : Colors.white;
+    final bleed = PageBleed.maybeOf(context);
+    final buttons = Row(
+      children: [
+        for (final o in options)
+          Expanded(
+            child: TextButton(
+              onPressed: o.onTap,
+              style: TextButton.styleFrom(
+                foregroundColor: ink,
+                minimumSize: const Size(0, 36),
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  o.label,
+                  style: TextStyle(
+                    fontWeight: o.selected ? FontWeight.w800 : FontWeight.w500,
+                    decoration: o.selected
+                        ? TextDecoration.underline
+                        : TextDecoration.none,
+                  ),
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+    return Padding(
+      // 위(구분선)는 아래(목록)보다 더 넉넉히 띄운다.
+      padding: const EdgeInsets.only(top: 14, bottom: 16),
+      child: bleed == null
+          // 페이지 틀 밖에서는 놓인 자리 너비 전체에 테두리 상자를 두른다.
+          ? SizedBox(
+              width: double.infinity,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: fill,
+                  border: Border.all(color: palette.border),
+                  borderRadius: BorderRadius.circular(AppRadius.card),
+                ),
+                child: buttons,
+              ),
+            )
+          // 페이지 틀 안에서는 배경 띠가 화면(페이지 영역) 좌우 끝까지 퍼지고, 버튼은 내용 너비 안에 놓인다
+          // (띠 바깥으로 나간 부분은 눌리지 않으므로 버튼까지 늘리지 않는다).
+          : SizedBox(
+              height: 38,
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Positioned(
+                    left: -bleed.extra,
+                    right: -bleed.extra,
+                    top: 0,
+                    bottom: 0,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: fill,
+                        border: Border.symmetric(
+                          horizontal: BorderSide(color: palette.border),
+                        ),
+                      ),
+                    ),
+                  ),
+                  Positioned.fill(child: buttons),
+                ],
+              ),
+            ),
+    );
+  }
+}
+
+/// 정렬 줄 아래 목록 · 격자의 바깥 배경: 정렬 줄과 한 덩어리로 느껴지도록 같은 흰색(다크 모드는 카드 바탕색) 띠가
+/// 화면(페이지 영역) 좌우 끝까지 퍼지고 아래에 옅은 테두리선이 있다. 정렬 줄 아래 간격까지 같은 색으로 이어진다.
+class SortBody extends StatelessWidget {
+  const SortBody({super.key, required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = context.palette;
+    final fill = Theme.of(context).brightness == Brightness.dark
+        ? palette.surface
+        : Colors.white;
+    final extra = PageBleed.maybeOf(context)?.extra ?? 0;
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Positioned(
+          left: -extra,
+          right: -extra,
+          // 정렬 줄 아래 간격(16)까지 덮는다.
+          top: -16,
+          bottom: 0,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: fill,
+              border: Border(bottom: BorderSide(color: palette.border)),
+            ),
+          ),
+        ),
+        // Ink 카드는 가장 가까운 Material 위에 그려지므로, 배경 띠 위에 새 Material을 깔아 카드가 띠에 가려지지 않게 한다.
+        Material(
+          type: MaterialType.transparency,
+          child: Padding(
+            padding: const EdgeInsets.only(bottom: 16),
+            child: child,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// 한 영역의 바깥 박스: 흰색(다크 모드는 카드 바탕색) 띠가 화면(페이지 영역) 좌우 끝까지 퍼지고 위아래에 옅은 테두리선이 있다.
+/// 안쪽 내용은 내용 너비 안에 놓인다.
+class BleedBox extends StatelessWidget {
+  const BleedBox({
+    super.key,
+    required this.child,
+    this.padding = const EdgeInsets.symmetric(vertical: 20),
+  });
+
+  final Widget child;
+  final EdgeInsetsGeometry padding;
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = context.palette;
+    final fill = Theme.of(context).brightness == Brightness.dark
+        ? palette.surface
+        : Colors.white;
+    final extra = PageBleed.maybeOf(context)?.extra ?? 0;
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Positioned(
+          left: -extra,
+          right: -extra,
+          top: 0,
+          bottom: 0,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: fill,
+              border: Border.symmetric(
+                horizontal: BorderSide(color: palette.border),
+              ),
+            ),
+          ),
+        ),
+        Material(
+          type: MaterialType.transparency,
+          child: Padding(padding: padding, child: child),
+        ),
+      ],
     );
   }
 }

@@ -4,8 +4,8 @@ import '../theme.dart';
 import '../widgets/thumbnail_avatar.dart';
 
 /// 관리 목록(교회 · 회원 · 인원)의 한 줄. 모든 목록이 같은 모양과 같은 높이를 쓴다.
-/// 제목 아래에 정해진 두 줄([line1], [line2])이 항상 자리를 차지하므로, 정보가 없으면
-/// 그 줄은 빈칸으로 남고 줄의 높이는 그대로다. 오른쪽에는 [trailing]을 놓는다.
+/// 줄의 높이는 늘 같다. 제목 아래 두 줄([line1], [line2]) 가운데 비어 있는 줄은 그리지 않고,
+/// 남은 글이 줄 안에서 위아래 가운데에 놓인다. 오른쪽에는 [trailing]을 놓는다.
 class ManageListRow extends StatelessWidget {
   const ManageListRow({
     super.key,
@@ -111,9 +111,12 @@ class ManageListRow extends StatelessWidget {
                         ],
                       ],
                     ),
-                    const SizedBox(height: 2),
-                    _line(context, line1),
-                    _line(context, line2),
+                    // 비어 있는 줄은 그리지 않는다: 줄의 높이는 고정이라, 글이 위아래 가운데에 놓인다.
+                    if (line1.isNotEmpty) ...[
+                      const SizedBox(height: 2),
+                      _line(context, line1),
+                    ],
+                    if (line2.isNotEmpty) _line(context, line2),
                   ],
                 ),
               ),

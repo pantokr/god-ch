@@ -12,6 +12,7 @@ class DevotionSettings {
     this.reflectionsPublic = true,
     this.showViews = true,
     this.showAuthor = true,
+    this.showLikeCount = true,
   });
 
   static const standard = DevotionSettings();
@@ -31,18 +32,23 @@ class DevotionSettings {
   /// 글쓴이(이름과 프로필 사진)를 보여 주는가.
   final bool showAuthor;
 
+  /// 좋아요 수를 보여 주는가. 끄면 하트만 보이고 기록은 계속 쌓는다.
+  final bool showLikeCount;
+
   DevotionSettings copyWith({
     bool? allowLikes,
     bool? allowReflections,
     bool? reflectionsPublic,
     bool? showViews,
     bool? showAuthor,
+    bool? showLikeCount,
   }) => DevotionSettings(
     allowLikes: allowLikes ?? this.allowLikes,
     allowReflections: allowReflections ?? this.allowReflections,
     reflectionsPublic: reflectionsPublic ?? this.reflectionsPublic,
     showViews: showViews ?? this.showViews,
     showAuthor: showAuthor ?? this.showAuthor,
+    showLikeCount: showLikeCount ?? this.showLikeCount,
   );
 
   factory DevotionSettings.fromDoc(DocumentSnapshot<Json> doc) {
@@ -55,6 +61,7 @@ class DevotionSettings {
       reflectionsPublic: flag('reflectionsPublic'),
       showViews: flag('showViews'),
       showAuthor: flag('showAuthor'),
+      showLikeCount: flag('showLikeCount'),
     );
   }
 
@@ -64,6 +71,7 @@ class DevotionSettings {
     'reflectionsPublic': reflectionsPublic,
     'showViews': showViews,
     'showAuthor': showAuthor,
+    'showLikeCount': showLikeCount,
   };
 
   @override
@@ -73,7 +81,8 @@ class DevotionSettings {
       allowReflections == other.allowReflections &&
       reflectionsPublic == other.reflectionsPublic &&
       showViews == other.showViews &&
-      showAuthor == other.showAuthor;
+      showAuthor == other.showAuthor &&
+      showLikeCount == other.showLikeCount;
 
   @override
   int get hashCode => Object.hash(
@@ -82,5 +91,6 @@ class DevotionSettings {
     reflectionsPublic,
     showViews,
     showAuthor,
+    showLikeCount,
   );
 }

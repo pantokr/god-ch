@@ -1,6 +1,10 @@
 import '../../../core/widgets/app_loader.dart';
 
+import '../../../core/layout/responsive.dart';
+
 import 'package:flutter/material.dart';
+
+import '../../../core/widgets/labeled_field.dart';
 
 import '../../../app/app_scope.dart';
 import '../../../core/widgets/trash_icon.dart';
@@ -10,7 +14,9 @@ import '../../../core/layout/confirm_dialog.dart';
 import '../../../core/layout/page_frame.dart';
 import '../../../core/mvvm/view_model.dart';
 import '../../../core/mvvm/view_model_builder.dart';
+import '../../../core/position_style.dart';
 import '../../../core/theme.dart';
+import '../../../data/models/affiliation.dart';
 import '../../../data/models/member.dart';
 import '../../../data/models/permission.dart';
 import '../../../data/models/position.dart';
@@ -41,7 +47,7 @@ class PositionManagePage extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               PageTitle(
-                title: '직급 권한 관리',
+                title: '직급 권한',
                 action: FilledButton.icon(
                   onPressed: vm.busy ? null : () => _edit(context, vm),
                   icon: const Icon(AppIcons.plus, size: 18),
@@ -50,58 +56,77 @@ class PositionManagePage extends StatelessWidget {
               ),
               const _CatalogCard(),
               const SizedBox(height: 16),
-              // 기본 직급: 교회 관리자 > 교역자 > 회원. 삭제할 수 없다.
+              // 교인 목록은 한 번만 구독한다 (읽는 곳이 둘이어도 같은 값을 쓴다).
               StreamBuilder<List<Member>>(
                 stream: vm.members,
-                builder: (context, ms) => _BuiltInSection(
-                  me: me,
-                  members: ms.data ?? const <Member>[],
-                  onEdit: (b) => _editBuiltIn(context, vm, b),
-                ),
-              ),
-              const _SectionLabel('직급'),
-              StreamBuilder<List<Position>>(
-                stream: vm.positions,
-                builder: (context, snap) {
-                  if (snap.hasError) {
-                    return EmptyHint('불러오지 못했습니다\n${snap.error}');
-                  }
-                  final items = snap.data;
-                  if (items == null) {
-                    return const Padding(
-                      padding: EdgeInsets.all(48),
-                      child: Center(child: AppLoader()),
-                    );
-                  }
-                  if (items.isEmpty) return const EmptyHint('직급 없음');
-                  return StreamBuilder<List<Member>>(
-                    stream: vm.members,
-                    builder: (context, ms) {
-                      final members = ms.data ?? const <Member>[];
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          for (final p in items)
-                            _PositionCard(
-                              position: p,
-                              count: [
-                                for (final m in members)
-                                  if (m.positionId == p.id) m,
-                              ].length,
-                              onEdit: () => _edit(context, vm, position: p),
-                              onDelete: () => _delete(context, vm, p),
-                              onMembers: () =>
-                                  _members(context, vm, p, members),
-                            ),
-                        ],
-                      );
-                    },
+                builder: (context, ms) {
+                  final members = ms.data ?? const <Member>[];
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // 기본 직급: 교회 관리자 > 교역자 > 회원. 삭제할 수 없다.
+                      _BuiltInSection(
+                        me: me,
+                        members: members,
+                        onEdit: (b) => _editBuiltIn(context, vm, b),
+                      ),
+                      StreamBuilder<List<Position>>(
+                        stream: vm.positions,
+                        builder: (context, snap) {
+                          if (snap.hasError) {
+                            return EmptyHint(
+                              '불러오지 못했습니다${String.fromCharCode(10)}${snap.error}',
+                            );
+                          }
+                          final items = snap.data;
+                          if (items == null) {
+                            return const Padding(
+                              padding: EdgeInsets.all(48),
+                              child: Center(child: AppLoader()),
+                            );
+                          }
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              // 기본 직급 "미배정": 직급을 받지 않은 인원. 지울 수 없다.
+                              _UnassignedPositionCard(
+                                count: [
+                                  for (final m in members)
+                                    if (m.isApproved &&
+                                        m.role != Role.admin &&
+                                        !m.isAppOperator &&
+                                        m.isUnassigned)
+                                      m,
+                                ].length,
+                              ),
+                              for (final p in items)
+                                _PositionCard(
+                                  position: p,
+                                  count: [
+                                    for (final m in members)
+                                      if (m.positionId == p.id) m,
+                                  ].length,
+                                  onEdit: () => _edit(context, vm, position: p),
+                                  onDelete: () => _delete(context, vm, p),
+                                  onMembers: () =>
+                                      _members(context, vm, p, members),
+                                ),
+                            ],
+                          );
+                        },
+                      ),
+                    ],
                   );
                 },
               ),
               if (vm.error != null)
                 Padding(
-                  padding: const EdgeInsets.only(top: 12),
+                  padding: EdgeInsets.fromLTRB(
+                    textGutter(context),
+                    12,
+                    textGutter(context),
+                    0,
+                  ),
                   child: Text(
                     vm.error!,
                     style: TextStyle(
@@ -137,10 +162,19 @@ class PositionManagePage extends StatelessWidget {
     final result = await showAppDialog<_PositionForm>(
       context,
       maxWidth: 480,
-      child: _PositionFormView(builtIn: b, initialPermissions: current),
+      child: _PositionFormView(
+        builtIn: b,
+        initialPermissions: current,
+        initialStyle: me.rolePermissions.styleOf(b),
+      ),
     );
     if (result == null) return;
-    await vm.saveBuiltIn(b, result.permissions);
+    await vm.saveBuiltIn(
+      b,
+      result.permissions,
+      icon: result.icon,
+      color: result.color,
+    );
   }
 
   Future<void> _edit(
@@ -155,9 +189,20 @@ class PositionManagePage extends StatelessWidget {
     );
     if (result == null) return;
     if (position == null) {
-      await vm.create(result.name, result.permissions);
+      await vm.create(
+        result.name,
+        result.permissions,
+        icon: result.icon,
+        color: result.color,
+      );
     } else {
-      await vm.update(position, result.name, result.permissions);
+      await vm.update(
+        position,
+        result.name,
+        result.permissions,
+        icon: result.icon,
+        color: result.color,
+      );
     }
   }
 
@@ -261,7 +306,12 @@ class _SectionLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(top: 8, bottom: 10),
+    padding: EdgeInsets.fromLTRB(
+      textGutter(context),
+      8,
+      textGutter(context),
+      10,
+    ),
     child: Text(
       text,
       style: TextStyle(
@@ -320,11 +370,13 @@ class _BuiltInSection extends StatelessWidget {
                     Row(
                       children: [
                         Icon(
-                          b == BuiltInPosition.admin
-                              ? AppIcons.crown
-                              : AppIcons.shieldCheck,
+                          PositionStyle.iconOf(
+                            me.rolePermissions.styleOf(b).icon,
+                          ),
                           size: 20,
-                          color: palette.accent,
+                          color: PositionStyle.colorOf(
+                            me.rolePermissions.styleOf(b).color,
+                          ),
                         ),
                         const SizedBox(width: 8),
                         Expanded(
@@ -460,7 +512,11 @@ class _PositionCard extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  Icon(AppIcons.shieldCheck, size: 20, color: palette.accent),
+                  Icon(
+                    PositionStyle.iconOf(position.icon),
+                    size: 20,
+                    color: PositionStyle.colorOf(position.color),
+                  ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
@@ -500,12 +556,63 @@ class _PositionCard extends StatelessWidget {
   }
 }
 
+/// 기본 직급 "미배정" 카드: 직급을 받지 않은 인원의 수. 문서로 저장하지 않으므로 고치거나 지울 수 없다.
+/// 이 인원의 권한은 역할(교역자 · 회원)의 기본 권한을 따른다.
+class _UnassignedPositionCard extends StatelessWidget {
+  const _UnassignedPositionCard({required this.count});
+
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = context.palette;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Card(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+          child: Row(
+            children: [
+              Icon(AppIcons.shieldCheck, size: 20, color: palette.muted),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  Affiliation.unassignedName,
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+              ),
+              Icon(AppIcons.lock, size: 14, color: palette.muted),
+              const SizedBox(width: 4),
+              Text(
+                '기본',
+                style: TextStyle(color: palette.muted, fontSize: 12.5),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                '$count명',
+                style: TextStyle(color: palette.muted, fontSize: 13),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 /// 직급 만들기 · 수정에서 입력한 값.
 class _PositionForm {
-  const _PositionForm(this.name, this.permissions);
+  const _PositionForm(
+    this.name,
+    this.permissions, {
+    this.icon = PositionStyle.defaultIcon,
+    this.color = PositionStyle.defaultColor,
+  });
 
   final String name;
   final Set<String> permissions;
+  final String icon;
+  final int color;
 }
 
 class _PositionFormView extends StatefulWidget {
@@ -513,9 +620,13 @@ class _PositionFormView extends StatefulWidget {
     this.initial,
     this.builtIn,
     this.initialPermissions,
+    this.initialStyle,
   });
 
   final Position? initial;
+
+  /// 기본 직급을 고칠 때의 현재 아이콘과 색.
+  final BuiltInStyle? initialStyle;
 
   /// 기본 직급(교역자 · 회원)을 고칠 때: 이름은 고정이고 권한만 정한다.
   final BuiltInPosition? builtIn;
@@ -529,6 +640,14 @@ class _PositionFormViewState extends State<_PositionFormView> {
   late final _name = TextEditingController(
     text: widget.builtIn?.name ?? widget.initial?.name,
   );
+  late String _icon =
+      widget.initial?.icon ??
+      widget.initialStyle?.icon ??
+      PositionStyle.defaultIcon;
+  late int _color =
+      widget.initial?.color ??
+      widget.initialStyle?.color ??
+      PositionStyle.defaultColor;
   late final Set<String> _selected = Permission.consistent({
     ...?widget.initialPermissions,
     ...?widget.initial?.permissions,
@@ -568,36 +687,98 @@ class _PositionFormViewState extends State<_PositionFormView> {
           style: Theme.of(context).textTheme.titleLarge,
         ),
         const SizedBox(height: 16),
-        TextField(
-          controller: _name,
-          autofocus: widget.builtIn == null,
-          enabled: widget.builtIn == null,
-          maxLength: Position.maxName,
-          decoration: const InputDecoration(labelText: '이름'),
+        LabeledField(
+          label: '이름',
+          child: TextField(
+            controller: _name,
+            autofocus: widget.builtIn == null,
+            enabled: widget.builtIn == null,
+            maxLength: Position.maxName,
+            decoration: const InputDecoration(),
+          ),
         ),
+        // 직급에 붙는 아이콘과 색: 직급 카드와 회원 목록의 이름 옆에 보인다.
+        if (widget.builtIn != BuiltInPosition.admin) ...[
+          AppField.spacer,
+          // 아이콘과 색은 버튼 둘로 줄였다: 누르면 고르는 창이 뜬다.
+          LabeledField(
+            label: '모양',
+            child: Row(
+              children: [
+                _PickButton(
+                  tooltip: '아이콘 고르기',
+                  onTap: () async {
+                    final v = await _pickIcon(context);
+                    if (v != null) setState(() => _icon = v);
+                  },
+                  child: Icon(
+                    PositionStyle.iconOf(_icon),
+                    size: 22,
+                    color: PositionStyle.colorOf(_color),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                _PickButton(
+                  tooltip: '색상 고르기',
+                  onTap: () async {
+                    final v = await _pickColor(context);
+                    if (v != null) setState(() => _color = v);
+                  },
+                  child: Container(
+                    width: 22,
+                    height: 22,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: PositionStyle.colorOf(_color),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
         for (final g in PermissionGroup.values)
           if (Permission.delegable.any((p) => p.group == g)) ...[
             Padding(
-              padding: const EdgeInsets.only(top: 8, bottom: 2),
+              padding: const EdgeInsets.only(top: 16, bottom: 2),
               child: Text(
                 g.label,
                 style: TextStyle(
-                  color: palette.muted,
-                  fontSize: 12.5,
-                  fontWeight: FontWeight.w700,
+                  color: palette.ink,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w800,
                 ),
               ),
             ),
-            for (final p in Permission.delegable.where((p) => p.group == g))
-              _PermissionTile(
-                permission: p,
-                checked: _selected.contains(p.key),
-                missing: [
-                  for (final r in p.requires)
-                    if (!_selected.contains(r.key)) r,
-                ],
-                onChanged: (v) => _toggle(p, v),
-              ),
+            // 묶음 안은 조회 · 생성 · 삭제 · 관리로 나누어 보여준다.
+            for (final k in PermissionKind.values)
+              if (Permission.delegable.any(
+                (p) => p.group == g && p.kind == k,
+              )) ...[
+                Padding(
+                  padding: const EdgeInsets.only(top: 6, left: 2),
+                  child: Text(
+                    k.label,
+                    style: TextStyle(
+                      color: palette.muted,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                for (final p in Permission.delegable.where(
+                  (p) => p.group == g && p.kind == k,
+                ))
+                  _PermissionTile(
+                    permission: p,
+                    checked: _selected.contains(p.key),
+                    missing: [
+                      for (final r in p.requires)
+                        if (!_selected.contains(r.key)) r,
+                    ],
+                    onChanged: (v) => _toggle(p, v),
+                  ),
+              ],
           ],
         const SizedBox(height: 12),
         Row(
@@ -609,13 +790,199 @@ class _PositionFormViewState extends State<_PositionFormView> {
             ),
             const SizedBox(width: 8),
             FilledButton(
-              onPressed: () =>
-                  Navigator.pop(context, _PositionForm(_name.text, _selected)),
+              onPressed: () => Navigator.pop(
+                context,
+                _PositionForm(
+                  _name.text,
+                  _selected,
+                  icon: _icon,
+                  color: _color,
+                ),
+              ),
               child: const Text('저장'),
             ),
           ],
         ),
       ],
+    );
+  }
+}
+
+/// 아이콘을 고르는 작은 창: 격자에서 하나를 누르면 그 키를 돌려주며 닫힌다.
+Future<String?> _pickIcon(BuildContext context) => showDialog<String>(
+  context: context,
+  builder: (context) => Dialog(
+    insetPadding: const EdgeInsets.all(24),
+    child: ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 320),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text('아이콘', style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 14),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final e in PositionStyle.icons.entries)
+                  _IconChoice(
+                    icon: e.value,
+                    color: context.palette.brand,
+                    selected: false,
+                    onTap: () => Navigator.pop(context, e.key),
+                  ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    ),
+  ),
+);
+
+/// 색을 고르는 팔레트 창: 색 하나를 누르면 그 값을 돌려주며 닫힌다.
+Future<int?> _pickColor(BuildContext context) => showDialog<int>(
+  context: context,
+  builder: (context) => Dialog(
+    insetPadding: const EdgeInsets.all(24),
+    child: ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 300),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text('색상', style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 14),
+            Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              children: [
+                for (final v in PositionStyle.colors)
+                  _ColorChoice(
+                    color: Color(v),
+                    selected: false,
+                    onTap: () => Navigator.pop(context, v),
+                  ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    ),
+  ),
+);
+
+/// 아이콘 · 팔레트 버튼: 지금 고른 모양을 담은 테두리 칸. 누르면 고르는 창이 뜬다.
+class _PickButton extends StatelessWidget {
+  const _PickButton({
+    required this.tooltip,
+    required this.onTap,
+    required this.child,
+  });
+
+  final String tooltip;
+  final VoidCallback onTap;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: tooltip,
+      child: InkWell(
+        borderRadius: AppField.radius,
+        onTap: onTap,
+        child: Container(
+          width: 48,
+          height: 44,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            borderRadius: AppField.radius,
+            border: Border.all(color: context.palette.border),
+          ),
+          child: child,
+        ),
+      ),
+    );
+  }
+}
+
+/// 아이콘 고르기 칸 하나: 고른 아이콘은 고른 색의 옅은 면과 테두리로 보인다.
+class _IconChoice extends StatelessWidget {
+  const _IconChoice({
+    required this.icon,
+    required this.color,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final Color color;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = context.palette;
+    return InkWell(
+      borderRadius: AppField.radius,
+      onTap: onTap,
+      child: Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          color: selected ? color.withValues(alpha: 0.14) : null,
+          borderRadius: AppField.radius,
+          border: Border.all(
+            color: selected ? color : palette.border,
+            width: selected ? 1.5 : 1,
+          ),
+        ),
+        child: Icon(icon, size: 20, color: selected ? color : palette.muted),
+      ),
+    );
+  }
+}
+
+/// 색 고르기 칸 하나: 고른 색은 바깥에 테두리 고리가 둘러진다.
+class _ColorChoice extends StatelessWidget {
+  const _ColorChoice({
+    required this.color,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final Color color;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkResponse(
+      onTap: onTap,
+      radius: 22,
+      child: Container(
+        width: 32,
+        height: 32,
+        padding: const EdgeInsets.all(3),
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          border: Border.all(
+            color: selected ? color : Colors.transparent,
+            width: 2,
+          ),
+        ),
+        child: DecoratedBox(
+          decoration: BoxDecoration(shape: BoxShape.circle, color: color),
+          child: selected
+              ? const Icon(AppIcons.check, size: 14, color: Colors.white)
+              : null,
+        ),
+      ),
     );
   }
 }
@@ -640,22 +1007,41 @@ class _PermissionTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final palette = context.palette;
     final enabled = missing.isEmpty;
+    final tile = CheckboxListTile(
+      value: checked,
+      enabled: enabled,
+      dense: true,
+      contentPadding: EdgeInsets.zero,
+      controlAffinity: ListTileControlAffinity.leading,
+      title: Text(permission.label),
+      subtitle: enabled
+          ? null
+          : Text(
+              '먼저 ${missing.map((m) => m.label).join(' · ')}',
+              style: TextStyle(color: palette.muted, fontSize: 12),
+            ),
+      onChanged: (v) => onChanged(v ?? false),
+    );
+    if (permission.depth == 0) return tile;
+    // 아래 단계는 선행 단계 칸만큼 안으로 들어가고, 앞에 연결선(└)이 붙어 위 권한에 딸린 것임을 보인다.
     return Padding(
-      padding: EdgeInsets.only(left: permission.depth * 20.0),
-      child: CheckboxListTile(
-        value: checked,
-        enabled: enabled,
-        dense: true,
-        contentPadding: EdgeInsets.zero,
-        controlAffinity: ListTileControlAffinity.leading,
-        title: Text(permission.label),
-        subtitle: enabled
-            ? null
-            : Text(
-                '먼저 ${missing.map((m) => m.label).join(' · ')}',
-                style: TextStyle(color: palette.muted, fontSize: 12),
+      padding: EdgeInsets.only(left: (permission.depth - 1) * 24.0 + 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(top: 6, right: 2),
+            child: Text(
+              '└',
+              style: TextStyle(
+                color: palette.muted.withValues(alpha: 0.7),
+                fontSize: 16,
+                height: 1.2,
               ),
-        onChanged: (v) => onChanged(v ?? false),
+            ),
+          ),
+          Expanded(child: tile),
+        ],
       ),
     );
   }
@@ -739,15 +1125,46 @@ class _PositionsViewModel extends ViewModel {
   final Stream<List<Position>> positions;
   final Stream<List<Member>> members;
 
-  Future<bool> create(String name, Set<String> permissions) =>
-      run(() => _repo.create(churchId, name: name, permissions: permissions));
-
-  Future<bool> update(Position p, String name, Set<String> permissions) => run(
-    () => _repo.update(churchId, p, name: name, permissions: permissions),
+  Future<bool> create(
+    String name,
+    Set<String> permissions, {
+    String icon = PositionStyle.defaultIcon,
+    int color = PositionStyle.defaultColor,
+  }) => run(
+    () => _repo.create(
+      churchId,
+      name: name,
+      permissions: permissions,
+      icon: icon,
+      color: color,
+    ),
   );
 
-  Future<bool> saveBuiltIn(BuiltInPosition b, Set<String> permissions) =>
-      run(() => _repo.saveBuiltIn(churchId, b, permissions));
+  Future<bool> update(
+    Position p,
+    String name,
+    Set<String> permissions, {
+    String? icon,
+    int? color,
+  }) => run(
+    () => _repo.update(
+      churchId,
+      p,
+      name: name,
+      permissions: permissions,
+      icon: icon,
+      color: color,
+    ),
+  );
+
+  Future<bool> saveBuiltIn(
+    BuiltInPosition b,
+    Set<String> permissions, {
+    String? icon,
+    int? color,
+  }) => run(
+    () => _repo.saveBuiltIn(churchId, b, permissions, icon: icon, color: color),
+  );
 
   Future<bool> delete(Position p) => run(() => _repo.delete(churchId, p));
 

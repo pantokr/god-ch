@@ -1,10 +1,15 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/widgets/choice_row.dart';
+
+import '../../../core/widgets/labeled_field.dart';
+
 import '../../../app/app_scope.dart';
 import '../../../core/format.dart';
 import '../../../core/icons.dart';
 import '../../../core/layout/app_dialog.dart';
 import '../../../data/models/affiliation.dart';
+import '../../../core/widgets/app_date_picker.dart';
 import '../../../data/models/church_content.dart';
 import 'bible_picker_dialog.dart';
 
@@ -89,11 +94,12 @@ class _FormState extends State<_Form> {
   }
 
   Future<void> _pickDate() async {
-    final picked = await showDatePicker(
-      context: context,
+    final picked = await showAppDatePicker(
+      context,
       initialDate: _date,
       firstDate: DateTime(2000),
       lastDate: DateTime(2100),
+      title: '묵상 날짜',
     );
     if (picked != null) setState(() => _date = picked);
   }
@@ -109,11 +115,14 @@ class _FormState extends State<_Form> {
           style: Theme.of(context).textTheme.titleLarge,
         ),
         const SizedBox(height: 16),
-        TextField(
-          controller: _title,
-          autofocus: true,
-          maxLength: 100,
-          decoration: const InputDecoration(labelText: '구절 (예: 시편 23:1-6)'),
+        LabeledField(
+          label: '구절',
+          child: TextField(
+            controller: _title,
+            autofocus: true,
+            maxLength: 100,
+            decoration: const InputDecoration(hintText: '예: 시편 23:1-6'),
+          ),
         ),
         Align(
           alignment: Alignment.centerLeft,
@@ -132,32 +141,39 @@ class _FormState extends State<_Form> {
                 if (widget.visible(a)) a,
             ];
             if (list.isEmpty) return const SizedBox.shrink();
+            // 교회 전체는 고를 수 없다: 고른 소속이 없으면 첫 소속이 골라진다.
+            final chosen = list.any((a) => a.id == _affiliationId);
+            if (!chosen) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (mounted) setState(() => _affiliationId = list.first.id);
+              });
+            }
             return Padding(
               padding: const EdgeInsets.only(bottom: 12),
-              child: DropdownButtonFormField<String?>(
-                initialValue: list.any((a) => a.id == _affiliationId)
-                    ? _affiliationId
-                    : null,
-                decoration: const InputDecoration(labelText: '소속'),
-                items: [
-                  const DropdownMenuItem(value: null, child: Text('교회 전체')),
-                  for (final a in list)
-                    DropdownMenuItem(value: a.id, child: Text(a.name)),
-                ],
-                onChanged: (v) => setState(() => _affiliationId = v),
+              child: LabeledField(
+                label: '소속',
+                child: DropdownButtonFormField<String?>(
+                  initialValue: chosen ? _affiliationId : list.first.id,
+                  decoration: const InputDecoration(),
+                  items: [
+                    for (final a in list)
+                      DropdownMenuItem(value: a.id, child: Text(a.name)),
+                  ],
+                  onChanged: (v) => setState(() => _affiliationId = v),
+                ),
               ),
             );
           },
         ),
         // 비공개: 말씀묵상 비공개 조회 권한이 있는 사람(교역자)만 볼 수 있다.
-        CheckboxListTile(
+        ChoiceRow<bool>(
+          label: '공개 범위',
+          options: const [
+            ChoiceOption(false, '공개'),
+            ChoiceOption(true, '교역자 전용'),
+          ],
           value: _private,
-          dense: true,
-          contentPadding: EdgeInsets.zero,
-          controlAffinity: ListTileControlAffinity.leading,
-          secondary: const Icon(AppIcons.lock, size: 18),
-          title: const Text('비공개 (교역자만)'),
-          onChanged: (v) => setState(() => _private = v ?? false),
+          onChanged: (v) => setState(() => _private = v),
         ),
         OutlinedButton.icon(
           onPressed: _pickDate,
@@ -165,25 +181,32 @@ class _FormState extends State<_Form> {
           label: Text('날짜  ${fmtDate(_date)}'),
         ),
         const SizedBox(height: 16),
-        TextField(
-          controller: _body,
-          minLines: 3,
-          maxLines: 10,
-          maxLength: 5000,
-          decoration: const InputDecoration(
-            labelText: '말씀',
-            alignLabelWithHint: true,
+        LabeledField(
+          label: '말씀',
+          alignTop: true,
+          child: TextField(
+            controller: _body,
+            minLines: 3,
+            maxLines: 10,
+            maxLength: 5000,
+            decoration: const InputDecoration(alignLabelWithHint: true),
           ),
         ),
         const SizedBox(height: 8),
-        TextField(
-          controller: _meditation,
-          minLines: 3,
-          maxLines: 10,
-          maxLength: 5000,
-          decoration: const InputDecoration(
-            labelText: '묵상',
-            alignLabelWithHint: true,
+        LabeledField(
+          label: '묵상',
+          alignTop: true,
+          child: TextField(
+            controller: _meditation,
+            minLines: 3,
+            maxLines: 10,
+            maxLength: 5000,
+            onChanged: (_) => setState(() {}),
+            decoration: const InputDecoration(
+              hintText: '10자 이상',
+
+              alignLabelWithHint: true,
+            ),
           ),
         ),
         const SizedBox(height: 8),
@@ -196,17 +219,20 @@ class _FormState extends State<_Form> {
             ),
             const SizedBox(width: 8),
             FilledButton(
-              onPressed: () => Navigator.pop(
-                context,
-                DevotionFormResult(
-                  _title.text,
-                  _body.text,
-                  _meditation.text,
-                  _date,
-                  affiliationId: _affiliationId,
-                  isPrivate: _private,
-                ),
-              ),
+              onPressed:
+                  _meditation.text.trim().length < ChurchContent.minMeditation
+                  ? null
+                  : () => Navigator.pop(
+                      context,
+                      DevotionFormResult(
+                        _title.text,
+                        _body.text,
+                        _meditation.text,
+                        _date,
+                        affiliationId: _affiliationId,
+                        isPrivate: _private,
+                      ),
+                    ),
               child: const Text('저장'),
             ),
           ],

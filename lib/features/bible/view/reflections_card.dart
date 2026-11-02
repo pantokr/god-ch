@@ -13,9 +13,10 @@ import '../../../data/models/member.dart';
 import '../../../data/models/permission.dart';
 import '../../home/view_model/devotion_reflections_view_model.dart';
 
-/// 말씀 한 편의 댓글: 위에 교인들의 댓글이 오래된 순으로 이어지고, 맨 아래에 글쓰기 칸과 오른쪽 보내기 아이콘이 있다.
-/// 한 사람이 여러 댓글을 달 수 있고, 새 댓글은 목록 아래에 덧붙는다. 지우기는 댓글마다 있는 휴지통이다
-/// (본인 댓글은 본인 댓글 삭제 권한, 남의 댓글은 타인 댓글 삭제 권한).
+/// 말씀 한 편의 댓글: 맨 위 카드에 댓글 수와 글쓰기 칸(오른쪽 보내기 아이콘), 그 아래에 댓글마다 카드 하나씩 최신 댓글부터 이어진다.
+/// 새 댓글은 글쓰기 카드 바로 아래에 카드로 붙는다.
+/// 한 사람이 여러 댓글을 달 수 있다. 지우기는 댓글마다 있는 휴지통이다
+/// (본인 댓글은 누구나, 남의 댓글은 타인 댓글 삭제 권한).
 class ReflectionsCard extends StatelessWidget {
   const ReflectionsCard({
     super.key,
@@ -45,86 +46,93 @@ class ReflectionsCard extends StatelessWidget {
         devotionId,
         publicList: publicList,
       ),
-      builder: (context, vm) => Card(
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: StreamBuilder<List<DevotionReflection>>(
-            stream: vm.reflections,
-            builder: (context, snap) {
-              final items = snap.data ?? const <DevotionReflection>[];
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Row(
+      builder: (context, vm) => StreamBuilder<List<DevotionReflection>>(
+        stream: vm.reflections,
+        builder: (context, snap) {
+          final items = snap.data ?? const <DevotionReflection>[];
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Card(
+                margin: EdgeInsets.zero,
+                child: Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      Icon(
-                        AppIcons.messageCircle,
-                        size: 18,
-                        color: palette.accent,
+                      Row(
+                        children: [
+                          Icon(
+                            AppIcons.messageCircle,
+                            size: 18,
+                            color: palette.accent,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            '댓글 ${items.length}',
+                            style: Theme.of(context).textTheme.titleMedium,
+                          ),
+                        ],
                       ),
-                      const SizedBox(width: 8),
-                      Text(
-                        '댓글 ${items.length}',
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
+                      if (canWrite && !me.isOperatorView) ...[
+                        const SizedBox(height: 12),
+                        CommentComposer(
+                          hint: '댓글 쓰기',
+                          maxLength: DevotionReflection.maxLength,
+                          busy: vm.busy,
+                          onSend: (text) async {
+                            final ok = await vm.add(text);
+                            if (ok && context.mounted) showAddedToast(context);
+                            return ok;
+                          },
+                        ),
+                      ],
+                      if (snap.hasError) ...[
+                        const SizedBox(height: 12),
+                        Text(
+                          '불러오지 못했습니다',
+                          style: TextStyle(color: palette.muted),
+                        ),
+                      ] else if (items.isEmpty) ...[
+                        const SizedBox(height: 12),
+                        Text('댓글 없음', style: TextStyle(color: palette.muted)),
+                      ],
                     ],
                   ),
-                  const SizedBox(height: 14),
-                  if (snap.hasError)
-                    Text('불러오지 못했습니다', style: TextStyle(color: palette.muted))
-                  else if (items.isEmpty)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: Text(
-                        '댓글 없음',
-                        style: TextStyle(color: palette.muted),
-                      ),
+                ),
+              ),
+              // 댓글 하나에 카드 하나. 새 댓글은 맨 위(글쓰기 카드 바로 아래)에 카드로 붙는다.
+              for (final r in items.reversed)
+                Padding(
+                  padding: const EdgeInsets.only(top: 10),
+                  child: _Comment(
+                    reflection: r,
+                    canDelete:
+                        r.authorId == me.id ||
+                        me.can(Permission.devotionCommentDeleteOthers),
+                    busy: vm.busy,
+                    onDelete: () => vm.delete(r.id),
+                  ),
+                ),
+              if (vm.error != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Text(
+                    vm.error!,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.error,
                     ),
-                  for (final r in items)
-                    _Comment(
-                      reflection: r,
-                      canDelete: me.can(
-                        r.authorId == me.id
-                            ? Permission.devotionCommentDeleteOwn
-                            : Permission.devotionCommentDeleteOthers,
-                      ),
-                      busy: vm.busy,
-                      onDelete: () => vm.delete(r.id),
-                    ),
-                  if (canWrite && !me.isOperatorView) ...[
-                    const SizedBox(height: 6),
-                    CommentComposer(
-                      hint: '댓글 쓰기',
-                      maxLength: DevotionReflection.maxLength,
-                      busy: vm.busy,
-                      onSend: (text) async {
-                        final ok = await vm.add(text);
-                        if (ok && context.mounted) showAddedToast(context);
-                        return ok;
-                      },
-                    ),
-                  ],
-                  if (vm.error != null)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 8),
-                      child: Text(
-                        vm.error!,
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.error,
-                        ),
-                      ),
-                    ),
-                ],
-              );
-            },
-          ),
-        ),
+                  ),
+                ),
+            ],
+          );
+        },
       ),
     );
   }
 }
 
-/// 댓글 한 줄: 쓴 사람, 시각, 내용, 오른쪽의 휴지통(지울 수 있을 때만).
+/// 댓글 한 건의 카드: 쓴 사람, 시각, 내용, 오른쪽의 휴지통(지울 수 있을 때만).
 class _Comment extends StatelessWidget {
   const _Comment({
     required this.reflection,
@@ -142,56 +150,47 @@ class _Comment extends StatelessWidget {
   Widget build(BuildContext context) {
     final palette = context.palette;
     final r = reflection;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: Color.alphaBlend(
-            palette.brand.withValues(alpha: 0.05),
-            palette.surface,
-          ),
-          borderRadius: BorderRadius.circular(AppRadius.control),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(14, 10, 8, 12),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Text(
-                          r.authorName.isEmpty ? '이름 없음' : r.authorName,
-                          style: TextStyle(
-                            color: palette.brand,
-                            fontWeight: FontWeight.w800,
-                            fontSize: 13,
-                          ),
+    return Card(
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 14, 8, 14),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Text(
+                        r.authorName.isEmpty ? '이름 없음' : r.authorName,
+                        style: TextStyle(
+                          color: palette.brand,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 13,
                         ),
-                        const SizedBox(width: 8),
-                        Text(
-                          fmtDateTime(r.updatedAt),
-                          style: TextStyle(color: palette.muted, fontSize: 12),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    Text(r.text),
-                  ],
-                ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        fmtDateTime(r.updatedAt),
+                        style: TextStyle(color: palette.muted, fontSize: 12),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(r.text),
+                ],
               ),
-              if (canDelete)
-                IconButton(
-                  tooltip: '지우기',
-                  visualDensity: VisualDensity.compact,
-                  icon: const TrashIcon(),
-                  onPressed: busy ? null : onDelete,
-                ),
-            ],
-          ),
+            ),
+            if (canDelete)
+              IconButton(
+                tooltip: '지우기',
+                visualDensity: VisualDensity.compact,
+                icon: const TrashIcon(),
+                onPressed: busy ? null : onDelete,
+              ),
+          ],
         ),
       ),
     );

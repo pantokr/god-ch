@@ -6,7 +6,7 @@ import '../../../core/format.dart';
 import '../../../core/theme.dart';
 import '../../../data/models/text_entry.dart';
 
-/// 교역자 댓글 / 비공개 글 답변: 맨 위에 입력란, 그 아래에 최신순 목록.
+/// 댓글 / 비공개 글 답변(댓글에는 쓴 사람 이름이 붙는다): 맨 위 카드에 제목과 입력란, 그 아래에 글마다 카드 하나씩 최신 글부터 이어진다.
 class EntrySection extends StatefulWidget {
   const EntrySection({
     super.key,
@@ -64,67 +64,102 @@ class _EntrySectionState extends State<EntrySection> {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+    final palette = context.palette;
+    return StreamBuilder<List<TextEntry>>(
+      stream: widget.entries,
+      builder: (context, snap) {
+        // 읽어 온 순서는 오래된 것이 먼저다. 화면에는 최신 글이 위(글쓰기 카드 바로 아래)에 온다.
+        final items = snap.data ?? const <TextEntry>[];
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(widget.title, style: Theme.of(context).textTheme.titleMedium),
-            // 글쓰기 칸은 맨 위, 댓글은 최신순으로 그 아래에 쌓인다.
-            if (widget.canWrite) ...[
-              const SizedBox(height: 12),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _controller,
-                      minLines: 1,
-                      maxLines: 4,
-                      decoration: InputDecoration(hintText: widget.hint),
+            Card(
+              margin: EdgeInsets.zero,
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      widget.title,
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    if (widget.canWrite) ...[
+                      const SizedBox(height: 12),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Expanded(
+                            child: TextField(
+                              controller: _controller,
+                              minLines: 1,
+                              maxLines: 4,
+                              decoration: InputDecoration(
+                                hintText: widget.hint,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          FilledButton(
+                            onPressed: _send,
+                            child: const Text('등록'),
+                          ),
+                        ],
+                      ),
+                    ],
+                    if (items.isEmpty) ...[
+                      const SizedBox(height: 12),
+                      Text('아직 없습니다.', style: TextStyle(color: palette.muted)),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+            // 글 하나에 카드 하나.
+            for (final e in items.reversed)
+              Padding(
+                padding: const EdgeInsets.only(top: 10),
+                child: Card(
+                  margin: EdgeInsets.zero,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 14, 8, 14),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                [
+                                  if (e.authorName.isNotEmpty) e.authorName,
+                                  fmtDateTime(e.createdAt),
+                                ].join(' · '),
+                                style: TextStyle(
+                                  color: palette.muted,
+                                  fontSize: 12.5,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(e.content),
+                            ],
+                          ),
+                        ),
+                        if (widget.canDelete?.call(e) ?? false)
+                          IconButton(
+                            tooltip: '지우기',
+                            visualDensity: VisualDensity.compact,
+                            icon: const TrashIcon(),
+                            onPressed: () => widget.onDelete?.call(e),
+                          ),
+                      ],
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  FilledButton(onPressed: _send, child: const Text('등록')),
-                ],
+                ),
               ),
-            ],
-            StreamBuilder<List<TextEntry>>(
-              stream: widget.entries,
-              builder: (context, snap) {
-                final items = snap.data ?? const [];
-                if (items.isEmpty) {
-                  return Padding(
-                    padding: EdgeInsets.symmetric(vertical: 12),
-                    child: Text(
-                      '아직 없습니다.',
-                      style: TextStyle(color: context.palette.muted),
-                    ),
-                  );
-                }
-                return Column(
-                  children: [
-                    for (final e in items.reversed)
-                      ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        title: Text(e.content),
-                        subtitle: Text(fmtDateTime(e.createdAt)),
-                        trailing: (widget.canDelete?.call(e) ?? false)
-                            ? IconButton(
-                                tooltip: '지우기',
-                                icon: const TrashIcon(),
-                                onPressed: () => widget.onDelete?.call(e),
-                              )
-                            : null,
-                      ),
-                  ],
-                );
-              },
-            ),
           ],
-        ),
-      ),
+        );
+      },
     );
   }
 }

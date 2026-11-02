@@ -1,15 +1,16 @@
 import '../../../core/mvvm/view_model.dart';
 import '../../../data/models/affiliation.dart';
 import '../../../data/models/member.dart';
+import '../../../data/models/permission.dart';
 import '../../church/data/affiliation_repository.dart';
 import '../../members/data/member_repository.dart';
 import '../view/member_detail_dialog.dart';
 
 enum MemberSort {
-  newest('가입최근순'),
-  oldest('가입오래된순'),
   name('이름순'),
-  role('역할순');
+  loginId('ID순'),
+  joined('등록순'),
+  position('직급순');
 
   const MemberSort(this.label);
 
@@ -41,27 +42,13 @@ class MemberAdminViewModel extends ViewModel {
 
   // ---- 조회 조건 (등록된 인원 목록에만 적용된다) ----
   String _query = '';
-  Role? _role;
-  MemberStatus? _status;
-  MemberSort _sort = MemberSort.newest;
+  MemberSort _sort = MemberSort.name;
 
   String get query => _query;
-  Role? get roleFilter => _role;
-  MemberStatus? get statusFilter => _status;
   MemberSort get sort => _sort;
 
-  bool get hasFilter => _query.isNotEmpty || _role != null || _status != null;
-
   void setQuery(String v) => _update(() => _query = v.trim());
-  void setRoleFilter(Role? v) => _update(() => _role = v);
-  void setStatusFilter(MemberStatus? v) => _update(() => _status = v);
   void setSort(MemberSort v) => _update(() => _sort = v);
-
-  void clearFilters() => _update(() {
-    _query = '';
-    _role = null;
-    _status = null;
-  });
 
   void _update(void Function() change) {
     change();
@@ -69,16 +56,20 @@ class MemberAdminViewModel extends ViewModel {
   }
 
   // ---- 권한 ----
+  /// 이미 승인된 사람은 상태를 바꾸지 못한다 (역할 · 소속만 바꾼다).
   bool canChangeStatus(Member m) =>
-      m.id != me.id && (me.isAdmin || m.role == Role.member);
+      m.id != me.id &&
+      m.status != MemberStatus.approved &&
+      (me.isAdmin || m.role == Role.member);
 
   bool canChangeRole(Member m) => m.id != me.id && me.isAdmin;
 
   /// 교인 삭제는 교회 운영자만, 본인 계정은 제외.
   bool canDelete(Member m) => m.id != me.id && me.isAdmin;
 
-  /// 이름·전화번호는 교회 운영자만 고친다 (본인 정보는 '내 정보'에서).
-  bool canEditProfile(Member m) => m.id != me.id && me.isAdmin;
+  /// 교회 회원 관리에서는 본인이 정한 개인정보(이름 · 전화번호 · 주소 · 생년월일)를 고치지 못하고 볼 수만 있다
+  /// (본인 정보는 '내 정보'에서 본인이 고친다). 역할 · 소속 · 승인 여부만 관리한다.
+  bool canEditProfile(Member m) => false;
 
   // ---- 목록 만들기 ----
   /// 승인을 기다리거나 최근에 가입한 인원.
@@ -114,29 +105,66 @@ class MemberAdminViewModel extends ViewModel {
   List<Member> existing(List<Member> all) {
     final list = all.where((m) {
       if (isNewcomer(m)) return false;
-      if (_role != null && m.role != _role) return false;
-      if (_status != null && m.status != _status) return false;
       return matchesQuery(m);
     }).toList();
-    list.sort(switch (_sort) {
-      MemberSort.newest => (a, b) => _byJoined(b, a),
-      MemberSort.oldest => (a, b) => _byJoined(a, b),
-      MemberSort.name => (a, b) => a.name.compareTo(b.name),
-      // 운영자 → 교역자 → 교인 순, 같으면 이름순.
-      MemberSort.role => (a, b) {
-        final r = b.role.index.compareTo(a.role.index);
-        return r != 0 ? r : a.name.compareTo(b.name);
-      },
-    });
+    list.sort(sorter);
     return list;
   }
 
-  int _byJoined(Member a, Member b) =>
+  /// 고른 정렬 기준의 비교 함수.
+  /// - 이름순: 가나다순.
+  /// - ID순: 아이디(없으면 이메일) 순.
+  /// - 등록순: 먼저 등록한 사람이 위.
+  /// - 직급순: 교회 관리자 → 교역자 → 교인, 같은 역할 안에서는 직급이 있는 사람이 먼저, 같으면 이름순.
+  int Function(Member, Member) get sorter => comparatorFor(_sort);
+
+  /// [sort] 기준의 비교 함수 (소속 인원 목록도 같은 정렬을 쓴다).
+  static int Function(Member, Member) comparatorFor(MemberSort sort) =>
+      switch (sort) {
+        MemberSort.name => (a, b) => a.name.compareTo(b.name),
+        MemberSort.loginId => (a, b) {
+          String key(Member m) =>
+              (m.loginId.isNotEmpty ? m.loginId : m.email).toLowerCase();
+          final r = key(a).compareTo(key(b));
+          return r != 0 ? r : a.name.compareTo(b.name);
+        },
+        MemberSort.joined => (a, b) => _byJoined(a, b),
+        MemberSort.position => (a, b) {
+          final role = b.role.index.compareTo(a.role.index);
+          if (role != 0) return role;
+          final pos = (a.positionId == null ? 1 : 0).compareTo(
+            b.positionId == null ? 1 : 0,
+          );
+          if (pos != 0) return pos;
+          final byId = (a.positionId ?? '').compareTo(b.positionId ?? '');
+          return byId != 0 ? byId : a.name.compareTo(b.name);
+        },
+      };
+
+  static int _byJoined(Member a, Member b) =>
       (a.createdAt ?? DateTime.now()).compareTo(b.createdAt ?? DateTime.now());
 
   // ---- 동작 ----
   Future<void> approve(Member m) =>
       run(() => _members.setStatus(me.churchId, m.id, MemberStatus.approved));
+
+  /// 입장 요청을 승인하면서 역할과 소속을 함께 정한다. 바뀌지 않은 항목은 쓰지 않는다.
+  Future<void> approveWith(
+    Member m, {
+    required Role role,
+    required List<String> affiliationIds,
+  }) => run(
+    () => _members.saveMember(
+      m,
+      role: canChangeRole(m) && role != m.role ? role : null,
+      affiliationIds: canAssignAffiliation(m) ? affiliationIds : null,
+      status: MemberStatus.approved,
+    ),
+  );
+
+  /// 소속 인원 배치 권한이 있는가 (본인 문서는 제외).
+  bool canAssignAffiliation(Member m) =>
+      m.id != me.id && me.can(Permission.affiliationAssign);
 
   Future<void> remove(Member m) =>
       run(() => _members.remove(me.churchId, me.churchName, m.id));
@@ -144,9 +172,6 @@ class MemberAdminViewModel extends ViewModel {
   /// 차단 목록에 올리고 교회에서 내보낸다.
   Future<void> block(Member m) =>
       run(() => _members.blockMember(me.churchId, me.churchName, m));
-
-  Future<void> disable(Member m) =>
-      run(() => _members.setStatus(me.churchId, m.id, MemberStatus.disabled));
 
   Future<void> setRole(Member m, Role role) =>
       run(() => _members.setRole(me.churchId, m.id, role));

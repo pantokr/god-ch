@@ -110,7 +110,10 @@ class _Church extends StatelessWidget {
                 if (member.affiliationIds.contains(d.id)) d.name,
             ];
             if (names.isEmpty) {
-              return Text('소속 없음', style: TextStyle(color: palette.muted));
+              return Text(
+                Affiliation.unassignedName,
+                style: TextStyle(color: palette.muted),
+              );
             }
             return Wrap(
               spacing: 6,

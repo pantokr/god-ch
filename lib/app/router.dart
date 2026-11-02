@@ -124,6 +124,8 @@ GoRouter buildRouter(SessionNotifier session) {
           // /churches/{교회}/{메뉴} 에서 교회와 메뉴를 읽는다.
           final segments = state.uri.pathSegments;
           return ExitGuard(
+            // 교회 안의 메뉴를 오간 기록을 남겨 뒤로 가기가 직전 메뉴로 돌아가게 한다.
+            location: state.uri.toString(),
             child: ChurchShellRoute(
               key: ValueKey(segments[1]),
               churchId: segments[1],
@@ -141,6 +143,12 @@ GoRouter buildRouter(SessionNotifier session) {
           _sectionRoute(ChurchSection.meetings, const MeetingsSectionPage()),
           _sectionRoute(ChurchSection.bible, const BibleSectionPage()),
           _sectionRoute(ChurchSection.mine, const MineSectionPage()),
+          _sectionRoute(ChurchSection.people, const PeopleSectionPage()),
+          _sectionRoute(ChurchSection.calendar, const CalendarSectionPage()),
+          _sectionRoute(
+            ChurchSection.myMeetings,
+            const MyMeetingsSectionPage(),
+          ),
           _sectionRoute(
             ChurchSection.prayerSettings,
             const PrayerSettingsSectionPage(),
@@ -148,6 +156,14 @@ GoRouter buildRouter(SessionNotifier session) {
           _sectionRoute(
             ChurchSection.devotionSettings,
             const DevotionSettingsSectionPage(),
+          ),
+          _sectionRoute(
+            ChurchSection.memberLog,
+            const MembershipLogSectionPage(),
+          ),
+          _sectionRoute(
+            ChurchSection.meetingSettings,
+            const MeetingSettingsSectionPage(),
           ),
           _sectionRoute(
             ChurchSection.positions,

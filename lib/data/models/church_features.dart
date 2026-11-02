@@ -4,8 +4,8 @@ import '../firestore_codec.dart';
 import 'affiliation.dart';
 import 'member.dart';
 
-/// 소속마다 쓸 수 있는 기능: 기도제목과 성경. 교역자가 소속별로 켜고 끈다.
-/// 설정한 적이 없는 기능은 모든 소속이 쓸 수 있다.
+/// (더 이상 쓰지 않는다) 소속마다 쓸 수 있는 기능: 기도제목과 성경을 소속별로 켜고 끄던 설정.
+/// 지금은 설정이 남아 있어도 모든 소속이 두 기능을 쓸 수 있다 ([ChurchFeatures.accessFor]가 무시한다).
 /// `churches/{id}/settings/features`에 저장되고, `firestore.rules`가 같은 기준으로 막는다.
 enum PageFeature {
   prayer('중보기도'),
@@ -92,10 +92,8 @@ class ChurchFeatures {
     }
     final ids = me.affiliationIds;
     if (ids.isEmpty) return const TabAccess();
-    final allowed = {
-      for (final id in ids)
-        if (allows(feature, id)) id,
-    };
+    // 소속별 켜기/끄기는 없앴다: 속한 소속은 모두 허용이다.
+    final allowed = {...ids};
     return TabAccess(
       blocked: allowed.isEmpty,
       options: [

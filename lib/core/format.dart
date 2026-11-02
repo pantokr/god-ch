@@ -1,18 +1,18 @@
-/// 화면에 보여줄 날짜 (예: 2026.10.21). 값이 없으면 빈 문자열.
+/// 화면에 보여줄 날짜 (예: 26.10.21). 연도는 두 자리다. 값이 없으면 빈 문자열.
 String fmtDate(DateTime? d) {
   if (d == null) return '';
   String two(int n) => n.toString().padLeft(2, '0');
-  return '${d.year}.${two(d.month)}.${two(d.day)}';
+  return '${two(d.year % 100)}.${two(d.month)}.${two(d.day)}';
 }
 
-/// 글 · 댓글의 작성 일시 (예: 2026.10.21 14:05). 값이 없으면 빈 문자열.
+/// 글 · 댓글의 작성 일시 (예: 26.10.21 14:05). 값이 없으면 빈 문자열.
 String fmtDateTime(DateTime? d) {
   if (d == null) return '';
   String two(int n) => n.toString().padLeft(2, '0');
   return '${fmtDate(d)} ${two(d.hour)}:${two(d.minute)}';
 }
 
-/// 글에 정해 둔 날짜([date])에 작성 시각([at])의 시간을 붙인다 (예: 묵상 날짜 2026.10.21 + 작성 14:05).
+/// 글에 정해 둔 날짜([date])에 작성 시각([at])의 시간을 붙인다 (예: 묵상 날짜 26.10.21 + 작성 14:05).
 /// 작성 시각을 모르면 날짜만 보인다.
 String fmtDateAt(DateTime date, DateTime? at) {
   if (at == null) return fmtDate(date);

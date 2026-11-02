@@ -4,6 +4,7 @@ import '../../../core/app_exception.dart';
 import '../../../data/firestore_paths.dart';
 import '../../../data/models/meeting.dart';
 import '../../../data/models/meeting_comment.dart';
+import '../../../data/models/meeting_settings.dart';
 
 import 'dart:typed_data';
 
@@ -48,6 +49,19 @@ class MeetingRepository {
 
   CollectionReference<Map<String, dynamic>> _col(String churchId) =>
       _paths.meetings(churchId);
+
+  DocumentReference<Map<String, dynamic>> _settings(String churchId) =>
+      _paths.church(churchId).collection('settings').doc('meeting');
+
+  /// 교회가 정한 모임 일정 운영 설정 (실시간). 정한 적 없으면 모두 허용 · 공개.
+  Stream<MeetingSettings> settings(String churchId) =>
+      _settings(churchId).snapshots().map(MeetingSettings.fromDoc);
+
+  Future<MeetingSettings> loadSettings(String churchId) async =>
+      MeetingSettings.fromDoc(await _settings(churchId).get());
+
+  Future<void> saveSettings(String churchId, MeetingSettings settings) =>
+      _settings(churchId).set(settings.toMap());
 
   /// 모임 날짜가 가까운 쪽이 위. 지워진 모임은 뺀다.
   Stream<List<Meeting>> latest(String churchId, {int limit = 100}) =>
@@ -148,23 +162,29 @@ class MeetingRepository {
     String meetingId,
   ) => _col(churchId).doc(meetingId).collection('comments');
 
-  /// 일정의 댓글: 오래된 순. 지운 표시가 있는 댓글은 뺀다.
+  /// 일정의 댓글: 오래된 순. 지운 댓글도 `deleted` 표시와 함께 돌려준다 (답글이 달린 댓글의 자리를 남기기 위해).
   Stream<List<MeetingComment>> comments(String churchId, String meetingId) =>
       _comments(churchId, meetingId)
           .orderBy('createdAt')
           .snapshots()
-          .map(
-            (s) => [
-              for (final d in s.docs)
-                if (d.data()['deleted'] != true) MeetingComment.fromDoc(d),
-            ],
-          );
+          .map((s) => [for (final d in s.docs) MeetingComment.fromDoc(d)]);
+
+  /// 내가 쓴 댓글만 읽는다 (댓글을 비공개로 둔 교회에서 일정 삭제 권한이 없는 교인이 쓴다).
+  Stream<List<MeetingComment>> myComments(
+    String churchId,
+    String meetingId,
+    String uid,
+  ) => _comments(churchId, meetingId)
+      .where('authorId', isEqualTo: uid)
+      .snapshots()
+      .map((s) => [for (final d in s.docs) MeetingComment.fromDoc(d)]);
 
   Future<void> addComment(
     String churchId,
     String meetingId, {
     required String authorName,
     required String text,
+    String? parentId,
   }) {
     final t = text.trim();
     if (t.isEmpty) throw const AppException('댓글을 입력해 주세요.');
@@ -176,6 +196,7 @@ class MeetingRepository {
       'authorName': authorName,
       'text': t,
       'createdAt': FieldValue.serverTimestamp(),
+      'parentId': ?parentId,
     });
   }
 

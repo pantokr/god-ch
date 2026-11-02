@@ -5,13 +5,16 @@ import '../../../core/icons.dart';
 import '../../../core/layout/app_dialog.dart';
 import '../../../core/layout/manage_list_row.dart';
 import '../../../data/models/affiliation.dart';
+import '../../../core/position_style.dart';
 import '../../../data/models/member.dart';
+import '../../../data/models/position.dart';
 import '../view_model/member_admin_view_model.dart';
 import 'member_detail_dialog.dart';
+import 'pending_member_dialogs.dart';
 
-/// 교인 한 명: 이름 · 소속 교회 · 소속만 보여주고, 관리를 누르면 상세 관리 창이 열린다.
+/// 교인 한 명: 이름 · 소속 교회 · 소속만 보여주고, 관리를 누르면 역할 · 소속 · 상태를 고치는 창이, 상세를 누르면 본인이 입력한 정보를 보는 창이 열린다.
 /// 본인 줄에는 '본인' 표시가 붙는다. 관리 창에서 교회 운영자는 회원을 추방할 수 있다.
-/// 승인 대기 계정은 같은 줄에서 바로 승인할 수 있다 (거절은 관리 창의 상태에서).
+/// 승인 대기 계정은 관리 대신 상세(조회)와 승인 버튼이 있고, 승인하면 역할과 소속을 고르는 창이 뜬다.
 class MemberTile extends StatelessWidget {
   const MemberTile({
     super.key,
@@ -20,6 +23,7 @@ class MemberTile extends StatelessWidget {
     this.affiliationNames = const [],
     this.affiliations = const [],
     this.isNew = false,
+    this.position,
   });
 
   final Member member;
@@ -33,6 +37,9 @@ class MemberTile extends StatelessWidget {
 
   /// 새로 등록된 인원이면 이름 옆에 표시한다.
   final bool isNew;
+
+  /// 이 교인이 가진 직급 (없으면 null). 직급의 아이콘과 색이 이름 앞에 보인다.
+  final Position? position;
 
   @override
   Widget build(BuildContext context) {
@@ -52,12 +59,7 @@ class MemberTile extends StatelessWidget {
       ),
       title: name,
       // 교회 관리자는 이름 앞에 왕관으로 따로 표시한다.
-      titleMark: member.role == Role.admin && !member.isAppOperator
-          ? const Tooltip(
-              message: '교회 관리자',
-              child: Icon(AppIcons.crown, size: 18, color: Color(0xFFE0A100)),
-            )
-          : null,
+      titleMark: _titleMark(context),
       badge: isSelf
           ? '본인'
           : isNew
@@ -65,15 +67,93 @@ class MemberTile extends StatelessWidget {
           : null,
       line1: member.churchName,
       line2: affiliationNames.join(', '),
-      onTap: () => _edit(context),
+      onTap: () => _info(context),
       trailing: [
-        if (pending && vm.canChangeStatus(member))
-          FilledButton.tonal(
-            onPressed: () => vm.approve(member),
-            child: const Text('승인'),
-          ),
-        TextButton(onPressed: () => _edit(context), child: const Text('관리')),
+        // 신규 입장 요청은 관리 대신 상세(조회)와 승인만 있다. 승인하면 역할과 소속을 고르는 창이 뜬다.
+        if (pending) ...[
+          // 승인은 왼쪽, 상세는 오른쪽.
+          if (vm.canChangeStatus(member))
+            FilledButton.tonal(
+              onPressed: () => _approve(context),
+              child: const Text('승인'),
+            ),
+          TextButton(onPressed: () => _info(context), child: const Text('상세')),
+        ] else ...[
+          // 관리는 교회 관리자가 고치는 역할 · 소속 · 상태, 상세는 본인이 입력한 정보를 보기만 한다.
+          TextButton(onPressed: () => _edit(context), child: const Text('관리')),
+          TextButton(onPressed: () => _info(context), child: const Text('상세')),
+        ],
       ],
+    );
+  }
+
+  /// 이름 앞의 아이콘: 교회 관리자는 왕관, 직급이 있으면 그 직급의 아이콘과 색, 교역자는 방패.
+  Widget? _titleMark(BuildContext context) {
+    if (member.role == Role.admin && !member.isAppOperator) {
+      return const Tooltip(
+        message: '교회 관리자',
+        child: Icon(AppIcons.crown, size: 18, color: Color(0xFFE0A100)),
+      );
+    }
+    final p = position;
+    if (p != null) {
+      return Tooltip(
+        message: p.name,
+        child: Icon(
+          PositionStyle.iconOf(p.icon),
+          size: 18,
+          color: PositionStyle.colorOf(p.color),
+        ),
+      );
+    }
+    // 직급이 없으면 역할(교역자 · 회원)의 기본 직급 모양을 따른다. 교인은 모양을 정했을 때만 보인다.
+    final roles = vm.me.rolePermissions;
+    if (member.role == Role.staff) {
+      final st = roles.styleOf(BuiltInPosition.staff);
+      return Tooltip(
+        message: '교역자',
+        child: Icon(
+          PositionStyle.iconOf(st.icon),
+          size: 18,
+          color: PositionStyle.colorOf(st.color),
+        ),
+      );
+    }
+    if (roles.memberStyle != null) {
+      final st = roles.memberStyle!;
+      return Tooltip(
+        message: '회원',
+        child: Icon(
+          PositionStyle.iconOf(st.icon),
+          size: 18,
+          color: PositionStyle.colorOf(st.color),
+        ),
+      );
+    }
+    return null;
+  }
+
+  /// 입장 요청 상세: 정보를 보기만 한다.
+  void _info(BuildContext context) {
+    showAppDialog(context, child: PendingMemberInfoDialog(member: member));
+  }
+
+  /// 승인: 역할과 소속을 고르는 창을 띄우고, 고른 대로 승인한다.
+  Future<void> _approve(BuildContext context) async {
+    final choice = await showAppDialog<ApproveChoice>(
+      context,
+      child: ApproveMemberDialog(
+        member: member,
+        affiliations: affiliations,
+        canRole: vm.canChangeRole(member),
+        canAffiliation: vm.canAssignAffiliation(member),
+      ),
+    );
+    if (choice == null) return;
+    await vm.approveWith(
+      member,
+      role: choice.role,
+      affiliationIds: choice.affiliationIds,
     );
   }
 
@@ -143,7 +223,6 @@ class MemberTile extends StatelessWidget {
             member: member,
             affiliations: affiliations,
             canRole: vm.canChangeRole(member),
-            canStatus: vm.canChangeStatus(member),
           ),
         ],
         onSave: (result) => vm.saveDetail(member, result),

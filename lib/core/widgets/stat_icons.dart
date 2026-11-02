@@ -14,11 +14,15 @@ class StatIcons extends StatelessWidget {
     this.liked = false,
     this.color,
     this.showViews = true,
+    this.showLikeCount = true,
     this.horizontal = false,
   });
 
   /// 조회수를 보여 주는가 (교회 설정). 끄면 좋아요만 나온다.
   final bool showViews;
+
+  /// 좋아요 수를 보여 주는가 (교회 설정). 끄면 하트만 보인다.
+  final bool showLikeCount;
 
   /// true이면 위아래가 아니라 좌우로 놓는다: 좋아요(하트)가 왼쪽, 조회수가 오른쪽.
   final bool horizontal;
@@ -36,25 +40,28 @@ class StatIcons extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final muted = color ?? context.palette.muted;
-    Widget item(IconData icon, int n, {Color? tint}) => Row(
+    Widget item(IconData icon, int n, {Color? tint, bool count = true}) => Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         Icon(icon, size: 16, color: tint ?? muted),
-        const SizedBox(width: 4),
-        Text(
-          compact(n),
-          style: TextStyle(
-            color: tint ?? muted,
-            fontSize: 12.5,
-            fontWeight: FontWeight.w600,
+        if (count) ...[
+          const SizedBox(width: 4),
+          Text(
+            compact(n),
+            style: TextStyle(
+              color: tint ?? muted,
+              fontSize: 12.5,
+              fontWeight: FontWeight.w600,
+            ),
           ),
-        ),
+        ],
       ],
     );
     final heart = item(
       liked ? AppIcons.heartFill : AppIcons.heart,
       likes,
       tint: liked ? const Color(0xFFE5484D) : null,
+      count: showLikeCount,
     );
     if (horizontal) {
       return Row(
@@ -80,6 +87,7 @@ class StatIcons extends StatelessWidget {
           liked ? AppIcons.heartFill : AppIcons.heart,
           likes,
           tint: liked ? const Color(0xFFE5484D) : null,
+          count: showLikeCount,
         ),
       ],
     );

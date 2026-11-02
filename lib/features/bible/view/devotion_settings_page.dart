@@ -2,6 +2,8 @@ import '../../../core/widgets/app_loader.dart';
 
 import 'package:flutter/material.dart';
 
+import '../../../core/widgets/choice_row.dart';
+
 import '../../../app/app_scope.dart';
 import '../../../core/layout/page_frame.dart';
 import '../../../core/mvvm/view_model.dart';
@@ -89,7 +91,7 @@ class DevotionSettingsPage extends StatelessWidget {
   }
 }
 
-/// 운영 원칙: 반응 · 댓글 · 공개 세 묶음.
+/// 운영 원칙: 공개 · 댓글 · 반응 세 묶음.
 class _Panel extends StatelessWidget {
   const _Panel({required this.settings, required this.onChanged});
 
@@ -105,23 +107,7 @@ class _Panel extends StatelessWidget {
         children: [
           Text('운영 원칙', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 12),
-          const _Group('반응'),
-          _Check(
-            label: '좋아요 허용',
-            value: s.allowLikes,
-            onChanged: (v) => onChanged(s.copyWith(allowLikes: v)),
-          ),
-          const _Group('댓글'),
-          _Check(
-            label: '댓글 허용',
-            value: s.allowReflections,
-            onChanged: (v) => onChanged(s.copyWith(allowReflections: v)),
-          ),
-          _Check(
-            label: '댓글 공개 (끄면 본인과 교역자만)',
-            value: s.reflectionsPublic,
-            onChanged: (v) => onChanged(s.copyWith(reflectionsPublic: v)),
-          ),
+          // 공개 · 댓글 · 반응 세 묶음. 허용한 항목만 세부 설정을 고칠 수 있다.
           const _Group('공개'),
           _Check(
             label: '조회수 공개',
@@ -132,6 +118,34 @@ class _Panel extends StatelessWidget {
             label: '글쓴이 공개',
             value: s.showAuthor,
             onChanged: (v) => onChanged(s.copyWith(showAuthor: v)),
+          ),
+          const _Group('댓글'),
+          _Check(
+            label: '댓글 허용',
+            value: s.allowReflections,
+            onChanged: (v) => onChanged(s.copyWith(allowReflections: v)),
+          ),
+          _Check(
+            label: '댓글 공개 (끄면 본인과 교역자만)',
+            value: s.reflectionsPublic,
+            indent: true,
+            onChanged: s.allowReflections
+                ? (v) => onChanged(s.copyWith(reflectionsPublic: v))
+                : null,
+          ),
+          const _Group('반응'),
+          _Check(
+            label: '반응 허용',
+            value: s.allowLikes,
+            onChanged: (v) => onChanged(s.copyWith(allowLikes: v)),
+          ),
+          _Check(
+            label: '좋아요 수 공개',
+            value: s.showLikeCount,
+            indent: true,
+            onChanged: s.allowLikes
+                ? (v) => onChanged(s.copyWith(showLikeCount: v))
+                : null,
           ),
         ],
       ),
@@ -163,20 +177,22 @@ class _Check extends StatelessWidget {
     required this.label,
     required this.value,
     required this.onChanged,
+    this.indent = false,
   });
 
   final String label;
   final bool value;
-  final ValueChanged<bool> onChanged;
+
+  /// 허용 항목에 딸린 세부 설정이면 안으로 들여 쓴다. null이면 눌리지 않는다.
+  final ValueChanged<bool>? onChanged;
+  final bool indent;
 
   @override
-  Widget build(BuildContext context) => CheckboxListTile(
+  Widget build(BuildContext context) => OnOffRow(
+    label: label,
     value: value,
-    dense: true,
-    contentPadding: EdgeInsets.zero,
-    controlAffinity: ListTileControlAffinity.leading,
-    title: Text(label),
-    onChanged: (v) => onChanged(v ?? false),
+    onChanged: onChanged,
+    indent: indent,
   );
 }
 

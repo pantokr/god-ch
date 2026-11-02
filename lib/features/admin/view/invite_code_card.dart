@@ -2,6 +2,11 @@ import '../../../core/icons.dart';
 
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+
+import '../../../core/widgets/choice_row.dart';
+
+import '../../../core/widgets/labeled_field.dart';
+
 import 'package:flutter/services.dart';
 import 'package:share_plus/share_plus.dart';
 
@@ -127,7 +132,11 @@ class InviteCodeCard extends StatelessWidget {
       child: _NewInviteForm(vm: vm),
     );
     if (form == null) return;
-    await vm.create(role: form.role, singleUse: form.singleUse);
+    await vm.create(
+      role: form.role,
+      affiliationIds: form.affiliationIds,
+      singleUse: form.singleUse,
+    );
   }
 }
 
@@ -139,7 +148,7 @@ class _InviteForm {
   final List<String> affiliationIds;
 }
 
-/// 새 초대 코드: 역할 · 일회용 여부를 고른다.
+/// 새 초대 코드: 역할 · 소속 · 사용 방식(N일 유지 / 1회 사용)을 고른다.
 class _NewInviteForm extends StatefulWidget {
   const _NewInviteForm({required this.vm});
 
@@ -154,6 +163,10 @@ class _NewInviteFormState extends State<_NewInviteForm> {
   Role _role = Role.member;
   String? _affiliation;
 
+  // 소속 목록은 이 창이 따로 구독한다 (스트림은 한 번만 만든다).
+  late final Stream<List<Affiliation>> _affiliations = widget.vm
+      .watchAffiliations();
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -163,20 +176,14 @@ class _NewInviteFormState extends State<_NewInviteForm> {
       children: [
         Text('초대 코드 만들기', style: theme.textTheme.titleLarge),
         const SizedBox(height: 16),
-        Text('역할', style: theme.textTheme.titleSmall),
-        const SizedBox(height: 8),
-        SegmentedButton<Role>(
-          showSelectedIcon: false,
-          segments: [
-            const ButtonSegment(value: Role.member, label: Text('교인')),
-            ButtonSegment(
-              value: Role.staff,
-              label: const Text('교역자'),
-              enabled: widget.vm.canInviteStaff,
-            ),
+        ChoiceRow<Role>(
+          label: '역할',
+          options: [
+            const ChoiceOption(Role.member, '교인'),
+            ChoiceOption(Role.staff, '교역자', enabled: widget.vm.canInviteStaff),
           ],
-          selected: {_role},
-          onSelectionChanged: (s) => setState(() => _role = s.first),
+          value: _role,
+          onChanged: (v) => setState(() => _role = v),
         ),
         if (!widget.vm.canInviteStaff)
           Padding(
@@ -188,30 +195,42 @@ class _NewInviteFormState extends State<_NewInviteForm> {
           ),
         const SizedBox(height: 16),
         StreamBuilder<List<Affiliation>>(
-          stream: widget.vm.affiliations,
+          stream: _affiliations,
           builder: (context, snap) {
             final list = snap.data ?? const <Affiliation>[];
-            return DropdownButtonFormField<String?>(
-              initialValue: _affiliation,
-              isExpanded: true,
-              borderRadius: BorderRadius.circular(AppRadius.control),
-              decoration: const InputDecoration(labelText: '소속'),
-              items: [
-                const DropdownMenuItem(value: null, child: Text('없음')),
-                for (final a in list)
-                  DropdownMenuItem(value: a.id, child: Text(a.name)),
-              ],
-              onChanged: (v) => setState(() => _affiliation = v),
+            return LabeledField(
+              label: '소속',
+              child: DropdownButtonFormField<String?>(
+                initialValue: _affiliation,
+                isExpanded: true,
+                borderRadius: BorderRadius.circular(AppRadius.control),
+                decoration: const InputDecoration(),
+                items: [
+                  const DropdownMenuItem(
+                    value: null,
+                    child: Text(Affiliation.unassignedName),
+                  ),
+                  for (final a in list)
+                    DropdownMenuItem(value: a.id, child: Text(a.name)),
+                ],
+                onChanged: (v) => setState(() => _affiliation = v),
+              ),
             );
           },
         ),
         const SizedBox(height: 8),
-        CheckboxListTile(
-          contentPadding: EdgeInsets.zero,
-          controlAffinity: ListTileControlAffinity.leading,
+        // 코드는 모두 유효기간이 있고, 1회 사용은 한 사람이 입장하면 바로 사라진다.
+        ChoiceRow<bool>(
+          label: '사용',
+          options: [
+            ChoiceOption(
+              false,
+              '${ChurchRepository.inviteValidity.inDays}일 유지',
+            ),
+            const ChoiceOption(true, '1회 사용'),
+          ],
           value: _singleUse,
-          onChanged: (v) => setState(() => _singleUse = v ?? false),
-          title: const Text('일회용'),
+          onChanged: (v) => setState(() => _singleUse = v),
         ),
         const SizedBox(height: 12),
         Row(
@@ -253,7 +272,7 @@ class _CodeRow extends StatelessWidget {
 
   String get _target => [
     _roleLabel,
-    if (code.singleUse) '일회용',
+    if (code.singleUse) '1회 사용',
     if (affiliationNames.isNotEmpty) affiliationNames.join(', '),
   ].join(' · ');
 

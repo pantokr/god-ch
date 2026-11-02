@@ -1,7 +1,11 @@
 import '../../../core/widgets/toast.dart';
-import '../../../core/icons.dart';
 
 import 'package:flutter/material.dart';
+
+import '../../../core/widgets/choice_row.dart';
+
+import '../../../core/widgets/labeled_field.dart';
+
 import 'package:go_router/go_router.dart';
 
 import '../../../app/app_scope.dart';
@@ -36,12 +40,10 @@ class PrayerEditorPage extends StatefulWidget {
 
 class _PrayerEditorPageState extends State<PrayerEditorPage> {
   final _form = GlobalKey<FormState>();
-  late final _title = TextEditingController(text: widget.prayer?.title);
   late final _content = TextEditingController(text: widget.prayer?.content);
 
   @override
   void dispose() {
-    _title.dispose();
     _content.dispose();
     super.dispose();
   }
@@ -59,10 +61,7 @@ class _PrayerEditorPageState extends State<PrayerEditorPage> {
     if (!_form.currentState!.validate()) return;
     final router = GoRouter.of(context);
     final messenger = ScaffoldMessenger.of(context);
-    final ok = await vm.save(
-      title: _title.text.trim(),
-      content: _content.text.trim(),
-    );
+    final ok = await vm.save(content: _content.text.trim());
     if (ok) {
       _leave(router);
       // 새로 쓴 글만 "추가되었습니다" (고친 글은 알리지 않는다).
@@ -104,27 +103,21 @@ class _PrayerEditorPageState extends State<PrayerEditorPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        TextFormField(
-                          controller: _title,
-                          maxLength: 100,
-                          decoration: const InputDecoration(labelText: '제목'),
-                          validator: (v) => (v == null || v.trim().isEmpty)
-                              ? '제목을 입력해 주세요'
-                              : null,
-                        ),
-                        const SizedBox(height: 12),
-                        TextFormField(
-                          controller: _content,
-                          maxLength: 3000,
-                          minLines: 8,
-                          maxLines: 16,
-                          decoration: const InputDecoration(
-                            labelText: '기도제목',
-                            alignLabelWithHint: true,
+                        LabeledField(
+                          label: '기도제목',
+                          alignTop: true,
+                          child: TextFormField(
+                            controller: _content,
+                            maxLength: 3000,
+                            minLines: 8,
+                            maxLines: 16,
+                            decoration: const InputDecoration(
+                              alignLabelWithHint: true,
+                            ),
+                            validator: (v) => (v == null || v.trim().isEmpty)
+                                ? '내용을 입력해 주세요'
+                                : null,
                           ),
-                          validator: (v) => (v == null || v.trim().isEmpty)
-                              ? '내용을 입력해 주세요'
-                              : null,
                         ),
                         const SizedBox(height: 16),
                         // 게시 범위는 새 글을 쓸 때만 고를 수 있다.
@@ -158,7 +151,7 @@ class _PrayerEditorPageState extends State<PrayerEditorPage> {
   }
 }
 
-/// 게시 범위: 교회 전체 또는 내가 속한 소속(교역자는 모든 소속).
+/// 게시 범위: 내가 속한 소속 가운데 하나(교역자는 모든 소속). 교회 전체는 고를 수 없다.
 class _ScopePicker extends StatelessWidget {
   const _ScopePicker({required this.vm});
 
@@ -181,19 +174,26 @@ class _ScopePicker extends StatelessWidget {
               .toList();
           // 고를 소속이 없으면 항상 교회 전체이므로 입력란을 보여주지 않는다.
           if (mine.isEmpty) return const SizedBox.shrink();
+          // 교회 전체는 고를 수 없다: 고른 소속이 없으면 첫 소속이 골라진다.
+          final chosen = mine.any((a) => a.id == vm.affiliationId);
+          if (!chosen) {
+            WidgetsBinding.instance.addPostFrameCallback(
+              (_) => vm.setAffiliation(mine.first.id),
+            );
+          }
           return Padding(
             padding: const EdgeInsets.only(bottom: 16),
-            child: DropdownButtonFormField<String?>(
-              initialValue: mine.any((a) => a.id == vm.affiliationId)
-                  ? vm.affiliationId
-                  : null,
-              decoration: const InputDecoration(labelText: '게시 범위'),
-              items: [
-                const DropdownMenuItem(value: null, child: Text('교회 전체')),
-                for (final a in mine)
-                  DropdownMenuItem(value: a.id, child: Text('${a.name} 전용')),
-              ],
-              onChanged: vm.setAffiliation,
+            child: LabeledField(
+              label: '게시 범위',
+              child: DropdownButtonFormField<String?>(
+                initialValue: chosen ? vm.affiliationId : mine.first.id,
+                decoration: const InputDecoration(),
+                items: [
+                  for (final a in mine)
+                    DropdownMenuItem(value: a.id, child: Text('${a.name} 전용')),
+                ],
+                onChanged: vm.setAffiliation,
+              ),
             ),
           );
         },
@@ -213,29 +213,19 @@ class _VisibilityPicker extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('공개 범위', style: Theme.of(context).textTheme.titleSmall),
-        const SizedBox(height: 8),
-        SegmentedButton<PrayerVisibility>(
-          showSelectedIcon: false,
-          segments: const [
-            ButtonSegment(
-              value: PrayerVisibility.public,
-              icon: Icon(AppIcons.globe, size: 18),
-              label: Text('공개'),
-            ),
-            ButtonSegment(
-              value: PrayerVisibility.private,
-              icon: Icon(AppIcons.lock, size: 18),
-              label: Text('교역자 전용'),
-            ),
+        ChoiceRow<PrayerVisibility>(
+          label: '공개 범위',
+          options: const [
+            ChoiceOption(PrayerVisibility.public, '공개'),
+            ChoiceOption(PrayerVisibility.private, '교역자 전용'),
           ],
-          selected: {vm.visibility},
-          onSelectionChanged: (s) => vm.setVisibility(s.first),
+          value: vm.visibility,
+          onChanged: vm.setVisibility,
         ),
         const SizedBox(height: 8),
         Text(
           isPublic
-              ? '승인된 교인에게 공개되며 이모티콘으로 응원받을 수 있어요. 작성자 이름은 표시되지 않습니다.'
+              ? '승인된 교인에게 공개되며 이모티콘으로 응원받을 수 있어요.'
               : '다른 교인에게는 보이지 않고, 교역자만 읽고 답변할 수 있어요.',
           style: TextStyle(color: context.palette.muted, fontSize: 13),
         ),

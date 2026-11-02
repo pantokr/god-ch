@@ -1,4 +1,6 @@
 import '../../../core/widgets/toast.dart';
+import '../../../core/layout/responsive.dart';
+import '../../../core/widgets/toggle_chip.dart';
 import '../../../core/widgets/app_loader.dart';
 
 import 'package:flutter/material.dart';
@@ -13,6 +15,7 @@ import '../../../core/mvvm/view_model_builder.dart';
 import '../../../core/theme.dart';
 import '../../../core/widgets/create_fab.dart';
 import '../../../core/widgets/refresh_scope.dart';
+import '../../../core/widgets/read_status_bar.dart';
 import '../../../core/widgets/sort_pad.dart';
 import '../../../core/widgets/stat_icons.dart';
 import '../../../core/widgets/thumbnail_avatar.dart';
@@ -22,6 +25,7 @@ import '../../../data/models/church_content.dart';
 import '../../../data/models/church_features.dart';
 import '../../../data/models/devotion_settings.dart';
 import '../../../data/models/member.dart';
+import '../../home/view/affiliation_tag.dart';
 import '../../home/view/content_widgets.dart';
 import '../../home/view/feature_gate.dart';
 import '../../home/view_model/affiliation_choice.dart';
@@ -44,7 +48,7 @@ class BiblePage extends StatelessWidget {
       feature: PageFeature.word,
       me: me,
       choice: choice,
-      builder: (context, _) => RefreshScope(
+      builder: (context, affiliation) => RefreshScope(
         builder: (context, generation, refresh) =>
             ViewModelBuilder<DevotionsViewModel>(
               key: ValueKey('bible/${me.churchId}/$generation'),
@@ -56,6 +60,7 @@ class BiblePage extends StatelessWidget {
                 affiliations: AppScope.read(context).affiliations
                     .affiliations(me.churchId),
                 includePrivate: me.can(Permission.devotionViewPrivate),
+                readerId: me.id,
               ),
               builder: (context, vm) => Stack(
                 fit: StackFit.expand,
@@ -67,10 +72,14 @@ class BiblePage extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
+                          // 검색 필드는 탭 설명 위에 있다.
+                          _SearchField(vm: vm),
+                          const SizedBox(height: 16),
                           PageTitle(
-                            gap: PageTitle.panelGap,
-                            title: '말씀묵상',
-                            description: '교역자가 올린 말씀과 묵상을 읽고, 내 묵상을 댓글로 남깁니다. 소속별로 모아 보거나 조회순·좋아요순으로 정렬할 수 있어요.',
+                            gap: 32,
+                            title: '',
+                            description:
+                                '교역자가 올린 말씀 본문과 그에 대한 묵상입니다. 소속별로 나누어 모아 둡니다.',
                           ),
                           StreamBuilder<List<Affiliation>>(
                             stream: vm.affiliations,
@@ -93,49 +102,98 @@ class BiblePage extends StatelessWidget {
                                         child: Center(child: AppLoader()),
                                       );
                                     }
-                                    final items = vm.apply(all);
+                                    final items = vm.apply(
+                                      all,
+                                      affiliationId: affiliation?.id,
+                                    );
                                     return Column(
                                       crossAxisAlignment:
                                           CrossAxisAlignment.stretch,
                                       children: [
-                                        _FilterPanel(
-                                          vm: vm,
-                                          affiliations: me.visibleAffiliations(
-                                            affiliations ?? const [],
-                                          ),
+                                        // 최근 글쓴이는 구분선 위에 있다.
+                                        _RecentAuthors(
+                                          visible: vm.settings.showAuthor,
+                                          authors:
+                                              DevotionsViewModel.recentAuthors(
+                                                all,
+                                              ),
                                         ),
-                                        const SizedBox(height: 16),
-                                        // 패널 영역과 목록 영역을 가르는 선, 그 아래 목록 윗부분 오른쪽에 새로고침.
+                                        const SizedBox(height: 8),
+                                        // 위 영역과 목록 영역을 가르는 선.
                                         Divider(
                                           height: 1,
                                           color: context.palette.border,
                                         ),
-                                        // 최근 글쓴이 프로필은 왼쪽, 새로고침은 그 맞은편 오른쪽에 둔다.
-                                        Row(
-                                          children: [
-                                            Expanded(
-                                              child: _RecentAuthors(
-                                                visible: vm.settings.showAuthor,
-                                                authors:
-                                                    DevotionsViewModel.recentAuthors(
-                                                      all,
-                                                    ),
+                                        // 읽음 제외는 정렬 줄 위에 둔다.
+                                        BleedBox(
+                                          padding: const EdgeInsets.only(
+                                            top: 8,
+                                          ),
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.stretch,
+                                            children: [
+                                              Padding(
+                                                padding: EdgeInsets.only(
+                                                  top: 12,
+                                                  right: textGutter(context),
+                                                ),
+                                                child: Align(
+                                                  alignment:
+                                                      Alignment.centerRight,
+                                                  child: ToggleChip(
+                                                    label: '읽음 제외',
+                                                    on: vm.hideRead,
+                                                    onTap: vm.toggleHideRead,
+                                                  ),
+                                                ),
                                               ),
-                                            ),
-                                            refresh,
-                                          ],
+                                              // 정렬 순서는 패널 밖, 목록 바로 위에 붙는다 (일정과 같다).
+                                              SortStrip(
+                                                options: [
+                                                  for (final s
+                                                      in DevotionSort.values)
+                                                    PadOption(
+                                                      s.label,
+                                                      selected: vm.sort == s,
+                                                      onTap: () =>
+                                                          vm.setSort(s),
+                                                    ),
+                                                ],
+                                              ),
+                                              SortBody(
+                                                child: Column(
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment
+                                                          .stretch,
+                                                  children: [
+                                                    if (items.isEmpty)
+                                                      EmptyHint(
+                                                        all.isEmpty
+                                                            ? '말씀 없음'
+                                                            : '검색 결과 없음',
+                                                      )
+                                                    else
+                                                      for (final c in items)
+                                                        DevotionCard(
+                                                          content: c,
+                                                          me: me,
+                                                          settings: vm.settings,
+                                                          affiliationNames: {
+                                                            for (final a
+                                                                in affiliations ??
+                                                                    const <
+                                                                      Affiliation
+                                                                    >[])
+                                                              a.id: a.name,
+                                                          },
+                                                        ),
+                                                  ],
+                                                ),
+                                              ),
+                                            ],
+                                          ),
                                         ),
-                                        if (items.isEmpty)
-                                          EmptyHint(
-                                            all.isEmpty ? '말씀 없음' : '검색 결과 없음',
-                                          )
-                                        else
-                                          for (final c in items)
-                                            _DevotionCard(
-                                              content: c,
-                                              me: me,
-                                              settings: vm.settings,
-                                            ),
                                       ],
                                     );
                                   },
@@ -200,9 +258,9 @@ class _RecentAuthors extends StatelessWidget {
   /// 프로필 사진으로 보이는 최대 인원. 넘으면 나머지는 "+N"으로 줄인다.
   static const maxShown = 5;
 
-  static const _radius = 11.0;
+  static const _radius = 13.0;
   static const _ring = 1.5;
-  static const _step = 17.0;
+  static const _step = 20.0;
 
   @override
   Widget build(BuildContext context) {
@@ -212,13 +270,16 @@ class _RecentAuthors extends StatelessWidget {
     final shown = authors.take(maxShown).toList();
     final more = authors.length - shown.length;
     final count = shown.length + (more > 0 ? 1 : 0);
-    final text = TextStyle(color: palette.muted, fontSize: 12);
+    final text = TextStyle(color: palette.muted, fontSize: 14);
     Widget ring(Widget child) => DecoratedBox(
       decoration: BoxDecoration(shape: BoxShape.circle, color: palette.surface),
       child: Padding(padding: const EdgeInsets.all(_ring), child: child),
     );
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      padding: EdgeInsets.symmetric(
+        horizontal: textGutter(context),
+        vertical: 8,
+      ),
       child: Row(
         children: [
           Text('7일간', style: text),
@@ -258,7 +319,7 @@ class _RecentAuthors extends StatelessWidget {
                             style: TextStyle(
                               color: palette.brand,
                               fontWeight: FontWeight.w800,
-                              fontSize: 9.5,
+                              fontSize: 11,
                             ),
                           ),
                         ),
@@ -283,18 +344,181 @@ class _RecentAuthors extends StatelessWidget {
   }
 }
 
-/// 검색 · 정렬 영역.
-class _FilterPanel extends StatefulWidget {
-  const _FilterPanel({required this.vm, required this.affiliations});
+/// 각진 카드 한 장: 말씀 제목과 날짜, 글쓴이(프로필 · 이름), 묵상 미리보기, 가장자리의 조회수와 좋아요. 말씀 본문은 목록에 싣지 않는다.
+class DevotionCard extends StatelessWidget {
+  const DevotionCard({
+    super.key,
+    required this.content,
+    required this.me,
+    required this.settings,
+    this.affiliationNames = const {},
+  });
 
-  final DevotionsViewModel vm;
-  final List<Affiliation> affiliations;
+  final ChurchContent content;
+  final Member me;
+  final DevotionSettings settings;
+
+  /// 소속 아이디 → 이름. 글의 소속을 이름 옆에 보여줄 때 쓴다.
+  final Map<String, String> affiliationNames;
 
   @override
-  State<_FilterPanel> createState() => _FilterPanelState();
+  Widget build(BuildContext context) {
+    final palette = context.palette;
+    final c = content;
+    // 앱 개발자는 교인이 아니라 읽음 표시가 없다.
+    final read = !me.isOperatorView && c.readBy.contains(me.id);
+    // 읽은 글은 "읽음", 7일 안에 올라온 안 읽은 글은 "신규", 오래된 안 읽은 글은 바가 없다.
+    final fresh =
+        !me.isOperatorView && !read && ReadStatusBar.isFresh(c.createdAt);
+    // 내가 쓴 글은 읽음 · 신규 표시가 필요 없다.
+    final showBar = kReadBarEnabled && c.authorId != me.id && (read || fresh);
+    // 글이 짧든 길든 카드 높이가 같도록 글 영역은 늘 정해진 줄 수만큼 자리를 잡는다.
+    final scaler = MediaQuery.textScalerOf(context);
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        textGutter(context),
+        0,
+        textGutter(context),
+        14,
+      ),
+      child: InkWell(
+        onTap: () => context.push(Routes.devotion(me.churchId, c.id)),
+        borderRadius: BorderRadius.circular(4),
+        child: Ink(
+          // 읽음 · 신규 바는 카드 맨 위 가장자리에 붙으므로 위쪽 여백은 바 아래에서 시작한다.
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          decoration: BoxDecoration(
+            color: palette.surface,
+            border: Border.all(color: context.cardEdge),
+            borderRadius: BorderRadius.circular(4),
+          ),
+          // 위에서 아래로: 제목 → 묵상(카드 너비 전부) → 좋아요 · 조회수(오른쪽) → 글쓴이(왼쪽)와 날짜(맞은편 오른쪽).
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // 카드 맨 위에 카드 너비를 전부 차지하는 바가 붙는다: 읽은 글은 회색 "읽음", 안 읽은 글은 붉은 "신규".
+              // 바가 있든 없든 카드 맨 위 높이는 같다 (모든 카드가 같은 높이).
+              if (showBar) ...[
+                read
+                    ? ReadStatusBar.read(color: palette.muted)
+                    : const ReadStatusBar.fresh(),
+                const SizedBox(height: 14),
+              ] else
+                SizedBox(
+                  height: kReadBarEnabled ? ReadStatusBar.height + 14 : 16,
+                ),
+              SizedBox(
+                height: scaler.scale(16 * 1.3),
+                child: Row(
+                  children: [
+                    if (c.isPrivate) ...[
+                      Icon(AppIcons.lock, size: 14, color: palette.muted),
+                      const SizedBox(width: 4),
+                    ],
+                    Flexible(
+                      child: Text(
+                        c.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 16,
+                          height: 1.3,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 8),
+              // 묵상은 두 줄 자리를 늘 잡는다.
+              SizedBox(
+                height: scaler.scale(13.5 * 1.4 * 2),
+                child: Text(
+                  c.meditation,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: palette.muted,
+                    fontSize: 13.5,
+                    height: 1.4,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              // 좋아요 · 조회수는 오른쪽에, 이 글의 소속은 그 맞은편 왼쪽에 둔다.
+              SizedBox(
+                height: 24,
+                child: Row(
+                  children: [
+                    if (affiliationLabel(affiliationNames, c.affiliationId)
+                        case final name?)
+                      AffiliationTag(name),
+                    const Spacer(),
+                    StatIcons(
+                      horizontal: true,
+                      showViews: settings.showViews,
+                      showLikeCount: settings.showLikeCount,
+                      views: c.views,
+                      likes: c.likes,
+                      liked: c.likedBy.contains(me.id),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              // 글쓴이가 없어도 이 줄의 높이는 같다.
+              SizedBox(
+                height: 22,
+                child: Row(
+                  children: [
+                    if (c.authorName.isNotEmpty && settings.showAuthor) ...[
+                      ThumbnailAvatar(
+                        name: c.authorName,
+                        url: c.authorPhotoUrl,
+                        radius: 10,
+                      ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          c.authorName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ),
+                    ] else
+                      const Spacer(),
+                    const SizedBox(width: 8),
+                    Text(
+                      fmtDateAt(c.date, c.createdAt),
+                      style: TextStyle(color: palette.muted, fontSize: 12),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
 
-class _FilterPanelState extends State<_FilterPanel> {
+/// 말씀묵상 검색 필드: 탭 설명 위에 놓인다.
+class _SearchField extends StatefulWidget {
+  const _SearchField({required this.vm});
+
+  final DevotionsViewModel vm;
+
+  @override
+  State<_SearchField> createState() => _SearchFieldState();
+}
+
+class _SearchFieldState extends State<_SearchField> {
   late final _search = TextEditingController(text: widget.vm.query);
 
   @override
@@ -306,17 +530,16 @@ class _FilterPanelState extends State<_FilterPanel> {
   @override
   Widget build(BuildContext context) {
     final vm = widget.vm;
-    return SortPad(
-      header: TextField(
+    return PadSearchField(
+      child: TextField(
         controller: _search,
         onChanged: vm.setQuery,
         textInputAction: TextInputAction.search,
         decoration: InputDecoration(
-          hintText: '검색',
+          hintText: '말씀 제목을 입력하세요',
           isDense: true,
-          prefixIcon: const Icon(AppIcons.magnifyingGlass, size: 18),
           suffixIcon: vm.query.isEmpty
-              ? null
+              ? const Icon(AppIcons.magnifyingGlass, size: 18)
               : IconButton(
                   icon: const Icon(AppIcons.x, size: 18),
                   onPressed: () {
@@ -324,184 +547,6 @@ class _FilterPanelState extends State<_FilterPanel> {
                     vm.setQuery('');
                   },
                 ),
-        ),
-      ),
-      groups: [
-        if (widget.affiliations.isNotEmpty)
-          PadGroup(label: '소속', [
-            for (final a in [null, ...widget.affiliations])
-              PadOption(
-                a?.name ?? '전체',
-                selected: vm.affiliationId == a?.id,
-                onTap: () => vm.setAffiliation(a?.id),
-              ),
-          ]),
-        PadGroup(label: '정렬 순서', [
-          for (final s in DevotionSort.values)
-            PadOption(
-              s.label,
-              selected: vm.sort == s,
-              onTap: () => vm.setSort(s),
-            ),
-        ]),
-      ],
-    );
-  }
-}
-
-/// 각진 카드 한 장: 말씀 제목과 날짜, 글쓴이(프로필 · 이름), 묵상 미리보기, 가장자리의 조회수와 좋아요. 말씀 본문은 목록에 싣지 않는다.
-class _DevotionCard extends StatelessWidget {
-  const _DevotionCard({
-    required this.content,
-    required this.me,
-    required this.settings,
-  });
-
-  final ChurchContent content;
-  final Member me;
-  final DevotionSettings settings;
-
-  @override
-  Widget build(BuildContext context) {
-    final palette = context.palette;
-    final c = content;
-    // 앱 개발자는 교인이 아니라 읽음 표시가 없다.
-    final read = !me.isOperatorView && c.readBy.contains(me.id);
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 14),
-      child: InkWell(
-        onTap: () => context.push(Routes.devotion(me.churchId, c.id)),
-        borderRadius: BorderRadius.circular(4),
-        child: Ink(
-          // 읽음 바는 카드 맨 위 가장자리에 붙으므로 위쪽 여백은 바 아래에서 시작한다.
-          padding: EdgeInsets.fromLTRB(16, read ? 0 : 16, 16, 16),
-          decoration: BoxDecoration(
-            color: palette.surface,
-            border: Border.all(color: context.cardEdge),
-            borderRadius: BorderRadius.circular(4),
-          ),
-          // 위에서 아래로: 제목 → 묵상(카드 너비 전부) → 좋아요 · 조회수(오른쪽) → 글쓴이(왼쪽)와 날짜(맞은편 오른쪽).
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // 읽은 글은 카드 맨 위에 카드 너비를 전부 차지하는 바가 붙고, 가운데에 흰 글씨 "읽음"이 있다 (바는 짙은 회색).
-              if (read)
-                LayoutBuilder(
-                  builder: (context, box) => SizedBox(
-                    height: 26,
-                    child: OverflowBox(
-                      // 카드 안쪽 좌우 여백(16)까지 덮어 카드 가장자리에서 가장자리까지 채운다.
-                      minWidth: box.maxWidth + 32,
-                      maxWidth: box.maxWidth + 32,
-                      child: Container(
-                        height: 26,
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          color: palette.muted,
-                          borderRadius: const BorderRadius.vertical(
-                            top: Radius.circular(3),
-                          ),
-                        ),
-                        child: Text(
-                          '읽음',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              if (read) const SizedBox(height: 14),
-              Row(
-                children: [
-                  if (c.isPrivate) ...[
-                    Icon(AppIcons.lock, size: 14, color: palette.muted),
-                    const SizedBox(width: 4),
-                  ],
-                  // 안 읽은 글은 제목 앞에 강조색 점이 붙는다.
-                  if (!me.isOperatorView && !read) ...[
-                    Container(
-                      width: 8,
-                      height: 8,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: palette.accent,
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                  ],
-                  Flexible(
-                    child: Text(
-                      c.title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontWeight: FontWeight.w800,
-                        fontSize: 16,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              if (c.meditation.isNotEmpty) ...[
-                const SizedBox(height: 8),
-                Text(
-                  c.meditation,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: palette.muted,
-                    fontSize: 13.5,
-                    height: 1.4,
-                  ),
-                ),
-              ],
-              const SizedBox(height: 12),
-              Align(
-                alignment: Alignment.centerRight,
-                child: StatIcons(
-                  horizontal: true,
-                  showViews: settings.showViews,
-                  views: c.views,
-                  likes: c.likes,
-                  liked: c.likedBy.contains(me.id),
-                ),
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  if (c.authorName.isNotEmpty && settings.showAuthor) ...[
-                    ThumbnailAvatar(
-                      name: c.authorName,
-                      url: c.authorPhotoUrl,
-                      radius: 10,
-                    ),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: Text(
-                        c.authorName,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 13,
-                        ),
-                      ),
-                    ),
-                  ] else
-                    const Spacer(),
-                  const SizedBox(width: 8),
-                  Text(
-                    fmtDateAt(c.date, c.createdAt),
-                    style: TextStyle(color: palette.muted, fontSize: 12),
-                  ),
-                ],
-              ),
-            ],
-          ),
         ),
       ),
     );

@@ -19,17 +19,30 @@ class MyReflectionsViewModel extends ViewModel {
     ReflectionRepository reflections,
     String churchId, {
     bool includePrivate = false,
-  }) : items = contents
-           .latest(churchId, includePrivate: includePrivate)
-           .asyncMap((devotions) async {
-             final mine = <MyReflection>[];
-             for (final d in devotions) {
-               for (final r in await reflections.mineAll(churchId, d.id)) {
-                 mine.add(MyReflection(d, r));
-               }
-             }
-             return mine;
-           });
+  }) : items = stream(
+         contents,
+         reflections,
+         churchId,
+         includePrivate: includePrivate,
+       );
+
+  /// 최근 말씀 글들에 내가 남긴 묵상을 모은 스트림.
+  static Stream<List<MyReflection>> stream(
+    ContentRepository contents,
+    ReflectionRepository reflections,
+    String churchId, {
+    bool includePrivate = false,
+  }) => contents.latest(churchId, includePrivate: includePrivate).asyncMap((
+    devotions,
+  ) async {
+    final mine = <MyReflection>[];
+    for (final d in devotions) {
+      for (final r in await reflections.mineAll(churchId, d.id)) {
+        mine.add(MyReflection(d, r));
+      }
+    }
+    return mine;
+  });
 
   final Stream<List<MyReflection>> items;
 }

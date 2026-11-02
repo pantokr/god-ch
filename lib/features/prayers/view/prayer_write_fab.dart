@@ -33,11 +33,8 @@ class PrayerWriteFab extends StatelessWidget {
         stream: vm.settings,
         initialData: PrayerSettings.standard,
         builder: (context, cfg) {
-          final canWrite =
-              (cfg.data ?? PrayerSettings.standard).writers ==
-                  PrayerWriters.member ||
-              me.isStaff;
-          final allowed = canWrite && me.can(Permission.prayerWrite);
+          // 글을 쓸 수 있는 사람은 직급 권한(글 작성)으로 정한다.
+          final allowed = me.can(Permission.prayerWrite);
           // 앱 개발자는 기도제목을 쓰지 않는다.
           if (!allowed || me.isOperatorView) return const SizedBox.shrink();
           return CreateFab(

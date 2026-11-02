@@ -36,7 +36,7 @@ String meetingDay(DateTime d) {
   return '${two(d.month)}/${two(d.day)}';
 }
 
-/// 남은 날 표시: "D-5", 오늘은 "D-0". 이미 지난 모임은 null (남은 자리 배지가 "종료"를 알린다).
+/// 남은 날 표시: "D-5", 오늘은 "D-day". 이미 지난 모임은 null (남은 자리 배지가 "종료"를 알린다).
 String? meetingDDay(DateTime d, {DateTime? now}) {
   final today = now ?? DateTime.now();
   final days = DateTime(
@@ -44,7 +44,8 @@ String? meetingDDay(DateTime d, {DateTime? now}) {
     d.month,
     d.day,
   ).difference(DateTime(today.year, today.month, today.day)).inDays;
-  return days < 0 ? null : 'D-$days';
+  if (days < 0) return null;
+  return days == 0 ? 'D-day' : 'D-$days';
 }
 
 /// 카드에 쓰는 짧은 줄: "11/06 서대문". D-N은 남은 자리 배지 옆에 따로 보인다.

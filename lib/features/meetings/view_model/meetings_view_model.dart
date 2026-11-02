@@ -5,6 +5,17 @@ import '../../../data/models/meeting.dart';
 import '../data/meeting_repository.dart';
 import '../view/meeting_form.dart';
 
+/// 모임 목록 보기: 전체 / 신청할 수 있는 모임 / 마감된 모임.
+enum MeetingFilter {
+  all('전체'),
+  open('신청 가능'),
+  closed('마감');
+
+  const MeetingFilter(this.label);
+
+  final String label;
+}
+
 /// 모임 목록 정렬 기준.
 enum MeetingSort {
   latest('최신순'),
@@ -28,7 +39,7 @@ class MeetingsViewModel extends ViewModel {
   final Stream<List<Meeting>> items;
 
   MeetingSort _sort = MeetingSort.latest;
-  bool _hideClosed = false;
+  MeetingFilter _filter = MeetingFilter.open;
   String _query = '';
 
   String get query => _query;
@@ -40,34 +51,45 @@ class MeetingsViewModel extends ViewModel {
 
   MeetingSort get sort => _sort;
 
-  /// 마감(정원이 찼거나 이미 지난) 모임을 빼고 보는가.
-  bool get hideClosed => _hideClosed;
-
   void setSort(MeetingSort value) {
     if (_sort == value) return;
     _sort = value;
     notifyListeners();
   }
 
-  void toggleHideClosed() {
-    _hideClosed = !_hideClosed;
+  MeetingFilter get filter => _filter;
+
+  void setFilter(MeetingFilter value) {
+    if (_filter == value) return;
+    _filter = value;
     notifyListeners();
   }
 
-  /// 검색어(제목 · 장소 · 모임장 · 소개), 마감 제외, 정렬을 적용한 목록.
-  List<Meeting> apply(List<Meeting> all) {
-    bool matches(Meeting m) =>
-        _query.isEmpty ||
-        m.title.toLowerCase().contains(_query) ||
-        m.place.toLowerCase().contains(_query) ||
-        m.leaderName.toLowerCase().contains(_query) ||
-        m.description.toLowerCase().contains(_query);
-    final list = [
-      for (final m in all)
-        if (matches(m) && (!_hideClosed || !(m.ended || m.isFull))) m,
-    ];
+  /// 지금 보기에 맞는 모임인가.
+  bool shows(Meeting m) => switch (_filter) {
+    MeetingFilter.open => !(m.ended || m.isFull),
+    MeetingFilter.all => true,
+    MeetingFilter.closed => m.ended || m.isFull,
+  };
+
+  /// 검색어(제목 · 장소 · 모임장 · 소개), 보기(전체 · 신청 가능 · 마감), 정렬을 적용한 목록.
+  List<Meeting> apply(List<Meeting> all) => sorted([
+    for (final m in all)
+      if (matches(m, _query) && shows(m)) m,
+  ], _sort);
+
+  /// 검색어([query], 소문자로 다듬은 것)에 맞는 모임인가 (제목 · 장소 · 모임장 · 소개). 내 활동도 같은 검색을 쓴다.
+  static bool matches(Meeting m, String query) =>
+      query.isEmpty ||
+      m.title.toLowerCase().contains(query) ||
+      m.place.toLowerCase().contains(query) ||
+      m.leaderName.toLowerCase().contains(query) ||
+      m.description.toLowerCase().contains(query);
+
+  /// [sort] 기준으로 정렬한 목록 (받은 목록을 그대로 정렬한다).
+  static List<Meeting> sorted(List<Meeting> list, MeetingSort sort) {
     DateTime made(Meeting m) => m.createdAt ?? m.date;
-    switch (_sort) {
+    switch (sort) {
       case MeetingSort.latest:
         list.sort((a, b) => made(b).compareTo(made(a)));
       case MeetingSort.popular:

@@ -92,7 +92,11 @@ class _ExploreBody extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 12),
-            AppSearchField(hint: '교회 이름 · 주소', onChanged: vm.setQuery),
+            AppSearchField(
+              inset: true,
+              hint: '교회 이름 · 주소',
+              onChanged: vm.setQuery,
+            ),
             const SizedBox(height: 12),
             StreamBuilder<List<Member>>(
               stream: vm.memberships,

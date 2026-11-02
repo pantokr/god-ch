@@ -2,6 +2,8 @@ import '../../../core/icons.dart';
 
 import 'package:flutter/material.dart';
 
+import '../../../core/widgets/labeled_field.dart';
+
 import '../../../app/app_scope.dart';
 import '../../../app/routes.dart';
 import '../../../core/app_exception.dart';
@@ -171,11 +173,14 @@ class _DeleteAccountFormState extends State<_DeleteAccountForm> {
       children: [
         Text('앱 탈퇴', style: Theme.of(context).textTheme.titleLarge),
         const SizedBox(height: 16),
-        TextField(
-          controller: _password,
-          obscureText: true,
-          decoration: const InputDecoration(labelText: '비밀번호'),
-          onSubmitted: (_) => _busy ? null : _submit(),
+        LabeledField(
+          label: '비밀번호',
+          child: TextField(
+            controller: _password,
+            obscureText: true,
+            decoration: const InputDecoration(),
+            onSubmitted: (_) => _busy ? null : _submit(),
+          ),
         ),
         if (_error != null)
           Padding(

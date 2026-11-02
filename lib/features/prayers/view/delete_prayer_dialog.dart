@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/widgets/labeled_field.dart';
+
 import '../../../core/widgets/trash_icon.dart';
 import '../../../core/layout/app_dialog.dart';
 
@@ -42,12 +44,16 @@ class _DeletePrayerFormState extends State<_DeletePrayerForm> {
         Text('기도제목을 삭제할까요?', style: Theme.of(context).textTheme.titleLarge),
         const SizedBox(height: 16),
         if (widget.needsReason)
-          TextField(
-            controller: _reason,
-            autofocus: true,
-            maxLines: 2,
-            onChanged: (_) => setState(() {}),
-            decoration: const InputDecoration(labelText: '삭제 사유 (필수)'),
+          LabeledField(
+            label: '삭제 사유',
+            alignTop: true,
+            child: TextField(
+              controller: _reason,
+              autofocus: true,
+              maxLines: 2,
+              onChanged: (_) => setState(() {}),
+              decoration: const InputDecoration(hintText: '필수'),
+            ),
           )
         else
           const Text('삭제한 기도제목은 목록에서 사라집니다.'),

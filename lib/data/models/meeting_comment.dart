@@ -11,6 +11,8 @@ class MeetingComment {
     required this.authorName,
     required this.text,
     this.createdAt,
+    this.parentId,
+    this.deleted = false,
   });
 
   /// 글자 수 제한 (`firestore.rules`와 같다).
@@ -22,6 +24,12 @@ class MeetingComment {
   final String text;
   final DateTime? createdAt;
 
+  /// 답글이면 바로 윗 댓글의 id, 최상위 댓글이면 null.
+  final String? parentId;
+
+  /// 지운 댓글인가 (기록은 남는다). 답글이 달려 있으면 자리만 남겨 보여준다.
+  final bool deleted;
+
   factory MeetingComment.fromDoc(DocumentSnapshot<Json> doc) {
     final d = doc.data() ?? const {};
     return MeetingComment(
@@ -30,6 +38,8 @@ class MeetingComment {
       authorName: d['authorName'] as String? ?? '',
       text: d['text'] as String? ?? '',
       createdAt: toDate(d['createdAt']),
+      parentId: d['parentId'] as String?,
+      deleted: d['deleted'] == true,
     );
   }
 }

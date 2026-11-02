@@ -36,6 +36,7 @@ class NotificationsPage extends StatelessWidget {
               final items = snap.data ?? const <AppNotification>[];
               return SingleChildScrollView(
                 child: PageFrame(
+                  inset: true,
                   verticalPadding: 12,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,

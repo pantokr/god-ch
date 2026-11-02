@@ -114,17 +114,20 @@ class Member {
     isOperatorView: isOperatorView,
   );
 
-  /// 중보기도 댓글을 쓸 수 있는가: 교역자, 또는 직급으로 댓글 권한을 직접 받은 교인 (회원 기본은 좋아요까지).
-  bool get canPrayerComment =>
-      can(Permission.prayerInteract) &&
-      (isStaff || permissions.contains(Permission.prayerInteract.key));
+  /// 중보기도 댓글을 쓸 수 있는가: 댓글 작성 권한이 있는 교역자, 또는 직급으로 그 권한을 받은 교인 (회원 기본은 반응까지).
+  bool get canPrayerComment => can(Permission.prayerComment);
+
+  /// "미배정": 속한 곳이 하나도 없다 (소속도 직급도 없다). 하나라도 있으면 미배정이 아니다.
+  bool get isUnassigned => affiliationIds.isEmpty && positionId == null;
 
   /// 관리 메뉴(인원 · 입장 · 소속)를 쓸 수 있는가: 교역자 이상이거나 관련 권한이 있다.
   bool get canManage =>
       isStaff ||
       can(Permission.memberApprove) ||
       can(Permission.inviteManage) ||
-      can(Permission.affiliationAssign);
+      can(Permission.affiliationAssign) ||
+      can(Permission.affiliationCreate) ||
+      can(Permission.affiliationDelete);
 
   factory Member.fromDoc(DocumentSnapshot<Json> doc) {
     final d = doc.data() ?? const {};

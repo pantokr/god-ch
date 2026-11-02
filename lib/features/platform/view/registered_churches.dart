@@ -40,7 +40,11 @@ class RegisteredChurches extends StatelessWidget {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            AppSearchField(hint: '교회 이름, 주소, 전화번호 검색', onChanged: vm.setQuery),
+            AppSearchField(
+              inset: true,
+              hint: '교회 이름, 주소, 전화번호 검색',
+              onChanged: vm.setQuery,
+            ),
             const SizedBox(height: 16),
             Text(
               '등록된 교회 (${all.length})',

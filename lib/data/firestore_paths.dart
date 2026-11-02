@@ -44,6 +44,10 @@ class FirestorePaths {
   CollectionReference<Json> meetings(String churchId) =>
       church(churchId).collection('meetings');
 
+  /// 사람 목록용 복사본: 이름 · 사진 · 역할 · 소속 · 생일(월-일)만 담아 모든 교인이 읽는다 ([PersonCard]).
+  CollectionReference<Json> people(String churchId) =>
+      church(churchId).collection('people');
+
   CollectionReference<Json> accessLogs(String churchId) =>
       church(churchId).collection('accessLogs');
 

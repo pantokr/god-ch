@@ -1,152 +1,221 @@
-import '../../../core/widgets/app_loader.dart';
-
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/app_scope.dart';
 import '../../../app/routes.dart';
 import '../../../core/format.dart';
+import '../../../core/icons.dart';
 import '../../../core/layout/page_frame.dart';
+import '../../../core/layout/responsive.dart';
 import '../../../core/mvvm/view_model_builder.dart';
 import '../../../core/theme.dart';
+import '../../../core/widgets/app_loader.dart';
 import '../../../core/widgets/shadow_switch.dart';
+import '../../../core/widgets/stat_icons.dart' show Pastel;
 import '../../../core/widgets/sort_pad.dart';
+import '../../../data/models/affiliation.dart';
+import '../../../data/models/church_content.dart';
+import '../../../data/models/devotion_settings.dart';
 import '../../../data/models/meeting.dart';
 import '../../../data/models/member.dart';
+import '../../../data/models/my_comment.dart';
+import '../../../data/models/prayer.dart';
 import '../../../data/models/permission.dart';
-import '../../meetings/view/meetings_page.dart' show MeetingListView;
+import '../../../data/models/prayer_settings.dart';
+import '../../bible/view/bible_page.dart' show DevotionCard;
+import '../../meetings/view/meeting_format.dart';
 import '../../meetings/view_model/my_meetings_view_model.dart';
-import '../../prayers/view/my_prayers_page.dart';
-import '../view_model/my_reflections_view_model.dart';
+import '../../prayers/view/prayer_board_page.dart' show PrayerTile;
+import '../view_model/my_posts_view_model.dart';
 import 'content_widgets.dart';
 
-/// 내 활동에 모이는 내 글의 종류.
-enum MyActivity {
-  meeting('일정'),
-  prayer('중보기도'),
-  devotion('말씀');
-
-  const MyActivity(this.label);
-
-  final String label;
-}
-
-/// "내 활동": 내 일정(참여하거나 이끄는 모임), 내가 쓴 기도제목, 내가 남긴 묵상 모음.
-class MyActivityPage extends StatefulWidget {
+/// "내 활동": 위에는 내가 참여 신청한 일정이 좌우로 밀리는 카드로 있고(자세히 보기에서 참여 예정 · 관심 · 완료 일정),
+/// 아래에는 내가 쓴 중보기도와 말씀묵상을 한 목록으로 모아 종류별로 거른다.
+class MyActivityPage extends StatelessWidget {
   const MyActivityPage({super.key, required this.me});
 
   final Member me;
 
   @override
-  State<MyActivityPage> createState() => _MyActivityPageState();
-}
-
-class _MyActivityPageState extends State<MyActivityPage> {
-  MyActivity _current = MyActivity.meeting;
-
-  @override
   Widget build(BuildContext context) {
-    // 제목과 스위치는 목록 안쪽 맨 위에 놓여 목록과 함께 스크롤된다.
-    final header = Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        PageTitle(
-          gap: PageTitle.panelGap,
-          title: '내 활동',
-          description:
-              '내가 참여하는 일정, 쓴 기도제목, 남긴 묵상을 한곳에 모아 봅니다. 아래 스위치로 종류를 바꿔 볼 수 있어요.',
+    return SingleChildScrollView(
+      child: PageFrame(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // 두 영역은 각자 흰 박스이고, 그 사이의 좁은 틈만 바탕색이다.
+            BleedBox(child: _MySchedule(me: me)),
+            const SizedBox(height: 8),
+            BleedBox(
+              padding: const EdgeInsets.only(top: 20),
+              child: _MyPosts(me: me),
+            ),
+          ],
         ),
-        const SizedBox(height: 16),
-        ShadowSwitch<MyActivity>(
-          values: MyActivity.values,
-          selected: _current,
-          onChanged: (v) => setState(() => _current = v),
-          labelOf: (a) => a.label,
-        ),
-        const SizedBox(height: 16),
-      ],
+      ),
     );
-    return switch (_current) {
-      MyActivity.meeting => _MyMeetings(
-        key: const ValueKey('mine/meeting'),
-        me: widget.me,
-        header: header,
-      ),
-      MyActivity.prayer => MyPrayersPage(
-        key: const ValueKey('mine/prayer'),
-        me: widget.me,
-        header: header,
-      ),
-      MyActivity.devotion => _MyReflections(
-        key: const ValueKey('mine/devotion'),
-        me: widget.me,
-        header: header,
-      ),
-    };
   }
 }
 
-/// 내가 참여하거나 이끄는 모임 목록. 누르면 모임 상세가 열린다.
-class _MyMeetings extends StatelessWidget {
-  const _MyMeetings({super.key, required this.me, required this.header});
+/// 참여 신청한 일정을 좌우로 미는 카드로 보여 주는 영역. 오른쪽 위 "자세히 보기"로 일정 모음 페이지가 열린다.
+class _MySchedule extends StatelessWidget {
+  const _MySchedule({required this.me});
 
   final Member me;
 
-  /// 제목과 스위치. 목록과 함께 스크롤된다.
-  final Widget header;
+  static const _cardWidth = 232.0;
+  static const _height = 214.0;
 
   @override
   Widget build(BuildContext context) {
+    final palette = context.palette;
     return ViewModelBuilder<MyMeetingsViewModel>(
       create: (context) => MyMeetingsViewModel(
         AppScope.read(context).meetings,
         me.churchId,
         me.id,
       ),
-      builder: (context, vm) => SingleChildScrollView(
-        child: PageFrame(
-          header: header,
+      builder: (context, vm) => Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Gutter(
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    '참여 신청한 일정',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                ),
+                TextButton(
+                  onPressed: () => context.go(
+                    Routes.section(me.churchId, ChurchSection.myMeetings),
+                  ),
+                  style: TextButton.styleFrom(foregroundColor: palette.ink),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text('내 일정'),
+                      SizedBox(width: 2),
+                      Icon(AppIcons.caretRight, size: 16),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
+          StreamBuilder<List<Meeting>>(
+            stream: vm.items,
+            builder: (context, snap) {
+              if (snap.hasError) {
+                return const EmptyHint('불러오지 못했습니다');
+              }
+              if (!snap.hasData) {
+                return const SizedBox(
+                  height: _height,
+                  child: Center(child: AppLoader()),
+                );
+              }
+              // 기본 보기가 참여 예정이라, 참여 신청했거나 이끄는 앞으로의 모임이 나온다.
+              final items = vm.apply(snap.data!);
+              if (items.isEmpty) return const EmptyHint('참여 신청한 일정 없음');
+              return SizedBox(
+                height: _height,
+                child: ListView.separated(
+                  // 미는 목록은 화면 끝까지 밀리고, 시작과 끝만 안쪽 여백을 둔다.
+                  padding: EdgeInsets.symmetric(
+                    horizontal: textGutter(context),
+                  ),
+                  scrollDirection: Axis.horizontal,
+                  itemCount: items.length,
+                  separatorBuilder: (_, _) => const SizedBox(width: 12),
+                  itemBuilder: (context, i) =>
+                      _SlideCard(meeting: items[i], me: me, width: _cardWidth),
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 좌우로 미는 일정 카드 한 장: 썸네일, 제목, 날짜 · 장소, 남은 날.
+class _SlideCard extends StatelessWidget {
+  const _SlideCard({
+    required this.meeting,
+    required this.me,
+    required this.width,
+  });
+
+  final Meeting meeting;
+  final Member me;
+  final double width;
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = context.palette;
+    final m = meeting;
+    final dday = meetingDDay(m.date);
+    return SizedBox(
+      width: width,
+      child: InkWell(
+        onTap: () => context.push(Routes.meeting(me.churchId, m.id)),
+        borderRadius: BorderRadius.circular(AppRadius.card),
+        child: Ink(
+          decoration: BoxDecoration(
+            color: palette.surface,
+            border: Border.all(color: context.cardEdge),
+            borderRadius: BorderRadius.circular(AppRadius.card),
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              SortPad(
-                groups: [
-                  PadGroup(label: '보기', [
-                    for (final v in MyMeetingView.values)
-                      PadOption(
-                        v.label,
-                        selected: vm.view == v,
-                        onTap: () => vm.setView(v),
-                      ),
-                  ]),
-                ],
+              SizedBox(
+                height: 108,
+                child: ClipRRect(
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(AppRadius.card),
+                  ),
+                  child: MeetingThumb(m),
+                ),
               ),
-              const SizedBox(height: 16),
-              // 패널 영역과 목록 영역을 가르는 선 (일정 탭과 같다).
-              Divider(height: 1, color: context.palette.border),
-              const SizedBox(height: 12),
-              StreamBuilder<List<Meeting>>(
-                stream: vm.items,
-                builder: (context, snap) {
-                  if (snap.hasError) {
-                    return Text('불러오지 못했습니다\n${snap.error}');
-                  }
-                  if (!snap.hasData) {
-                    return const Padding(
-                      padding: EdgeInsets.all(48),
-                      child: Center(child: AppLoader()),
-                    );
-                  }
-                  final items = vm.apply(snap.data!);
-                  if (items.isEmpty) return const EmptyHint('일정 없음');
-                  return MeetingListView(
-                    meetings: items,
-                    me: me,
-                    onLike: me.isOperatorView
-                        ? null
-                        : (m, liked) => vm.setLike(m.id, liked: liked),
-                  );
-                },
+              Padding(
+                padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      m.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 15,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      meetingLine(m.date, m.place),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(color: palette.muted, fontSize: 12.5),
+                    ),
+                    if (dday != null) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        dday,
+                        style: const TextStyle(
+                          color: Color(0xFFD7261E),
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
               ),
             ],
           ),
@@ -156,86 +225,321 @@ class _MyMeetings extends StatelessWidget {
   }
 }
 
-/// 내가 말씀묵상에 남긴 글 목록. 카드에는 본문 없이 내 묵상만 담고, 누르면 본문과 묵상이 함께 열린다.
-class _MyReflections extends StatelessWidget {
-  const _MyReflections({super.key, required this.me, required this.header});
+/// 내가 쓴 것 모음: 종류 스위치(중보기도 · 말씀묵상 · 내 댓글) → 정렬 줄 → 목록.
+class _MyPosts extends StatefulWidget {
+  const _MyPosts({required this.me});
 
   final Member me;
 
-  /// 제목과 스위치. 목록과 함께 스크롤된다.
-  final Widget header;
+  @override
+  State<_MyPosts> createState() => _MyPostsState();
+}
+
+class _MyPostsState extends State<_MyPosts> {
+  // 글 카드가 쓰는 운영 설정과 소속 이름: 한 번만 구독한다.
+  late final _prayerSettings = AppScope.read(context).prayers
+      .settings(widget.me.churchId);
+  late final _devotionSettings = AppScope.read(context).contents
+      .settings(widget.me.churchId);
+  late final _affiliations = AppScope.read(context).affiliations
+      .affiliations(widget.me.churchId);
+
+  @override
+  Widget build(BuildContext context) {
+    final me = widget.me;
+    return ViewModelBuilder<MyPostsViewModel>(
+      create: (context) {
+        final scope = AppScope.read(context);
+        return MyPostsViewModel(
+          scope.prayers,
+          scope.contents,
+          scope.reflections,
+          me.churchId,
+          me.id,
+          includePrivate: me.can(Permission.devotionViewPrivate),
+        );
+      },
+      builder: (context, vm) => Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Center(
+            child: ShadowSwitch<MyPostFilter>(
+              values: MyPostFilter.values,
+              selected: vm.filter,
+              onChanged: vm.setFilter,
+              labelOf: (f) => f.label,
+            ),
+          ),
+          const SizedBox(height: 16),
+          SortStrip(
+            options: [
+              for (final s in vm.sortOptions)
+                PadOption(
+                  s.label,
+                  selected: vm.sort == s,
+                  onTap: () => vm.setSort(s),
+                ),
+            ],
+          ),
+          SortBody(
+            child: switch (vm.filter) {
+              MyPostFilter.prayer => _Loaded<Prayer>(
+                data: vm.prayerList,
+                error: vm.prayerError,
+                empty: '쓴 중보기도 없음',
+                builder: (list) {
+                  if (vm.sort == MyPostSort.likes) {
+                    WidgetsBinding.instance.addPostFrameCallback(
+                      (_) => vm.ensureLikes(list),
+                    );
+                  }
+                  return _CardList(
+                    prayerSettings: _prayerSettings,
+                    devotionSettings: _devotionSettings,
+                    affiliations: _affiliations,
+                    cards: (names, prayerSet, devotionSet) => [
+                      for (final p in vm.sortedPrayers(list))
+                        PrayerTile(
+                          prayer: p,
+                          me: me,
+                          affiliationNames: names,
+                          settings: prayerSet,
+                        ),
+                    ],
+                  );
+                },
+              ),
+              MyPostFilter.devotion => _Loaded<ChurchContent>(
+                data: vm.devotionList,
+                error: vm.devotionError,
+                empty: '쓴 말씀묵상 없음',
+                builder: (list) => _CardList(
+                  prayerSettings: _prayerSettings,
+                  devotionSettings: _devotionSettings,
+                  affiliations: _affiliations,
+                  cards: (names, prayerSet, devotionSet) => [
+                    for (final c in vm.sortedDevotions(list))
+                      DevotionCard(
+                        content: c,
+                        me: me,
+                        affiliationNames: names,
+                        settings: devotionSet,
+                      ),
+                  ],
+                ),
+              ),
+              MyPostFilter.comment => _Loaded<MyComment>(
+                data: vm.commentList,
+                error: vm.commentError,
+                empty: '남긴 댓글 없음',
+                builder: (list) => _CommentList(
+                  comments: vm.sortedComments(list),
+                  churchId: me.churchId,
+                ),
+              ),
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 불러오는 중 · 오류 · 빈 목록을 처리하고, 값이 있으면 [builder]로 그린다.
+class _Loaded<T> extends StatelessWidget {
+  const _Loaded({
+    required this.data,
+    required this.error,
+    required this.empty,
+    required this.builder,
+  });
+
+  final List<T>? data;
+  final Object? error;
+  final String empty;
+  final Widget Function(List<T> list) builder;
+
+  @override
+  Widget build(BuildContext context) {
+    if (error != null) {
+      return EmptyHint('불러오지 못했습니다${String.fromCharCode(10)}$error');
+    }
+    if (data == null) {
+      return const Padding(
+        padding: EdgeInsets.all(48),
+        child: Center(child: AppLoader()),
+      );
+    }
+    if (data!.isEmpty) return EmptyHint(empty);
+    return builder(data!);
+  }
+}
+
+/// 중보기도 · 말씀묵상 카드들: 설정과 소속 이름을 받아 [cards]가 카드를 만든다.
+class _CardList extends StatelessWidget {
+  const _CardList({
+    required this.prayerSettings,
+    required this.devotionSettings,
+    required this.affiliations,
+    required this.cards,
+  });
+
+  final Stream<PrayerSettings> prayerSettings;
+  final Stream<DevotionSettings> devotionSettings;
+  final Stream<List<Affiliation>> affiliations;
+  final List<Widget> Function(
+    Map<String, String> names,
+    PrayerSettings prayerSet,
+    DevotionSettings devotionSet,
+  )
+  cards;
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<PrayerSettings>(
+      stream: prayerSettings,
+      initialData: PrayerSettings.standard,
+      builder: (context, prayerSet) => StreamBuilder<DevotionSettings>(
+        stream: devotionSettings,
+        initialData: DevotionSettings.standard,
+        builder: (context, devotionSet) => StreamBuilder<List<Affiliation>>(
+          stream: affiliations,
+          builder: (context, affs) {
+            final names = {
+              for (final a in affs.data ?? const <Affiliation>[]) a.id: a.name,
+            };
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: cards(
+                names,
+                prayerSet.data ?? PrayerSettings.standard,
+                devotionSet.data ?? DevotionSettings.standard,
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+
+/// 내 댓글 목록: 중보기도 · 말씀묵상 카드와 같은 각진 테두리 카드. 카드마다 어디에 단 댓글인지(종류 · 글 제목), 날짜, 내 댓글이 있고
+/// 누르면 그 댓글이 달린 일정 · 중보기도 · 말씀묵상이 열린다.
+class _CommentList extends StatelessWidget {
+  const _CommentList({required this.comments, required this.churchId});
+
+  final List<MyComment> comments;
+  final String churchId;
+
+  void _open(BuildContext context, MyComment c) {
+    final path = switch (c.target) {
+      CommentTarget.meeting => Routes.meeting(churchId, c.targetId),
+      CommentTarget.prayer => Routes.prayer(churchId, c.targetId),
+      CommentTarget.devotion => Routes.devotion(churchId, c.targetId),
+    };
+    context.push(path);
+  }
 
   @override
   Widget build(BuildContext context) {
     final palette = context.palette;
-    return ViewModelBuilder<MyReflectionsViewModel>(
-      create: (context) {
-        final scope = AppScope.read(context);
-        return MyReflectionsViewModel(
-          scope.contents,
-          scope.reflections,
-          me.churchId,
-          includePrivate: me.can(Permission.devotionViewPrivate),
-        );
-      },
-      builder: (context, vm) => SingleChildScrollView(
-        child: PageFrame(
-          header: header,
-          child: StreamBuilder<List<MyReflection>>(
-            stream: vm.items,
-            builder: (context, snap) {
-              if (snap.hasError) return Text('불러오지 못했습니다\n${snap.error}');
-              if (!snap.hasData) {
-                return const Padding(
-                  padding: EdgeInsets.all(48),
-                  child: Center(child: AppLoader()),
-                );
-              }
-              final items = snap.data!;
-              if (items.isEmpty) return const EmptyHint('쓴 묵상 없음');
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  for (final m in items)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: Card(
-                        clipBehavior: Clip.antiAlias,
-                        child: InkWell(
-                          onTap: () => context.push(
-                            Routes.devotion(me.churchId, m.devotion.id),
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.all(16),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  m.reflection.text,
-                                  maxLines: 4,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                if (m.reflection.updatedAt != null) ...[
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    fmtDateTime(m.reflection.updatedAt!),
-                                    style: TextStyle(
-                                      color: palette.muted,
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                ],
-                              ],
+    final gutter = textGutter(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (final c in comments)
+          Padding(
+            padding: EdgeInsets.fromLTRB(gutter, 0, gutter, 14),
+            child: InkWell(
+              onTap: () => _open(context, c),
+              borderRadius: BorderRadius.circular(4),
+              child: Ink(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: palette.surface,
+                  border: Border.all(color: context.cardEdge),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // 어디에 단 댓글인지: 분류(유채색)와 글 제목(무채색)은 각각의 말풍선에 (왼쪽), 날짜는 오른쪽 끝.
+                    Row(
+                      children: [
+                        _Bubble(
+                          color: Pastel.hue(c.target.index)
+                              .withValues(alpha: 0.28),
+                          child: Text(
+                            c.target.label,
+                            style: TextStyle(
+                              color: palette.ink,
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w800,
                             ),
                           ),
                         ),
-                      ),
+                        if (c.targetTitle.isNotEmpty) ...[
+                          const SizedBox(width: 6),
+                          Flexible(
+                            child: _Bubble(
+                              color: palette.ink.withValues(alpha: 0.06),
+                              child: Text(
+                                c.targetTitle,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  color: palette.muted,
+                                  fontSize: 12.5,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                        const SizedBox(width: 8),
+                        const Spacer(),
+                        Text(
+                          fmtDateTime(c.date),
+                          style: TextStyle(
+                            color: palette.muted,
+                            fontSize: 12.5,
+                          ),
+                        ),
+                      ],
                     ),
-                ],
-              );
-            },
+                    const SizedBox(height: 10),
+                    Text(
+                      c.text,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 15),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           ),
-        ),
+      ],
+    );
+  }
+}
+
+/// 말풍선 하나: 둥근 모서리의 색 바탕 위에 짧은 글.
+class _Bubble extends StatelessWidget {
+  const _Bubble({required this.color, required this.child});
+
+  final Color color;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        child: child,
       ),
     );
   }

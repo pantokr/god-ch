@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/widgets/labeled_field.dart';
+
 import '../../../app/app_scope.dart';
 import '../../../core/mvvm/view_model_builder.dart';
 import '../../../core/theme.dart';
@@ -58,13 +60,16 @@ class _JoinChurchDialogState extends State<JoinChurchDialog> {
           children: [
             Text('초대 코드로 입장', style: theme.textTheme.titleLarge),
             AppField.spacer,
-            TextFormField(
-              controller: _code,
-              autofocus: true,
-              textCapitalization: TextCapitalization.characters,
-              decoration: const InputDecoration(labelText: '초대 코드'),
-              readOnly: vm.missing.isNotEmpty,
-              onFieldSubmitted: (_) => _submit(vm),
+            LabeledField(
+              label: '초대 코드',
+              child: TextFormField(
+                controller: _code,
+                autofocus: true,
+                textCapitalization: TextCapitalization.characters,
+                decoration: const InputDecoration(),
+                readOnly: vm.missing.isNotEmpty,
+                onFieldSubmitted: (_) => _submit(vm),
+              ),
             ),
             if (vm.missing.isNotEmpty) ...[
               const SizedBox(height: 16),

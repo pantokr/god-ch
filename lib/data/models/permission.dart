@@ -11,6 +11,18 @@ enum PermissionGroup {
   final String label;
 }
 
+/// 권한 소분류: 목록에서 묶음 안을 조회 · 생성 · 삭제 · 관리로 나누어 보여준다.
+enum PermissionKind {
+  view('조회'),
+  create('생성'),
+  delete('삭제'),
+  manage('관리');
+
+  const PermissionKind(this.label);
+
+  final String label;
+}
+
 /// 이 앱의 권한 목록. 교회 관리자는 모두 가지고(절대 권한), 교역자 · 회원 · 직급은 아래 기본값과 교회가 정한 값을 따른다.
 ///
 /// - [grantable]이 true인 권한은 교역자 · 회원 기본 직급과 직접 만든 직급에 담아 줄 수 있다.
@@ -39,6 +51,8 @@ enum Permission {
     PermissionGroup.people,
     staffDefault: true,
   ),
+  affiliationCreate('affiliation.create', '소속 생성', PermissionGroup.people),
+  affiliationDelete('affiliation.delete', '소속 삭제', PermissionGroup.people),
 
   // ---- 중보기도 ----
   prayerWrite(
@@ -54,32 +68,24 @@ enum Permission {
     PermissionGroup.prayer,
     staffDefault: true,
   ),
-  prayerInteract(
-    'prayer.interact',
-    '댓글 작성 · 좋아요',
+  prayerReact(
+    'prayer.react',
+    '반응(이모티콘 응원)',
     PermissionGroup.prayer,
     staffDefault: true,
     memberDefault: true,
   ),
-  prayerCommentDeleteOwn(
-    'prayer.commentDeleteOwn',
-    '본인 댓글 삭제',
+  prayerComment(
+    'prayer.comment',
+    '댓글 작성',
     PermissionGroup.prayer,
     staffDefault: true,
-    memberDefault: true,
   ),
   prayerCommentDeleteOthers(
     'prayer.commentDeleteOthers',
     '타인 댓글 삭제',
     PermissionGroup.prayer,
     staffDefault: true,
-  ),
-  prayerDeleteOwn(
-    'prayer.deleteOwn',
-    '본인 글 삭제',
-    PermissionGroup.prayer,
-    staffDefault: true,
-    memberDefault: true,
   ),
   prayerDeleteOthers(
     'prayer.deleteOthers',
@@ -101,16 +107,16 @@ enum Permission {
     PermissionGroup.devotion,
     staffDefault: true,
   ),
-  devotionInteract(
-    'devotion.interact',
-    '댓글 작성 · 좋아요',
+  devotionReact(
+    'devotion.react',
+    '반응(좋아요)',
     PermissionGroup.devotion,
     staffDefault: true,
     memberDefault: true,
   ),
-  devotionCommentDeleteOwn(
-    'devotion.commentDeleteOwn',
-    '본인 댓글 삭제',
+  devotionComment(
+    'devotion.comment',
+    '댓글 작성',
     PermissionGroup.devotion,
     staffDefault: true,
     memberDefault: true,
@@ -118,12 +124,6 @@ enum Permission {
   devotionCommentDeleteOthers(
     'devotion.commentDeleteOthers',
     '타인 댓글 삭제',
-    PermissionGroup.devotion,
-    staffDefault: true,
-  ),
-  devotionDeleteOwn(
-    'devotion.deleteOwn',
-    '본인 글 삭제',
     PermissionGroup.devotion,
     staffDefault: true,
   ),
@@ -183,7 +183,7 @@ enum Permission {
   ),
   settings(
     'settings',
-    '중보기도 설정 · 말씀묵상 설정',
+    '중보기도 · 말씀묵상 · 모임 일정 설정',
     PermissionGroup.fixed,
     grantable: false,
   ),
@@ -217,22 +217,30 @@ enum Permission {
   /// 교회가 따로 정하지 않았을 때 회원이 갖는가 (지금까지 회원이 하던 일).
   final bool memberDefault;
 
-  /// 이 권한이 켜지려면 먼저 켜져 있어야 하는 권한 (바로 앞 단계).
-  /// 조회 → 작성 · 댓글 → 삭제처럼 아래 단계는 위 단계가 있어야 쓸 수 있다.
-  /// 예: 본인 댓글 삭제는 댓글 작성이 있어야 하고, 타인 댓글 삭제는 본인 댓글 삭제가 있어야 한다.
-  List<Permission> get requires => switch (this) {
-    prayerCommentDeleteOwn => [prayerInteract],
-    prayerCommentDeleteOthers => [prayerCommentDeleteOwn],
-    prayerDeleteOwn => [prayerWrite],
-    prayerDeleteOthers => [prayerDeleteOwn],
-    devotionCommentDeleteOwn => [devotionInteract],
-    devotionCommentDeleteOthers => [devotionCommentDeleteOwn],
-    devotionDeleteOwn => [devotionWrite],
-    devotionDeleteOthers => [devotionDeleteOwn],
-    meetingDelete => [meetingCreate],
-    affiliationAssign => [memberApprove],
-    _ => const [],
+  /// 목록에서 어느 소분류에 놓이는가. 조회 · 생성(글 · 댓글 · 좋아요 · 참여) · 삭제 · 관리(인원 업무).
+  PermissionKind get kind => switch (this) {
+    prayerViewPrivate || devotionViewPrivate => PermissionKind.view,
+    prayerWrite ||
+    prayerReact ||
+    prayerComment ||
+    devotionWrite ||
+    devotionReact ||
+    devotionComment ||
+    meetingCreate ||
+    affiliationCreate ||
+    meetingJoin => PermissionKind.create,
+    prayerCommentDeleteOthers ||
+    prayerDeleteOthers ||
+    devotionCommentDeleteOthers ||
+    devotionDeleteOthers ||
+    affiliationDelete ||
+    meetingDelete => PermissionKind.delete,
+    _ => PermissionKind.manage,
   };
+
+  /// 이 권한이 켜지려면 먼저 켜져 있어야 하는 권한. 지금은 모든 권한이 서로 독립이라 늘 비어 있다
+  /// (권한 목록은 들여쓰기 없이 평평하게 보이고, 하나를 켜고 꺼도 다른 권한은 바뀌지 않는다).
+  List<Permission> get requires => const [];
 
   /// 선행 단계가 몇 겹인가 (목록에서 들여쓰는 칸 수).
   int get depth =>
@@ -268,11 +276,4 @@ enum Permission {
     for (final p in values)
       if (p.grantable) p,
   ];
-
-  static Permission? fromKey(String key) {
-    for (final p in values) {
-      if (p.key == key) return p;
-    }
-    return null;
-  }
 }

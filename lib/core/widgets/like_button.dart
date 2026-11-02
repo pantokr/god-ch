@@ -12,10 +12,14 @@ class LikeButton extends StatelessWidget {
     required this.liked,
     required this.count,
     required this.onTap,
+    this.showCount = true,
   });
 
   final bool liked;
   final int count;
+
+  /// 좋아요 수를 보여 주는가 (교회 설정). 끄면 "좋아요"만 보인다.
+  final bool showCount;
   final VoidCallback? onTap;
 
   static const _red = Color(0xFFE5484D);
@@ -55,7 +59,7 @@ class LikeButton extends StatelessWidget {
                   ),
                   const SizedBox(width: 8),
                   Text(
-                    '좋아요 ${StatIcons.compact(count)}',
+                    showCount ? '좋아요 ${StatIcons.compact(count)}' : '좋아요',
                     style: TextStyle(
                       color: palette.ink,
                       fontSize: 14,

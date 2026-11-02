@@ -4,6 +4,8 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 
+import '../../../core/widgets/labeled_field.dart';
+
 import '../../../core/mvvm/view_model.dart';
 import '../../../core/theme.dart';
 import '../../../data/models/affiliation.dart';
@@ -27,6 +29,10 @@ class MembershipEditor {
   final List<Affiliation> affiliations;
   final bool canRole;
   final bool canStatus;
+
+  /// 상태를 실제로 고칠 수 있는가: 이미 승인된 사람의 상태는 바꾸지 못하고 역할 · 소속만 바꾼다.
+  bool get statusEditable =>
+      canStatus && member.status != MemberStatus.approved;
 }
 
 /// 한 교회에서 바뀐 항목. 바뀌지 않은 항목은 null이다.
@@ -189,7 +195,9 @@ class _MemberDetailDialogState extends State<MemberDetailDialog> {
                   if (!e.affiliations.any((a) => a.id == id)) id,
               ],
         role: e.canRole && _roles[i] != m.role ? _roles[i] : null,
-        status: e.canStatus && _statuses[i] != m.status ? _statuses[i] : null,
+        status: e.statusEditable && _statuses[i] != m.status
+            ? _statuses[i]
+            : null,
       );
       if (!change.isEmpty) changes.add(change);
     }
@@ -235,34 +243,46 @@ class _MemberDetailDialogState extends State<MemberDetailDialog> {
               style: TextStyle(color: context.palette.muted),
             ),
           const SizedBox(height: 16),
-          ThumbnailField(
-            controller: _photo,
-            name: widget.name,
-            label: '썸네일(프로필 사진)',
-            enabled: widget.onUploadPhoto != null,
-            upload: widget.onUploadPhoto ?? (_, _) async => null,
-          ),
-          AppField.spacer,
-          TextField(
-            controller: _name,
-            enabled: widget.canEditProfile,
-            maxLength: 30,
-            decoration: const InputDecoration(labelText: '이름'),
-          ),
-          AppField.spacer,
-          TextField(
-            controller: _phone,
-            enabled: widget.canEditProfile,
-            keyboardType: TextInputType.phone,
-            maxLength: 20,
-            decoration: const InputDecoration(labelText: '전화번호'),
-          ),
-          AppField.spacer,
-          ProfileExtraFields(
-            address: _address,
-            birthDate: _birthDate,
-            enabled: widget.canEditProfile,
-          ),
+          // 본인이 입력한 정보(사진 · 이름 · 전화번호 · 주소 · 생년월일)는 고칠 수 있는 화면에서만 보인다.
+          // 교회 회원 관리에서는 "상세"에서 보기만 하고, 이 창은 역할 · 소속 · 상태만 다룬다.
+          if (widget.canEditProfile) ...[
+            ThumbnailField(
+              controller: _photo,
+              name: widget.name,
+              label: '썸네일(프로필 사진)',
+              enabled: widget.onUploadPhoto != null,
+              upload: widget.onUploadPhoto ?? (_, _) async => null,
+            ),
+            AppField.spacer,
+            LabeledField(
+              label: '이름',
+              child: TextField(
+                controller: _name,
+                enabled: widget.canEditProfile,
+                maxLength: 30,
+                decoration: const InputDecoration(),
+              ),
+            ),
+            AppField.spacer,
+            LabeledField(
+              label: '전화번호',
+              child: TextField(
+                controller: _phone,
+                enabled: widget.canEditProfile,
+                keyboardType: TextInputType.phone,
+                maxLength: 20,
+                decoration: InputDecoration(
+                  hintText: widget.canEditProfile ? null : '미제공',
+                ),
+              ),
+            ),
+            AppField.spacer,
+            ProfileExtraFields(
+              address: _address,
+              birthDate: _birthDate,
+              enabled: widget.canEditProfile,
+            ),
+          ],
           if (widget.memberships.isEmpty) ...[
             const SizedBox(height: 8),
             Text('소속된 교회가 없어요.', style: muted),
@@ -275,7 +295,7 @@ class _MemberDetailDialogState extends State<MemberDetailDialog> {
                 style: const TextStyle(fontWeight: FontWeight.w700),
               ),
             if (widget.memberships[i].canRole ||
-                widget.memberships[i].canStatus)
+                widget.memberships[i].statusEditable)
               Padding(
                 padding: const EdgeInsets.only(top: 8),
                 child: Row(
@@ -296,9 +316,9 @@ class _MemberDetailDialogState extends State<MemberDetailDialog> {
                         ),
                       ),
                     if (widget.memberships[i].canRole &&
-                        widget.memberships[i].canStatus)
+                        widget.memberships[i].statusEditable)
                       const SizedBox(width: 12),
-                    if (widget.memberships[i].canStatus)
+                    if (widget.memberships[i].statusEditable)
                       Expanded(
                         child: AppDropdown<MemberStatus>(
                           value: _statuses[i],

@@ -52,10 +52,8 @@ class PrayerDetailViewModel extends ViewModel {
 
   bool canDelete(Prayer p) =>
       !p.deleted &&
-      ((isAuthor(p) &&
-              _settings.memberDelete &&
-              me.can(Permission.prayerDeleteOwn)) ||
-          (!isAuthor(p) && me.can(Permission.prayerDeleteOthers)));
+      // 본인 글 삭제는 설정 없이 모두에게 있다.
+      (isAuthor(p) || (!isAuthor(p) && me.can(Permission.prayerDeleteOthers)));
 
   bool canRestore(Prayer p) =>
       p.deleted && me.can(Permission.prayerDeleteOthers);
@@ -73,6 +71,10 @@ class PrayerDetailViewModel extends ViewModel {
   void _recordOpened(Prayer p) {
     // 열 때마다 조회수를 하나 올린다 (실패해도 화면은 그대로).
     if (!p.deleted) _prayers.addView(me.churchId, p.id).ignore();
+    // 처음 읽는 글이면 읽음으로 표시한다.
+    if (!p.deleted && !p.readByUser(me.id)) {
+      _prayers.markRead(me.churchId, p.id).ignore();
+    }
     if (p.isPublic) return;
     if (p.authorId == me.id) {
       if (p.hasUnreadResponse) {
@@ -92,20 +94,18 @@ class PrayerDetailViewModel extends ViewModel {
   Future<bool> restore(Prayer p) =>
       run(() => _prayers.restore(me.churchId, p.id));
 
-  /// 이 댓글을 지울 수 있는가: 본인 댓글은 본인 댓글 삭제, 타인 댓글은 타인 댓글 삭제 권한.
-  bool canDeleteComment(TextEntry e) => me.can(
-    e.authorId == me.id
-        ? Permission.prayerCommentDeleteOwn
-        : Permission.prayerCommentDeleteOthers,
-  );
+  /// 이 댓글을 지울 수 있는가: 본인 댓글은 누구나, 타인 댓글은 타인 댓글 삭제 권한이 있어야 한다.
+  bool canDeleteComment(TextEntry e) =>
+      e.authorId == me.id || me.can(Permission.prayerCommentDeleteOthers);
 
   Future<bool> deleteComment(Prayer p, TextEntry e) => run(
     () => _prayers.deleteComment(me.churchId, p.id, e.id),
     blocking: false,
   );
 
-  Future<bool> addComment(Prayer p, String text) =>
-      run(() => _prayers.addComment(me.churchId, p.id, text));
+  Future<bool> addComment(Prayer p, String text) => run(
+    () => _prayers.addComment(me.churchId, p.id, text, authorName: me.name),
+  );
 
   Future<bool> addResponse(Prayer p, String text) =>
       run(() => _prayers.addResponse(me.churchId, p.id, text));

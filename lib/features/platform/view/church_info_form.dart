@@ -74,6 +74,7 @@ class _ChurchInfoFormState extends State<ChurchInfoForm> {
           ChurchRegistryViewModel(AppScope.read(context).churchRegistry),
       builder: (context, vm) => SingleChildScrollView(
         child: PageFrame(
+          inset: true,
           child: Form(
             key: _form,
             child: Column(
