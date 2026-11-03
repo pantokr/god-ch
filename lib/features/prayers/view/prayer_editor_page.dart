@@ -82,7 +82,8 @@ class _PrayerEditorPageState extends State<PrayerEditorPage> {
         defaultAffiliationId: widget.defaultAffiliationId,
       ),
       builder: (context, vm) => SubPage(
-        title: vm.isEditing ? '기도제목 수정' : '기도제목 쓰기',
+        title: '',
+        barTitle: vm.isEditing ? '중보기도 수정' : '중보기도 요청',
         fallbackLocation: Routes.section(
           widget.me.churchId,
           ChurchSection.prayer,
@@ -94,55 +95,80 @@ class _PrayerEditorPageState extends State<PrayerEditorPage> {
                   child: Center(child: Text('교역자만 쓸 수 있습니다')),
                 ),
               )
-            : Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(28),
-                  child: Form(
-                    key: _form,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        // 게시 범위는 새 글을 쓸 때만 고를 수 있다.
-                        if (!vm.isEditing) _ScopePicker(vm: vm),
-                        // 교회가 비공개를 허용하지 않으면 공개 범위를 고를 수 없다.
-                        if (vm.settings.allowPrivate) _VisibilityPicker(vm: vm),
-                        const SizedBox(height: 12),
-                        LabeledField(
-                          label: '기도제목',
-                          alignTop: true,
-                          child: TextFormField(
-                            controller: _content,
-                            maxLength: 3000,
-                            minLines: 8,
-                            maxLines: 16,
-                            decoration: const InputDecoration(
-                              alignLabelWithHint: true,
-                            ),
-                            validator: (v) => (v == null || v.trim().isEmpty)
-                                ? '내용을 입력해 주세요'
-                                : null,
-                          ),
+            : Form(
+                key: _form,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // 본문 카드: 제목과 기도제목.
+                    Card(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 24,
                         ),
-                        const SizedBox(height: 24),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.end,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            TextButton(
-                              onPressed: vm.busy
-                                  ? null
-                                  : () => _leave(GoRouter.of(context)),
-                              child: const Text('취소'),
-                            ),
-                            const SizedBox(width: 8),
-                            FilledButton(
-                              onPressed: vm.busy ? null : () => _save(vm),
-                              child: const Text('저장'),
+                            LabeledField(
+                              label: '기도제목',
+                              stacked: true,
+                              child: TextFormField(
+                                controller: _content,
+                                maxLength: 3000,
+                                minLines: 8,
+                                maxLines: 16,
+                                decoration: const InputDecoration(
+                                  alignLabelWithHint: true,
+                                ),
+                                validator: (v) =>
+                                    (v == null || v.trim().isEmpty)
+                                    ? '내용을 입력해 주세요'
+                                    : null,
+                              ),
                             ),
                           ],
                         ),
-                      ],
+                      ),
                     ),
-                  ),
+                    const SizedBox(height: 12),
+                    // 소속 · 공개 범위 · 저장은 본문 카드와 분리한 카드에 둔다.
+                    Card(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 24,
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            // 게시 범위는 새 글을 쓸 때만 고를 수 있다.
+                            if (!vm.isEditing) _ScopePicker(vm: vm),
+                            // 교회가 비공개를 허용하지 않으면 공개 범위를 고를 수 없다.
+                            if (vm.settings.allowPrivate)
+                              _VisibilityPicker(vm: vm),
+                            const SizedBox(height: 24),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              children: [
+                                TextButton(
+                                  onPressed: vm.busy
+                                      ? null
+                                      : () => _leave(GoRouter.of(context)),
+                                  child: const Text('취소'),
+                                ),
+                                const SizedBox(width: 8),
+                                FilledButton(
+                                  onPressed: vm.busy ? null : () => _save(vm),
+                                  child: const Text('저장'),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
       ),

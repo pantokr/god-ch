@@ -225,7 +225,12 @@ class MemberRepository {
     String userId,
     MemberStatus status,
   ) async {
-    await _paths.members(churchId).doc(userId).update({'status': status.name});
+    await _paths.members(churchId).doc(userId).update({
+      'status': status.name,
+      // 입장을 수락한 시각: 회원 목록의 시작일.
+      if (status == MemberStatus.approved)
+        'approvedAt': FieldValue.serverTimestamp(),
+    });
     await _mirror(churchId, userId);
   }
 
@@ -284,7 +289,13 @@ class MemberRepository {
         await admin_affs.syncAdminAffiliations(_paths, m.churchId);
       }
     }
-    if (status != null) await doc.update({'status': status.name});
+    if (status != null) {
+      await doc.update({
+        'status': status.name,
+        if (status == MemberStatus.approved)
+          'approvedAt': FieldValue.serverTimestamp(),
+      });
+    }
     await _mirror(m.churchId, m.id);
   }
 

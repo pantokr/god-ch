@@ -49,7 +49,9 @@ class _BiblePickerDialogState extends State<BiblePickerDialog> {
     final last = chosen.last.verse + 1;
     final range = first == last ? '$first' : '$first-$last';
     return BiblePick(
-      title: '${bibleBooks[_book]} ${_chapter + 1}:$range (${_version.label})',
+      // 책 이름은 줄임말로 쓴다 (예: 살후 3:1-3).
+      title:
+          '${bibleBookAbbreviations[_book]} ${_chapter + 1}:$range (${_version.label})',
       body: [
         for (final v in chosen) '${v.verse + 1} ${v.text(_version).trim()}',
       ].join('\n'),
@@ -75,11 +77,7 @@ class _BiblePickerDialogState extends State<BiblePickerDialog> {
             padding: EdgeInsets.symmetric(vertical: 40),
             child: Column(
               mainAxisSize: MainAxisSize.min,
-              children: [
-                AppLoader(),
-                SizedBox(height: 16),
-                Text('성경 본문을 불러오는 중이에요. 처음에는 조금 걸려요.'),
-              ],
+              children: [AppLoader(), SizedBox(height: 16), Text('불러오는 중')],
             ),
           );
         }
@@ -116,55 +114,45 @@ class _BiblePickerDialogState extends State<BiblePickerDialog> {
               }),
             ),
             AppField.spacer,
-            Row(
-              children: [
-                Expanded(
-                  child: AppDropdown<int>(
-                    key: ValueKey('c$_book'),
-                    value: _chapter,
-                    label: '장',
-                    items: [
-                      for (var i = 0; i < chapters; i++)
-                        DropdownMenuItem(value: i, child: Text('${i + 1}장')),
-                    ],
-                    onChanged: (v) => setState(() {
-                      _chapter = v!;
-                      _resetRange(bible);
-                    }),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: AppDropdown<int>(
-                    key: ValueKey('f$_book/$_chapter'),
-                    value: _from,
-                    label: '시작 절',
-                    items: [
-                      for (var i = 0; i < verses.length; i++)
-                        DropdownMenuItem(value: i, child: Text('${i + 1}절')),
-                    ],
-                    onChanged: (v) => setState(() {
-                      _from = v!;
-                      if (_to < _from) _to = _from;
-                    }),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: AppDropdown<int>(
-                    key: ValueKey('t$_book/$_chapter/$_from/$_to'),
-                    value: _to,
-                    label: '끝 절',
-                    items: [
-                      for (var i = _from; i < verses.length; i++)
-                        DropdownMenuItem(value: i, child: Text('${i + 1}절')),
-                    ],
-                    onChanged: (v) => setState(() => _to = v!),
-                  ),
-                ),
+            AppDropdown<int>(
+              key: ValueKey('c$_book'),
+              value: _chapter,
+              label: '장',
+              items: [
+                for (var i = 0; i < chapters; i++)
+                  DropdownMenuItem(value: i, child: Text('${i + 1}장')),
               ],
+              onChanged: (v) => setState(() {
+                _chapter = v!;
+                _resetRange(bible);
+              }),
             ),
-            const SizedBox(height: 12),
+            AppField.spacer,
+            AppDropdown<int>(
+              key: ValueKey('f$_book/$_chapter'),
+              value: _from,
+              label: '시작 절',
+              items: [
+                for (var i = 0; i < verses.length; i++)
+                  DropdownMenuItem(value: i, child: Text('${i + 1}절')),
+              ],
+              onChanged: (v) => setState(() {
+                _from = v!;
+                if (_to < _from) _to = _from;
+              }),
+            ),
+            AppField.spacer,
+            AppDropdown<int>(
+              key: ValueKey('t$_book/$_chapter/$_from/$_to'),
+              value: _to,
+              label: '끝 절',
+              items: [
+                for (var i = _from; i < verses.length; i++)
+                  DropdownMenuItem(value: i, child: Text('${i + 1}절')),
+              ],
+              onChanged: (v) => setState(() => _to = v!),
+            ),
+            AppField.spacer,
             if (verses.isNotEmpty)
               Container(
                 constraints: const BoxConstraints(maxHeight: 180),

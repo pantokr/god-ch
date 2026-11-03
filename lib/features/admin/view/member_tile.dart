@@ -65,7 +65,10 @@ class MemberTile extends StatelessWidget {
           : isNew
           ? 'NEW'
           : null,
-      line1: member.churchName,
+      // 신규 입장 요청은 요청일, 교회 회원은 수락일(시작일)이 보인다.
+      line1: pending
+          ? '요청일 ${fmtDate(member.createdAt)}'
+          : '수락일 ${fmtDate(member.memberSince)}',
       line2: affiliationNames.join(', '),
       onTap: () => _info(context),
       trailing: [

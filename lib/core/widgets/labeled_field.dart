@@ -14,11 +14,15 @@ class LabeledField extends StatelessWidget {
     required this.child,
     this.required = false,
     this.alignTop = false,
+    this.stacked = false,
   });
 
   final String label;
   final bool required;
   final bool alignTop;
+
+  /// 이름표를 입력칸 위에 두고 입력칸이 줄을 바꿔 카드 너비 전체를 차지한다 (긴 글을 쓰는 텍스트 필드는 예외로 이렇게 둔다).
+  final bool stacked;
   final Widget child;
 
   /// 이름표 칸 너비.
@@ -41,7 +45,7 @@ class LabeledField extends StatelessWidget {
     );
     return LayoutBuilder(
       builder: (context, box) {
-        if (box.maxWidth < narrow) {
+        if (stacked || box.maxWidth < narrow) {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [

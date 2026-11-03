@@ -294,9 +294,13 @@ class SortStrip extends StatelessWidget {
     required this.options,
     this.leading,
     this.viewToggle,
+    this.inBox = false,
   });
 
   final List<PadOption> options;
+
+  /// true이면 목록과 같은 상자(카드) 안에 놓인다: 흰 띠 · 바깥 여백 없이 줄만 그린다.
+  final bool inBox;
 
   /// 줄 왼쪽에 놓는 위젯 (예: 읽음 제외 토글).
   final Widget? leading;
@@ -326,6 +330,7 @@ class SortStrip extends StatelessWidget {
         ],
       ),
     );
+    if (inBox) return row;
     return Padding(
       // 위(구분선)는 아래(목록)보다 더 넉넉히 띄운다.
       padding: const EdgeInsets.only(top: 14, bottom: 16),

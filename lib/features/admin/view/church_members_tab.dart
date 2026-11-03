@@ -1,7 +1,5 @@
 import '../../../core/widgets/app_loader.dart';
 
-import '../../../core/layout/responsive.dart';
-
 import 'package:flutter/material.dart';
 
 import '../../../app/app_scope.dart';
@@ -55,20 +53,6 @@ class _ChurchMembersTabState extends State<ChurchMembersTab> {
                 onChanged: vm.setQuery,
               ),
               const SizedBox(height: 12),
-              // 정렬: 이름순 · ID순 · 등록순 · 직급순.
-              ListenableBuilder(
-                listenable: vm,
-                builder: (context, _) => SortStrip(
-                  options: [
-                    for (final s in MemberSort.values)
-                      PadOption(
-                        s.label,
-                        selected: vm.sort == s,
-                        onTap: () => vm.setSort(s),
-                      ),
-                  ],
-                ),
-              ),
               StreamBuilder<List<Member>>(
                 stream: vm.members,
                 builder: (context, snap) {
@@ -127,9 +111,13 @@ class _List extends StatelessWidget {
     final newcomers = vm.newcomers(all).where(vm.matchesQuery).toList();
     final existing = vm.existing(all);
     // 승인을 기다리는 신규 입장 요청은 맨 위 따로, 나머지(최근 가입 포함)는 교회 회원 목록에.
-    final requests = newcomers
-        .where((m) => m.status == MemberStatus.pending)
-        .toList();
+    // 신규 입장 요청은 요청한 순서로 고정한다 (정렬 기준과 상관없이, 먼저 요청한 사람이 위).
+    final requests =
+        newcomers.where((m) => m.status == MemberStatus.pending).toList()..sort(
+          (a, b) => (a.createdAt ?? DateTime.now()).compareTo(
+            b.createdAt ?? DateTime.now(),
+          ),
+        );
     // 최근 가입한 사람도 고른 정렬 기준에 따라 다른 회원과 한 목록에 섞어 정렬한다 (NEW 표시만 따로 붙는다).
     final rows = [
       ...newcomers.where((m) => m.status != MemberStatus.pending),
@@ -142,29 +130,24 @@ class _List extends StatelessWidget {
       builder: (context, _) => Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Gutter(
-            child: Text(
-              '신규 입장 요청 (${requests.length})',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-          ),
-          const SizedBox(height: 8),
-          if (requests.isEmpty)
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Center(
-                  child: Text(
-                    '신규 요청 회원이 없어요.',
-                    style: TextStyle(color: context.palette.muted),
-                  ),
-                ),
-              ),
-            )
-          else
-            Card(
-              child: Column(
-                children: [
+          // 제목은 박스 안 맨 위에 있다.
+          Card(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _BoxTitle('신규 입장 요청 (${requests.length})'),
+                const Divider(height: 1),
+                if (requests.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Center(
+                      child: Text(
+                        '신규 요청 회원이 없어요.',
+                        style: TextStyle(color: context.palette.muted),
+                      ),
+                    ),
+                  )
+                else
                   for (var i = 0; i < requests.length; i++) ...[
                     if (i > 0) const Divider(),
                     MemberTile(
@@ -179,33 +162,43 @@ class _List extends StatelessWidget {
                       ],
                     ),
                   ],
-                ],
-              ),
-            ),
-          const SizedBox(height: 24),
-          Gutter(
-            child: Text(
-              '교회 회원 (${all.length})',
-              style: Theme.of(context).textTheme.titleMedium,
+              ],
             ),
           ),
-          const SizedBox(height: 8),
-          if (rows.isEmpty)
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(40),
-                child: Center(
-                  child: Text(
-                    all.isEmpty ? '아직 교회에 속한 회원이 없어요.' : '해당하는 회원이 없어요.',
-                    style: TextStyle(color: context.palette.muted),
+          const SizedBox(height: 24),
+          // 제목 · 정렬 줄 · 목록이 한 박스 안에 있다 (정렬은 신규 입장 요청에는 적용되지 않는다).
+          Card(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // 제목과 정렬 선택 상자가 같은 줄에 있다 (제목 왼쪽, 정렬 오른쪽).
+                SortStrip(
+                  inBox: true,
+                  leading: Text(
+                    '교회 회원 (${all.length})',
+                    style: Theme.of(context).textTheme.titleMedium,
                   ),
+                  options: [
+                    for (final s in MemberSort.values)
+                      PadOption(
+                        s.label,
+                        selected: vm.sort == s,
+                        onTap: () => vm.setSort(s),
+                      ),
+                  ],
                 ),
-              ),
-            )
-          else
-            Card(
-              child: Column(
-                children: [
+                const Divider(height: 1),
+                if (rows.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.all(40),
+                    child: Center(
+                      child: Text(
+                        all.isEmpty ? '아직 교회에 속한 회원이 없어요.' : '해당하는 회원이 없어요.',
+                        style: TextStyle(color: context.palette.muted),
+                      ),
+                    ),
+                  )
+                else
                   for (var i = 0; i < rows.length; i++) ...[
                     if (i > 0) const Divider(),
                     MemberTile(
@@ -220,9 +213,9 @@ class _List extends StatelessWidget {
                       ],
                     ),
                   ],
-                ],
-              ),
+              ],
             ),
+          ),
           if (vm.error != null)
             Padding(
               padding: const EdgeInsets.only(top: 8),
@@ -235,4 +228,17 @@ class _List extends StatelessWidget {
       ),
     );
   }
+}
+
+/// 박스 안 맨 위의 제목 줄.
+class _BoxTitle extends StatelessWidget {
+  const _BoxTitle(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
+    child: Text(text, style: Theme.of(context).textTheme.titleMedium),
+  );
 }

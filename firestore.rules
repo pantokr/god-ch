@@ -529,12 +529,12 @@ service cloud.firestore {
           // 관리자: 역할·상태 관리 (본인 계정은 제외해 잠금 방지). 이미 승인된 사람의 상태는 바꾸지 못한다 (역할만).
           || (isOwner(churchId) && request.auth.uid != memberId
                 && resource.data.status != 'removed'
-                && changed().hasOnly(['role', 'status'])
+                && changed().hasOnly(['role', 'status', 'approvedAt'])
                 && (resource.data.status != 'approved' || request.resource.data.status == 'approved'))
           // 교역자: 일반 교인의 승인 상태만 변경 (이미 승인된 사람은 제외)
           || (can(churchId, 'member.approve') && resource.data.role == 'member'
                 && resource.data.status != 'approved'
-                && changed().hasOnly(['status']))
+                && changed().hasOnly(['status', 'approvedAt']))
           // 본인: 이름·전화번호 수정 (users/{uid}와 같은 값으로 맞춘다)
           || (request.auth.uid == memberId
                 && changed().hasOnly(['name', 'phone', 'address', 'birthDate', 'photoUrl'])

@@ -732,36 +732,41 @@ class _NarrowFrameState extends State<_NarrowFrame> {
                 ),
                 // 하단 탭은 내용 위에 떠 있다: 알약 둘레는 완전히 투명해서 내용이 그대로 비친다.
                 // 내용에는 탭이 가린 만큼 아래 여백을 알려 주어(MediaQuery) 목록 끝과 떠 있는 버튼이 탭 위로 올라온다.
+                // 위쪽 안전 영역은 상단 바가 이미 쓰므로 내용에서는 뺀다 (작성 페이지 같은 안쪽 화면의 SafeArea가 또 띄우지 않게).
                 Expanded(
-                  child: Stack(
-                    children: [
-                      Positioned.fill(
-                        child: widget.bottomBar == null
-                            ? widget.child
-                            : Builder(
-                                builder: (context) {
-                                  final mq = MediaQuery.of(context);
-                                  return MediaQuery(
-                                    data: mq.copyWith(
-                                      padding: mq.padding.copyWith(
-                                        bottom:
-                                            mq.padding.bottom +
-                                            _PillTabBar.inset,
+                  child: MediaQuery.removePadding(
+                    context: context,
+                    removeTop: true,
+                    child: Stack(
+                      children: [
+                        Positioned.fill(
+                          child: widget.bottomBar == null
+                              ? widget.child
+                              : Builder(
+                                  builder: (context) {
+                                    final mq = MediaQuery.of(context);
+                                    return MediaQuery(
+                                      data: mq.copyWith(
+                                        padding: mq.padding.copyWith(
+                                          bottom:
+                                              mq.padding.bottom +
+                                              _PillTabBar.inset,
+                                        ),
                                       ),
-                                    ),
-                                    child: widget.child,
-                                  );
-                                },
-                              ),
-                      ),
-                      if (widget.bottomBar != null)
-                        Positioned(
-                          left: 0,
-                          right: 0,
-                          bottom: 0,
-                          child: widget.bottomBar!,
+                                      child: widget.child,
+                                    );
+                                  },
+                                ),
                         ),
-                    ],
+                        if (widget.bottomBar != null)
+                          Positioned(
+                            left: 0,
+                            right: 0,
+                            bottom: 0,
+                            child: widget.bottomBar!,
+                          ),
+                      ],
+                    ),
                   ),
                 ),
               ],
@@ -880,7 +885,13 @@ class _WideFrameState extends State<_WideFrame> {
                       title: widget.title,
                       transparent: widget.backdrop != null,
                     ),
-                    Expanded(child: widget.child),
+                    Expanded(
+                      child: MediaQuery.removePadding(
+                        context: context,
+                        removeTop: true,
+                        child: widget.child,
+                      ),
+                    ),
                   ],
                 ),
               ],

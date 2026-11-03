@@ -29,6 +29,7 @@ class Member {
     this.permissions = const [],
     this.rolePermissions = RolePermissions.defaults,
     this.createdAt,
+    this.approvedAt,
     this.isOperatorView = false,
   });
 
@@ -67,6 +68,12 @@ class Member {
   final MemberStatus status;
 
   final DateTime? createdAt;
+
+  /// 입장을 수락한 시각 (교회 회원으로서의 시작일). 예전 교인은 없고, 그때는 [createdAt]을 쓴다.
+  final DateTime? approvedAt;
+
+  /// 회원 목록에 보이는 시작일: 수락한 시각, 없으면 신청한 시각.
+  DateTime? get memberSince => approvedAt ?? createdAt;
 
   /// 앱 개발자가 교회를 열었을 때 화면용으로 만든 정보인가. 저장되지 않으며 소속을 뜻하지 않는다.
   /// 교회 관리자와 같은 화면과 권한을 보지만 회원은 아니다.
@@ -111,6 +118,7 @@ class Member {
     permissions: permissions,
     rolePermissions: r,
     createdAt: createdAt,
+    approvedAt: approvedAt,
     isOperatorView: isOperatorView,
   );
 
@@ -154,6 +162,7 @@ class Member {
       positionId: d['positionId'] as String?,
       permissions: List<String>.from(d['permissions'] as List? ?? const []),
       createdAt: toDate(d['createdAt']),
+      approvedAt: toDate(d['approvedAt']),
     );
   }
 }

@@ -92,7 +92,7 @@ class PrayerEditRoute extends StatelessWidget {
             // 없는 글이거나 내 글이 아니면(규칙상 수정할 수 없다) 고칠 수 없다.
             if (prayer == null || prayer.authorId != me.id || prayer.deleted) {
               return SubPage(
-                title: '기도제목 수정',
+                title: '중보기도 수정',
                 fallbackLocation: back,
                 child: const Card(
                   child: Padding(

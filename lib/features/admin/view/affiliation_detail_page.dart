@@ -402,8 +402,8 @@ class _PersonRow extends StatelessWidget {
       title: member.loginId.isEmpty
           ? member.name
           : '${member.name}  (${member.loginId})',
-      line1: member.churchName,
-      line2: member.phone.isEmpty ? '미제공' : member.phone,
+      // 소속 교회는 같은 교회라 보이지 않는다: 전화번호만 보인다.
+      line1: member.phone.isEmpty ? '미제공' : member.phone,
       trailing: [
         // 교회 운영자는 모든 소속에 자동으로 속하므로 뺄 수 없다: 그 칸은 비워 둔다.
         if (!readOnly && member.role != Role.admin)
