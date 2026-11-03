@@ -4,6 +4,11 @@ import '../../../core/widgets/toggle_chip.dart';
 import '../../people/view/person_avatar.dart';
 
 import 'package:flutter/material.dart';
+
+import '../../people/view/person_popup.dart';
+
+import '../../../core/widgets/view_mode_toggle.dart';
+
 import 'package:go_router/go_router.dart';
 
 import '../../../app/app_scope.dart';
@@ -133,6 +138,9 @@ class _PrayerSimpleListState extends State<PrayerSimpleList> {
   bool _hideRead = false;
   _PrayerSort _sort = _PrayerSort.latest;
 
+  /// 격자형(2열)으로 보는가. 아니면 리스트형이다.
+  bool _grid = false;
+
   /// 글별 응원(이모티콘) 합. 좋아요순으로 정렬할 때 처음 한 번 읽어 둔다.
   final Map<String, int> _likes = {};
   bool _loadingLikes = false;
@@ -253,23 +261,20 @@ class _PrayerSimpleListState extends State<PrayerSimpleList> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  if (widget.header == null)
-                    Padding(
-                      padding: EdgeInsets.only(
-                        top: 12,
-                        right: textGutter(context),
-                      ),
-                      child: Align(
-                        alignment: Alignment.centerRight,
-                        child: ToggleChip(
-                          label: '읽음 제외',
-                          on: _hideRead,
-                          onTap: () => setState(() => _hideRead = !_hideRead),
-                        ),
-                      ),
-                    ),
                   // 정렬 순서는 패널 밖, 목록 바로 위에 붙고 오른쪽에 새로고침 (일정과 같다).
                   SortStrip(
+                    viewToggle: ViewModeToggle(
+                      grid: _grid,
+                      onChanged: (g) => setState(() => _grid = g),
+                    ),
+                    leading: kHideReadEnabled && widget.header == null
+                        ? ToggleChip(
+                            label: '읽음 제외',
+                            on: _hideRead,
+                            onTap: () => setState(() => _hideRead = !_hideRead),
+                          )
+                        : null,
+
                     options: [
                       for (final o in _PrayerSort.values)
                         PadOption(
@@ -315,19 +320,37 @@ class _PrayerSimpleListState extends State<PrayerSimpleList> {
                             return StreamBuilder<PrayerSettings>(
                               stream: _settings,
                               initialData: PrayerSettings.standard,
-                              builder: (context, set) => Column(
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: [
-                                  for (final p in items)
-                                    PrayerTile(
-                                      prayer: p,
-                                      me: widget.me,
-                                      affiliationNames: names,
-                                      settings:
-                                          set.data ?? PrayerSettings.standard,
+                              builder: (context, set) => _grid
+                                  ? TwoColumn(
+                                      children: [
+                                        for (final p in items)
+                                          PrayerTile(
+                                            prayer: p,
+                                            me: widget.me,
+                                            affiliationNames: names,
+                                            settings:
+                                                set.data ??
+                                                PrayerSettings.standard,
+                                            gutter: 0,
+                                            grid: true,
+                                          ),
+                                      ],
+                                    )
+                                  : Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.stretch,
+                                      children: [
+                                        for (final p in items)
+                                          PrayerTile(
+                                            prayer: p,
+                                            me: widget.me,
+                                            affiliationNames: names,
+                                            settings:
+                                                set.data ??
+                                                PrayerSettings.standard,
+                                          ),
+                                      ],
                                     ),
-                                ],
-                              ),
                             );
                           },
                         );
@@ -353,6 +376,8 @@ class PrayerTile extends StatelessWidget {
     required this.me,
     required this.settings,
     this.affiliationNames = const {},
+    this.gutter,
+    this.grid = false,
   });
 
   final PrayerSettings settings;
@@ -362,9 +387,16 @@ class PrayerTile extends StatelessWidget {
   /// 소속 아이디 → 이름. 글의 소속을 이름 옆에 보여줄 때 쓴다.
   final Map<String, String> affiliationNames;
 
+  /// 카드 좌우 바깥 여백. 없으면 글 여백(`textGutter`)이고, 격자에서는 0이다.
+  final double? gutter;
+
+  /// 격자형 카드인가: 내용을 더 길게 보여 주고, 아래 정보 줄(소속 · 반응 · 프로필 · 날짜)은 카드 맨 아래에 붙인다.
+  final bool grid;
+
   @override
   Widget build(BuildContext context) {
     final palette = context.palette;
+    final excerptLines = grid ? 6 : 2;
     final p = prayer;
     // 앱 개발자는 교인이 아니라 읽음 표시가 없다.
     final read = !me.isOperatorView && p.readByUser(me.id);
@@ -377,9 +409,9 @@ class PrayerTile extends StatelessWidget {
     final scaler = MediaQuery.textScalerOf(context);
     return Padding(
       padding: EdgeInsets.fromLTRB(
-        textGutter(context),
+        gutter ?? textGutter(context),
         0,
-        textGutter(context),
+        gutter ?? textGutter(context),
         14,
       ),
       child: InkWell(
@@ -424,10 +456,10 @@ class PrayerTile extends StatelessWidget {
                   // 내용은 앞부분만 발췌해 두 줄 자리를 늘 잡는다.
                   Expanded(
                     child: SizedBox(
-                      height: scaler.scale(14 * 1.45 * 2),
+                      height: scaler.scale(14 * 1.45 * excerptLines) + 4,
                       child: Text(
                         p.content,
-                        maxLines: 2,
+                        maxLines: excerptLines,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(fontSize: 14, height: 1.45),
                       ),
@@ -435,7 +467,7 @@ class PrayerTile extends StatelessWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
+              if (grid) const Spacer() else const SizedBox(height: 12),
               // 하트(응원 수)와 조회수는 오른쪽에, 이 글의 소속은 그 맞은편 왼쪽에 둔다.
               SizedBox(
                 height: 24,
@@ -462,21 +494,36 @@ class PrayerTile extends StatelessWidget {
               Row(
                 children: [
                   if (settings.showAuthor) ...[
-                    PersonAvatar(
+                    PersonTap(
                       churchId: me.churchId,
                       uid: p.authorId,
-                      name: p.authorName.isEmpty ? '?' : p.authorName,
-                      radius: 10,
+                      name: p.authorName,
+                      photoUrl: '',
+                      child: PersonAvatar(
+                        churchId: me.churchId,
+                        uid: p.authorId,
+                        name: p.authorName.isEmpty ? '?' : p.authorName,
+                        radius: 10,
+                      ),
                     ),
                     const SizedBox(width: 6),
                     Expanded(
-                      child: Text(
-                        p.authorName.isEmpty ? '이름 없음' : p.authorName,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 13,
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: PersonTap(
+                          churchId: me.churchId,
+                          uid: p.authorId,
+                          name: p.authorName,
+                          photoUrl: '',
+                          child: Text(
+                            p.authorName.isEmpty ? '이름 없음' : p.authorName,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 13,
+                            ),
+                          ),
                         ),
                       ),
                     ),
@@ -497,8 +544,8 @@ class PrayerTile extends StatelessWidget {
   }
 }
 
-/// 이모티콘별 응원 수(받은 종류를 전부)와 조회수. 응원 수는 저장소에서 실시간으로 읽는다.
-/// 내가 누른 이모티콘은 진하게 보인다. 좁은 자리에서는 줄어들어 한 줄에 맞춘다.
+/// 모든 이모티콘 반응을 합친 반응 수(하트)와 조회수. 응원 수는 저장소에서 실시간으로 읽는다.
+/// 내가 반응을 남겼다면 하트가 채워진다.
 class _Stats extends StatelessWidget {
   const _Stats({required this.prayer, required this.me, this.showViews = true});
 
@@ -509,55 +556,16 @@ class _Stats extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final repo = AppScope.read(context).prayers;
-    final palette = context.palette;
     return StreamBuilder<ReactionSummary>(
       stream: repo.reactions(me.churchId, prayer.id),
       builder: (context, snap) {
         final r = snap.data ?? ReactionSummary.empty;
-        return FittedBox(
-          fit: BoxFit.scaleDown,
-          alignment: Alignment.centerRight,
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              for (final t in reactionTypes)
-                if ((r.counts[t.id] ?? 0) > 0) ...[
-                  Text(
-                    t.emoji,
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: r.mine.contains(t.id) ? null : palette.muted,
-                    ),
-                  ),
-                  const SizedBox(width: 3),
-                  Text(
-                    StatIcons.compact(r.counts[t.id]!),
-                    style: TextStyle(
-                      color: r.mine.contains(t.id)
-                          ? palette.ink
-                          : palette.muted,
-                      fontSize: 12.5,
-                      fontWeight: r.mine.contains(t.id)
-                          ? FontWeight.w800
-                          : FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                ],
-              if (showViews) ...[
-                Icon(AppIcons.eyeCount, size: 16, color: palette.muted),
-                const SizedBox(width: 4),
-                Text(
-                  StatIcons.compact(prayer.views),
-                  style: TextStyle(
-                    color: palette.muted,
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ],
-          ),
+        return StatIcons(
+          horizontal: true,
+          showViews: showViews,
+          views: prayer.views,
+          likes: r.total,
+          liked: r.mine.isNotEmpty,
         );
       },
     );

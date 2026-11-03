@@ -13,7 +13,6 @@ import '../../../core/exit_guard.dart';
 import '../../../core/layout/sidebar_scaffold.dart';
 import '../../../core/mvvm/view_model_builder.dart';
 import '../../../core/theme.dart';
-import '../../../core/widgets/list_style_toggle.dart';
 import '../../../data/models/member.dart';
 import '../../admin/view_model/pending_members_view_model.dart';
 import '../../prayers/view/postit_card.dart';
@@ -208,10 +207,6 @@ class ChurchShell extends StatelessWidget {
                         me: me,
                         choice: affiliationChoice,
                       ),
-                    // 말씀묵상은 하나의 모양이라 스위치가 없다.
-                    if (section == ChurchSection.meetings ||
-                        (kPostItEnabled && section == ChurchSection.prayer))
-                      const ListStyleToggle(),
                   ],
                 ),
           railActions: [

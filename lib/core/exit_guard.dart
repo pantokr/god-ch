@@ -10,7 +10,7 @@ import 'widgets/exit_ad_slot.dart';
 /// 뒤로 가기 처리. 화면 위에 쌓인 화면에서는 평소처럼 이전 화면으로 돌아간다.
 /// 탭 · 메뉴 사이를 오갈 때는 화면이 쌓이지 않고 바뀌기만 해서(go) 바로 앱이 끝나 버리므로,
 /// [location]으로 방문한 화면을 기억해 두었다가 뒤로 가기를 누르면 직전에 보던 화면으로 돌아간다.
-/// 더 돌아갈 화면이 없을 때(첫 화면)에만 앱을 종료할지 묻는다.
+/// 더 돌아갈 화면이 없을 때(첫 화면)와 기본 페이지(모임 일정 · 중보기도 · 말씀묵상 · 내 활동)에서는 앱을 종료할지 묻는다.
 /// 묻는 창에는 크기가 고정된 광고 자리가 있다 ([ExitAdSlot]).
 /// 웹에서는 브라우저가 알아서 하므로 아무것도 하지 않는다.
 class ExitGuard extends StatefulWidget {
@@ -63,6 +63,18 @@ class _ExitGuardState extends State<ExitGuard> {
     if (_history.length > _maxHistory) _history.removeAt(0);
   }
 
+  /// 지금 화면이 기본 페이지(모임 일정 · 중보기도 · 말씀묵상 · 내 활동)인가.
+  /// 기본 페이지에서 뒤로 가기를 누르면 직전 화면으로 가지 않고 곧바로 종료 확인 창이 뜬다.
+  bool get _onBasePage {
+    final current = _history.isEmpty ? widget.location : _history.last;
+    if (current == null) return false;
+    final segments = Uri.parse(current).pathSegments;
+    // /churches/{교회}/{메뉴}
+    return segments.length == 3 &&
+        segments[0] == 'churches' &&
+        const {'meetings', 'prayer', 'bible', 'mine'}.contains(segments[2]);
+  }
+
   /// 직전 화면으로 이동한다. 갈 곳이 없으면 false.
   bool _goBack(BuildContext context) {
     if (_history.length < 2) return false;
@@ -80,8 +92,8 @@ class _ExitGuardState extends State<ExitGuard> {
       canPop: !atRoot,
       onPopInvokedWithResult: (didPop, _) async {
         if (didPop) return;
-        // 먼저 직전에 보던 화면으로 돌아간다.
-        if (_goBack(context)) return;
+        // 기본 페이지가 아니면 먼저 직전에 보던 화면으로 돌아간다.
+        if (!_onBasePage && _goBack(context)) return;
         final exit = await showDialog<bool>(
           context: context,
           builder: (_) => const _ExitDialog(),

@@ -23,6 +23,12 @@ class PeopleRepository {
         ],
       );
 
+  /// 한 사람의 카드. 교회를 떠났거나 카드가 없으면 null.
+  Future<PersonCard?> person(String churchId, String uid) async {
+    final d = await _paths.people(churchId).doc(uid).get();
+    return d.exists ? PersonCard.fromDoc(d) : null;
+  }
+
   /// 교회 교인들의 프로필 사진 주소 (uid → 주소). 교회마다 한 번만 구독해 두고 모든 아바타가 같이 쓴다.
   /// 글 · 모임 문서에는 쓴 사람의 이름만 있어서, 사진은 여기서 찾아 붙인다. 사진이 없는 사람은 빠진다.
   ValueListenable<Map<String, String>> photos(String churchId) {

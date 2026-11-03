@@ -4,6 +4,11 @@ import '../../../core/widgets/toggle_chip.dart';
 import '../../../core/widgets/app_loader.dart';
 
 import 'package:flutter/material.dart';
+
+import '../../people/view/person_popup.dart';
+
+import '../../../core/widgets/view_mode_toggle.dart';
+
 import 'package:go_router/go_router.dart';
 
 import '../../../app/app_scope.dart';
@@ -49,131 +54,124 @@ class BiblePage extends StatelessWidget {
       me: me,
       choice: choice,
       builder: (context, affiliation) => RefreshScope(
-        builder: (context, generation, refresh) =>
-            ViewModelBuilder<DevotionsViewModel>(
-              key: ValueKey('bible/${me.churchId}/$generation'),
-              create: (context) => DevotionsViewModel(
-                AppScope.read(context).contents,
-                me.churchId,
-                authorName: me.name,
-                authorPhotoUrl: me.photoUrl,
-                affiliations: AppScope.read(context).affiliations
-                    .affiliations(me.churchId),
-                includePrivate: me.can(Permission.devotionViewPrivate),
-                readerId: me.id,
-              ),
-              builder: (context, vm) => Stack(
-                fit: StackFit.expand,
-                children: [
-                  SingleChildScrollView(
-                    // 오른쪽 아래 버튼에 마지막 줄이 가리지 않게 아래를 비운다.
-                    padding: const EdgeInsets.only(bottom: CreateFab.clearance),
-                    child: PageFrame(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          // 검색 필드는 탭 설명 위에 있다.
-                          _SearchField(vm: vm),
-                          const SizedBox(height: 16),
-                          PageTitle(
-                            gap: 32,
-                            title: '',
-                            description:
-                                '교역자가 올린 말씀 본문과 그에 대한 묵상입니다. 소속별로 나누어 모아 둡니다.',
-                          ),
-                          StreamBuilder<List<Affiliation>>(
-                            stream: vm.affiliations,
-                            builder: (context, affSnap) =>
-                                StreamBuilder<List<ChurchContent>>(
-                                  stream: vm.items,
-                                  builder: (context, snap) {
-                                    if (snap.hasError) {
-                                      return EmptyHint(
-                                        '불러오지 못했습니다\n${snap.error}',
-                                      );
-                                    }
-                                    final all = snap.data;
-                                    final affiliations = affSnap.data;
-                                    if (all == null ||
-                                        (affiliations == null &&
-                                            !affSnap.hasError)) {
-                                      return const Padding(
-                                        padding: EdgeInsets.all(48),
-                                        child: Center(child: AppLoader()),
-                                      );
-                                    }
-                                    final items = vm.apply(
-                                      all,
-                                      affiliationId: affiliation?.id,
-                                    );
-                                    return Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.stretch,
-                                      children: [
-                                        // 최근 글쓴이는 구분선 위에 있다.
-                                        _RecentAuthors(
-                                          visible: vm.settings.showAuthor,
-                                          authors:
-                                              DevotionsViewModel.recentAuthors(
-                                                all,
-                                              ),
-                                        ),
-                                        const SizedBox(height: 8),
-                                        // 위 영역과 목록 영역을 가르는 선.
-                                        Divider(
-                                          height: 1,
-                                          color: context.palette.border,
-                                        ),
-                                        // 읽음 제외는 정렬 줄 위에 둔다.
-                                        BleedBox(
-                                          padding: const EdgeInsets.only(
-                                            top: 8,
-                                          ),
-                                          child: Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.stretch,
-                                            children: [
-                                              Padding(
-                                                padding: EdgeInsets.only(
-                                                  top: 12,
-                                                  right: textGutter(context),
-                                                ),
-                                                child: Align(
-                                                  alignment:
-                                                      Alignment.centerRight,
-                                                  child: ToggleChip(
+        builder: (context, generation, refresh) => ViewModelBuilder<DevotionsViewModel>(
+          key: ValueKey('bible/${me.churchId}/$generation'),
+          create: (context) => DevotionsViewModel(
+            AppScope.read(context).contents,
+            me.churchId,
+            authorName: me.name,
+            authorPhotoUrl: me.photoUrl,
+            affiliations: AppScope.read(context).affiliations
+                .affiliations(me.churchId),
+            includePrivate: me.can(Permission.devotionViewPrivate),
+            // 교역자 이상이 아니면 자기가 속한 소속의 글만 읽는다 (미배정이면 아무것도 없다).
+            affiliationIds: me.isStaff ? null : me.affiliationIds,
+            readerId: me.id,
+          ),
+          builder: (context, vm) => Stack(
+            fit: StackFit.expand,
+            children: [
+              SingleChildScrollView(
+                // 오른쪽 아래 버튼에 마지막 줄이 가리지 않게 아래를 비운다.
+                padding: const EdgeInsets.only(bottom: CreateFab.clearance),
+                child: PageFrame(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // 검색 필드는 탭 설명 위에 있다.
+                      _SearchField(vm: vm),
+                      const SizedBox(height: 16),
+                      PageTitle(
+                        gap: 32,
+                        title: '',
+                        description:
+                            '교역자가 올린 말씀 본문과 그에 대한 묵상입니다. 소속별로 나누어 모아 둡니다.',
+                      ),
+                      StreamBuilder<List<Affiliation>>(
+                        stream: vm.affiliations,
+                        builder: (context, affSnap) =>
+                            StreamBuilder<List<ChurchContent>>(
+                              stream: vm.items,
+                              builder: (context, snap) {
+                                if (snap.hasError) {
+                                  return EmptyHint('불러오지 못했습니다\n${snap.error}');
+                                }
+                                final all = snap.data;
+                                final affiliations = affSnap.data;
+                                if (all == null ||
+                                    (affiliations == null &&
+                                        !affSnap.hasError)) {
+                                  return const Padding(
+                                    padding: EdgeInsets.all(48),
+                                    child: Center(child: AppLoader()),
+                                  );
+                                }
+                                final items = vm.apply(
+                                  all,
+                                  affiliationId: affiliation?.id,
+                                );
+                                return Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
+                                  children: [
+                                    // 최근 글쓴이는 구분선 위에 있다.
+                                    _RecentAuthors(
+                                      visible: vm.settings.showAuthor,
+                                      authors: DevotionsViewModel.recentAuthors(
+                                        all,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    // 위 영역과 목록 영역을 가르는 선.
+                                    Divider(
+                                      height: 1,
+                                      color: context.palette.border,
+                                    ),
+                                    // 읽음 제외는 정렬 줄 위에 둔다.
+                                    BleedBox(
+                                      padding: const EdgeInsets.only(top: 8),
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.stretch,
+                                        children: [
+                                          // 정렬 순서는 패널 밖, 목록 바로 위에 붙는다 (일정과 같다).
+                                          SortStrip(
+                                            viewToggle: ViewModeToggle(
+                                              grid: vm.grid,
+                                              onChanged: vm.setGrid,
+                                            ),
+                                            leading: kHideReadEnabled
+                                                ? ToggleChip(
                                                     label: '읽음 제외',
                                                     on: vm.hideRead,
                                                     onTap: vm.toggleHideRead,
-                                                  ),
+                                                  )
+                                                : null,
+
+                                            options: [
+                                              for (final s
+                                                  in DevotionSort.values)
+                                                PadOption(
+                                                  s.label,
+                                                  selected: vm.sort == s,
+                                                  onTap: () => vm.setSort(s),
                                                 ),
-                                              ),
-                                              // 정렬 순서는 패널 밖, 목록 바로 위에 붙는다 (일정과 같다).
-                                              SortStrip(
-                                                options: [
-                                                  for (final s
-                                                      in DevotionSort.values)
-                                                    PadOption(
-                                                      s.label,
-                                                      selected: vm.sort == s,
-                                                      onTap: () =>
-                                                          vm.setSort(s),
-                                                    ),
-                                                ],
-                                              ),
-                                              SortBody(
-                                                child: Column(
-                                                  crossAxisAlignment:
-                                                      CrossAxisAlignment
-                                                          .stretch,
-                                                  children: [
-                                                    if (items.isEmpty)
-                                                      EmptyHint(
-                                                        all.isEmpty
-                                                            ? '말씀 없음'
-                                                            : '검색 결과 없음',
-                                                      )
-                                                    else
+                                            ],
+                                          ),
+                                          SortBody(
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.stretch,
+                                              children: [
+                                                if (items.isEmpty)
+                                                  EmptyHint(
+                                                    all.isEmpty
+                                                        ? '말씀 없음'
+                                                        : '검색 결과 없음',
+                                                  )
+                                                else if (vm.grid)
+                                                  TwoColumn(
+                                                    children: [
                                                       for (final c in items)
                                                         DevotionCard(
                                                           content: c,
@@ -187,34 +185,53 @@ class BiblePage extends StatelessWidget {
                                                                     >[])
                                                               a.id: a.name,
                                                           },
+                                                          gutter: 0,
+                                                          grid: true,
                                                         ),
-                                                  ],
-                                                ),
-                                              ),
-                                            ],
+                                                    ],
+                                                  )
+                                                else
+                                                  for (final c in items)
+                                                    DevotionCard(
+                                                      content: c,
+                                                      me: me,
+                                                      settings: vm.settings,
+                                                      affiliationNames: {
+                                                        for (final a
+                                                            in affiliations ??
+                                                                const <
+                                                                  Affiliation
+                                                                >[])
+                                                          a.id: a.name,
+                                                      },
+                                                    ),
+                                              ],
+                                            ),
                                           ),
-                                        ),
-                                      ],
-                                    );
-                                  },
-                                ),
-                          ),
-                        ],
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                );
+                              },
+                            ),
                       ),
-                    ),
+                    ],
                   ),
-                  if (me.can(Permission.devotionWrite))
-                    Positioned(
-                      right: 16,
-                      bottom: 16 + MediaQuery.paddingOf(context).bottom,
-                      child: CreateFab(
-                        label: '말씀 추가',
-                        onTap: vm.busy ? null : () => _add(context, vm),
-                      ),
-                    ),
-                ],
+                ),
               ),
-            ),
+              if (me.can(Permission.devotionWrite))
+                Positioned(
+                  right: 16,
+                  bottom: 16 + MediaQuery.paddingOf(context).bottom,
+                  child: CreateFab(
+                    label: '말씀 추가',
+                    onTap: vm.busy ? null : () => _add(context, vm),
+                  ),
+                ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -270,72 +287,88 @@ class _RecentAuthors extends StatelessWidget {
     final shown = authors.take(maxShown).toList();
     final more = authors.length - shown.length;
     final count = shown.length + (more > 0 ? 1 : 0);
-    final text = TextStyle(color: palette.muted, fontSize: 14);
+    final text = TextStyle(color: palette.ink, fontSize: 14);
     Widget ring(Widget child) => DecoratedBox(
       decoration: BoxDecoration(shape: BoxShape.circle, color: palette.surface),
       child: Padding(padding: const EdgeInsets.all(_ring), child: child),
     );
+    // 유채색 띠는 화면(페이지 영역) 좌우 끝까지 퍼지고, 내용은 카드와 같은 여백 안에 놓인다.
+    final extra = PageBleed.maybeOf(context)?.extra ?? 0;
     return Padding(
-      padding: EdgeInsets.symmetric(
-        horizontal: textGutter(context),
-        vertical: 8,
-      ),
-      child: Row(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Stack(
+        clipBehavior: Clip.none,
         children: [
-          Text('7일간', style: text),
-          const SizedBox(width: 8),
-          SizedBox(
-            width: (count - 1) * _step + size,
-            height: size,
-            child: Stack(
+          Positioned(
+            left: -extra,
+            right: -extra,
+            top: 0,
+            bottom: 0,
+            child: ColoredBox(color: Pastel.hue(2).withValues(alpha: 0.22)),
+          ),
+          Padding(
+            padding: EdgeInsets.symmetric(
+              horizontal: textGutter(context),
+              vertical: 8,
+            ),
+            child: Row(
               children: [
-                for (var i = 0; i < shown.length; i++)
-                  Positioned(
-                    left: i * _step,
-                    child: Tooltip(
-                      message: shown[i].authorName,
-                      child: ring(
-                        ThumbnailAvatar(
-                          name: shown[i].authorName,
-                          url: shown[i].authorPhotoUrl,
-                          radius: _radius,
-                        ),
-                      ),
-                    ),
-                  ),
-                if (more > 0)
-                  Positioned(
-                    left: shown.length * _step,
-                    child: Tooltip(
-                      message: '이번 주 글쓴이 $more명 더',
-                      child: ring(
-                        CircleAvatar(
-                          radius: _radius,
-                          backgroundColor: palette.brand.withValues(
-                            alpha: 0.12,
-                          ),
-                          child: Text(
-                            '+$more',
-                            style: TextStyle(
-                              color: palette.brand,
-                              fontWeight: FontWeight.w800,
-                              fontSize: 11,
+                Text('7일간', style: text),
+                const SizedBox(width: 8),
+                SizedBox(
+                  width: (count - 1) * _step + size,
+                  height: size,
+                  child: Stack(
+                    children: [
+                      for (var i = 0; i < shown.length; i++)
+                        Positioned(
+                          left: i * _step,
+                          child: Tooltip(
+                            message: shown[i].authorName,
+                            child: ring(
+                              ThumbnailAvatar(
+                                name: shown[i].authorName,
+                                url: shown[i].authorPhotoUrl,
+                                radius: _radius,
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                    ),
+                      if (more > 0)
+                        Positioned(
+                          left: shown.length * _step,
+                          child: Tooltip(
+                            message: '이번 주 글쓴이 $more명 더',
+                            child: ring(
+                              CircleAvatar(
+                                radius: _radius,
+                                backgroundColor: Pastel.hue(2)
+                                    .withValues(alpha: 0.35),
+                                child: Text(
+                                  '+$more',
+                                  style: TextStyle(
+                                    color: palette.ink,
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 11,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
+                ),
+                const SizedBox(width: 8),
+                Flexible(
+                  child: Text(
+                    '의 사람들이 묵상했습니다',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: text,
+                  ),
+                ),
               ],
-            ),
-          ),
-          const SizedBox(width: 8),
-          Flexible(
-            child: Text(
-              '의 사람들이 묵상했습니다',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: text,
             ),
           ),
         ],
@@ -352,6 +385,8 @@ class DevotionCard extends StatelessWidget {
     required this.me,
     required this.settings,
     this.affiliationNames = const {},
+    this.gutter,
+    this.grid = false,
   });
 
   final ChurchContent content;
@@ -361,9 +396,16 @@ class DevotionCard extends StatelessWidget {
   /// 소속 아이디 → 이름. 글의 소속을 이름 옆에 보여줄 때 쓴다.
   final Map<String, String> affiliationNames;
 
+  /// 카드 좌우 바깥 여백. 없으면 글 여백(`textGutter`)이고, 격자에서는 0이다.
+  final double? gutter;
+
+  /// 격자형 카드인가: 내용을 더 길게 보여 주고, 아래 정보 줄(소속 · 반응 · 프로필 · 날짜)은 카드 맨 아래에 붙인다.
+  final bool grid;
+
   @override
   Widget build(BuildContext context) {
     final palette = context.palette;
+    final excerptLines = grid ? 6 : 2;
     final c = content;
     // 앱 개발자는 교인이 아니라 읽음 표시가 없다.
     final read = !me.isOperatorView && c.readBy.contains(me.id);
@@ -376,9 +418,9 @@ class DevotionCard extends StatelessWidget {
     final scaler = MediaQuery.textScalerOf(context);
     return Padding(
       padding: EdgeInsets.fromLTRB(
-        textGutter(context),
+        gutter ?? textGutter(context),
         0,
-        textGutter(context),
+        gutter ?? textGutter(context),
         14,
       ),
       child: InkWell(
@@ -433,10 +475,10 @@ class DevotionCard extends StatelessWidget {
               const SizedBox(height: 8),
               // 묵상은 두 줄 자리를 늘 잡는다.
               SizedBox(
-                height: scaler.scale(13.5 * 1.4 * 2),
+                height: scaler.scale(13.5 * 1.4 * excerptLines) + 4,
                 child: Text(
                   c.meditation,
-                  maxLines: 2,
+                  maxLines: excerptLines,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     color: palette.muted,
@@ -445,7 +487,7 @@ class DevotionCard extends StatelessWidget {
                   ),
                 ),
               ),
-              const SizedBox(height: 12),
+              if (grid) const Spacer() else const SizedBox(height: 12),
               // 좋아요 · 조회수는 오른쪽에, 이 글의 소속은 그 맞은편 왼쪽에 둔다.
               SizedBox(
                 height: 24,
@@ -473,20 +515,35 @@ class DevotionCard extends StatelessWidget {
                 child: Row(
                   children: [
                     if (c.authorName.isNotEmpty && settings.showAuthor) ...[
-                      ThumbnailAvatar(
+                      PersonTap(
+                        churchId: me.churchId,
+                        uid: c.authorId,
                         name: c.authorName,
-                        url: c.authorPhotoUrl,
-                        radius: 10,
+                        photoUrl: c.authorPhotoUrl,
+                        child: ThumbnailAvatar(
+                          name: c.authorName,
+                          url: c.authorPhotoUrl,
+                          radius: 10,
+                        ),
                       ),
                       const SizedBox(width: 6),
                       Expanded(
-                        child: Text(
-                          c.authorName,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 13,
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: PersonTap(
+                            churchId: me.churchId,
+                            uid: c.authorId,
+                            name: c.authorName,
+                            photoUrl: c.authorPhotoUrl,
+                            child: Text(
+                              c.authorName,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 13,
+                              ),
+                            ),
                           ),
                         ),
                       ),

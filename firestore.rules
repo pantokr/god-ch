@@ -39,6 +39,16 @@ service cloud.firestore {
               'devotion.commentDeleteOthers', 'devotion.deleteOthers',
               'meeting.create', 'meeting.delete', 'meeting.join'];
     }
+    // 교회가 정한 적이 없을 때 교역자가 갖는 권한 (lib/data/models/permission.dart의 Permission.staffDefault와 같다).
+    // 소속 생성 · 삭제는 기본으로 없고, 교회 관리자가 직급으로 줘야 한다.
+    function staffDefaults() {
+      return ['member.approve', 'invite.manage', 'affiliation.assign',
+              'prayer.write', 'prayer.viewPrivate', 'prayer.react', 'prayer.comment',
+              'prayer.commentDeleteOthers', 'prayer.deleteOthers',
+              'devotion.write', 'devotion.viewPrivate', 'devotion.react', 'devotion.comment',
+              'devotion.commentDeleteOthers', 'devotion.deleteOthers',
+              'meeting.create', 'meeting.delete', 'meeting.join'];
+    }
     // 교회가 정한 적이 없을 때 회원이 갖는 권한 (지금까지 회원이 하던 일: Permission.memberDefault와 같다).
     function memberDefaults() {
       return ['prayer.write', 'prayer.react',
@@ -53,7 +63,7 @@ service cloud.firestore {
       let p = /databases/$(database)/documents/churches/$(cid)/positions/$(role);
       return exists(p) && get(p).data.get('permissions', null) is list
         ? perm in get(p).data.permissions
-        : (role == 'staff' ? perm in delegable() : (role == 'member' && perm in memberDefaults()));
+        : (role == 'staff' ? perm in staffDefaults() : (role == 'member' && perm in memberDefaults()));
     }
     // 권한이 있는가: 앱 운영자와 교회 총괄 관리자(그 교회의 절대 권한), 그 외에는 기본 직급(교역자 · 회원)과
     // 직급으로 받은 권한.
@@ -68,8 +78,16 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/churches/$(cid)/prayers/$(pid)).data;
     }
     // 소속 전용 글(affiliationId != null)은 그 소속에 속한 교인에게만 보인다.
+    // 교역자 이상은 모든 글을 보고, 교인은 자기가 속한 소속의 글만 본다 (소속이 없는 미배정 교인은 아무 글도 못 본다).
     function inAff(cid, affId) {
-      return affId == null || affId in get(memberPath(cid)).data.get('affiliationIds', []);
+      return isStaff(cid)
+        || (affId != null && affId in get(memberPath(cid)).data.get('affiliationIds', []));
+    }
+    // 말씀묵상 한 편을 이 사람이 볼 수 있는가: 공개이거나 비공개 조회 권한이 있고, 교역자 이상이거나 자기 소속의 글이다.
+    function devotionOpen(cid, did) {
+      let d = get(/databases/$(database)/documents/churches/$(cid)/devotions/$(did)).data;
+      return (d.get('visibility', 'public') == 'public' || can(cid, 'devotion.viewPrivate'))
+        && inAff(cid, d.get('affiliationId', null));
     }
     function isOpen(cid, pid) {
       return prayer(cid, pid).visibility == 'public'
@@ -633,7 +651,7 @@ service cloud.firestore {
       match /people/{personId} {
         allow read: if isActive(churchId) || isPlatformAdmin();
         allow create, update: if request.resource.data.keys().hasOnly(
-               ['uid', 'name', 'photoUrl', 'role', 'status', 'affiliationIds', 'birthMonthDay', 'updatedAt'])
+               ['uid', 'name', 'photoUrl', 'role', 'status', 'affiliationIds', 'birthMonthDay', 'positionName', 'updatedAt'])
           && request.resource.data.uid == personId
           && request.resource.data.name is string && request.resource.data.name.size() <= 30
           && request.resource.data.photoUrl is string && request.resource.data.photoUrl.size() <= 800
@@ -641,6 +659,7 @@ service cloud.firestore {
           && request.resource.data.status in ['pending', 'approved', 'disabled', 'removed']
           && request.resource.data.affiliationIds is list && request.resource.data.affiliationIds.size() <= 20
           && request.resource.data.birthMonthDay is string && request.resource.data.birthMonthDay.size() <= 5
+          && request.resource.data.get('positionName', '') is string && request.resource.data.get('positionName', '').size() <= 40
           && (isManager(churchId)
               || can(churchId, 'member.approve') || can(churchId, 'affiliation.assign') || can(churchId, 'member.role')
               || (request.auth.uid == personId
@@ -737,9 +756,9 @@ service cloud.firestore {
           // 조회수는 0에서 시작한다.
           && request.resource.data.get('views', 0) == 0
           // 교회 전체(null)이거나 내가 속한 소속에만 쓸 수 있다.
-          && (request.resource.data.affiliationId == null
-              || isStaff(churchId)
-              || request.resource.data.affiliationId in get(memberPath(churchId)).data.get('affiliationIds', []))
+          && (isStaff(churchId)
+              || (request.resource.data.affiliationId != null
+                  && request.resource.data.affiliationId in get(memberPath(churchId)).data.get('affiliationIds', [])))
           && request.resource.data.authorId == request.auth.uid
           && request.resource.data.deleted == false
           && request.resource.data.visibility in ['public', 'private']
@@ -780,6 +799,10 @@ service cloud.firestore {
             && request.resource.data.deletedBy == request.auth.uid)
           // 교역자: 삭제(사유 필수) / 복구 / 비공개 글 응답 시각 기록
           || (can(churchId, 'prayer.deleteOthers')
+            // 직급으로 이 권한을 받은 교인도 자기가 볼 수 있는 글(자기 소속의 공개 글)만 지울 수 있다.
+            && (isStaff(churchId) || can(churchId, 'prayer.viewPrivate')
+                || (resource.data.visibility == 'public'
+                    && inAff(churchId, resource.data.get('affiliationId', null))))
             && changed().hasOnly(['deleted', 'deletedAt', 'deletedBy', 'deleteReason', 'lastResponseAt'])
             && (request.resource.data.deleted == false
                 || (request.resource.data.deletedBy == request.auth.uid
@@ -938,13 +961,18 @@ service cloud.firestore {
       // ---- 말씀묵상(성경): 승인된 교인이 읽고, 교역자 · 교회 관리자(와 앱 개발자)가 글을 게시한다 ----
       match /devotions/{contentId} {
         // 비공개 글은 말씀묵상 비공개 조회 권한이 있는 사람만 읽는다. 공개 글만 묻는 조회(visibility == 'public')는 누구나 된다.
+        // 교인은 자기가 속한 소속의 글만 읽는다 (조회는 소속마다 따로 묻는다).
         allow read: if isPlatformAdmin()
           || (isActive(churchId)
-              && (resource.data.visibility == 'public' || can(churchId, 'devotion.viewPrivate')));
+              && (resource.data.visibility == 'public' || can(churchId, 'devotion.viewPrivate'))
+              && inAff(churchId, resource.data.get('affiliationId', null)));
         allow create: if can(churchId, 'devotion.write')
           && request.resource.data.keys().hasOnly(['title', 'body', 'meditation', 'date', 'views', 'likedBy', 'createdBy',
                'authorName', 'authorPhotoUrl', 'affiliationId', 'visibility', 'createdAt'])
           && request.resource.data.visibility in ['public', 'private']
+          && (isStaff(churchId)
+              || (request.resource.data.get('affiliationId', null) != null
+                  && request.resource.data.affiliationId in get(memberPath(churchId)).data.get('affiliationIds', [])))
           && (request.resource.data.get('affiliationId', null) == null
               || request.resource.data.affiliationId is string)
           && request.resource.data.createdBy == request.auth.uid
@@ -957,6 +985,10 @@ service cloud.firestore {
           && request.resource.data.get('likedBy', []) == []
           && contentValid(request.resource.data);
         allow update: if (can(churchId, 'devotion.write')
+            && inAff(churchId, resource.data.get('affiliationId', null))
+            && (isStaff(churchId)
+                || (request.resource.data.get('affiliationId', null) != null
+                    && request.resource.data.affiliationId in get(memberPath(churchId)).data.get('affiliationIds', [])))
             && changed().hasOnly(['title', 'body', 'meditation', 'date', 'affiliationId', 'visibility', 'updatedAt'])
             && request.resource.data.visibility in ['public', 'private']
             && (request.resource.data.get('affiliationId', null) == null
@@ -964,6 +996,7 @@ service cloud.firestore {
             && contentValid(request.resource.data))
           // 글 삭제(지운 표시만 남긴다): 본인 글은 글을 쓸 수 있으면 누구나, 타인 글은 타인 글 삭제 권한이 있어야 한다.
           || (isActive(churchId)
+            && inAff(churchId, resource.data.get('affiliationId', null))
             && resource.data.get('deleted', false) == false
             && changed().hasOnly(['deleted', 'deletedAt', 'deletedBy'])
             && request.resource.data.deleted == true
@@ -974,6 +1007,9 @@ service cloud.firestore {
           // 교인: 조회수 +1, 좋아요 누르기 · 취소 (한 번에 하나만)
           || (isActive(churchId)
             && featureAllowed(churchId, 'wordAffiliations')
+            // 볼 수 있는 글에만 조회수 · 읽음 · 좋아요를 남긴다 (공개이거나 비공개 조회 권한, 그리고 자기 소속).
+            && (resource.data.visibility == 'public' || can(churchId, 'devotion.viewPrivate'))
+            && inAff(churchId, resource.data.get('affiliationId', null))
             && resource.data.get('deleted', false) == false
             && ((changed().hasOnly(['views']) && viewBump())
                 // 읽음 표시: 내 uid만 더한다.
@@ -996,11 +1032,11 @@ service cloud.firestore {
           || (isActive(churchId)
               && (devotionOpt(churchId, 'reflectionsPublic') || isStaff(churchId)
                   || resource.data.get('authorId', '') == request.auth.uid)
-              && (get(/databases/$(database)/documents/churches/$(churchId)/devotions/$(devotionId)).data.get('visibility', 'public') == 'public'
-                  || can(churchId, 'devotion.viewPrivate')));
+              && devotionOpen(churchId, devotionId));
         // 댓글 달기: 한 사람이 여러 개를 달 수 있다 (문서 ID는 자동).
         allow create: if isActive(churchId)
           && can(churchId, 'devotion.comment')
+          && devotionOpen(churchId, devotionId)
           && devotionOpt(churchId, 'allowReflections')
           && featureAllowed(churchId, 'wordAffiliations')
           && request.resource.data.keys().hasOnly(['authorId', 'authorName', 'text', 'updatedAt'])

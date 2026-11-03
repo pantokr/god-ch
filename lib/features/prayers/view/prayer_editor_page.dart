@@ -12,7 +12,6 @@ import '../../../app/app_scope.dart';
 import '../../../app/routes.dart';
 import '../../../core/layout/sub_page.dart';
 import '../../../core/mvvm/view_model_builder.dart';
-import '../../../core/theme.dart';
 import '../../../data/models/affiliation.dart';
 import '../../../data/models/member.dart';
 import '../../../data/models/prayer.dart';
@@ -103,6 +102,11 @@ class _PrayerEditorPageState extends State<PrayerEditorPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
+                        // 게시 범위는 새 글을 쓸 때만 고를 수 있다.
+                        if (!vm.isEditing) _ScopePicker(vm: vm),
+                        // 교회가 비공개를 허용하지 않으면 공개 범위를 고를 수 없다.
+                        if (vm.settings.allowPrivate) _VisibilityPicker(vm: vm),
+                        const SizedBox(height: 12),
                         LabeledField(
                           label: '기도제목',
                           alignTop: true,
@@ -119,11 +123,6 @@ class _PrayerEditorPageState extends State<PrayerEditorPage> {
                                 : null,
                           ),
                         ),
-                        const SizedBox(height: 16),
-                        // 게시 범위는 새 글을 쓸 때만 고를 수 있다.
-                        if (!vm.isEditing) _ScopePicker(vm: vm),
-                        // 교회가 비공개를 허용하지 않으면 공개 범위를 고를 수 없다.
-                        if (vm.settings.allowPrivate) _VisibilityPicker(vm: vm),
                         const SizedBox(height: 24),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.end,
@@ -182,15 +181,15 @@ class _ScopePicker extends StatelessWidget {
             );
           }
           return Padding(
-            padding: const EdgeInsets.only(bottom: 16),
+            padding: const EdgeInsets.only(bottom: 12),
             child: LabeledField(
-              label: '게시 범위',
+              label: '소속',
               child: DropdownButtonFormField<String?>(
                 initialValue: chosen ? vm.affiliationId : mine.first.id,
                 decoration: const InputDecoration(),
                 items: [
                   for (final a in mine)
-                    DropdownMenuItem(value: a.id, child: Text('${a.name} 전용')),
+                    DropdownMenuItem(value: a.id, child: Text(a.name)),
                 ],
                 onChanged: vm.setAffiliation,
               ),
@@ -209,7 +208,6 @@ class _VisibilityPicker extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isPublic = vm.visibility == PrayerVisibility.public;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -221,13 +219,6 @@ class _VisibilityPicker extends StatelessWidget {
           ],
           value: vm.visibility,
           onChanged: vm.setVisibility,
-        ),
-        const SizedBox(height: 8),
-        Text(
-          isPublic
-              ? '승인된 교인에게 공개되며 이모티콘으로 응원받을 수 있어요.'
-              : '다른 교인에게는 보이지 않고, 교역자만 읽고 답변할 수 있어요.',
-          style: TextStyle(color: context.palette.muted, fontSize: 13),
         ),
       ],
     );

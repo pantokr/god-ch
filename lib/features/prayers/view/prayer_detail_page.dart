@@ -4,6 +4,9 @@ import '../../../core/widgets/trash_icon.dart';
 import '../../../core/icons.dart';
 
 import 'package:flutter/material.dart';
+
+import '../../people/view/person_popup.dart';
+
 import 'package:go_router/go_router.dart';
 
 import '../../../app/app_scope.dart';
@@ -160,24 +163,47 @@ class _Body extends StatelessWidget {
                 const SizedBox(height: 20),
                 // 기도제목 본문은 책처럼 읽히도록 명조로 보여준다.
                 SelectableText(p.content, style: readingStyle(context)),
-                const SizedBox(height: 20),
-                const Divider(height: 1),
-                const SizedBox(height: 14),
-                // 본문 아래에: 이름 → 날짜와 각종 정보 (말씀묵상과 같은 순서와 모양).
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        // 작성 정보는 본문과 분리한 카드에 둔다: 이름 → 날짜와 각종 정보 (말씀묵상과 같은 순서와 모양).
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
                 Row(
                   children: [
-                    PersonAvatar(
+                    PersonTap(
                       churchId: vm.me.churchId,
                       uid: p.authorId,
-                      name: p.authorName.isEmpty ? '?' : p.authorName,
-                      radius: 13,
+                      name: p.authorName,
+                      photoUrl: '',
+                      child: PersonAvatar(
+                        churchId: vm.me.churchId,
+                        uid: p.authorId,
+                        name: p.authorName.isEmpty ? '?' : p.authorName,
+                        radius: 13,
+                      ),
                     ),
                     const SizedBox(width: 8),
                     Expanded(
-                      child: Text(
-                        p.authorName.isEmpty ? '이름 없음' : p.authorName,
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w700,
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: PersonTap(
+                          churchId: vm.me.churchId,
+                          uid: p.authorId,
+                          name: p.authorName,
+                          photoUrl: '',
+                          child: Text(
+                            p.authorName.isEmpty ? '이름 없음' : p.authorName,
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
                         ),
                       ),
                     ),
@@ -191,19 +217,23 @@ class _Body extends StatelessWidget {
                   isPrivate: !p.isPublic,
                   affiliationId: p.affiliationId,
                 ),
-                if (p.isPublic &&
-                    !p.deleted &&
-                    vm.settings.reactionsOn &&
-                    vm.me.can(Permission.prayerReact)) ...[
-                  const SizedBox(height: 24),
-                  const Divider(),
-                  const SizedBox(height: 16),
-                  ReactionBar(churchId: vm.me.churchId, prayerId: p.id),
-                ],
               ],
             ),
           ),
         ),
+        // 반응(이모티콘 응원)은 작성 정보와 분리한 카드에 둔다.
+        if (p.isPublic &&
+            !p.deleted &&
+            vm.settings.reactionsOn &&
+            vm.me.can(Permission.prayerReact)) ...[
+          const SizedBox(height: 12),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: ReactionBar(churchId: vm.me.churchId, prayerId: p.id),
+            ),
+          ),
+        ],
         const SizedBox(height: 16),
         if (p.isPublic && !p.deleted)
           EntrySection(

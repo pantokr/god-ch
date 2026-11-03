@@ -3,6 +3,10 @@ import 'package:flutter/material.dart';
 import '../icons.dart';
 import '../theme.dart';
 
+/// 읽음 제외 토글 사용 여부. false이면 중보기도 · 말씀묵상 정렬 줄에 버튼이 나오지 않는다.
+/// 다시 켜려면 true로 바꾼다.
+const kHideReadEnabled = false;
+
 /// 눌러서 켜고 끄는 조건 하나 (예: "읽음 제외"): 정렬 줄과 같은 흰 바탕 · 얇은 테두리 상자 안에
 /// 각진 작은 체크 칸과 글자가 있다. 켜지면 체크 칸이 진하게 채워지고 테두리와 글자가 진해진다.
 /// 라이트 모드는 흰색, 다크 모드는 카드 바탕색이다.

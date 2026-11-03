@@ -5,6 +5,7 @@ import '../../../core/layout/page_frame.dart';
 import '../../../core/mvvm/view_model_builder.dart';
 import '../../../core/widgets/app_loader.dart';
 import '../../../core/widgets/shadow_switch.dart';
+import '../../../core/widgets/list_style_toggle.dart';
 import '../../../core/widgets/sort_pad.dart';
 import '../../../data/models/meeting.dart';
 import '../../../data/models/member.dart';
@@ -48,6 +49,7 @@ class MyMeetingsPage extends StatelessWidget {
                     ),
                     const SizedBox(height: 16),
                     SortStrip(
+                      viewToggle: const ListStyleToggle(),
                       options: [
                         for (final s in MeetingSort.values)
                           PadOption(

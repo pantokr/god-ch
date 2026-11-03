@@ -41,6 +41,7 @@ class MyPostsViewModel extends ViewModel {
     String churchId,
     String uid, {
     bool includePrivate = false,
+    List<String>? affiliationIds,
   }) : _prayerRepo = prayerRepo,
        _churchId = churchId {
     // 종류를 빠르게 오가도 구독이 반복해서 붙고 떨어지지 않도록, 한 번만 구독해 값을 들고 있는다.
@@ -60,7 +61,11 @@ class MyPostsViewModel extends ViewModel {
     );
     _subs.add(
       contents
-          .latest(churchId, includePrivate: includePrivate)
+          .latest(
+            churchId,
+            includePrivate: includePrivate,
+            affiliationIds: affiliationIds,
+          )
           .listen(
             (list) {
               devotionList = [

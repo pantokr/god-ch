@@ -78,9 +78,11 @@ class _AffiliationDetailBodyState extends State<AffiliationDetailBody> {
           if (!affs.hasData) {
             return const Center(child: AppLoader());
           }
-          final affiliation = affs.data!
-              .where((d) => d.id == affiliationId)
-              .firstOrNull;
+          // 기본 소속 "미배정"은 목록에 없다: 인원을 보기만 하고 고칠 수 없다.
+          final readOnly = affiliationId == Affiliation.unassigned.id;
+          final affiliation = readOnly
+              ? Affiliation.unassigned
+              : affs.data!.where((d) => d.id == affiliationId).firstOrNull;
           if (affiliation == null) {
             return const Padding(
               padding: EdgeInsets.all(24),
@@ -103,7 +105,7 @@ class _AffiliationDetailBodyState extends State<AffiliationDetailBody> {
                       // 제목은 소속 이름이고, 오른쪽 소속 선택으로 다른 소속의 인원을 본다.
                       PageTitle(
                         title: affiliation.name,
-                        action: affs.data!.length < 2
+                        action: readOnly || affs.data!.length < 2
                             ? null
                             : _AffiliationPicker(
                                 items: affs.data!,
@@ -112,40 +114,44 @@ class _AffiliationDetailBodyState extends State<AffiliationDetailBody> {
                                     setState(() => affiliationId = id),
                               ),
                       ),
-                      // 이 소속의 모든 관리가 여기에 있다: 인원 추가 · 이름 변경 · 삭제.
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: [
-                          FilledButton.icon(
-                            onPressed: vm.busy
-                                ? null
-                                : () => _add(context, vm, all),
-                            icon: const Icon(AppIcons.userPlus, size: 18),
-                            label: const Text('인원 추가'),
-                          ),
-                          // 이름 변경은 교회 관리자만 한다.
-                          if (me.isAdmin)
-                            OutlinedButton.icon(
+                      // 이 소속의 모든 관리가 여기에 있다: 인원 추가 · 이름 변경 · 삭제 (미배정은 보기만).
+                      if (!readOnly)
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            FilledButton.icon(
                               onPressed: vm.busy
                                   ? null
-                                  : () => _rename(context, vm, affiliation),
-                              icon: const Icon(AppIcons.pencilSimple, size: 18),
-                              label: const Text('이름 변경'),
+                                  : () => _add(context, vm, all),
+                              icon: const Icon(AppIcons.userPlus, size: 18),
+                              label: const Text('인원 추가'),
                             ),
-                          // 소속 삭제 권한이 있는 사람만 삭제한다.
-                          if (me.can(Permission.affiliationDelete))
-                            OutlinedButton.icon(
-                              style: TrashIcon.textStyle(context),
-                              onPressed: vm.busy
-                                  ? null
-                                  : () => _delete(context, vm, affiliation),
-                              icon: const TrashIcon(),
-                              label: const Text('삭제'),
-                            ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
+                            // 이름 변경은 교회 관리자만 한다.
+                            if (me.isAdmin)
+                              OutlinedButton.icon(
+                                onPressed: vm.busy
+                                    ? null
+                                    : () => _rename(context, vm, affiliation),
+                                icon: const Icon(
+                                  AppIcons.pencilSimple,
+                                  size: 18,
+                                ),
+                                label: const Text('이름 변경'),
+                              ),
+                            // 소속 삭제 권한이 있는 사람만 삭제한다.
+                            if (me.can(Permission.affiliationDelete))
+                              OutlinedButton.icon(
+                                style: TrashIcon.textStyle(context),
+                                onPressed: vm.busy
+                                    ? null
+                                    : () => _delete(context, vm, affiliation),
+                                icon: const TrashIcon(),
+                                label: const Text('삭제'),
+                              ),
+                          ],
+                        ),
+                      if (!readOnly) const SizedBox(height: 16),
                       if (vm.error != null)
                         Padding(
                           padding: EdgeInsets.fromLTRB(
@@ -193,6 +199,7 @@ class _AffiliationDetailBodyState extends State<AffiliationDetailBody> {
                                 _PersonRow(
                                   member: people[i],
                                   busy: vm.busy,
+                                  readOnly: readOnly,
                                   onRemove: () async {
                                     // 소속에서 제외하기 전에 한 번 더 묻는다.
                                     final ok = await confirmChange(
@@ -371,10 +378,12 @@ class _PersonRow extends StatelessWidget {
     required this.member,
     required this.busy,
     required this.onRemove,
+    this.readOnly = false,
   });
 
   final Member member;
   final bool busy;
+  final bool readOnly;
   final Future<void> Function() onRemove;
 
   @override
@@ -397,7 +406,7 @@ class _PersonRow extends StatelessWidget {
       line2: member.phone.isEmpty ? '미제공' : member.phone,
       trailing: [
         // 교회 운영자는 모든 소속에 자동으로 속하므로 뺄 수 없다: 그 칸은 비워 둔다.
-        if (member.role != Role.admin)
+        if (!readOnly && member.role != Role.admin)
           TextButton(
             onPressed: busy ? null : onRemove,
             child: const Text('제외'),

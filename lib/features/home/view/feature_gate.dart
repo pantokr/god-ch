@@ -51,6 +51,7 @@ class FeatureGate extends StatelessWidget {
               return const Center(child: AppLoader());
             }
             final access = feat.data!.accessFor(feature, me, affs.data!);
+            if (access.unassigned) return const _Notice('소속 미배정');
             if (access.blocked) return _NotAllowed(feature: feature);
             return ListenableBuilder(
               listenable: choice,

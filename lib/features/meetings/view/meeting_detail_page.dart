@@ -1,6 +1,10 @@
 import '../../../core/widgets/app_loader.dart';
 
 import 'package:flutter/material.dart';
+
+import '../../people/view/person_avatar.dart';
+import '../../people/view/person_popup.dart';
+
 import 'package:go_router/go_router.dart';
 
 import '../../../app/app_scope.dart';
@@ -85,7 +89,7 @@ class MeetingDetailPage extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                _InfoCard(meeting: m),
+                _InfoCard(meeting: m, churchId: me.churchId),
                 const SizedBox(height: 12),
                 // 좋아요 · 조회수는 말씀묵상과 같은 반응 카드로 첫 카드 바로 아래에 둔다.
                 if (vm.settings.allowLikes || vm.settings.showViews) ...[
@@ -194,9 +198,10 @@ class _Section extends StatelessWidget {
 }
 
 class _InfoCard extends StatelessWidget {
-  const _InfoCard({required this.meeting});
+  const _InfoCard({required this.meeting, required this.churchId});
 
   final Meeting meeting;
+  final String churchId;
 
   @override
   Widget build(BuildContext context) {
@@ -230,7 +235,32 @@ class _InfoCard extends StatelessWidget {
               const SizedBox(height: 16),
             ],
             Text(m.title, style: Theme.of(context).textTheme.titleLarge),
-            row(AppIcons.user, '모임장 ${m.leaderName}'),
+            // 모임장: 프로필 썸네일과 이름 (누르면 프로필 팝업).
+            Padding(
+              padding: const EdgeInsets.only(top: 10),
+              // 프로필과 이름 부분만 눌린다 (줄 전체가 아니다).
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: PersonTap(
+                  churchId: churchId,
+                  uid: m.leaderId,
+                  name: m.leaderName,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      PersonAvatar(
+                        churchId: churchId,
+                        uid: m.leaderId,
+                        name: m.leaderName.isEmpty ? '?' : m.leaderName,
+                        radius: 11,
+                      ),
+                      const SizedBox(width: 10),
+                      Text(m.leaderName),
+                    ],
+                  ),
+                ),
+              ),
+            ),
             row(AppIcons.calendarDays, meetingWhen(m.date)),
             if (m.place.isNotEmpty) row(AppIcons.mapPin, m.place),
           ],

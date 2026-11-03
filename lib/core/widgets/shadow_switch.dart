@@ -73,7 +73,15 @@ class ShadowSwitch<T> extends StatelessWidget {
                               opacity: v == selected ? 1 : 0,
                               child: DecoratedBox(
                                 decoration: BoxDecoration(
-                                  color: palette.surface,
+                                  // 다크 모드에서는 바탕보다 밝은 판이어야 선택이 보인다.
+                                  color:
+                                      Theme.of(context).brightness ==
+                                          Brightness.dark
+                                      ? Color.alphaBlend(
+                                          palette.ink.withValues(alpha: 0.22),
+                                          palette.surface,
+                                        )
+                                      : palette.surface,
                                   boxShadow: [
                                     BoxShadow(
                                       color: Colors.black.withValues(

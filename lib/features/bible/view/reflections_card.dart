@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../people/view/person_popup.dart';
+
 import '../../../app/app_scope.dart';
 import '../../../core/format.dart';
 import '../../../core/icons.dart';
@@ -106,6 +108,7 @@ class ReflectionsCard extends StatelessWidget {
                 Padding(
                   padding: const EdgeInsets.only(top: 10),
                   child: _Comment(
+                    churchId: me.churchId,
                     reflection: r,
                     canDelete:
                         r.authorId == me.id ||
@@ -135,12 +138,14 @@ class ReflectionsCard extends StatelessWidget {
 /// 댓글 한 건의 카드: 쓴 사람, 시각, 내용, 오른쪽의 휴지통(지울 수 있을 때만).
 class _Comment extends StatelessWidget {
   const _Comment({
+    required this.churchId,
     required this.reflection,
     required this.canDelete,
     required this.busy,
     required this.onDelete,
   });
 
+  final String churchId;
   final DevotionReflection reflection;
   final bool canDelete;
   final bool busy;
@@ -163,12 +168,17 @@ class _Comment extends StatelessWidget {
                 children: [
                   Row(
                     children: [
-                      Text(
-                        r.authorName.isEmpty ? '이름 없음' : r.authorName,
-                        style: TextStyle(
-                          color: palette.brand,
-                          fontWeight: FontWeight.w800,
-                          fontSize: 13,
+                      PersonTap(
+                        churchId: churchId,
+                        uid: r.authorId,
+                        name: r.authorName,
+                        child: Text(
+                          r.authorName.isEmpty ? '이름 없음' : r.authorName,
+                          style: TextStyle(
+                            color: palette.brand,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 13,
+                          ),
                         ),
                       ),
                       const SizedBox(width: 8),

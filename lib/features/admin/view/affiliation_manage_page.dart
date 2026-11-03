@@ -109,10 +109,11 @@ class AffiliationManagePage extends StatelessWidget {
                         children: [
                           // 기본 소속 "미배정": 소속 없이 입장한 교인이 있다. 이름 변경 · 삭제가 없다.
                           _UnassignedCard(
-                            count: [
-                              for (final m in all)
-                                if (m.isApproved && m.isUnassigned) m,
-                            ].length,
+                            count: vm
+                                .inAffiliation(all, Affiliation.unassigned.id)
+                                .length,
+                            onEdit: () =>
+                                _open(context, Affiliation.unassigned),
                           ),
                           for (final d in items)
                             _AffiliationCard(
@@ -251,51 +252,79 @@ class _AffiliationCard extends StatelessWidget {
 
 /// 기본 소속 "미배정" 카드: 입장할 때 소속을 고르지 않은 교인의 수. 지울 수 없고 눌러도 열리지 않는다.
 class _UnassignedCard extends StatelessWidget {
-  const _UnassignedCard({required this.count});
+  const _UnassignedCard({required this.count, required this.onEdit});
 
   final int count;
+
+  /// 수정 버튼: 이름 변경 · 삭제는 없고, 속한 사람을 볼 수만 있는 화면이 열린다.
+  final VoidCallback onEdit;
 
   @override
   Widget build(BuildContext context) {
     final palette = context.palette;
     return Container(
       height: 156,
-      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: palette.surface,
         borderRadius: BorderRadius.circular(AppRadius.card),
         border: Border.all(color: palette.border.withValues(alpha: 0.7)),
         boxShadow: AppShadow.soft(context),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Stack(
         children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: palette.muted.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(AppRadius.control),
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: palette.muted.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(AppRadius.control),
+                  ),
+                  child: Icon(
+                    AppIcons.usersThree,
+                    size: 22,
+                    color: palette.muted,
+                  ),
+                ),
+                const Spacer(),
+                Text(
+                  Affiliation.unassignedName,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 16,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '$count명',
+                  style: TextStyle(color: palette.muted, fontSize: 13),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Icon(AppIcons.lock, size: 14, color: palette.muted),
+                    const SizedBox(width: 4),
+                    Text(
+                      '기본',
+                      style: TextStyle(color: palette.muted, fontSize: 12.5),
+                    ),
+                  ],
+                ),
+              ],
             ),
-            child: Icon(AppIcons.usersThree, size: 22, color: palette.muted),
           ),
-          const Spacer(),
-          Text(
-            Affiliation.unassignedName,
-            style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
-          ),
-          const SizedBox(height: 2),
-          Text('$count명', style: TextStyle(color: palette.muted, fontSize: 13)),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Icon(AppIcons.lock, size: 14, color: palette.muted),
-              const SizedBox(width: 4),
-              Text(
-                '기본',
-                style: TextStyle(color: palette.muted, fontSize: 12.5),
-              ),
-            ],
+          Positioned(
+            top: 4,
+            right: 4,
+            child: IconButton(
+              tooltip: '수정',
+              icon: const Icon(AppIcons.pencilSimple, size: 20),
+              onPressed: onEdit,
+            ),
           ),
         ],
       ),

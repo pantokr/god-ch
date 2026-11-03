@@ -45,7 +45,7 @@ class AffiliationManageViewModel extends ViewModel {
     final q = _query.toLowerCase();
     return [
       for (final m in all)
-        if (m.affiliationIds.contains(affiliationId) &&
+        if (_belongs(m, affiliationId) &&
             (q.isEmpty ||
                 m.name.toLowerCase().contains(q) ||
                 m.loginId.toLowerCase().contains(q) ||
@@ -56,8 +56,14 @@ class AffiliationManageViewModel extends ViewModel {
 
   /// 이 소속에 속한 인원. 이름 순.
   List<Member> inAffiliation(List<Member> all, String affiliationId) =>
-      all.where((m) => m.affiliationIds.contains(affiliationId)).toList()
+      all.where((m) => _belongs(m, affiliationId)).toList()
         ..sort((a, b) => a.name.compareTo(b.name));
+
+  /// 기본 소속 "미배정"은 문서가 없어서, 승인된 교인 중 소속도 직급도 없는 사람이 속한 것으로 본다.
+  bool _belongs(Member m, String affiliationId) =>
+      affiliationId == Affiliation.unassigned.id
+      ? m.isApproved && m.isUnassigned
+      : m.affiliationIds.contains(affiliationId);
 
   /// 이 소속에 넣을 수 있는 인원: 승인된 교인 중 아직 속하지 않은 사람.
   List<Member> candidates(List<Member> all, String affiliationId) =>

@@ -15,6 +15,7 @@ import '../../../data/models/meeting.dart';
 import '../../../data/models/member.dart';
 import '../../../data/models/person_card.dart';
 import '../../home/view/content_widgets.dart';
+import 'person_popup.dart';
 import '../../meetings/view/meeting_format.dart';
 
 /// 달력: 이번 달 모임 일정과 생일을 한 달력에 모아 본다. 날짜를 누르면 그날의 모임과 생일이 아래에 나온다.
@@ -345,6 +346,13 @@ class _CalendarPageState extends State<CalendarPage> {
               title: p.name,
               sub: '${_selected.month}월 ${_selected.day}일',
               leading: ThumbnailAvatar(name: p.name, url: p.photoUrl),
+              onTap: () => showPersonPopup(
+                context,
+                churchId: widget.me.churchId,
+                uid: p.id,
+                name: p.name,
+                photoUrl: p.photoUrl,
+              ),
             ),
         ],
       ],

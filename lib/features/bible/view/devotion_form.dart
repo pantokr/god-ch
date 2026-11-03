@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/layout/page_frame.dart';
+
 import '../../../core/widgets/choice_row.dart';
 
 import '../../../core/widgets/labeled_field.dart';
@@ -36,7 +38,7 @@ class DevotionFormResult {
   final bool isPrivate;
 }
 
-/// 말씀 추가 · 수정 창. 취소하면 null.
+/// 말씀 추가 · 수정 화면. 중보기도 쓰기와 같은 모양의 페이지(뒤로가기 + 카드 안의 폼)다. 취소하면 null.
 Future<DevotionFormResult?> showDevotionForm(
   BuildContext context, {
   required String churchId,
@@ -44,10 +46,46 @@ Future<DevotionFormResult?> showDevotionForm(
   /// 소속 선택에 올릴 수 있는 소속인가 (교회 관리자는 모두, 그 밖에는 자기 소속만).
   required bool Function(Affiliation) visible,
   ChurchContent? initial,
-}) => showAppDialog<DevotionFormResult>(
-  context,
-  maxWidth: 560,
-  child: _Form(churchId: churchId, visible: visible, initial: initial),
+}) => Navigator.of(context).push<DevotionFormResult>(
+  MaterialPageRoute(
+    builder: (_) => Scaffold(
+      body: SafeArea(
+        child: SingleChildScrollView(
+          child: PageFrame(
+            maxWidth: 760,
+            verticalPadding: 12,
+            inset: true,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Builder(
+                    builder: (context) => IconButton(
+                      tooltip: '돌아가기',
+                      onPressed: () => Navigator.of(context).maybePop(),
+                      icon: const Icon(AppIcons.arrowLeft),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(28),
+                    child: _Form(
+                      churchId: churchId,
+                      visible: visible,
+                      initial: initial,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    ),
+  ),
 );
 
 class _Form extends StatefulWidget {
@@ -175,10 +213,16 @@ class _FormState extends State<_Form> {
           value: _private,
           onChanged: (v) => setState(() => _private = v),
         ),
-        OutlinedButton.icon(
-          onPressed: _pickDate,
-          icon: const Icon(AppIcons.calendarBlank, size: 18),
-          label: Text('날짜  ${fmtDate(_date)}'),
+        LabeledField(
+          label: '날짜',
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: OutlinedButton.icon(
+              onPressed: _pickDate,
+              icon: const Icon(AppIcons.calendarBlank, size: 18),
+              label: Text(fmtDate(_date)),
+            ),
+          ),
         ),
         const SizedBox(height: 16),
         LabeledField(

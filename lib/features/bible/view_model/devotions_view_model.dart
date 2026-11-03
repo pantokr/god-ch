@@ -30,10 +30,12 @@ class DevotionsViewModel extends ViewModel {
     this.affiliations = const Stream.empty(),
     bool includePrivate = false,
     this.readerId = '',
+    List<String>? affiliationIds,
   }) : items = _repo.latest(
          churchId,
          limit: 100,
          includePrivate: includePrivate,
+         affiliationIds: affiliationIds,
        ) {
     _settingsSub = _repo.settings(churchId).listen((v) {
       settings = v;
@@ -75,6 +77,17 @@ class DevotionsViewModel extends ViewModel {
 
   /// 이미 읽은 글을 빼고 보는가.
   bool get hideRead => _hideRead;
+
+  /// 격자형(2열)으로 보는가. 아니면 리스트형이다.
+  bool _grid = false;
+
+  bool get grid => _grid;
+
+  void setGrid(bool value) {
+    if (_grid == value) return;
+    _grid = value;
+    notifyListeners();
+  }
 
   void toggleHideRead() {
     _hideRead = !_hideRead;

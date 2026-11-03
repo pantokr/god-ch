@@ -15,6 +15,26 @@ Future<void> mirrorPersonCard(
     final d = snap.data();
     if (d == null) return;
     final born = DateTime.tryParse((d['birthDate'] as String? ?? '').trim());
+    // 직급 이름: 직급이 없으면 비우고, 직급 문서를 읽을 수 없는 사람(교인 본인)이 고칠 때는 기존 값을 그대로 둔다.
+    String? positionName;
+    final positionId = d['positionId'] as String?;
+    if (positionId == null || positionId.isEmpty) {
+      positionName = '';
+    } else {
+      try {
+        final p = await paths
+            .church(churchId)
+            .collection('positions')
+            .doc(positionId)
+            .get();
+        final data = p.data();
+        positionName = data == null || data['deleted'] == true
+            ? ''
+            : data['name'] as String? ?? '';
+      } catch (_) {
+        positionName = null;
+      }
+    }
     String two(int n) => n.toString().padLeft(2, '0');
     await paths.people(churchId).doc(uid).set({
       'uid': uid,
@@ -28,8 +48,9 @@ Future<void> mirrorPersonCard(
       'birthMonthDay': born == null
           ? ''
           : '${two(born.month)}-${two(born.day)}',
+      'positionName': ?positionName,
       'updatedAt': FieldValue.serverTimestamp(),
-    });
+    }, SetOptions(merge: true));
   } catch (_) {
     // 사람 목록 복사본은 다음 변경 때 다시 맞춰진다.
   }

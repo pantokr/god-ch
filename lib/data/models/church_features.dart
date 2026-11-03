@@ -91,7 +91,8 @@ class ChurchFeatures {
       );
     }
     final ids = me.affiliationIds;
-    if (ids.isEmpty) return const TabAccess();
+    // 소속이 없는 교인(미배정)은 아무 글도 볼 수 없다.
+    if (ids.isEmpty) return const TabAccess(unassigned: true);
     // 소속별 켜기/끄기는 없앴다: 속한 소속은 모두 허용이다.
     final allowed = {...ids};
     return TabAccess(
@@ -106,10 +107,19 @@ class ChurchFeatures {
 
 /// 탭을 쓸 수 있는지 판단한 결과.
 class TabAccess {
-  const TabAccess({this.blocked = false, this.options = const []});
+  const TabAccess({
+    this.blocked = false,
+    this.unassigned = false,
+    this.options = const [],
+  });
+
+  /// 속한 소속이 없다 (미배정): 볼 수 있는 글이 없다.
 
   /// 소속 어디에서도 허용되지 않았다.
   final bool blocked;
+
+  /// 속한 소속이 하나도 없다 (미배정).
+  final bool unassigned;
 
   /// 탭에서 고를 수 있는 소속들. 비어 있으면 교회 전체로 본다.
   final List<Affiliation> options;

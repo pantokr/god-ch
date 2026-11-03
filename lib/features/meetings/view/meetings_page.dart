@@ -1,9 +1,14 @@
+import 'dart:math' as math;
+
 import '../../../core/widgets/toast.dart';
 import '../../../core/layout/responsive.dart';
 import '../../people/view/person_avatar.dart';
 import '../../../core/widgets/app_loader.dart';
 
 import 'package:flutter/material.dart';
+
+import '../../people/view/person_popup.dart';
+
 import 'package:go_router/go_router.dart';
 
 import '../../../app/app_scope.dart';
@@ -16,6 +21,7 @@ import '../../../core/widgets/shadow_switch.dart';
 import '../../../core/widgets/like_heart.dart';
 import '../../../core/widgets/create_fab.dart';
 import '../../../core/widgets/refresh_scope.dart';
+import '../../../core/widgets/list_style_toggle.dart';
 import '../../../core/widgets/sort_pad.dart';
 import '../../../core/theme.dart';
 import '../../../core/widgets/stat_icons.dart';
@@ -82,6 +88,7 @@ class MeetingsPage extends StatelessWidget {
                               const SizedBox(height: 16),
                               // 정렬 순서는 격자 바로 위에 붙는다.
                               SortStrip(
+                                viewToggle: const ListStyleToggle(),
                                 options: [
                                   for (final s in MeetingSort.values)
                                     PadOption(
@@ -300,8 +307,11 @@ class _CardGrid extends StatelessWidget {
           physics: const NeverScrollableScrollPhysics(),
           mainAxisSpacing: gap,
           crossAxisSpacing: gap,
-          childAspectRatio:
-              width / (width / _ColorfulCard.imageRatio + textHeight * scale),
+          // 비율은 가로 3 : 세로 4(4:3 세로형)보다 납작해지지 않는다.
+          childAspectRatio: math.min(
+            3 / 4,
+            width / (width / _ColorfulCard.imageRatio + textHeight * scale),
+          ),
           children: children,
         );
       },
@@ -453,19 +463,34 @@ class _ColorfulCard extends StatelessWidget {
                     const SizedBox(height: 8),
                     Row(
                       children: [
-                        PersonAvatar(
+                        PersonTap(
                           churchId: me.churchId,
                           uid: m.leaderId,
-                          name: m.leaderName.isEmpty ? '?' : m.leaderName,
-                          radius: 9,
+                          name: m.leaderName,
+                          photoUrl: '',
+                          child: PersonAvatar(
+                            churchId: me.churchId,
+                            uid: m.leaderId,
+                            name: m.leaderName.isEmpty ? '?' : m.leaderName,
+                            radius: 9,
+                          ),
                         ),
                         const SizedBox(width: 6),
                         Expanded(
-                          child: Text(
-                            m.leaderName,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(fontSize: 13),
+                          child: Align(
+                            alignment: Alignment.centerLeft,
+                            child: PersonTap(
+                              churchId: me.churchId,
+                              uid: m.leaderId,
+                              name: m.leaderName,
+                              photoUrl: '',
+                              child: Text(
+                                m.leaderName,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(fontSize: 13),
+                              ),
+                            ),
                           ),
                         ),
                       ],

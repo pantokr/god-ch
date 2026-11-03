@@ -286,90 +286,128 @@ class _SlideRowState extends State<_SlideRow> {
   }
 }
 
-/// 패널 없이 목록 위에 붙여 놓는 정렬 줄: 글자 버튼이 가운데에 모여 같은 너비로 나뉜다.
+/// 목록 위의 정렬 줄: 정렬 종류를 고르는 선택 상자(select box)가 오른쪽에 있고, 왼쪽에는 [leading](예: 읽음 제외)을 둘 수 있다.
+/// 흰 배경 띠가 화면(페이지 영역) 좌우 끝까지 퍼진다 (구분선은 없다).
 class SortStrip extends StatelessWidget {
-  const SortStrip({super.key, required this.options});
+  const SortStrip({
+    super.key,
+    required this.options,
+    this.leading,
+    this.viewToggle,
+  });
 
   final List<PadOption> options;
+
+  /// 줄 왼쪽에 놓는 위젯 (예: 읽음 제외 토글).
+  final Widget? leading;
+
+  /// 정렬 선택 상자 왼쪽에 놓는 보기 방식 버튼 (리스트형 / 격자형).
+  final Widget? viewToggle;
 
   @override
   Widget build(BuildContext context) {
     final palette = context.palette;
-    final ink = palette.ink;
     // 정렬 줄의 배경: 라이트 모드는 흰색, 다크 모드는 카드 바탕색 (검색 필드와 같다).
     final fill = Theme.of(context).brightness == Brightness.dark
         ? palette.surface
         : Colors.white;
     final bleed = PageBleed.maybeOf(context);
-    final buttons = Row(
-      children: [
-        for (final o in options)
-          Expanded(
-            child: TextButton(
-              onPressed: o.onTap,
-              style: TextButton.styleFrom(
-                foregroundColor: ink,
-                minimumSize: const Size(0, 36),
-                padding: const EdgeInsets.symmetric(horizontal: 4),
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              ),
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Text(
-                  o.label,
-                  style: TextStyle(
-                    fontWeight: o.selected ? FontWeight.w800 : FontWeight.w500,
-                    decoration: o.selected
-                        ? TextDecoration.underline
-                        : TextDecoration.none,
-                  ),
-                ),
-              ),
-            ),
-          ),
-      ],
+    final row = Padding(
+      padding: EdgeInsets.symmetric(
+        horizontal: textGutter(context),
+        vertical: 8,
+      ),
+      child: Row(
+        children: [
+          ?leading,
+          const Spacer(),
+          if (viewToggle != null) ...[viewToggle!, const SizedBox(width: 12)],
+          _SortSelect(options: options),
+        ],
+      ),
     );
     return Padding(
       // 위(구분선)는 아래(목록)보다 더 넉넉히 띄운다.
       padding: const EdgeInsets.only(top: 14, bottom: 16),
       child: bleed == null
           // 페이지 틀 밖에서는 놓인 자리 너비 전체에 테두리 상자를 두른다.
-          ? SizedBox(
-              width: double.infinity,
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  color: fill,
-                  border: Border.all(color: palette.border),
-                  borderRadius: BorderRadius.circular(AppRadius.card),
-                ),
-                child: buttons,
+          ? DecoratedBox(
+              decoration: BoxDecoration(
+                color: fill,
+                border: Border.all(color: palette.border),
+                borderRadius: BorderRadius.circular(AppRadius.card),
               ),
+              child: row,
             )
-          // 페이지 틀 안에서는 배경 띠가 화면(페이지 영역) 좌우 끝까지 퍼지고, 버튼은 내용 너비 안에 놓인다
-          // (띠 바깥으로 나간 부분은 눌리지 않으므로 버튼까지 늘리지 않는다).
-          : SizedBox(
-              height: 38,
-              child: Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  Positioned(
-                    left: -bleed.extra,
-                    right: -bleed.extra,
-                    top: 0,
-                    bottom: 0,
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        color: fill,
-                        border: Border.symmetric(
-                          horizontal: BorderSide(color: palette.border),
-                        ),
-                      ),
-                    ),
-                  ),
-                  Positioned.fill(child: buttons),
-                ],
+          // 페이지 틀 안에서는 배경 띠가 좌우 끝까지 퍼지고, 내용은 내용 너비 안에 놓인다.
+          : Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Positioned(
+                  left: -bleed.extra,
+                  right: -bleed.extra,
+                  top: 0,
+                  bottom: 0,
+                  child: ColoredBox(color: fill),
+                ),
+                row,
+              ],
+            ),
+    );
+  }
+}
+
+/// 정렬 선택 상자: 고른 정렬 이름과 ▾가 테두리 상자에 들어 있고, 누르면 정렬 종류 목록이 열린다.
+class _SortSelect extends StatelessWidget {
+  const _SortSelect({required this.options});
+
+  final List<PadOption> options;
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = context.palette;
+    final current = options.where((o) => o.selected).firstOrNull;
+    return PopupMenuButton<int>(
+      tooltip: '정렬',
+      position: PopupMenuPosition.under,
+      onSelected: (i) => options[i].onTap(),
+      itemBuilder: (context) => [
+        for (var i = 0; i < options.length; i++)
+          PopupMenuItem<int>(
+            value: i,
+            child: Text(
+              options[i].label,
+              style: TextStyle(
+                fontWeight: options[i].selected
+                    ? FontWeight.w800
+                    : FontWeight.w500,
               ),
             ),
+          ),
+      ],
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          border: Border.all(color: palette.border),
+          borderRadius: BorderRadius.circular(AppRadius.control),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                current?.label ?? '정렬',
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(width: 6),
+              Icon(AppIcons.caretDown, size: 16, color: palette.muted),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

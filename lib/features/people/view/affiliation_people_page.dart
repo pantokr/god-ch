@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'person_popup.dart';
+
 import '../../../core/layout/responsive.dart';
 import '../../../app/app_scope.dart';
 import '../../../core/icons.dart';
@@ -147,6 +149,7 @@ class _AffiliationPeoplePageState extends State<AffiliationPeoplePage> {
                 for (var i = 0; i < members.length; i++) ...[
                   if (i > 0) const Divider(height: 1),
                   _PersonRow(
+                    churchId: widget.me.churchId,
                     person: members[i],
                     isMe: members[i].id == me.id,
                     roleLabel: _roleLabel[members[i].role]!,
@@ -168,11 +171,13 @@ int _byRoleThenName(PersonCard a, PersonCard b) {
 
 class _PersonRow extends StatelessWidget {
   const _PersonRow({
+    required this.churchId,
     required this.person,
     required this.isMe,
     required this.roleLabel,
   });
 
+  final String churchId;
   final PersonCard person;
   final bool isMe;
   final String roleLabel;
@@ -180,6 +185,13 @@ class _PersonRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ManageListRow(
+      onTap: () => showPersonPopup(
+        context,
+        churchId: churchId,
+        uid: person.id,
+        name: person.name,
+        photoUrl: person.photoUrl,
+      ),
       leading: ManageListRow.avatar(
         context,
         person.name,

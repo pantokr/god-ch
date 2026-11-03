@@ -1,6 +1,9 @@
 import '../../../core/widgets/app_loader.dart';
 
 import 'package:flutter/material.dart';
+
+import '../../people/view/person_popup.dart';
+
 import 'package:go_router/go_router.dart';
 
 import '../../../app/app_scope.dart';
@@ -96,6 +99,14 @@ class DevotionDetailPage extends StatelessWidget {
                 ),
                 const SizedBox(height: 12),
                 _MeditationCard(content: c),
+                const SizedBox(height: 12),
+                // 작성 정보는 본문과 묵상 다음에 둔다.
+                _AuthorInfoCard(
+                  content: c,
+                  churchId: me.churchId,
+                  showAuthor: vm.settings.showAuthor,
+                  showViews: vm.settings.showViews,
+                ),
                 // 하트 · 조회수 줄은 위 내용과 여유를 둔다.
                 const SizedBox(height: 20),
                 _ReactionCard(
@@ -209,7 +220,7 @@ class _Section extends StatelessWidget {
 }
 
 /// 성경 본문 카드: 색이 깊게 깔린 큰 카드에 인용 부호, 구절 이름표, 본문을 크게 앉힌다.
-/// 글쓴이와 날짜는 아래쪽 줄에 둔다.
+/// 글쓴이와 날짜는 묵상 다음의 작성 정보 카드에 둔다.
 class _VerseCard extends StatelessWidget {
   const _VerseCard({
     required this.content,
@@ -315,43 +326,86 @@ class _VerseCard extends StatelessWidget {
                       fontWeight: FontWeight.w500,
                     ),
                   ),
-                  const SizedBox(height: 20),
-                  Divider(color: onColor.withValues(alpha: 0.25), height: 1),
-                  const SizedBox(height: 14),
-                  // 본문 아래에: 이름 → 날짜와 각종 정보 (중보기도와 같은 순서와 모양).
-                  if (content.authorName.isNotEmpty && showAuthor) ...[
-                    Row(
-                      children: [
-                        ThumbnailAvatar(
-                          name: content.authorName,
-                          url: content.authorPhotoUrl,
-                          radius: 13,
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            content.authorName,
-                            style: TextStyle(
-                              color: onColor,
-                              fontWeight: FontWeight.w700,
-                              fontSize: 16,
-                            ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// 작성 정보 카드: 글쓴이(프로필 · 이름)와 날짜 · 조회수 등. 본문과 묵상 아래에 둔다.
+class _AuthorInfoCard extends StatelessWidget {
+  const _AuthorInfoCard({
+    required this.content,
+    required this.churchId,
+    this.showAuthor = true,
+    this.showViews = true,
+  });
+
+  final ChurchContent content;
+  final String churchId;
+  final bool showViews;
+  final bool showAuthor;
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = context.palette;
+    final onColor = palette.ink;
+    return Card(
+      shape: context.edgedCardShape,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (content.authorName.isNotEmpty && showAuthor) ...[
+              Row(
+                children: [
+                  PersonTap(
+                    churchId: churchId,
+                    uid: content.authorId,
+                    name: content.authorName,
+                    photoUrl: content.authorPhotoUrl,
+                    child: ThumbnailAvatar(
+                      name: content.authorName,
+                      url: content.authorPhotoUrl,
+                      radius: 13,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: PersonTap(
+                        churchId: churchId,
+                        uid: content.authorId,
+                        name: content.authorName,
+                        photoUrl: content.authorPhotoUrl,
+                        child: Text(
+                          content.authorName,
+                          style: TextStyle(
+                            color: onColor,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 16,
                           ),
                         ),
-                      ],
+                      ),
                     ),
-                    const SizedBox(height: 4),
-                  ],
-                  PostMeta(
-                    churchId: churchId,
-                    date: fmtDateAt(content.date, content.createdAt),
-                    views: showViews ? content.views : null,
-                    isPrivate: content.isPrivate,
-                    affiliationId: content.affiliationId,
-                    color: onColor.withValues(alpha: 0.8),
                   ),
                 ],
               ),
+              const SizedBox(height: 4),
+            ],
+            PostMeta(
+              churchId: churchId,
+              date: fmtDateAt(content.date, content.createdAt),
+              views: showViews ? content.views : null,
+              isPrivate: content.isPrivate,
+              affiliationId: content.affiliationId,
+              color: onColor.withValues(alpha: 0.8),
             ),
           ],
         ),

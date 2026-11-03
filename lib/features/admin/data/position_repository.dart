@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../../../core/app_exception.dart';
 import '../../../data/firestore_paths.dart';
+import '../../../data/person_card_sync.dart';
 import '../../../data/models/permission.dart';
 import '../../../data/models/position.dart';
 import '../../auth/data/auth_repository.dart';
@@ -98,6 +99,9 @@ class PositionRepository {
       batch.update(d.reference, {'permissions': keys});
     }
     if (holders.docs.isNotEmpty) await batch.commit();
+    for (final d in holders.docs) {
+      await mirrorPersonCard(_paths, churchId, d.id);
+    }
   }
 
   /// 직급을 지운 것으로 표시하고, 이 직급을 가진 교인에게서 직급과 권한을 뺀다.
@@ -119,6 +123,9 @@ class PositionRepository {
       });
     }
     if (holders.docs.isNotEmpty) await batch.commit();
+    for (final d in holders.docs) {
+      await mirrorPersonCard(_paths, churchId, d.id);
+    }
   }
 
   /// 기본 직급(교역자 · 회원)의 권한을 정한다. 기본 직급은 지울 수 없고, 교회 관리자는 모든 권한이라 정하지 않는다.
@@ -143,11 +150,17 @@ class PositionRepository {
   }
 
   /// 교인에게 직급을 준다. [position]이 null이면 직급을 뺀다.
-  Future<void> assign(String churchId, String memberId, Position? position) =>
-      _paths.members(churchId).doc(memberId).update({
-        'positionId': position?.id,
-        'permissions': position == null
-            ? <String>[]
-            : _clean(position.permissions),
-      });
+  Future<void> assign(
+    String churchId,
+    String memberId,
+    Position? position,
+  ) async {
+    await _paths.members(churchId).doc(memberId).update({
+      'positionId': position?.id,
+      'permissions': position == null
+          ? <String>[]
+          : _clean(position.permissions),
+    });
+    await mirrorPersonCard(_paths, churchId, memberId);
+  }
 }

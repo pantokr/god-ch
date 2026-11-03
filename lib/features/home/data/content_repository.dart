@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'dart:typed_data';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -40,11 +42,22 @@ class ContentRepository {
       _settings(churchId).set(settings.toMap());
 
   /// 날짜가 최근인 순. 지워진 글은 뺀다.
+  /// [affiliationIds]가 있으면 그 소속들의 글만 읽는다 (교역자 이상이 아닌 교인은 자기 소속의 글만 볼 수 있어서
+  /// 소속마다 따로 물어 합친다). 비어 있으면(미배정) 아무 글도 읽지 않는다.
   Stream<List<ChurchContent>> latest(
     String churchId, {
     int limit = 30,
     bool includePrivate = false,
+    List<String>? affiliationIds,
   }) {
+    if (affiliationIds != null) {
+      return _latestIn(
+        churchId,
+        affiliationIds,
+        limit: limit,
+        includePrivate: includePrivate,
+      );
+    }
     // 비공개 글을 볼 수 없는 사람은 공개 글만 묻는다 (규칙이 비공개 글이 섞인 조회를 막는다).
     // 이 경우 서버 정렬이 없어 최근 글을 화면에서 가려낸다.
     final query = includePrivate
@@ -59,6 +72,48 @@ class ContentRepository {
             ..sort((a, b) => b.date.compareTo(a.date));
       return list.take(limit).toList();
     });
+  }
+
+  /// 소속마다 따로 읽은 글을 하나로 합친다 (최근 날짜순).
+  Stream<List<ChurchContent>> _latestIn(
+    String churchId,
+    List<String> affiliationIds, {
+    required int limit,
+    required bool includePrivate,
+  }) {
+    if (affiliationIds.isEmpty) return Stream.value(const <ChurchContent>[]);
+    late final StreamController<List<ChurchContent>> controller;
+    final subs = <StreamSubscription<QuerySnapshot<Json>>>[];
+    final parts = <String, List<ChurchContent>>{};
+    void emit() {
+      final all = [for (final l in parts.values) ...l]
+        ..sort((a, b) => b.date.compareTo(a.date));
+      if (!controller.isClosed) controller.add(all.take(limit).toList());
+    }
+
+    controller = StreamController<List<ChurchContent>>(
+      onListen: () {
+        for (final id in affiliationIds) {
+          var q = _col(churchId).where('affiliationId', isEqualTo: id);
+          if (!includePrivate) q = q.where('visibility', isEqualTo: 'public');
+          subs.add(
+            q.limit(300).snapshots().listen((s) {
+              parts[id] = [
+                for (final d in s.docs)
+                  ChurchContent.fromDoc(ContentKind.devotion, d),
+              ].where((c) => !c.deleted).toList();
+              emit();
+            }, onError: controller.addError),
+          );
+        }
+      },
+      onCancel: () async {
+        for (final s in subs) {
+          await s.cancel();
+        }
+      },
+    );
+    return controller.stream;
   }
 
   /// 글 한 건. 지워졌거나 없으면 null.

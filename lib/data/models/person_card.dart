@@ -16,6 +16,7 @@ class PersonCard {
     this.photoUrl = '',
     this.affiliationIds = const [],
     this.birthMonthDay = '',
+    this.positionName = '',
   });
 
   final String id;
@@ -24,6 +25,9 @@ class PersonCard {
   final Role role;
   final MemberStatus status;
   final List<String> affiliationIds;
+
+  /// 직급 이름 (직급이 없으면 빈 문자열).
+  final String positionName;
 
   /// 생일의 월-일 ("MM-DD"). 생년월일을 내지 않았으면 빈 문자열이다 (출생 연도는 저장하지 않는다).
   final String birthMonthDay;
@@ -56,6 +60,7 @@ class PersonCard {
         d['affiliationIds'] as List? ?? const [],
       ),
       birthMonthDay: d['birthMonthDay'] as String? ?? '',
+      positionName: d['positionName'] as String? ?? '',
     );
   }
 }

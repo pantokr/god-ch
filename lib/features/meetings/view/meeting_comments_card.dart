@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../people/view/person_popup.dart';
+
 import '../../../app/app_scope.dart';
 import '../../../core/widgets/toast.dart';
 import '../../../core/widgets/trash_icon.dart';
@@ -255,12 +257,17 @@ class _CommentCard extends StatelessWidget {
               padding: const EdgeInsets.only(right: 8),
               child: Row(
                 children: [
-                  Text(
-                    c.authorName.isEmpty ? '이름 없음' : c.authorName,
-                    style: TextStyle(
-                      color: palette.brand,
-                      fontWeight: FontWeight.w800,
-                      fontSize: 13,
+                  PersonTap(
+                    churchId: me.churchId,
+                    uid: c.authorId,
+                    name: c.authorName,
+                    child: Text(
+                      c.authorName.isEmpty ? '이름 없음' : c.authorName,
+                      style: TextStyle(
+                        color: palette.brand,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 13,
+                      ),
                     ),
                   ),
                   const SizedBox(width: 8),

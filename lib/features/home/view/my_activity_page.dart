@@ -257,6 +257,7 @@ class _MyPostsState extends State<_MyPosts> {
           me.churchId,
           me.id,
           includePrivate: me.can(Permission.devotionViewPrivate),
+          affiliationIds: me.isStaff ? null : me.affiliationIds,
         );
       },
       builder: (context, vm) => Column(

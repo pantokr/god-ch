@@ -36,7 +36,11 @@ class PrayerWriteFab extends StatelessWidget {
           // 글을 쓸 수 있는 사람은 직급 권한(글 작성)으로 정한다.
           final allowed = me.can(Permission.prayerWrite);
           // 앱 개발자는 기도제목을 쓰지 않는다.
-          if (!allowed || me.isOperatorView) return const SizedBox.shrink();
+          // 교역자 이상이 아닌 교인은 자기 소속에만 올릴 수 있다: 소속이 없는(미배정) 교인에게는 보이지 않는다.
+          final hasPlace = me.isStaff || affiliation != null;
+          if (!allowed || !hasPlace || me.isOperatorView) {
+            return const SizedBox.shrink();
+          }
           return CreateFab(
             label: '중보기도 요청',
             icon: AppIcons.pencilSimple,
