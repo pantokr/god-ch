@@ -74,12 +74,14 @@ class NotificationsPage extends StatelessWidget {
                                 AppIcons.userPlus,
                                 color: context.palette.brand,
                               ),
-                              title: Text('입장 요청 $pendingRequests건'),
-                              subtitle: const Text('인원 관리에서 승인해 주세요.'),
+                              title: Text('신규 입장 요청 $pendingRequests건'),
+                              subtitle: const Text('회원 관리'),
                               trailing: const Icon(AppIcons.caretRight),
-                              onTap: () {
-                                Navigator.of(context).maybePop();
-                                onOpenRequests?.call();
+                              // 알림 화면을 닫은 뒤 회원 관리로 이동한다.
+                              onTap: () async {
+                                final open = onOpenRequests;
+                                await Navigator.of(context).maybePop();
+                                open?.call();
                               },
                             ),
                           ),

@@ -593,7 +593,7 @@ class _SearchFieldState extends State<_SearchField> {
         onChanged: vm.setQuery,
         textInputAction: TextInputAction.search,
         decoration: InputDecoration(
-          hintText: '말씀 제목을 입력하세요',
+          hintText: '말씀묵상 내용을 입력하세요',
           isDense: true,
           suffixIcon: vm.query.isEmpty
               ? const Icon(AppIcons.magnifyingGlass, size: 18)

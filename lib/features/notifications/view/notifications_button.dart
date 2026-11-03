@@ -3,6 +3,7 @@ import '../../../core/icons.dart';
 import 'package:flutter/material.dart';
 
 import '../../../app/app_scope.dart';
+import '../../../core/layout/sidebar_scaffold.dart' show PanelCloser;
 import 'notifications_page.dart';
 
 /// 오른쪽 계정 띠의 프로필 아래에 놓는 알림 버튼. 읽지 않은 알림(또는 입장 요청)이 있으면 N 배지가 보인다.
@@ -36,14 +37,21 @@ class _NotificationsButtonState extends State<NotificationsButton> {
         final hasNew = count > 0 || widget.pendingRequests > 0;
         return IconButton(
           tooltip: '알림',
-          onPressed: () => Navigator.of(context).push(
-            MaterialPageRoute<void>(
-              builder: (_) => NotificationsPage(
-                pendingRequests: widget.pendingRequests,
-                onOpenRequests: widget.onOpenRequests,
+          onPressed: () {
+            // 좁은 화면에서는 이 버튼이 서랍(계정 띠) 안에 있다: 입장 요청으로 이동할 때 서랍을 함께 닫는다.
+            final closeDrawer = PanelCloser.of(context);
+            Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => NotificationsPage(
+                  pendingRequests: widget.pendingRequests,
+                  onOpenRequests: () {
+                    closeDrawer?.call();
+                    widget.onOpenRequests?.call();
+                  },
+                ),
               ),
-            ),
-          ),
+            );
+          },
           icon: Badge(
             isLabelVisible: hasNew,
             label: const Text('N'),

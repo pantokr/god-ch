@@ -35,6 +35,7 @@ class AppIcons {
   static const IconData heartFill = LucideIcons600.heart;
   static const IconData listView = LucideIcons.list;
   static const IconData gridView = LucideIcons.layoutGrid;
+  static const IconData info = LucideIcons.info;
   static const IconData history = LucideIcons.history;
   static const IconData star = LucideIcons.star;
   static const IconData flame = LucideIcons.flame;

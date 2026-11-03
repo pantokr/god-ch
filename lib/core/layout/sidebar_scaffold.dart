@@ -2,6 +2,8 @@ import '../icons.dart';
 
 import 'package:flutter/material.dart';
 
+import 'app_info_dialog.dart';
+
 import '../../app/app_scope.dart';
 import '../theme.dart';
 import '../widgets/thumbnail_avatar.dart';
@@ -37,16 +39,16 @@ class SidebarGroup {
 }
 
 /// 좁은 화면에서 서랍과 계정 띠를 함께 닫는 함수를 안쪽 위젯에 전해 준다.
-class _PanelCloser extends InheritedWidget {
-  const _PanelCloser({required this.close, required super.child});
+class PanelCloser extends InheritedWidget {
+  const PanelCloser({super.key, required this.close, required super.child});
 
   final VoidCallback close;
 
   static VoidCallback? of(BuildContext context) =>
-      context.dependOnInheritedWidgetOfExactType<_PanelCloser>()?.close;
+      context.dependOnInheritedWidgetOfExactType<PanelCloser>()?.close;
 
   @override
-  bool updateShouldNotify(_PanelCloser old) => false;
+  bool updateShouldNotify(PanelCloser old) => false;
 }
 
 /// 파이어베이스 콘솔처럼 왼쪽에 앱 이름과 메뉴를 두는 화면 틀.
@@ -220,7 +222,13 @@ class AccountRail extends StatelessWidget {
                     ...actions,
                     _LogoutButton(onSignOut: onSignOut),
                     const Spacer(),
+                    // 아래쪽: 화면 모드(야간 모드), 그 아래 맨 아래에 앱 정보.
                     const _ThemeButton(),
+                    IconButton(
+                      tooltip: '앱 정보',
+                      icon: const Icon(AppIcons.info),
+                      onPressed: () => showAppInfo(context),
+                    ),
                     const SizedBox(height: 8),
                   ],
                 ),
@@ -363,7 +371,7 @@ class _SidebarPanel extends StatelessWidget {
                   IconButton(
                     tooltip: '닫기',
                     icon: const Icon(AppIcons.x),
-                    onPressed: () => _PanelCloser.of(context)?.call(),
+                    onPressed: () => PanelCloser.of(context)?.call(),
                   ),
               ],
             ),
@@ -429,7 +437,7 @@ class _SidebarTile extends StatelessWidget {
       child: InkWell(
         borderRadius: BorderRadius.circular(AppRadius.card + 2),
         onTap: () {
-          if (closeOnTap) _PanelCloser.of(context)?.call();
+          if (closeOnTap) PanelCloser.of(context)?.call();
           item.onTap();
         },
         child: SizedBox(
@@ -660,7 +668,10 @@ class _TopBar extends StatelessWidget {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: Theme.of(context).textTheme.titleLarge
-                              ?.copyWith(fontWeight: FontWeight.w800),
+                              ?.copyWith(
+                                fontWeight: FontWeight.w800,
+                                fontSize: 17,
+                              ),
                         ),
                       ),
               ),
@@ -780,7 +791,7 @@ class _NarrowFrameState extends State<_NarrowFrame> {
                     // 오른쪽 띠는 늘 같은 너비이고, 왼쪽 메뉴가 나머지를 채운다.
                     const right = SidebarScaffold.railWidth;
                     final left = width - right;
-                    return _PanelCloser(
+                    return PanelCloser(
                       close: () => _setOpen(false),
                       child: Stack(
                         children: [
