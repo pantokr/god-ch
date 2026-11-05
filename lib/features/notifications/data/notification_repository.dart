@@ -47,4 +47,13 @@ class NotificationRepository {
   /// 알림을 지우지 않고 내 목록에서 숨긴다 (읽은 것으로 처리).
   Future<void> delete(String id) =>
       _mine.doc(id).update({'hidden': true, 'read': true});
+
+  /// 고른 알림을 한꺼번에 숨긴다.
+  Future<void> deleteMany(Iterable<String> ids) async {
+    final batch = _db.batch();
+    for (final id in ids) {
+      batch.update(_mine.doc(id), {'hidden': true, 'read': true});
+    }
+    await batch.commit();
+  }
 }

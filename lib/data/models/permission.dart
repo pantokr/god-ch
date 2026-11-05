@@ -1,9 +1,9 @@
 /// 권한 묶음 이름.
 enum PermissionGroup {
   people('인원'),
+  meeting('일정'),
   prayer('중보기도'),
   devotion('말씀묵상'),
-  meeting('일정'),
   fixed('관리자 고정');
 
   const PermissionGroup(this.label);

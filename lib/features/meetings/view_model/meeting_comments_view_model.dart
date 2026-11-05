@@ -32,6 +32,11 @@ class MeetingCommentsViewModel extends ViewModel {
     blocking: false,
   );
 
+  Future<bool> edit(MeetingComment c, String text) => run(
+    () => _repo.editComment(me.churchId, meetingId, c.id, text),
+    blocking: false,
+  );
+
   Future<bool> delete(MeetingComment c) => run(
     () => _repo.deleteComment(me.churchId, meetingId, c.id),
     blocking: false,

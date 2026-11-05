@@ -123,6 +123,9 @@ class Routes {
   static String meeting(String churchId, String id) =>
       '/churches/$churchId/meeting/$id';
 
+  static String meetingParticipants(String churchId, String id) =>
+      '/churches/$churchId/meeting/$id/participants';
+
   static String prayer(String churchId, String prayerId) =>
       '/churches/$churchId/prayers/$prayerId';
 

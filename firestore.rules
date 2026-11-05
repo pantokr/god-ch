@@ -186,10 +186,17 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/churchRequests/$(requestId)).data;
     }
 
-    // 내 알림: 본인만 읽고 읽음 처리·삭제한다. 알림은 앱 운영자가 만든다 (예: 교회 생성 요청 거절).
+    // 글(기도제목 · 말씀묵상 · 모임)을 쓴 사람의 uid.
+    function postAuthor(cid, kind, pid) {
+      return kind == 'prayer' ? get(/databases/$(database)/documents/churches/$(cid)/prayers/$(pid)).data.authorId
+        : (kind == 'devotion' ? get(/databases/$(database)/documents/churches/$(cid)/devotions/$(pid)).data.createdBy
+        : get(/databases/$(database)/documents/churches/$(cid)/meetings/$(pid)).data.leaderId);
+    }
+
+    // 내 알림: 본인만 읽고 읽음 처리·삭제한다. 알림은 앱 운영자(교회 생성 요청 거절), 교회 운영자(추방), 모임 신청자(모임장에게)가 만든다.
     match /users/{userId}/notifications/{notificationId} {
       allow read: if signedIn() && request.auth.uid == userId;
-      allow create: if request.resource.data.keys().hasOnly(['type', 'title', 'body', 'read', 'createdAt', 'churchId'])
+      allow create: if request.resource.data.keys().hasOnly(['type', 'title', 'body', 'read', 'createdAt', 'churchId', 'meetingId', 'postKind', 'postId'])
         && request.resource.data.title is string
         && request.resource.data.title.size() > 0 && request.resource.data.title.size() <= 200
         && request.resource.data.body is string && request.resource.data.body.size() <= 500
@@ -203,6 +210,25 @@ service cloud.firestore {
               && request.auth.uid != userId
               && exists(/databases/$(database)/documents/churches/$(request.resource.data.churchId)/members/$(userId))
               && get(/databases/$(database)/documents/churches/$(request.resource.data.churchId)/members/$(userId)).data.status != 'removed')
+          // 교인: 모임장 승인이 필요한 모임에 참여를 신청하면 모임장에게 알린다 (신청과 같은 묶음 쓰기).
+          || (request.resource.data.type == 'meetingJoinRequest'
+              && request.resource.data.churchId is string
+              && request.resource.data.meetingId is string
+              && request.auth.uid != userId
+              && isActive(request.resource.data.churchId)
+              && exists(/databases/$(database)/documents/churches/$(request.resource.data.churchId)/meetings/$(request.resource.data.meetingId))
+              && get(/databases/$(database)/documents/churches/$(request.resource.data.churchId)/meetings/$(request.resource.data.meetingId)).data.leaderId == userId
+              && get(/databases/$(database)/documents/churches/$(request.resource.data.churchId)/meetings/$(request.resource.data.meetingId)).data.get('needsApproval', false) == true
+              // 같은 묶음 쓰기에서 내가 이 모임의 신청 대기에 들어간 경우만 (아무 때나 알림을 보낼 수 없다).
+              && request.auth.uid in getAfter(/databases/$(database)/documents/churches/$(request.resource.data.churchId)/meetings/$(request.resource.data.meetingId)).data.get('pendingIds', []))
+          // 교인: 글쓴이(기도제목 작성자 · 말씀묵상 작성자 · 모임장)에게 댓글 · 좋아요가 달렸음을 알린다 (댓글 · 좋아요와 같은 묶음 쓰기).
+          || (request.resource.data.type in ['postComment', 'postLike']
+              && request.resource.data.churchId is string
+              && request.resource.data.postKind in ['prayer', 'devotion', 'meeting']
+              && request.resource.data.postId is string
+              && request.auth.uid != userId
+              && isActive(request.resource.data.churchId)
+              && postAuthor(request.resource.data.churchId, request.resource.data.postKind, request.resource.data.postId) == userId)
         );
       // 알림은 지우지 않는다: 읽음 처리, 또는 내 목록에서 숨김(hidden)만 한다.
       allow update: if signedIn() && request.auth.uid == userId
@@ -663,6 +689,8 @@ service cloud.firestore {
           && (isManager(churchId)
               || can(churchId, 'member.approve') || can(churchId, 'affiliation.assign') || can(churchId, 'member.role')
               || (request.auth.uid == personId
+                  // 그 교회의 교인(교인 문서가 있는 사람)만 자기 카드를 쓴다.
+                  && exists(memberPath(churchId))
                   && (request.resource.data.status != 'approved'
                       || (isActive(churchId)
                           && request.resource.data.status == get(memberPath(churchId)).data.status
@@ -851,12 +879,22 @@ service cloud.firestore {
           // 삭제는 지운 표시만 남긴다: 본인 댓글은 본인 삭제 권한, 타인 댓글은 타인 댓글 삭제 권한.
           allow update: if isActive(churchId)
             && resource.data.get('deleted', false) == false
-            && changed().hasOnly(['deleted', 'deletedAt', 'deletedBy'])
-            && request.resource.data.deleted == true
-            && request.resource.data.deletedBy == request.auth.uid
-            // 본인 댓글은 누구나 지우고, 타인 댓글은 타인 댓글 삭제 권한이 있어야 한다.
-            && (resource.data.authorId == request.auth.uid
-                || can(churchId, 'prayer.commentDeleteOthers'));
+            && (
+              (changed().hasOnly(['deleted', 'deletedAt', 'deletedBy'])
+                && request.resource.data.deleted == true
+                && request.resource.data.deletedBy == request.auth.uid
+                // 본인 댓글은 누구나 지우고, 타인 댓글은 타인 댓글 삭제 권한이 있어야 한다.
+                && (resource.data.authorId == request.auth.uid
+                    || can(churchId, 'prayer.commentDeleteOthers')))
+              // 수정: 본인 댓글의 내용만 고친다 (댓글을 쓸 수 있을 때).
+              || (resource.data.authorId == request.auth.uid
+                  && can(churchId, 'prayer.comment')
+                  && prayerOpt(churchId, 'allowComments', true)
+                  && isOpen(churchId, prayerId)
+                  && changed().hasOnly(['content', 'editedAt'])
+                  && request.resource.data.content is string
+                  && request.resource.data.content.size() > 0 && request.resource.data.content.size() <= 500)
+            );
           allow delete: if false;
         }
 
@@ -884,7 +922,7 @@ service cloud.firestore {
         // 모임은 교역자 이상이 만든다.
         allow create: if can(churchId, 'meeting.create')
           && request.resource.data.keys().hasOnly(['title', 'description', 'place', 'date', 'capacity', 'imageUrl',
-               'leaderId', 'leaderName', 'participantIds', 'likedBy', 'views', 'deleted', 'createdAt'])
+               'leaderId', 'leaderName', 'participantIds', 'pendingIds', 'fee', 'needsApproval', 'likedBy', 'views', 'deleted', 'createdAt'])
           && request.resource.data.leaderId == request.auth.uid
           && request.resource.data.title is string
           && request.resource.data.title.size() > 0 && request.resource.data.title.size() <= 24
@@ -899,28 +937,63 @@ service cloud.firestore {
           && request.resource.data.participantIds is list
           && request.resource.data.participantIds.size() <= request.resource.data.capacity
           && request.resource.data.likedBy is list && request.resource.data.likedBy.size() <= 1000
-          // 만든 사람 혼자 · 좋아요 0 · 조회수 0으로 시작한다.
-          && request.resource.data.participantIds == [request.auth.uid]
+          // 참여자 없음(만든 사람도 스스로 참여해야 한다) · 좋아요 0 · 조회수 0으로 시작한다.
+          && request.resource.data.participantIds == []
           && request.resource.data.likedBy.size() == 0
-          && request.resource.data.views == 0;
+          && request.resource.data.views == 0
+          // 회비(원)와 입장 조건(모임장 승인), 승인 대기는 비어 있는 채로 시작한다.
+          && request.resource.data.fee is int
+          && request.resource.data.fee >= 0 && request.resource.data.fee <= 10000000
+          && request.resource.data.needsApproval is bool
+          && request.resource.data.pendingIds == [];
         allow update: if isActive(churchId) && resource.data.deleted == false && (
           // 모임장 · 교역자: 내용 수정 (정원은 이미 참여한 사람 수 이상) 또는 삭제 표시
           ((resource.data.leaderId == request.auth.uid || can(churchId, 'meeting.delete'))
-            && changed().hasOnly(['title', 'description', 'place', 'date', 'capacity', 'imageUrl', 'updatedAt',
+            && changed().hasOnly(['title', 'description', 'place', 'date', 'capacity', 'imageUrl', 'fee', 'needsApproval', 'updatedAt',
                  'deleted', 'deletedAt', 'deletedBy'])
+            && request.resource.data.get('fee', 0) is int
+            && request.resource.data.get('fee', 0) >= 0 && request.resource.data.get('fee', 0) <= 10000000
+            && request.resource.data.get('needsApproval', false) is bool
             && request.resource.data.title.size() > 0 && request.resource.data.title.size() <= 24
             && request.resource.data.get('imageUrl', '').size() <= 1000
             && request.resource.data.description.size() <= 2000
             && request.resource.data.place.size() <= 8
             && request.resource.data.capacity >= 2 && request.resource.data.capacity <= 200
-            && request.resource.data.capacity >= resource.data.participantIds.size())
+            && request.resource.data.capacity >= resource.data.participantIds.size()
+            && (request.resource.data.get('deleted', false) == false
+                || request.resource.data.get('deletedBy', '') == request.auth.uid))
           // 교인: 참여 신청 · 취소 (정원 안에서)
           // (종료된 모임은 참여도 취소도 할 수 없다.)
           || (changed().hasOnly(['participantIds'])
               && resource.data.date > request.time
               && can(churchId, 'meeting.join')
               && onlyMeDiff(resource.data.participantIds, request.resource.data.participantIds)
-              && request.resource.data.participantIds.size() <= resource.data.capacity)
+              && request.resource.data.participantIds.size() <= resource.data.capacity
+              // 모임장 승인이 필요한 모임은 (모임장이 아닌 사람은) 스스로 참여자가 될 수 없고, 빠지기만 한다.
+              && (!resource.data.get('needsApproval', false)
+                  || resource.data.leaderId == request.auth.uid
+                  || request.resource.data.participantIds.size() <= resource.data.participantIds.size()))
+          // 교인: 모임장 승인이 필요한 모임에 참여 신청(승인 대기) · 신청 취소
+          || (changed().hasOnly(['pendingIds'])
+              && resource.data.date > request.time
+              && resource.data.get('needsApproval', false)
+              && can(churchId, 'meeting.join')
+              && onlyMeDiff(resource.data.get('pendingIds', []), request.resource.data.pendingIds))
+          // 모임장: 승인 대기 신청을 승인(참여자로 옮김, 정원 안에서) 또는 거절
+          || (resource.data.leaderId == request.auth.uid
+              && changed().hasOnly(['participantIds', 'pendingIds'])
+              && resource.data.date > request.time
+              && request.resource.data.participantIds.size() <= resource.data.capacity
+              && request.resource.data.participantIds.toSet().difference(resource.data.participantIds.toSet())
+                   .hasOnly(resource.data.get('pendingIds', []))
+              && resource.data.participantIds.toSet().difference(request.resource.data.participantIds.toSet()).size() == 0
+              && request.resource.data.pendingIds.toSet().difference(resource.data.get('pendingIds', []).toSet()).size() == 0)
+          // 모임장 · 교회 운영자: 참여자(또는 대기자)를 내보낸다 (빼기만 가능)
+          || ((resource.data.leaderId == request.auth.uid || isOwner(churchId))
+              && changed().hasOnly(['participantIds', 'pendingIds'])
+              && resource.data.date > request.time
+              && request.resource.data.participantIds.toSet().difference(resource.data.participantIds.toSet()).size() == 0
+              && request.resource.data.pendingIds.toSet().difference(resource.data.get('pendingIds', []).toSet()).size() == 0)
           // 교인: 좋아요 · 조회수
           || (changed().hasOnly(['likedBy'])
               && meetingOpt(churchId, 'allowLikes')
@@ -951,10 +1024,19 @@ service cloud.firestore {
           && request.resource.data.text.size() > 0 && request.resource.data.text.size() <= 500;
         allow update: if isActive(churchId)
           && resource.data.get('deleted', false) == false
-          && changed().hasOnly(['deleted', 'deletedAt', 'deletedBy'])
-          && request.resource.data.deleted == true
-          && request.resource.data.deletedBy == request.auth.uid
-          && (resource.data.authorId == request.auth.uid || can(churchId, 'meeting.delete'));
+          && (
+            // 지우기(지운 표시만 남긴다)
+            (changed().hasOnly(['deleted', 'deletedAt', 'deletedBy'])
+              && request.resource.data.deleted == true
+              && request.resource.data.deletedBy == request.auth.uid
+              && (resource.data.authorId == request.auth.uid || can(churchId, 'meeting.delete')))
+            // 수정: 본인 댓글의 내용만 고친다.
+            || (resource.data.authorId == request.auth.uid
+                && meetingOpt(churchId, 'allowComments')
+                && changed().hasOnly(['text', 'editedAt'])
+                && request.resource.data.text is string
+                && request.resource.data.text.size() > 0 && request.resource.data.text.size() <= 500)
+          );
         allow delete: if false;
       }
 
@@ -985,6 +1067,8 @@ service cloud.firestore {
           && request.resource.data.get('likedBy', []) == []
           && contentValid(request.resource.data);
         allow update: if (can(churchId, 'devotion.write')
+            // 남이 쓴 글은 교역자 이상만 고친다 (직급으로 쓰기 권한을 받은 교인은 본인 글만).
+            && (isManager(churchId) || resource.data.get('createdBy', '') == request.auth.uid)
             && inAff(churchId, resource.data.get('affiliationId', null))
             && (isStaff(churchId)
                 || (request.resource.data.get('affiliationId', null) != null
@@ -1044,15 +1128,25 @@ service cloud.firestore {
           && request.resource.data.authorName is string && request.resource.data.authorName.size() <= 40
           && request.resource.data.text is string
           && request.resource.data.text.size() > 0 && request.resource.data.text.size() <= 1000;
-        // 지우기(지운 표시만 남긴다): 본인 댓글은 댓글을 쓸 수 있으면 누구나, 타인 댓글은 타인 댓글 삭제 권한이 있어야 한다. 고치지는 못한다.
+        // 지우기(지운 표시만 남긴다): 본인 댓글은 댓글을 쓸 수 있으면 누구나, 타인 댓글은 타인 댓글 삭제 권한이 있어야 한다. 고치는 것은 본인 댓글의 내용(수정)뿐이다.
         allow update: if isActive(churchId)
           && resource.data.get('deleted', false) == false
-          && changed().hasOnly(['deleted', 'deletedAt', 'deletedBy'])
-          && request.resource.data.deleted == true
-          && request.resource.data.deletedBy == request.auth.uid
-          && (resource.data.get('authorId', '') == request.auth.uid
-              ? can(churchId, 'devotion.comment')
-              : can(churchId, 'devotion.commentDeleteOthers'));
+          && (
+            (changed().hasOnly(['deleted', 'deletedAt', 'deletedBy'])
+              && request.resource.data.deleted == true
+              && request.resource.data.deletedBy == request.auth.uid
+              && (resource.data.get('authorId', '') == request.auth.uid
+                  ? can(churchId, 'devotion.comment')
+                  : can(churchId, 'devotion.commentDeleteOthers')))
+            // 수정: 본인 댓글의 내용만 고친다 (댓글을 쓸 수 있을 때).
+            || (resource.data.get('authorId', '') == request.auth.uid
+                && can(churchId, 'devotion.comment')
+                && devotionOpen(churchId, devotionId)
+                && devotionOpt(churchId, 'allowReflections')
+                && changed().hasOnly(['text', 'editedAt'])
+                && request.resource.data.text is string
+                && request.resource.data.text.size() > 0 && request.resource.data.text.size() <= 1000)
+          );
         allow delete: if false;
       }
 

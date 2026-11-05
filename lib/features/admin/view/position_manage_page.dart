@@ -47,7 +47,7 @@ class PositionManagePage extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               PageTitle(
-                title: '직급 권한',
+                title: '',
                 action: FilledButton.icon(
                   onPressed: vm.busy ? null : () => _edit(context, vm),
                   icon: const Icon(AppIcons.plus, size: 18),

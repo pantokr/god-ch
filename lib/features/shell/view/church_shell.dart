@@ -175,10 +175,7 @@ class ChurchShell extends StatelessWidget {
           onSignOut: onSignOut,
           title: hasList || section == ChurchSection.mine
               ? _tabLabels[section]
-              : _everyone.contains(section) ||
-                    section == ChurchSection.myMeetings
-              ? _labels[section]
-              : null,
+              : _labels[section],
           onBack: fromDrawer
               ? () => ExitGuard.back(
                   context,
@@ -206,6 +203,14 @@ class ChurchShell extends StatelessWidget {
                             : PageFeature.word,
                         me: me,
                         choice: affiliationChoice,
+                      ),
+                    // 모임 일정: 모임 신청 알림을 바로 볼 수 있게 알림 버튼을 둔다.
+                    if (section == ChurchSection.meetings)
+                      NotificationsButton(
+                        pendingRequests: pending,
+                        onOpenRequests: () => context.go(
+                          Routes.section(me.churchId, ChurchSection.members),
+                        ),
                       ),
                   ],
                 ),

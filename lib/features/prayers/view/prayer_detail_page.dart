@@ -244,6 +244,8 @@ class _Body extends StatelessWidget {
             onSend: (text) => vm.addComment(p, text),
             canDelete: (e) => vm.canDeleteComment(e),
             onDelete: (e) => vm.deleteComment(p, e),
+            canEdit: vm.canEditComment,
+            onEdit: (e, text) => vm.editComment(p, e, text),
             errorOf: () => vm.error,
           ),
         if (!p.isPublic && vm.settings.privateResponses)

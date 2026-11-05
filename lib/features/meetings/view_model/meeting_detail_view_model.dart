@@ -36,8 +36,25 @@ class MeetingDetailViewModel extends ViewModel {
   final String id;
   final Stream<Meeting?> meeting;
 
-  Future<bool> setJoined(bool joined) =>
-      run(() => _repo.setJoined(churchId, id, joined: joined));
+  Future<bool> setJoined(Meeting m, bool joined, {String applicantName = ''}) =>
+      run(
+        () => _repo.setJoined(
+          churchId,
+          m,
+          joined: joined,
+          applicantName: applicantName,
+        ),
+      );
+
+  /// 모임장이 승인 대기 중인 신청을 승인하거나 거절한다.
+  Future<bool> approve(Meeting m, String uid) =>
+      run(() => _repo.approve(churchId, m, uid), blocking: false);
+
+  Future<bool> kick(Meeting m, String uid) =>
+      run(() => _repo.kick(churchId, m, uid), blocking: false);
+
+  Future<bool> reject(Meeting m, String uid) =>
+      run(() => _repo.reject(churchId, m, uid), blocking: false);
 
   Future<bool> setLike(bool liked) =>
       run(() => _repo.setLike(churchId, id, liked: liked), blocking: false);
@@ -51,6 +68,8 @@ class MeetingDetailViewModel extends ViewModel {
       place: v.place,
       date: v.date,
       capacity: v.capacity,
+      fee: v.fee,
+      needsApproval: v.needsApproval,
       imageUrl: v.imageUrl,
     ),
   );

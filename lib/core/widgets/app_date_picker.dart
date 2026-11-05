@@ -1,4 +1,3 @@
-import 'package:flutter/cupertino.dart' show CupertinoPicker;
 import 'package:flutter/material.dart';
 
 import '../icons.dart';
@@ -385,32 +384,36 @@ class _DatePickerBodyState extends State<_DatePickerBody> {
   }
 }
 
-/// 앱 전용 시각 고르기. 오전 / 오후, 시, 분을 돌려서 고른다. 모든 글자가 한글이다.
+/// 앱 전용 시각 고르기. 달력과 같은 모양의 칸을 눌러 고른다: 오전 / 오후, 시(1~12), 분(5분 단위 + 1분 조절).
+/// 고른 칸은 달력의 고른 날처럼 잉크색 칸에 반전 글자이고, 지금 시각의 칸은 잉크색 테두리다.
+/// 모든 글자가 한글이다. 닫으면 null.
 Future<TimeOfDay?> showAppTimePicker(
   BuildContext context, {
   required TimeOfDay initialTime,
+  String title = '시각 선택',
 }) => showDialog<TimeOfDay>(
   context: context,
   builder: (_) => Dialog(
     insetPadding: const EdgeInsets.all(16),
     child: ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 320),
-      child: _TimePickerBody(initial: initialTime),
+      constraints: const BoxConstraints(maxWidth: 360),
+      child: _TimePickerBody(initial: initialTime, title: title),
     ),
   ),
 );
 
 class _TimePickerBody extends StatefulWidget {
-  const _TimePickerBody({required this.initial});
+  const _TimePickerBody({required this.initial, required this.title});
 
   final TimeOfDay initial;
+  final String title;
 
   @override
   State<_TimePickerBody> createState() => _TimePickerBodyState();
 }
 
 class _TimePickerBodyState extends State<_TimePickerBody> {
-  late int _pm = widget.initial.hour >= 12 ? 1 : 0;
+  late bool _pm = widget.initial.hour >= 12;
 
   /// 1~12.
   late int _hour12 = widget.initial.hour % 12 == 0
@@ -418,53 +421,89 @@ class _TimePickerBodyState extends State<_TimePickerBody> {
       : widget.initial.hour % 12;
   late int _minute = widget.initial.minute;
 
-  late final _pmCtl = FixedExtentScrollController(initialItem: _pm);
-  late final _hourCtl = FixedExtentScrollController(initialItem: _hour12 - 1);
-  late final _minCtl = FixedExtentScrollController(initialItem: _minute);
-
-  @override
-  void dispose() {
-    _pmCtl.dispose();
-    _hourCtl.dispose();
-    _minCtl.dispose();
-    super.dispose();
-  }
-
   TimeOfDay get _value =>
-      TimeOfDay(hour: (_hour12 % 12) + _pm * 12, minute: _minute);
+      TimeOfDay(hour: (_hour12 % 12) + (_pm ? 12 : 0), minute: _minute);
 
-  Widget _wheel({
-    required FixedExtentScrollController controller,
-    required List<String> labels,
-    required ValueChanged<int> onChanged,
-  }) => Expanded(
-    child: CupertinoPicker(
-      scrollController: controller,
-      itemExtent: 38,
-      squeeze: 1.1,
-      selectionOverlay: DecoratedBox(
-        decoration: BoxDecoration(
-          borderRadius: AppField.radius,
-          color: context.palette.brand.withValues(alpha: 0.08),
-        ),
-      ),
-      onSelectedItemChanged: (i) => setState(() => onChanged(i)),
-      children: [
-        for (final l in labels)
-          Center(
-            child: Text(
-              l,
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+  /// 달력의 날 칸과 같은 모양의 칸 하나. [selected]는 잉크색 칸, [ring]은 잉크색 테두리.
+  Widget _cell(
+    BuildContext context, {
+    required String label,
+    required bool selected,
+    required VoidCallback onTap,
+    bool ring = false,
+  }) {
+    final palette = context.palette;
+    return Padding(
+      padding: const EdgeInsets.all(2),
+      child: InkWell(
+        borderRadius: AppField.radius,
+        onTap: onTap,
+        child: Container(
+          height: 40,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: selected ? palette.ink : null,
+            borderRadius: AppField.radius,
+            border: !selected && ring
+                ? Border.all(color: palette.ink, width: 1.2)
+                : null,
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              color: selected ? palette.surface : palette.ink,
+              fontWeight: selected || ring ? FontWeight.w800 : FontWeight.w500,
             ),
           ),
+        ),
+      ),
+    );
+  }
+
+  /// 칸 여러 개를 [columns]열로 늘어놓는다.
+  Widget _grid(int columns, List<Widget> cells) {
+    final rows = (cells.length / columns).ceil();
+    return Column(
+      children: [
+        for (var r = 0; r < rows; r++)
+          Row(
+            children: [
+              for (var c = 0; c < columns; c++)
+                Expanded(
+                  child: r * columns + c < cells.length
+                      ? cells[r * columns + c]
+                      : const SizedBox(),
+                ),
+            ],
+          ),
       ],
+    );
+  }
+
+  Widget _label(BuildContext context, String text) => Padding(
+    padding: const EdgeInsets.only(left: 4, top: 12, bottom: 4),
+    child: Text(
+      text,
+      style: TextStyle(
+        color: context.palette.muted,
+        fontSize: 12.5,
+        fontWeight: FontWeight.w700,
+      ),
     ),
   );
+
+  void _step(int delta) => setState(() {
+    final total = (_minute + delta) % 60;
+    _minute = total < 0 ? total + 60 : total;
+  });
 
   @override
   Widget build(BuildContext context) {
     final palette = context.palette;
     final t = _value;
+    final now = TimeOfDay.now();
+    final nowPm = now.hour >= 12;
+    final nowHour12 = now.hour % 12 == 0 ? 12 : now.hour % 12;
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
       child: Column(
@@ -472,7 +511,7 @@ class _TimePickerBodyState extends State<_TimePickerBody> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            '시각 선택',
+            widget.title,
             style: TextStyle(
               color: palette.muted,
               fontSize: 12.5,
@@ -486,33 +525,113 @@ class _TimePickerBodyState extends State<_TimePickerBody> {
             style: Theme.of(context).textTheme.titleLarge
                 ?.copyWith(fontWeight: FontWeight.w800),
           ),
-          const SizedBox(height: 10),
-          SizedBox(
-            height: 150,
-            child: Row(
-              children: [
-                _wheel(
-                  controller: _pmCtl,
-                  labels: const ['오전', '오후'],
-                  onChanged: (i) => _pm = i,
-                ),
-                _wheel(
-                  controller: _hourCtl,
-                  labels: [for (var h = 1; h <= 12; h++) '$h시'],
-                  onChanged: (i) => _hour12 = i + 1,
-                ),
-                _wheel(
-                  controller: _minCtl,
-                  labels: [for (var m = 0; m < 60; m++) '$m분'],
-                  onChanged: (i) => _minute = i,
-                ),
-              ],
+          const SizedBox(height: 14),
+          Divider(height: 1, color: palette.border),
+          // 오전 / 오후
+          _grid(2, [
+            _cell(
+              context,
+              label: '오전',
+              selected: !_pm,
+              ring: !nowPm,
+              onTap: () => setState(() => _pm = false),
             ),
+            _cell(
+              context,
+              label: '오후',
+              selected: _pm,
+              ring: nowPm,
+              onTap: () => setState(() => _pm = true),
+            ),
+          ]),
+          // 시와 분이 나란히 있다.
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _label(context, '시'),
+                    _grid(3, [
+                      for (var h = 1; h <= 12; h++)
+                        _cell(
+                          context,
+                          label: '$h',
+                          selected: _hour12 == h,
+                          ring: nowPm == _pm && nowHour12 == h,
+                          onTap: () => setState(() => _hour12 = h),
+                        ),
+                    ]),
+                  ],
+                ),
+              ),
+              Container(
+                width: 1,
+                height: 200,
+                margin: const EdgeInsets.symmetric(horizontal: 8),
+                color: palette.border,
+              ),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _label(context, '분'),
+                    _grid(3, [
+                      for (var m = 0; m < 60; m += 5)
+                        _cell(
+                          context,
+                          label: m.toString().padLeft(2, '0'),
+                          selected: _minute == m,
+                          onTap: () => setState(() => _minute = m),
+                        ),
+                    ]),
+                    // 1분 조절
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        IconButton(
+                          tooltip: '1분 전',
+                          visualDensity: VisualDensity.compact,
+                          onPressed: () => _step(-1),
+                          icon: const Icon(AppIcons.caretLeft, size: 18),
+                        ),
+                        SizedBox(
+                          width: 44,
+                          child: Center(
+                            child: Text(
+                              '${_minute.toString().padLeft(2, '0')}분',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ),
+                        ),
+                        IconButton(
+                          tooltip: '1분 후',
+                          visualDensity: VisualDensity.compact,
+                          onPressed: () => _step(1),
+                          icon: const Icon(AppIcons.caretRight, size: 18),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 8),
           Row(
-            mainAxisAlignment: MainAxisAlignment.end,
             children: [
+              TextButton(
+                onPressed: () => setState(() {
+                  _pm = now.hour >= 12;
+                  _hour12 = nowHour12;
+                  _minute = now.minute;
+                }),
+                child: const Text('지금'),
+              ),
+              const Spacer(),
               TextButton(
                 onPressed: () => Navigator.pop(context),
                 child: const Text('취소'),

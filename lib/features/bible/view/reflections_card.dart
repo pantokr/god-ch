@@ -8,6 +8,7 @@ import '../../../core/icons.dart';
 import '../../../core/mvvm/view_model_builder.dart';
 import '../../../core/theme.dart';
 import '../../../core/widgets/comment_composer.dart';
+import '../../../core/widgets/comment_edit_dialog.dart';
 import '../../../core/widgets/toast.dart';
 import '../../../core/widgets/trash_icon.dart';
 import '../../../data/models/devotion_reflection.dart';
@@ -95,9 +96,6 @@ class ReflectionsCard extends StatelessWidget {
                           '불러오지 못했습니다',
                           style: TextStyle(color: palette.muted),
                         ),
-                      ] else if (items.isEmpty) ...[
-                        const SizedBox(height: 12),
-                        Text('댓글 없음', style: TextStyle(color: palette.muted)),
                       ],
                     ],
                   ),
@@ -114,6 +112,16 @@ class ReflectionsCard extends StatelessWidget {
                         r.authorId == me.id ||
                         me.can(Permission.devotionCommentDeleteOthers),
                     busy: vm.busy,
+                    canEdit:
+                        canWrite && !me.isOperatorView && r.authorId == me.id,
+                    onEdit: () async {
+                      final text = await showEditComment(
+                        context,
+                        initial: r.text,
+                        maxLength: DevotionReflection.maxLength,
+                      );
+                      if (text != null) await vm.edit(r.id, text);
+                    },
                     onDelete: () => vm.delete(r.id),
                   ),
                 ),
@@ -143,6 +151,8 @@ class _Comment extends StatelessWidget {
     required this.canDelete,
     required this.busy,
     required this.onDelete,
+    required this.canEdit,
+    required this.onEdit,
   });
 
   final String churchId;
@@ -150,6 +160,8 @@ class _Comment extends StatelessWidget {
   final bool canDelete;
   final bool busy;
   final VoidCallback onDelete;
+  final bool canEdit;
+  final VoidCallback onEdit;
 
   @override
   Widget build(BuildContext context) {
@@ -186,6 +198,13 @@ class _Comment extends StatelessWidget {
                         fmtDateTime(r.updatedAt),
                         style: TextStyle(color: palette.muted, fontSize: 12),
                       ),
+                      if (r.editedAt != null) ...[
+                        const SizedBox(width: 6),
+                        Text(
+                          '수정됨',
+                          style: TextStyle(color: palette.muted, fontSize: 12),
+                        ),
+                      ],
                     ],
                   ),
                   const SizedBox(height: 4),
@@ -193,6 +212,13 @@ class _Comment extends StatelessWidget {
                 ],
               ),
             ),
+            if (canEdit)
+              IconButton(
+                tooltip: '수정',
+                visualDensity: VisualDensity.compact,
+                icon: const Icon(AppIcons.pencilSimple, size: 18),
+                onPressed: busy ? null : onEdit,
+              ),
             if (canDelete)
               IconButton(
                 tooltip: '지우기',

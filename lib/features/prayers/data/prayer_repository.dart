@@ -2,6 +2,8 @@ import 'dart:math';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import '../../../core/app_exception.dart';
+
 import '../../../data/firestore_codec.dart';
 import '../../../data/firestore_paths.dart';
 import '../../../data/models/prayer.dart';
@@ -9,6 +11,7 @@ import '../../../data/models/prayer_settings.dart';
 import '../../../data/models/reaction.dart';
 import '../../../data/models/text_entry.dart';
 import '../../auth/data/auth_repository.dart';
+import '../../notifications/data/activity_notice.dart';
 
 /// 기도제목과 그 하위 데이터(응원, 교역자 댓글, 비공개 글 답변, 열람 기록).
 /// 접근 권한은 firestore.rules가 강제한다.
@@ -201,19 +204,36 @@ class PrayerRepository {
         .collection('reactions')
         .doc('${_auth.uid}_$type');
     // 반응은 지우지 않고 켜고 끄는 표시(active)만 바꾼다.
-    return ref.get().then((snap) {
+    return ref.get().then((snap) async {
       if (snap.exists) {
         return ref.update({
           'active': !currentlyOn,
           'updatedAt': FieldValue.serverTimestamp(),
         });
       }
-      return ref.set({
-        'uid': _auth.uid,
-        'type': type,
-        'active': true,
-        'createdAt': FieldValue.serverTimestamp(),
-      });
+      // 처음 남기는 반응만 글쓴이에게 "좋아요" 알림을 같은 묶음으로 보낸다 (켰다 껐다 해도 되풀이하지 않는다).
+      final prayerRef = _paths.prayers(churchId).doc(prayerId);
+      final prayer = await prayerRef.get();
+      final batch = _db.batch()
+        ..set(ref, {
+          'uid': _auth.uid,
+          'type': type,
+          'active': true,
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+      ActivityNotice.add(
+        batch,
+        _db,
+        me: _auth.uid,
+        authorId: prayer.data()?['authorId'] as String? ?? '',
+        churchId: churchId,
+        kind: ActivityNotice.prayer,
+        postId: prayerId,
+        postTitle: prayer.data()?['content'] as String? ?? '',
+        actorName: _auth.displayName,
+        comment: false,
+      );
+      await batch.commit();
     });
   }
 
@@ -242,6 +262,7 @@ class PrayerRepository {
             toDate(d.data()['createdAt']),
             authorId: d.data()['authorId'] as String? ?? '',
             authorName: d.data()['authorName'] as String? ?? '',
+            edited: d.data()['editedAt'] != null,
           ),
     ];
     // 오래된 순. 서버가 시각을 확정하기 전의 글은 맨 뒤.
@@ -258,12 +279,49 @@ class PrayerRepository {
     String prayerId,
     String content, {
     required String authorName,
-  }) => _paths.prayers(churchId).doc(prayerId).collection('comments').add({
-    'authorId': _auth.uid,
-    'authorName': authorName,
-    'content': content,
-    'createdAt': FieldValue.serverTimestamp(),
-  });
+  }) async {
+    final prayerRef = _paths.prayers(churchId).doc(prayerId);
+    final prayer = await prayerRef.get();
+    final batch = _db.batch()
+      ..set(prayerRef.collection('comments').doc(), {
+        'authorId': _auth.uid,
+        'authorName': authorName,
+        'content': content,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+    // 글쓴이에게 "댓글" 알림을 같은 묶음으로 보낸다 (내 글이면 보내지 않는다).
+    ActivityNotice.add(
+      batch,
+      _db,
+      me: _auth.uid,
+      authorId: prayer.data()?['authorId'] as String? ?? '',
+      churchId: churchId,
+      kind: ActivityNotice.prayer,
+      postId: prayerId,
+      postTitle: prayer.data()?['content'] as String? ?? '',
+      actorName: authorName,
+      comment: true,
+    );
+    await batch.commit();
+  }
+
+  /// 내 댓글의 내용을 고친다 (고친 시각이 남는다).
+  Future<void> editComment(
+    String churchId,
+    String prayerId,
+    String commentId,
+    String content,
+  ) {
+    final t = content.trim();
+    if (t.isEmpty) throw const AppException('댓글을 입력해 주세요.');
+    if (t.length > 500) throw const AppException('댓글은 500자까지 쓸 수 있어요.');
+    return _paths
+        .prayers(churchId)
+        .doc(prayerId)
+        .collection('comments')
+        .doc(commentId)
+        .update({'content': t, 'editedAt': FieldValue.serverTimestamp()});
+  }
 
   /// 댓글을 지운 것으로 표시한다 (기록 보관).
   Future<void> deleteComment(

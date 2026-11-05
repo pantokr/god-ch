@@ -80,7 +80,7 @@ class _ChurchInfoFormState extends State<ChurchInfoForm> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                PageTitle(title: widget.title),
+                if (widget.title.isNotEmpty) PageTitle(title: widget.title),
                 ThumbnailField(
                   controller: _thumbnail,
                   name: widget.church.name,

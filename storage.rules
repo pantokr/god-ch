@@ -48,7 +48,9 @@ service firebase.storage {
     // 모임 썸네일: churches/{교회}/meetings/{파일}. 교회 회원이 올리고 로그인한 회원이 본다.
     match /churches/{churchId}/meetings/{fileName} {
       allow read: if request.auth != null;
-      allow create, update: if (isActive(churchId) || isPlatformAdmin()) && isImage();
+      // 파일 이름은 올릴 때마다 새로 정해지므로 교인은 새 파일만 만든다. 이미 있는 파일은 교인이 덮어쓰지 못한다.
+      allow create: if (isActive(churchId) || isPlatformAdmin()) && isImage();
+      allow update: if isPlatformAdmin() && isImage();
       allow delete: if false;
     }
 

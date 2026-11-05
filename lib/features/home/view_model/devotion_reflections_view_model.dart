@@ -25,6 +25,11 @@ class DevotionReflectionsViewModel extends ViewModel {
     blocking: false,
   );
 
+  Future<bool> edit(String commentId, String text) => run(
+    () => _repo.edit(me.churchId, devotionId, commentId, text),
+    blocking: false,
+  );
+
   Future<bool> delete(String commentId) => run(
     () => _repo.delete(me.churchId, devotionId, commentId),
     blocking: false,

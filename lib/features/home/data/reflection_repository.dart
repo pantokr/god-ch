@@ -6,6 +6,7 @@ import '../../../data/firestore_paths.dart';
 import '../../../data/models/devotion_reflection.dart';
 import '../../../data/models/my_comment.dart';
 import '../../auth/data/auth_repository.dart';
+import '../../notifications/data/activity_notice.dart';
 
 /// 말씀묵상 글의 댓글을 읽고 쓴다. 읽기는 승인된 교인 모두, 쓰기는 댓글 권한이 있는 교인이고
 /// 지우기는 본인 댓글 또는 타인 댓글 삭제 권한이 있는 사람이다 (`firestore.rules`가 강제한다).
@@ -88,11 +89,54 @@ class ReflectionRepository {
     if (t.length > DevotionReflection.maxLength) {
       throw AppException('댓글은 ${DevotionReflection.maxLength}자까지 쓸 수 있어요.');
     }
-    return _col(churchId, devotionId).add({
-      'authorId': _auth.uid,
-      'authorName': authorName,
+    return _addAndNotify(churchId, devotionId, authorName, t);
+  }
+
+  /// 댓글을 쓰고, 말씀묵상 글쓴이에게 "댓글" 알림을 같은 묶음으로 보낸다 (내 글이면 보내지 않는다).
+  Future<void> _addAndNotify(
+    String churchId,
+    String devotionId,
+    String authorName,
+    String text,
+  ) async {
+    final post = await _paths.devotions(churchId).doc(devotionId).get();
+    final batch = _db.batch()
+      ..set(_col(churchId, devotionId).doc(), {
+        'authorId': _auth.uid,
+        'authorName': authorName,
+        'text': text,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+    ActivityNotice.add(
+      batch,
+      _db,
+      me: _auth.uid,
+      authorId: post.data()?['createdBy'] as String? ?? '',
+      churchId: churchId,
+      kind: ActivityNotice.devotion,
+      postId: devotionId,
+      postTitle: post.data()?['title'] as String? ?? '',
+      actorName: authorName,
+      comment: true,
+    );
+    await batch.commit();
+  }
+
+  /// 내 댓글의 내용을 고친다 (고친 시각이 남는다).
+  Future<void> edit(
+    String churchId,
+    String devotionId,
+    String commentId,
+    String text,
+  ) {
+    final t = text.trim();
+    if (t.isEmpty) throw const AppException('댓글을 입력해 주세요.');
+    if (t.length > DevotionReflection.maxLength) {
+      throw AppException('댓글은 ${DevotionReflection.maxLength}자까지 쓸 수 있어요.');
+    }
+    return _col(churchId, devotionId).doc(commentId).update({
       'text': t,
-      'updatedAt': FieldValue.serverTimestamp(),
+      'editedAt': FieldValue.serverTimestamp(),
     });
   }
 

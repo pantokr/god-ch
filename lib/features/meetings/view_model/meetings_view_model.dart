@@ -19,7 +19,7 @@ enum MeetingFilter {
 /// 모임 목록 정렬 기준.
 enum MeetingSort {
   latest('최신순'),
-  popular('인기순'),
+  participants('참여자순'),
   oldest('오래된순'),
   likes('좋아요순');
 
@@ -92,8 +92,8 @@ class MeetingsViewModel extends ViewModel {
     switch (sort) {
       case MeetingSort.latest:
         list.sort((a, b) => made(b).compareTo(made(a)));
-      case MeetingSort.popular:
-        list.sort((a, b) => b.views.compareTo(a.views));
+      case MeetingSort.participants:
+        list.sort((a, b) => b.joined.compareTo(a.joined));
       case MeetingSort.oldest:
         list.sort((a, b) => made(a).compareTo(made(b)));
       case MeetingSort.likes:
@@ -111,6 +111,8 @@ class MeetingsViewModel extends ViewModel {
       place: v.place,
       date: v.date,
       capacity: v.capacity,
+      fee: v.fee,
+      needsApproval: v.needsApproval,
       imageUrl: v.imageUrl,
     ),
   );

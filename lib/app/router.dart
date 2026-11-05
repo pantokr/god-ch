@@ -14,6 +14,7 @@ import '../features/bible/view/devotion_detail_page.dart';
 import '../features/church/view/church_explore_page.dart';
 import '../features/church/view/member_gate.dart';
 import '../features/meetings/view/meeting_detail_page.dart';
+import '../features/meetings/view/meeting_participants_page.dart';
 import '../features/church/view/my_churches_route.dart';
 import '../features/platform/view/church_registry_page.dart';
 import '../features/platform/view/dashboard_page.dart';
@@ -116,6 +117,14 @@ GoRouter buildRouter(SessionNotifier session) {
           churchId: state.pathParameters['cid']!,
           builder: (context, me) =>
               MeetingDetailPage(me: me, id: state.pathParameters['id']!),
+        ),
+      ),
+      GoRoute(
+        path: '/churches/:cid/meeting/:id/participants',
+        builder: (context, state) => MemberGate(
+          churchId: state.pathParameters['cid']!,
+          builder: (context, me) =>
+              MeetingParticipantsPage(me: me, id: state.pathParameters['id']!),
         ),
       ),
       // 교회 틀(왼쪽 메뉴) 안의 메뉴들.

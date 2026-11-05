@@ -2,12 +2,9 @@ import 'dart:math' as math;
 
 import '../../../core/widgets/toast.dart';
 import '../../../core/layout/responsive.dart';
-import '../../people/view/person_avatar.dart';
 import '../../../core/widgets/app_loader.dart';
 
 import 'package:flutter/material.dart';
-
-import '../../people/view/person_popup.dart';
 
 import 'package:go_router/go_router.dart';
 
@@ -319,12 +316,12 @@ class _CardGrid extends StatelessWidget {
   }
 }
 
-/// 남은 자리 표시: 빨간 배지. 지난 모임은 회색 "종료", 정원이 찬 모임은 "마감".
-String seatLabel(Meeting m) => m.ended
+/// 모집이 끝난 모임의 상태: 지난 모임은 "종료", 정원이 찬 모임은 "마감". 모집 중이면 null.
+String? seatStatus(Meeting m) => m.ended
     ? '종료'
     : m.isFull
     ? '마감'
-    : '${m.seatsLeft}자리 남음';
+    : null;
 
 /// 알록달록: 색이 있는 윗부분에 남은 자리 배지와 하트, 아래에 제목 · 모임장 · 날짜와 장소.
 class _ColorfulCard extends StatelessWidget {
@@ -363,8 +360,8 @@ class _ColorfulCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            AspectRatio(
-              aspectRatio: _ColorfulCard.imageRatio,
+            // 이미지가 카드의 남는 높이를 채운다 (글 영역은 내용만큼만 차지해 빈 여백이 없다).
+            Expanded(
               child: Stack(
                 fit: StackFit.expand,
                 children: [
@@ -382,13 +379,7 @@ class _ColorfulCard extends StatelessWidget {
                         top: Radius.circular(AppRadius.card),
                       ),
                     ),
-                    child: const Center(
-                      child: Icon(
-                        AppIcons.usersThree,
-                        size: 44,
-                        color: Colors.white70,
-                      ),
-                    ),
+                    // 아이콘은 위의 썸네일 자리표시자 하나만 보인다 (여기에는 색 면만).
                   ),
                   ClipRRect(
                     borderRadius: const BorderRadius.vertical(
@@ -403,10 +394,10 @@ class _ColorfulCard extends StatelessWidget {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        _SeatBadge(meeting: m),
+                        SeatBadge(meeting: m),
                         if (meetingDDay(m.date) case final d?) ...[
                           const SizedBox(width: 4),
-                          _DDayBadge(label: d),
+                          DDayBadge(label: d),
                         ],
                       ],
                     ),
@@ -436,74 +427,42 @@ class _ColorfulCard extends StatelessWidget {
                 ],
               ),
             ),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(12, 12, 12, 10),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // 제목은 한 줄이어도 두 줄 높이를 잡아 카드 모양을 맞춘다.
-                    SizedBox(
-                      height:
-                          15 *
-                          1.3 *
-                          2 *
-                          MediaQuery.textScalerOf(context).scale(1),
-                      child: Text(
-                        m.title,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w800,
-                          fontSize: 15,
-                          height: 1.3,
-                        ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 12, 12, 10),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // 제목은 한 줄이어도 두 줄 높이를 잡아 카드 모양을 맞춘다.
+                  SizedBox(
+                    height:
+                        15 *
+                        1.3 *
+                        2 *
+                        MediaQuery.textScalerOf(context).scale(1),
+                    child: Text(
+                      m.title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 15,
+                        height: 1.3,
                       ),
                     ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        PersonTap(
-                          churchId: me.churchId,
-                          uid: m.leaderId,
-                          name: m.leaderName,
-                          photoUrl: '',
-                          child: PersonAvatar(
-                            churchId: me.churchId,
-                            uid: m.leaderId,
-                            name: m.leaderName.isEmpty ? '?' : m.leaderName,
-                            radius: 9,
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        Expanded(
-                          child: Align(
-                            alignment: Alignment.centerLeft,
-                            child: PersonTap(
-                              churchId: me.churchId,
-                              uid: m.leaderId,
-                              name: m.leaderName,
-                              photoUrl: '',
-                              child: Text(
-                                m.leaderName,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(fontSize: 13),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      meetingLine(m.date, m.place),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(color: palette.muted, fontSize: 12.5),
-                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  MeetingInfoLine(
+                    AppIcons.calendarBlank,
+                    meetingDayTime(m.date),
+                  ),
+                  if (m.place.isNotEmpty) ...[
+                    const SizedBox(height: 2),
+                    MeetingInfoLine(AppIcons.mapPin, m.place),
                   ],
-                ),
+                  const SizedBox(height: 2),
+                  MeetingInfoLine(AppIcons.wallet, meetingFee(m)),
+                ],
               ),
             ),
           ],
@@ -513,9 +472,36 @@ class _ColorfulCard extends StatelessWidget {
   }
 }
 
+/// 아이콘 + 한 줄 글 (일자 · 시각, 장소).
+class MeetingInfoLine extends StatelessWidget {
+  const MeetingInfoLine(this.icon, this.text, {super.key});
+
+  final IconData icon;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final muted = context.palette.muted;
+    return Row(
+      children: [
+        Icon(icon, size: 14, color: muted),
+        const SizedBox(width: 4),
+        Expanded(
+          child: Text(
+            text,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(color: muted, fontSize: 13, height: 1.3),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 /// 남은 날 배지: 남은 자리 배지 오른쪽에 놓는 짙은 면의 작은 글씨.
-class _DDayBadge extends StatelessWidget {
-  const _DDayBadge({required this.label});
+class DDayBadge extends StatelessWidget {
+  const DDayBadge({super.key, required this.label});
 
   final String label;
 
@@ -541,8 +527,8 @@ class _DDayBadge extends StatelessWidget {
   }
 }
 
-class _SeatBadge extends StatelessWidget {
-  const _SeatBadge({required this.meeting});
+class SeatBadge extends StatelessWidget {
+  const SeatBadge({super.key, required this.meeting});
 
   final Meeting meeting;
 
@@ -556,13 +542,23 @@ class _SeatBadge extends StatelessWidget {
       ),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        child: Text(
-          seatLabel(meeting),
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 12,
-            fontWeight: FontWeight.w800,
-          ),
+        // 모집 중이면 사람 아이콘과 참여/정원, 끝났으면 "종료" · "마감".
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (seatStatus(meeting) == null) ...[
+              const Icon(AppIcons.user, size: 13, color: Colors.white),
+              const SizedBox(width: 3),
+            ],
+            Text(
+              seatStatus(meeting) ?? '${meeting.joined}/${meeting.capacity}',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -585,7 +581,6 @@ class _MinimalRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final palette = context.palette;
     final m = meeting;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -596,47 +591,78 @@ class _MinimalRow extends StatelessWidget {
             padding: const EdgeInsets.symmetric(vertical: 14),
             child: Row(
               children: [
+                // 썸네일 비율은 격자(카드)와 같다.
                 SizedBox(
-                  width: 72,
-                  height: 72,
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(AppRadius.control),
-                    child: MeetingThumb(m),
+                  width: 148,
+                  child: AspectRatio(
+                    aspectRatio: meetingThumbRatio,
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(
+                            AppRadius.control,
+                          ),
+                          child: MeetingThumb(m),
+                        ),
+                        // 남은 자리와 D-N 배지는 격자처럼 썸네일 안쪽 왼쪽 위에 둔다 (좁으면 줄어든다).
+                        Positioned(
+                          left: 4,
+                          top: 4,
+                          right: 4,
+                          child: Align(
+                            alignment: Alignment.topLeft,
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              alignment: Alignment.topLeft,
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  SeatBadge(meeting: m),
+                                  if (meetingDDay(m.date) case final d?) ...[
+                                    const SizedBox(width: 4),
+                                    DDayBadge(label: d),
+                                  ],
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
                 const SizedBox(width: 14),
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        m.title,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w800,
-                          fontSize: 16,
+                  // 썸네일과 같은 높이: 제목은 위, 모임장은 아래.
+                  child: SizedBox(
+                    height: 148 / meetingThumbRatio,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          m.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 16,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        '${m.leaderName} · ${meetingLine(m.date, m.place)}',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(color: palette.muted, fontSize: 13),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        '${seatLabel(m)}${meetingDDay(m.date) == null ? '' : ' · ${meetingDDay(m.date)}'} · ${m.joined}/${m.capacity}명',
-                        style: TextStyle(
-                          color: m.ended || m.isFull
-                              ? palette.muted
-                              : const Color(0xFFD7261E),
-                          fontSize: 12.5,
-                          fontWeight: FontWeight.w700,
+                        const SizedBox(height: 4),
+                        // 일자 · 시각, 장소, 회비는 아이콘으로 구별한다.
+                        MeetingInfoLine(
+                          AppIcons.calendarDays,
+                          meetingDayTime(m.date),
                         ),
-                      ),
-                    ],
+                        if (m.place.isNotEmpty) ...[
+                          const SizedBox(height: 2),
+                          MeetingInfoLine(AppIcons.mapPin, m.place),
+                        ],
+                        const SizedBox(height: 2),
+                        MeetingInfoLine(AppIcons.wallet, meetingFee(m)),
+                      ],
+                    ),
                   ),
                 ),
                 const SizedBox(width: 16),

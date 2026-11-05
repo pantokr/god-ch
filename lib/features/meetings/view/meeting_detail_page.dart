@@ -2,6 +2,7 @@ import '../../../core/widgets/app_loader.dart';
 
 import 'package:flutter/material.dart';
 
+import '../../../data/models/person_card.dart';
 import '../../people/view/person_avatar.dart';
 import '../../people/view/person_popup.dart';
 
@@ -25,7 +26,7 @@ import 'meeting_comments_card.dart';
 import 'meeting_form.dart';
 import '../../home/view/content_widgets.dart';
 import 'meeting_format.dart';
-import 'meetings_page.dart' show seatLabel;
+import 'meetings_page.dart' show seatStatus;
 
 /// 주소 `/churches/:cid/meeting/:id`: 모임 상세. 정보 · 소개 · 참여 · 반응이 분리된 카드로 보인다.
 /// 모임장과 교역자는 고치고 지울 수 있고, 다른 교인은 참여를 신청하거나 취소한다.
@@ -89,25 +90,21 @@ class MeetingDetailPage extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                // 사진 · 제목 · 소개 → 일정 정보 · 모임장 → 참여 → 반응 → 댓글.
                 _InfoCard(meeting: m, churchId: me.churchId),
                 const SizedBox(height: 12),
-                // 좋아요 · 조회수는 말씀묵상과 같은 반응 카드로 첫 카드 바로 아래에 둔다.
+                _InfoCard(meeting: m, churchId: me.churchId, details: true),
+                const SizedBox(height: 12),
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: _JoinCard(meeting: m, me: me, vm: vm),
+                  ),
+                ),
                 if (vm.settings.allowLikes || vm.settings.showViews) ...[
+                  const SizedBox(height: 12),
                   _ReactionCard(meeting: m, me: me, vm: vm),
                 ],
-                if (m.description.isNotEmpty) ...[
-                  const SizedBox(height: 12),
-                  _Section(
-                    icon: AppIcons.sparkles,
-                    label: '소개',
-                    child: SelectableText(
-                      m.description,
-                      style: const TextStyle(height: 1.6),
-                    ),
-                  ),
-                ],
-                const SizedBox(height: 12),
-                _JoinCard(meeting: m, me: me, vm: vm),
                 const SizedBox(height: 12),
                 MeetingCommentsCard(
                   meetingId: m.id,
@@ -161,63 +158,101 @@ class MeetingDetailPage extends StatelessWidget {
   }
 }
 
-class _Section extends StatelessWidget {
-  const _Section({
-    required this.icon,
-    required this.label,
-    required this.child,
-  });
-
-  final IconData icon;
-  final String label;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    final palette = context.palette;
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              children: [
-                Icon(icon, size: 18, color: palette.accent),
-                const SizedBox(width: 8),
-                Text(label, style: Theme.of(context).textTheme.titleMedium),
-              ],
-            ),
-            const SizedBox(height: 12),
-            child,
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 class _InfoCard extends StatelessWidget {
-  const _InfoCard({required this.meeting, required this.churchId});
+  const _InfoCard({
+    required this.meeting,
+    required this.churchId,
+    this.details = false,
+  });
 
   final Meeting meeting;
   final String churchId;
+
+  /// true이면 일시 · 장소 · 회비 · 입장 조건 카드, 아니면 사진 · 제목 · 모임장 카드.
+  final bool details;
 
   @override
   Widget build(BuildContext context) {
     final palette = context.palette;
     final m = meeting;
-    Widget row(IconData icon, String text) => Padding(
-      padding: const EdgeInsets.only(top: 10),
+    Widget row(IconData icon, String label, String text) => Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Icon(icon, size: 18, color: palette.muted),
           const SizedBox(width: 10),
+          SizedBox(
+            width: 72,
+            child: Text(label, style: TextStyle(color: palette.muted)),
+          ),
           Expanded(child: Text(text)),
         ],
       ),
     );
+    if (details) {
+      return Card(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              row(AppIcons.calendarDays, '일시', meetingWhen(m.date)),
+              if (m.place.isNotEmpty) row(AppIcons.mapPin, '장소', m.place),
+              row(AppIcons.wallet, '회비', meetingFee(m)),
+              row(
+                AppIcons.userCheck,
+                '입장 조건',
+                m.needsApproval ? '모임장 승인' : '자유 참여',
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 6),
+                child: Row(
+                  children: [
+                    Icon(AppIcons.crown, size: 18, color: palette.muted),
+                    const SizedBox(width: 10),
+                    SizedBox(
+                      width: 72,
+                      child: Text(
+                        '모임장',
+                        style: TextStyle(color: palette.muted),
+                      ),
+                    ),
+                    // 프로필과 이름 부분만 눌린다 (줄 전체가 아니다).
+                    Flexible(
+                      child: PersonTap(
+                        churchId: churchId,
+                        uid: m.leaderId,
+                        name: m.leaderName,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            PersonAvatar(
+                              churchId: churchId,
+                              uid: m.leaderId,
+                              name: m.leaderName.isEmpty ? '?' : m.leaderName,
+                              radius: 11,
+                            ),
+                            const SizedBox(width: 8),
+                            Flexible(
+                              child: Text(
+                                m.leaderName,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(20),
@@ -235,34 +270,13 @@ class _InfoCard extends StatelessWidget {
               const SizedBox(height: 16),
             ],
             Text(m.title, style: Theme.of(context).textTheme.titleLarge),
-            // 모임장: 프로필 썸네일과 이름 (누르면 프로필 팝업).
-            Padding(
-              padding: const EdgeInsets.only(top: 10),
-              // 프로필과 이름 부분만 눌린다 (줄 전체가 아니다).
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: PersonTap(
-                  churchId: churchId,
-                  uid: m.leaderId,
-                  name: m.leaderName,
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      PersonAvatar(
-                        churchId: churchId,
-                        uid: m.leaderId,
-                        name: m.leaderName.isEmpty ? '?' : m.leaderName,
-                        radius: 11,
-                      ),
-                      const SizedBox(width: 10),
-                      Text(m.leaderName),
-                    ],
-                  ),
-                ),
+            if (m.description.isNotEmpty) ...[
+              const SizedBox(height: 28),
+              SelectableText(
+                m.description,
+                style: const TextStyle(height: 1.6),
               ),
-            ),
-            row(AppIcons.calendarDays, meetingWhen(m.date)),
-            if (m.place.isNotEmpty) row(AppIcons.mapPin, m.place),
+            ],
           ],
         ),
       ),
@@ -282,25 +296,30 @@ class _JoinCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final m = meeting;
     final joined = m.joinedBy(me.id);
+    final pending = m.pendingBy(me.id);
     final isLeader = m.leaderId == me.id;
     final Widget button;
     if (me.isOperatorView) {
       button = const SizedBox.shrink();
-    } else if (isLeader) {
-      button = const OutlinedButton(onPressed: null, child: Text('내가 모임장'));
     } else if (!me.can(Permission.meetingJoin)) {
       button = const OutlinedButton(onPressed: null, child: Text('참여 권한 없음'));
     } else if (joined) {
       button = OutlinedButton(
         // 이미 지난(종료된) 모임은 참여를 취소할 수 없다.
-        onPressed: vm.busy || m.ended ? null : () => vm.setJoined(false),
+        onPressed: vm.busy || m.ended ? null : () => vm.setJoined(m, false),
         child: const Text('참여 취소'),
+      );
+    } else if (pending) {
+      // 모임장 승인 대기 중: 신청을 취소할 수 있다.
+      button = OutlinedButton(
+        onPressed: vm.busy || m.ended ? null : () => vm.setJoined(m, false),
+        child: const Text('신청 취소'),
       );
     } else {
       button = FilledButton(
         onPressed: vm.busy || m.isFull || m.ended
             ? null
-            : () => vm.setJoined(true),
+            : () => vm.setJoined(m, true, applicantName: me.name),
         child: Text(
           m.ended
               ? '종료'
@@ -310,29 +329,91 @@ class _JoinCard extends StatelessWidget {
         ),
       );
     }
-    return _Section(
-      icon: AppIcons.usersThree,
-      label: '참여 ${m.joined}/${m.capacity}명 · ${seatLabel(m)}',
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(999),
-            child: LinearProgressIndicator(
-              value: m.capacity == 0 ? 0 : m.joined / m.capacity,
-              minHeight: 8,
-            ),
-          ),
-          if (vm.error != null) ...[
-            const SizedBox(height: 8),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            Icon(AppIcons.usersThree, size: 18, color: context.palette.accent),
+            const SizedBox(width: 8),
             Text(
-              vm.error!,
-              style: TextStyle(color: Theme.of(context).colorScheme.error),
+              ['참여 ${m.joined}/${m.capacity}명', ?seatStatus(m)].join(' · '),
+              style: Theme.of(context).textTheme.titleMedium,
             ),
+            const Spacer(),
+            if (!me.isOperatorView)
+              _StatusBubble(
+                label: joined
+                    ? (m.ended ? '참여 완료' : '참여 예정')
+                    : pending
+                    ? '승인 대기'
+                    : '미참여',
+                active: joined || pending,
+              ),
           ],
-          const SizedBox(height: 14),
-          button,
+        ),
+        const SizedBox(height: 12),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(999),
+          child: LinearProgressIndicator(
+            value: m.capacity == 0 ? 0 : m.joined / m.capacity,
+            minHeight: 8,
+          ),
+        ),
+        if (vm.error != null) ...[
+          const SizedBox(height: 8),
+          Text(
+            vm.error!,
+            style: TextStyle(color: Theme.of(context).colorScheme.error),
+          ),
         ],
+        const SizedBox(height: 14),
+        button,
+        // 모임장에게만: 승인을 기다리는 신청자 목록.
+        if (isLeader && m.pendingIds.isNotEmpty) ...[
+          const SizedBox(height: 20),
+          _PendingRequests(meeting: m, me: me, vm: vm),
+        ],
+        // 모임장 · 교회 운영자에게만: 참여자 목록 페이지로 가는 줄.
+        if ((isLeader || me.isAdmin || me.isOperatorView) &&
+            m.participantIds.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          OutlinedButton.icon(
+            onPressed: () =>
+                context.push(Routes.meetingParticipants(me.churchId, m.id)),
+            icon: const Icon(AppIcons.usersThree, size: 18),
+            label: Text('참여자 ${m.participantIds.length}명'),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+/// 내 참여 상태를 보여주는 작은 말풍선 (미참여 · 승인 대기 · 참여 예정 · 참여 완료).
+class _StatusBubble extends StatelessWidget {
+  const _StatusBubble({required this.label, required this.active});
+
+  final String label;
+  final bool active;
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = context.palette;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: active ? palette.accent.withValues(alpha: 0.12) : null,
+        border: active ? null : Border.all(color: palette.border),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: active ? palette.accent : palette.muted,
+          fontSize: 12.5,
+          fontWeight: FontWeight.w700,
+        ),
       ),
     );
   }
@@ -378,6 +459,84 @@ class _ReactionCard extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// 승인을 기다리는 참여 신청자 목록(모임장 전용): 이름과 승인 · 거절 버튼.
+class _PendingRequests extends StatelessWidget {
+  const _PendingRequests({
+    required this.meeting,
+    required this.me,
+    required this.vm,
+  });
+
+  final Meeting meeting;
+  final Member me;
+  final MeetingDetailViewModel vm;
+
+  @override
+  Widget build(BuildContext context) {
+    final m = meeting;
+    final palette = context.palette;
+    return StreamBuilder<List<PersonCard>>(
+      stream: AppScope.read(context).people.people(me.churchId),
+      builder: (context, snap) {
+        final names = {
+          for (final p in snap.data ?? const <PersonCard>[]) p.id: p.name,
+        };
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              '승인 대기 ${m.pendingIds.length}명',
+              style: const TextStyle(fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: 8),
+            for (final uid in m.pendingIds)
+              SizedBox(
+                height: 52,
+                child: Row(
+                  children: [
+                    PersonTap(
+                      churchId: me.churchId,
+                      uid: uid,
+                      name: names[uid] ?? '',
+                      child: PersonAvatar(
+                        churchId: me.churchId,
+                        uid: uid,
+                        name: names[uid] ?? '?',
+                        radius: 14,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        names[uid] ?? '이름 없음',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: vm.busy ? null : () => vm.reject(m, uid),
+                      style: TextButton.styleFrom(
+                        foregroundColor: palette.muted,
+                      ),
+                      child: const Text('거절'),
+                    ),
+                    FilledButton(
+                      // 정원이 찼으면 승인할 수 없다.
+                      onPressed: vm.busy || m.isFull
+                          ? null
+                          : () => vm.approve(m, uid),
+                      child: const Text('승인'),
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        );
+      },
     );
   }
 }

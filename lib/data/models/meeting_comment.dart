@@ -13,6 +13,7 @@ class MeetingComment {
     this.createdAt,
     this.parentId,
     this.deleted = false,
+    this.editedAt,
   });
 
   /// 글자 수 제한 (`firestore.rules`와 같다).
@@ -30,6 +31,9 @@ class MeetingComment {
   /// 지운 댓글인가 (기록은 남는다). 답글이 달려 있으면 자리만 남겨 보여준다.
   final bool deleted;
 
+  /// 고친 시각 (고친 적이 없으면 null).
+  final DateTime? editedAt;
+
   factory MeetingComment.fromDoc(DocumentSnapshot<Json> doc) {
     final d = doc.data() ?? const {};
     return MeetingComment(
@@ -40,6 +44,7 @@ class MeetingComment {
       createdAt: toDate(d['createdAt']),
       parentId: d['parentId'] as String?,
       deleted: d['deleted'] == true,
+      editedAt: toDate(d['editedAt']),
     );
   }
 }

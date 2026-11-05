@@ -39,7 +39,7 @@ class _ChurchInfoManagePageState extends State<ChurchInfoManagePage> {
           // 저장 후 새 값으로 다시 그리지 않도록 교회 한 곳에는 같은 폼을 쓴다.
           key: ValueKey(church.id),
           church: church,
-          title: '교회 정보',
+          title: '',
           footer: widget.me.isOperatorView
               ? null
               : ChurchClosureCard(me: widget.me),

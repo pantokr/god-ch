@@ -9,6 +9,7 @@ import 'package:image/image.dart' as img;
 import '../../../core/app_exception.dart';
 import '../../../data/firestore_codec.dart';
 import '../../../data/firestore_paths.dart';
+import '../../notifications/data/activity_notice.dart';
 import '../../../data/models/church_content.dart';
 import '../../../data/models/devotion_settings.dart';
 import '../../auth/data/auth_repository.dart';
@@ -135,12 +136,36 @@ class ContentRepository {
       _col(churchId).doc(id).update({'views': FieldValue.increment(1)});
 
   /// 좋아요를 누르거나 취소한다. 누른 사람의 uid가 [ChurchContent.likedBy]에 담긴다.
-  Future<void> setLike(String churchId, String id, {required bool liked}) =>
-      _col(churchId).doc(id).update({
+  /// 누를 때 글쓴이에게 "좋아요" 알림이 같은 묶음으로 간다.
+  Future<void> setLike(
+    String churchId,
+    String id, {
+    required bool liked,
+  }) async {
+    final doc = _col(churchId).doc(id);
+    final batch = _paths.db.batch()
+      ..update(doc, {
         'likedBy': liked
             ? FieldValue.arrayUnion([_auth.uid])
             : FieldValue.arrayRemove([_auth.uid]),
       });
+    if (liked) {
+      final post = await doc.get();
+      ActivityNotice.add(
+        batch,
+        _paths.db,
+        me: _auth.uid,
+        authorId: post.data()?['createdBy'] as String? ?? '',
+        churchId: churchId,
+        kind: ActivityNotice.devotion,
+        postId: id,
+        postTitle: post.data()?['title'] as String? ?? '',
+        actorName: _auth.displayName,
+        comment: false,
+      );
+    }
+    await batch.commit();
+  }
 
   /// [id]가 null이면 새로 만들고, 있으면 고친다.
   Future<void> save(

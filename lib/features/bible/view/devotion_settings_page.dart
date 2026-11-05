@@ -32,7 +32,6 @@ class DevotionSettingsPage extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const PageTitle(title: '말씀묵상 설정'),
               FutureBuilder<DevotionSettings>(
                 future: vm.loaded,
                 builder: (context, snap) {

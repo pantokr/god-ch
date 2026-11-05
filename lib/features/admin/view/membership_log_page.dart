@@ -33,7 +33,6 @@ class MembershipLogPage extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const PageTitle(title: '입장 · 탈퇴 기록'),
               AppSearchField(
                 inset: true,
                 hint: '이름, 아이디 검색',

@@ -6,6 +6,7 @@ class TextEntry {
     this.createdAt, {
     this.authorId = '',
     this.authorName = '',
+    this.edited = false,
   });
 
   final String id;
@@ -16,5 +17,8 @@ class TextEntry {
   /// 쓴 사람의 이름 (댓글만 있다. 이름을 남기기 전의 댓글은 비어 있다).
   final String authorName;
   final String content;
+
+  /// 쓴 뒤에 고친 댓글인가.
+  final bool edited;
   final DateTime? createdAt;
 }

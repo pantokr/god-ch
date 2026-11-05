@@ -32,7 +32,6 @@ class MeetingSettingsPage extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const PageTitle(title: '모임 일정 설정'),
               FutureBuilder<MeetingSettings>(
                 future: vm.loaded,
                 builder: (context, snap) {

@@ -74,12 +74,11 @@ class AffiliationManagePage extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              PageTitle(title: '소속 관리'),
               // 제목 옆이 아니라 다음 줄에 둔다.
               // 소속을 만들고 고치는 것은 앱을 고치는 일이라 교회 관리자만 한다 (교역자는 조회와 인원 배치).
               if (me.can(Permission.affiliationCreate)) ...[
                 Align(
-                  alignment: Alignment.centerLeft,
+                  alignment: Alignment.centerRight,
                   child: FilledButton.icon(
                     onPressed: () => _edit(context, vm),
                     icon: const Icon(AppIcons.plus, size: 18),

@@ -28,7 +28,6 @@ class PrayerSettingsPage extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const PageTitle(title: '중보기도 설정'),
               FutureBuilder<PrayerSettings>(
                 future: vm.loaded,
                 builder: (context, snap) {

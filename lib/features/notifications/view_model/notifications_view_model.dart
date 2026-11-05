@@ -16,5 +16,6 @@ class NotificationsViewModel extends ViewModel {
   Future<bool> markAllRead(List<AppNotification> items) =>
       run(() => _repository.markAllRead(items));
 
-  Future<bool> delete(AppNotification n) => run(() => _repository.delete(n.id));
+  Future<bool> deleteMany(Iterable<String> ids) =>
+      run(() => _repository.deleteMany(ids));
 }

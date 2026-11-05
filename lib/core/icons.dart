@@ -16,6 +16,7 @@ class AppIcons {
   static const IconData calendar = LucideIcons.calendarDays;
   static const IconData cake = LucideIcons.cake;
   static const IconData calendarBlank = LucideIcons.calendar;
+  static const IconData clock = LucideIcons.clock;
   static const IconData caretDown = LucideIcons.chevronDown;
   static const IconData caretRight = LucideIcons.chevronRight;
   static const IconData caretLeft = LucideIcons.chevronLeft;
@@ -36,6 +37,8 @@ class AppIcons {
   static const IconData listView = LucideIcons.list;
   static const IconData gridView = LucideIcons.layoutGrid;
   static const IconData info = LucideIcons.info;
+  static const IconData wallet = LucideIcons.wallet;
+  static const IconData userCheck = LucideIcons.userCheck;
   static const IconData history = LucideIcons.history;
   static const IconData star = LucideIcons.star;
   static const IconData flame = LucideIcons.flame;
@@ -53,6 +56,7 @@ class AppIcons {
   static const IconData messageCircle = LucideIcons.messageCircle;
   static const IconData envelopeSimple = LucideIcons.mail;
   static const IconData fileArrowUp = LucideIcons.fileUp;
+  static const IconData languages = LucideIcons.languages;
   static const IconData globe = LucideIcons.globe;
   static const IconData globeHemisphereEast = LucideIcons.globe;
   static const IconData googleLogo = LucideIcons.logIn;

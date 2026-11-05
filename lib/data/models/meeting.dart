@@ -17,6 +17,9 @@ class Meeting {
     required this.leaderName,
     this.imageUrl = '',
     this.participantIds = const [],
+    this.pendingIds = const [],
+    this.fee = 0,
+    this.needsApproval = false,
     this.likedBy = const [],
     this.views = 0,
     this.deleted = false,
@@ -28,6 +31,9 @@ class Meeting {
   static const maxDescription = 2000;
   static const maxPlace = 8;
   static const maxCapacity = 200;
+
+  /// 회비 상한 (원, `firestore.rules`와 같아야 한다).
+  static const maxFee = 10000000;
 
   final String id;
   final String title;
@@ -45,6 +51,15 @@ class Meeting {
   /// 카드에 보이는 썸네일 주소. 없으면 빈 글자.
   final String imageUrl;
   final List<String> participantIds;
+
+  /// 모임장의 승인을 기다리는 참여 신청자 (uid). 입장 조건이 모임장 승인일 때만 쓴다.
+  final List<String> pendingIds;
+
+  /// 회비 (원). 0이면 무료.
+  final int fee;
+
+  /// 입장 조건: true이면 참여 신청을 모임장이 승인해야 참여자가 된다.
+  final bool needsApproval;
   final List<String> likedBy;
   final int views;
   final bool deleted;
@@ -63,6 +78,11 @@ class Meeting {
 
   bool joinedBy(String uid) => participantIds.contains(uid);
 
+  /// 승인을 기다리는 중인가.
+  bool pendingBy(String uid) => pendingIds.contains(uid);
+
+  bool get isFree => fee <= 0;
+
   bool likedByUser(String uid) => likedBy.contains(uid);
 
   factory Meeting.fromDoc(DocumentSnapshot<Json> doc) {
@@ -80,6 +100,9 @@ class Meeting {
       participantIds: List<String>.from(
         d['participantIds'] as List? ?? const [],
       ),
+      pendingIds: List<String>.from(d['pendingIds'] as List? ?? const []),
+      fee: (d['fee'] as num?)?.toInt() ?? 0,
+      needsApproval: d['needsApproval'] == true,
       likedBy: List<String>.from(d['likedBy'] as List? ?? const []),
       views: (d['views'] as num?)?.toInt() ?? 0,
       deleted: d['deleted'] == true,

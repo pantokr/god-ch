@@ -12,6 +12,7 @@ class DevotionReflection {
     required this.text,
     this.updatedAt,
     this.deleted = false,
+    this.editedAt,
   });
 
   /// 댓글 문서 ID.
@@ -28,6 +29,9 @@ class DevotionReflection {
   /// 지워진 글인가 (지우지 않고 표시만 남긴다).
   final bool deleted;
 
+  /// 고친 시각 (고친 적이 없으면 null).
+  final DateTime? editedAt;
+
   /// 글 길이 제한. `firestore.rules`의 제한과 같아야 한다.
   static const maxLength = 1000;
 
@@ -40,6 +44,7 @@ class DevotionReflection {
       text: d['text'] as String? ?? '',
       updatedAt: toDate(d['updatedAt']),
       deleted: d['deleted'] == true,
+      editedAt: toDate(d['editedAt']),
     );
   }
 }

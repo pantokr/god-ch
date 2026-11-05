@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/widgets/comment_edit_dialog.dart';
 import '../../../core/widgets/toast.dart';
 import '../../../core/widgets/trash_icon.dart';
 import '../../../core/format.dart';
+import '../../../core/icons.dart';
 import '../../../core/theme.dart';
 import '../../../data/models/text_entry.dart';
 
@@ -18,6 +20,9 @@ class EntrySection extends StatefulWidget {
     required this.errorOf,
     this.canDelete,
     this.onDelete,
+    this.canEdit,
+    this.onEdit,
+    this.maxLength = 500,
   });
 
   final String title;
@@ -31,6 +36,11 @@ class EntrySection extends StatefulWidget {
   /// 이 항목을 지울 수 있는가 (없으면 지우기 버튼이 없다).
   final bool Function(TextEntry entry)? canDelete;
   final Future<bool> Function(TextEntry entry)? onDelete;
+
+  /// 이 항목을 고칠 수 있는가 (없으면 수정 버튼이 없다). 고친 내용 저장에 성공하면 true를 돌려준다.
+  final bool Function(TextEntry entry)? canEdit;
+  final Future<bool> Function(TextEntry entry, String text)? onEdit;
+  final int maxLength;
 
   /// 마지막 전송 실패 이유.
   final String? Function() errorOf;
@@ -58,6 +68,21 @@ class _EntrySectionState extends State<EntrySection> {
     } else {
       messenger.showSnackBar(
         SnackBar(content: Text('전송하지 못했습니다: ${widget.errorOf()}')),
+      );
+    }
+  }
+
+  Future<void> _edit(TextEntry e) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final text = await showEditComment(
+      context,
+      initial: e.content,
+      maxLength: widget.maxLength,
+    );
+    if (text == null) return;
+    if (!(await widget.onEdit?.call(e, text) ?? false)) {
+      messenger.showSnackBar(
+        SnackBar(content: Text('수정하지 못했습니다: ${widget.errorOf()}')),
       );
     }
   }
@@ -107,10 +132,6 @@ class _EntrySectionState extends State<EntrySection> {
                         ],
                       ),
                     ],
-                    if (items.isEmpty) ...[
-                      const SizedBox(height: 12),
-                      Text('아직 없습니다.', style: TextStyle(color: palette.muted)),
-                    ],
                   ],
                 ),
               ),
@@ -134,6 +155,7 @@ class _EntrySectionState extends State<EntrySection> {
                                 [
                                   if (e.authorName.isNotEmpty) e.authorName,
                                   fmtDateTime(e.createdAt),
+                                  if (e.edited) '수정됨',
                                 ].join(' · '),
                                 style: TextStyle(
                                   color: palette.muted,
@@ -145,6 +167,13 @@ class _EntrySectionState extends State<EntrySection> {
                             ],
                           ),
                         ),
+                        if (widget.canEdit?.call(e) ?? false)
+                          IconButton(
+                            tooltip: '수정',
+                            visualDensity: VisualDensity.compact,
+                            icon: const Icon(AppIcons.pencilSimple, size: 18),
+                            onPressed: () => _edit(e),
+                          ),
                         if (widget.canDelete?.call(e) ?? false)
                           IconButton(
                             tooltip: '지우기',

@@ -24,6 +24,8 @@ import '../../../data/models/permission.dart';
 import '../../../data/models/prayer_settings.dart';
 import '../../bible/view/bible_page.dart' show DevotionCard;
 import '../../meetings/view/meeting_format.dart';
+import '../../meetings/view/meetings_page.dart'
+    show DDayBadge, MeetingInfoLine, SeatBadge;
 import '../../meetings/view_model/my_meetings_view_model.dart';
 import '../../prayers/view/prayer_board_page.dart' show PrayerTile;
 import '../view_model/my_posts_view_model.dart';
@@ -64,7 +66,7 @@ class _MySchedule extends StatelessWidget {
   final Member me;
 
   static const _cardWidth = 232.0;
-  static const _height = 214.0;
+  static const _height = 222.0;
 
   @override
   Widget build(BuildContext context) {
@@ -173,18 +175,39 @@ class _SlideCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              // 썸네일 안쪽 왼쪽 위에 남은 자리와 D-N 배지.
               SizedBox(
                 height: 108,
-                child: ClipRRect(
-                  borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(AppRadius.card),
-                  ),
-                  child: MeetingThumb(m),
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    ClipRRect(
+                      borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(AppRadius.card),
+                      ),
+                      child: MeetingThumb(m),
+                    ),
+                    Positioned(
+                      left: 6,
+                      top: 6,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          SeatBadge(meeting: m),
+                          if (dday != null) ...[
+                            const SizedBox(width: 4),
+                            DDayBadge(label: dday),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
               ),
               Padding(
                 padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
                 child: Column(
+                  mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
@@ -197,23 +220,16 @@ class _SlideCard extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 4),
-                    Text(
-                      meetingLine(m.date, m.place),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(color: palette.muted, fontSize: 12.5),
+                    MeetingInfoLine(
+                      AppIcons.calendarDays,
+                      meetingDayTime(m.date),
                     ),
-                    if (dday != null) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        dday,
-                        style: const TextStyle(
-                          color: Color(0xFFD7261E),
-                          fontSize: 12.5,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
+                    if (m.place.isNotEmpty) ...[
+                      const SizedBox(height: 2),
+                      MeetingInfoLine(AppIcons.mapPin, m.place),
                     ],
+                    const SizedBox(height: 2),
+                    MeetingInfoLine(AppIcons.wallet, meetingFee(m)),
                   ],
                 ),
               ),

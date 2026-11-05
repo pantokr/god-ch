@@ -98,6 +98,15 @@ class PrayerDetailViewModel extends ViewModel {
   bool canDeleteComment(TextEntry e) =>
       e.authorId == me.id || me.can(Permission.prayerCommentDeleteOthers);
 
+  /// 내 댓글을 고칠 수 있는가: 본인 댓글이고 댓글을 쓸 수 있을 때.
+  bool canEditComment(TextEntry e) =>
+      e.authorId == me.id && me.canPrayerComment && settings.allowComments;
+
+  Future<bool> editComment(Prayer p, TextEntry e, String text) => run(
+    () => _prayers.editComment(me.churchId, p.id, e.id, text),
+    blocking: false,
+  );
+
   Future<bool> deleteComment(Prayer p, TextEntry e) => run(
     () => _prayers.deleteComment(me.churchId, p.id, e.id),
     blocking: false,

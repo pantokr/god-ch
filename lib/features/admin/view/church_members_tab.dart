@@ -46,7 +46,6 @@ class _ChurchMembersTabState extends State<ChurchMembersTab> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const PageTitle(title: '회원 관리'),
               AppSearchField(
                 inset: true,
                 hint: '이름, 아이디, 전화번호 검색',

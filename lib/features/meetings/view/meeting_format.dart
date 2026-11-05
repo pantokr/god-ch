@@ -49,7 +49,17 @@ String? meetingDDay(DateTime d, {DateTime? now}) {
 }
 
 /// 카드에 쓰는 짧은 줄: "11/06 서대문". D-N은 남은 자리 배지 옆에 따로 보인다.
+String meetingDayTime(DateTime d) {
+  String two(int n) => n.toString().padLeft(2, '0');
+  return '${meetingDay(d)} ${two(d.hour)}:${two(d.minute)}';
+}
+
 String meetingLine(DateTime d, String place) {
   final day = meetingDay(d);
   return place.isEmpty ? day : '$day $place';
 }
+
+/// 회비 표시: "무료" 또는 "12,000원".
+String meetingFee(Meeting m) => m.isFree
+    ? '무료'
+    : '${m.fee.toString().replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (_) => ',')}원';

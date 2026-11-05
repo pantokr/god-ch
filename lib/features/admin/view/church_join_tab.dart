@@ -20,7 +20,6 @@ class ChurchJoinTab extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const PageTitle(title: '입장 관리'),
             // 앱 설정(노출 · 입장 시 필수 정보)은 교회 관리자만 고친다. 초대 코드는 교역자도 만든다.
             if (me.isAdmin) ...[
               ChurchVisibilityCard(me: me),

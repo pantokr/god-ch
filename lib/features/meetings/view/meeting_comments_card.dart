@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../people/view/person_popup.dart';
 
 import '../../../app/app_scope.dart';
+import '../../../core/widgets/comment_edit_dialog.dart';
 import '../../../core/widgets/toast.dart';
 import '../../../core/widgets/trash_icon.dart';
 import '../../../core/format.dart';
@@ -154,9 +155,6 @@ class _MeetingCommentsCardState extends State<MeetingCommentsCard> {
                           '불러오지 못했습니다',
                           style: TextStyle(color: palette.muted),
                         ),
-                      ] else if (nodes.isEmpty) ...[
-                        const SizedBox(height: 12),
-                        Text('댓글 없음', style: TextStyle(color: palette.muted)),
                       ],
                     ],
                   ),
@@ -188,6 +186,18 @@ class _MeetingCommentsCardState extends State<MeetingCommentsCard> {
                         if (context.mounted) showAddedToast(context);
                       }
                       return ok;
+                    },
+                    canEdit:
+                        widget.canWrite &&
+                        !me.isOperatorView &&
+                        n.comment.authorId == me.id,
+                    onEdit: () async {
+                      final text = await showEditComment(
+                        context,
+                        initial: n.comment.text,
+                        maxLength: MeetingComment.maxLength,
+                      );
+                      if (text != null) await vm.edit(n.comment, text);
                     },
                     onDelete: () => vm.delete(n.comment),
                   ),
@@ -221,6 +231,8 @@ class _CommentCard extends StatelessWidget {
     required this.onReplyToggle,
     required this.onReply,
     required this.onDelete,
+    required this.canEdit,
+    required this.onEdit,
   });
 
   final _Node node;
@@ -231,6 +243,8 @@ class _CommentCard extends StatelessWidget {
   final VoidCallback onReplyToggle;
   final Future<bool> Function(String text) onReply;
   final VoidCallback onDelete;
+  final bool canEdit;
+  final VoidCallback onEdit;
 
   @override
   Widget build(BuildContext context) {
@@ -275,6 +289,13 @@ class _CommentCard extends StatelessWidget {
                     fmtDateTime(c.createdAt),
                     style: TextStyle(color: palette.muted, fontSize: 12),
                   ),
+                  if (c.editedAt != null) ...[
+                    const SizedBox(width: 6),
+                    Text(
+                      '수정됨',
+                      style: TextStyle(color: palette.muted, fontSize: 12),
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -296,6 +317,13 @@ class _CommentCard extends StatelessWidget {
                     child: Text(replying ? '답글 취소' : '답글'),
                   ),
                 const Spacer(),
+                if (canEdit)
+                  IconButton(
+                    tooltip: '수정',
+                    visualDensity: VisualDensity.compact,
+                    icon: const Icon(AppIcons.pencilSimple, size: 18),
+                    onPressed: busy ? null : onEdit,
+                  ),
                 if (canDelete)
                   IconButton(
                     tooltip: '지우기',
