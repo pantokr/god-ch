@@ -120,7 +120,8 @@ class MyChurchesBody extends StatelessWidget {
               const _NoChurchNotice(),
             const SizedBox(height: 24),
             _Actions(centered: !hasChurch),
-            if (others.isNotEmpty || requests.isNotEmpty) ...[
+            // 교회가 없는 사람에게는 신청한 교회가 없어도 칸을 보여 준다.
+            if (!hasChurch || others.isNotEmpty || requests.isNotEmpty) ...[
               const SizedBox(height: 40),
               _ApplicationStatus(others: others, requests: requests),
             ],
@@ -195,7 +196,7 @@ class _NoChurchNotice extends StatelessWidget {
             Icon(AppIcons.church, size: 64, color: context.palette.muted),
             const SizedBox(height: 24),
             Text(
-              '소속된 교회가 없습니다.',
+              '소속 교회 없음',
               textAlign: TextAlign.center,
               style: theme.textTheme.displaySmall?.copyWith(
                 fontWeight: FontWeight.w800,
@@ -251,18 +252,31 @@ class _ApplicationStatus extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Gutter(
-          child: Text('신청 현황', style: Theme.of(context).textTheme.titleMedium),
+          child: Text(
+            '입장 신청한 교회 (${rows.length})',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
         ),
         const SizedBox(height: 8),
         Card(
-          child: Column(
-            children: [
-              for (var i = 0; i < rows.length; i++) ...[
-                if (i > 0) const Divider(),
-                rows[i],
-              ],
-            ],
-          ),
+          child: rows.isEmpty
+              ? Padding(
+                  padding: const EdgeInsets.all(32),
+                  child: Center(
+                    child: Text(
+                      '신청한 교회가 없어요.',
+                      style: TextStyle(color: context.palette.muted),
+                    ),
+                  ),
+                )
+              : Column(
+                  children: [
+                    for (var i = 0; i < rows.length; i++) ...[
+                      if (i > 0) const Divider(),
+                      rows[i],
+                    ],
+                  ],
+                ),
         ),
       ],
     );

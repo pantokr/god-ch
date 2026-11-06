@@ -91,6 +91,9 @@ class Routes {
   // 회원
   static const churches = '/churches';
 
+  /// 알림 (페이지 스택에 쌓인다: 알림에서 이동한 화면에서 뒤로가기하면 알림으로 돌아온다).
+  static const notifications = '/notifications';
+
   /// 내 교회 목록을 일부러 열 때의 주소. 이 주소가 아닌 `/churches`는 소속 교회가 있으면
   /// 바로 그 교회의 메인으로 넘어간다.
   static const churchList = '/churches?list=1';

@@ -12,6 +12,7 @@ import '../../../core/widgets/sort_pad.dart';
 import '../../../data/models/affiliation.dart';
 import '../../../data/models/meeting.dart';
 import '../../../data/models/member.dart';
+import '../../../data/models/permission.dart';
 import '../../../data/models/person_card.dart';
 import '../../people/view/person_avatar.dart';
 import '../../people/view/person_popup.dart';
@@ -72,9 +73,18 @@ class _MeetingParticipantsPageState extends State<MeetingParticipantsPage> {
         stream: vm.meeting,
         builder: (context, snap) {
           final m = snap.data;
-          final allowed =
+          // 참여자 목록은 조회 권한이, 승인 대기는 승인 권한(모임장 포함)이 있어야 본다.
+          final canView =
               m != null &&
-              (m.leaderId == me.id || me.isAdmin || me.isOperatorView);
+              (m.leaderId == me.id ||
+                  me.isOperatorView ||
+                  me.can(Permission.meetingViewParticipants));
+          final canApprove =
+              m != null &&
+              (m.leaderId == me.id ||
+                  me.isOperatorView ||
+                  me.can(Permission.meetingApprove));
+          final allowed = canView || canApprove;
           return SubPage(
             title: '참여자',
             fallbackLocation: back,
@@ -95,11 +105,13 @@ class _MeetingParticipantsPageState extends State<MeetingParticipantsPage> {
                         context,
                         vm,
                         m,
-                        {
+                        canView: canView,
+                        canApprove: canApprove,
+                        cards: {
                           for (final p in people.data ?? const <PersonCard>[])
                             p.id: p,
                         },
-                        {
+                        affiliationNames: {
                           for (final a in affs.data ?? const <Affiliation>[])
                             a.id: a.name,
                         },
@@ -115,10 +127,12 @@ class _MeetingParticipantsPageState extends State<MeetingParticipantsPage> {
   Widget _body(
     BuildContext context,
     MeetingDetailViewModel vm,
-    Meeting m,
-    Map<String, PersonCard> cards,
-    Map<String, String> affiliationNames,
-  ) {
+    Meeting m, {
+    required bool canView,
+    required bool canApprove,
+    required Map<String, PersonCard> cards,
+    required Map<String, String> affiliationNames,
+  }) {
     final q = _query.toLowerCase();
     // 신청순은 participantIds에 쌓인 순서다.
     final order = {
@@ -147,56 +161,91 @@ class _MeetingParticipantsPageState extends State<MeetingParticipantsPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        AppSearchField(
-          hint: '이름, 직급 검색',
-          onChanged: (v) => setState(() => _query = v.trim()),
-        ),
-        const SizedBox(height: 12),
-        Card(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              SortStrip(
-                inBox: true,
-                leading: Text(
-                  '참여자 (${m.participantIds.length})',
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-                options: [
-                  for (final s in _ParticipantSort.values)
-                    PadOption(
-                      s.label,
-                      selected: _sort == s,
-                      onTap: () => setState(() => _sort = s),
-                    ),
-                ],
-              ),
-              const Divider(height: 1),
-              if (rows.isEmpty)
+        // 승인 대기: 이 페이지에서 모두 처리한다 (일정 화면에는 앞의 몇 명만 보인다).
+        if (canApprove && m.pendingIds.isNotEmpty) ...[
+          Card(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
                 Padding(
-                  padding: const EdgeInsets.all(40),
-                  child: Center(
-                    child: Text(
-                      '해당하는 참여자가 없어요.',
-                      style: TextStyle(color: context.palette.muted),
-                    ),
+                  padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
+                  child: Text(
+                    '승인 대기 (${m.pendingIds.length})',
+                    style: Theme.of(context).textTheme.titleMedium,
                   ),
-                )
-              else
-                for (var i = 0; i < rows.length; i++) ...[
-                  if (i > 0) const Divider(height: 1),
-                  _Row(
+                ),
+                for (final id in m.pendingIds) ...[
+                  const Divider(height: 1),
+                  _PendingRow(
                     me: me,
                     meeting: m,
                     vm: vm,
-                    uid: rows[i],
-                    card: cards[rows[i]],
-                    affiliationNames: affiliationNames,
+                    uid: id,
+                    card: cards[id],
                   ),
                 ],
-            ],
+              ],
+            ),
           ),
-        ),
+          const SizedBox(height: 12),
+        ],
+        if (canView) ...[
+          AppSearchField(
+            inset: true,
+            hint: '이름, 직급 검색',
+            onChanged: (v) => setState(() => _query = v.trim()),
+          ),
+          const SizedBox(height: 12),
+          Card(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                SortStrip(
+                  inBox: true,
+                  leading: Text(
+                    '참여자 (${m.participantIds.length})',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  options: [
+                    for (final s in _ParticipantSort.values)
+                      PadOption(
+                        s.label,
+                        selected: _sort == s,
+                        onTap: () => setState(() => _sort = s),
+                      ),
+                  ],
+                ),
+                const Divider(height: 1),
+                if (rows.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.all(40),
+                    child: Center(
+                      child: Text(
+                        '해당하는 참여자가 없어요.',
+                        style: TextStyle(color: context.palette.muted),
+                      ),
+                    ),
+                  )
+                else
+                  for (var i = 0; i < rows.length; i++) ...[
+                    if (i > 0) const Divider(height: 1),
+                    _Row(
+                      me: me,
+                      meeting: m,
+                      vm: vm,
+                      uid: rows[i],
+                      card: cards[rows[i]],
+                      affiliationNames: affiliationNames,
+                      canKick:
+                          m.leaderId == me.id ||
+                          me.isOperatorView ||
+                          me.can(Permission.meetingKick),
+                    ),
+                  ],
+              ],
+            ),
+          ),
+        ],
         if (vm.error != null)
           Padding(
             padding: const EdgeInsets.only(top: 8),
@@ -219,6 +268,7 @@ class _Row extends StatelessWidget {
     required this.uid,
     required this.card,
     required this.affiliationNames,
+    required this.canKick,
   });
 
   final Member me;
@@ -227,14 +277,15 @@ class _Row extends StatelessWidget {
   final String uid;
   final PersonCard? card;
   final Map<String, String> affiliationNames;
+  final bool canKick;
 
   @override
   Widget build(BuildContext context) {
     final name = card?.name ?? '';
     final position = card?.positionName ?? '';
     final isLeader = uid == meeting.leaderId;
-    // 모임장 · 직급(없으면 역할) · 소속.
-    final info = [
+    // 직급 줄(모임장 · 직급, 없으면 역할)과 소속 줄이 따로다.
+    final roleLine = [
       if (isLeader) '모임장',
       if (position.isNotEmpty)
         position
@@ -244,12 +295,20 @@ class _Row extends StatelessWidget {
           Role.staff => '교역자',
           Role.member => '교인',
         },
+    ];
+    final affiliationLine = [
       for (final id in card?.affiliationIds ?? const <String>[])
         if (affiliationNames[id] != null) affiliationNames[id]!,
     ];
+    Widget sub(String text) => Text(
+      text,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: TextStyle(color: context.palette.muted, fontSize: 12.5),
+    );
     // 버튼이 있든 없든 줄 높이가 같도록 고정한다.
     return SizedBox(
-      height: 64,
+      height: 72,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16),
         child: Row(
@@ -269,6 +328,7 @@ class _Row extends StatelessWidget {
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
                     name.isEmpty ? '이름 없음' : name,
@@ -276,20 +336,13 @@ class _Row extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(fontWeight: FontWeight.w600),
                   ),
-                  if (info.isNotEmpty)
-                    Text(
-                      info.join(' · '),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: context.palette.muted,
-                        fontSize: 12.5,
-                      ),
-                    ),
+                  if (roleLine.isNotEmpty) sub(roleLine.join(' · ')),
+                  if (affiliationLine.isNotEmpty)
+                    sub(affiliationLine.join(', ')),
                 ],
               ),
             ),
-            if (!isLeader && !meeting.ended)
+            if (canKick && !isLeader && !meeting.ended)
               TextButton(
                 onPressed: vm.busy
                     ? null
@@ -307,6 +360,71 @@ class _Row extends StatelessWidget {
                 ),
                 child: const Text('내보내기'),
               ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// 승인 대기 한 줄: 이름과 역할, 거절 · 승인 버튼.
+class _PendingRow extends StatelessWidget {
+  const _PendingRow({
+    required this.me,
+    required this.meeting,
+    required this.vm,
+    required this.uid,
+    required this.card,
+  });
+
+  final Member me;
+  final Meeting meeting;
+  final MeetingDetailViewModel vm;
+  final String uid;
+  final PersonCard? card;
+
+  @override
+  Widget build(BuildContext context) {
+    final name = card?.name ?? '';
+    final palette = context.palette;
+    return SizedBox(
+      height: 64,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: Row(
+          children: [
+            PersonTap(
+              churchId: me.churchId,
+              uid: uid,
+              name: name,
+              child: PersonAvatar(
+                churchId: me.churchId,
+                uid: uid,
+                name: name.isEmpty ? '?' : name,
+                radius: 18,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                name.isEmpty ? '이름 없음' : name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontWeight: FontWeight.w600),
+              ),
+            ),
+            TextButton(
+              onPressed: vm.busy ? null : () => vm.reject(meeting, uid),
+              style: TextButton.styleFrom(foregroundColor: palette.muted),
+              child: const Text('거절'),
+            ),
+            FilledButton(
+              // 정원이 찼으면 승인할 수 없다.
+              onPressed: vm.busy || meeting.isFull
+                  ? null
+                  : () => vm.approve(meeting, uid),
+              child: const Text('승인'),
+            ),
           ],
         ),
       ),

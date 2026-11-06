@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../theme.dart';
 
-/// 목록 줄 가장자리에 세로로 놓는 숫자 표시: 조회수 · 좋아요 (선택: 참여 인원).
+/// 목록 줄 가장자리에 놓는 숫자 표시: 조회수 · 좋아요 · 댓글 수([comments]를 주면).
 /// [liked]이면 하트가 채워진다. 숫자는 천 단위로 줄여 보인다.
 class StatIcons extends StatelessWidget {
   const StatIcons({
@@ -16,7 +16,11 @@ class StatIcons extends StatelessWidget {
     this.showViews = true,
     this.showLikeCount = true,
     this.horizontal = false,
+    this.comments,
   });
+
+  /// 댓글 수. 없으면(null) 댓글 표시를 두지 않는다.
+  final int? comments;
 
   /// 조회수를 보여 주는가 (교회 설정). 끄면 좋아요만 나온다.
   final bool showViews;
@@ -68,6 +72,10 @@ class StatIcons extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           heart,
+          if (comments != null) ...[
+            const SizedBox(width: 12),
+            item(AppIcons.messageCircle, comments!),
+          ],
           if (showViews) ...[
             const SizedBox(width: 12),
             item(AppIcons.eyeCount, views),
@@ -81,6 +89,10 @@ class StatIcons extends StatelessWidget {
       children: [
         if (showViews) ...[
           item(AppIcons.eyeCount, views),
+          const SizedBox(height: 8),
+        ],
+        if (comments != null) ...[
+          item(AppIcons.messageCircle, comments!),
           const SizedBox(height: 8),
         ],
         item(

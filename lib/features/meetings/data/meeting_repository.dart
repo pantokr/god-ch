@@ -125,6 +125,7 @@ class MeetingRepository {
     int fee = 0,
     bool needsApproval = false,
     String imageUrl = '',
+    String? affiliationId,
   }) {
     final t = _check(title, description, place, capacity, fee);
     return _col(churchId).add({
@@ -144,6 +145,7 @@ class MeetingRepository {
       'views': 0,
       'deleted': false,
       'createdAt': FieldValue.serverTimestamp(),
+      'affiliationId': affiliationId,
     });
   }
 
@@ -159,6 +161,7 @@ class MeetingRepository {
     int fee = 0,
     bool needsApproval = false,
     String imageUrl = '',
+    String? affiliationId,
   }) {
     final t = _check(title, description, place, capacity, fee);
     if (capacity < m.joined) {
@@ -173,6 +176,7 @@ class MeetingRepository {
       'capacity': capacity,
       'fee': fee,
       'needsApproval': needsApproval,
+      'affiliationId': affiliationId,
       'updatedAt': FieldValue.serverTimestamp(),
     });
   }
@@ -338,18 +342,61 @@ class MeetingRepository {
     'createdAt': FieldValue.serverTimestamp(),
   };
 
-  /// 모임장이 승인 대기 중인 신청을 승인한다 (참여자로 옮긴다). 정원이 차면 규칙이 거부한다.
-  Future<void> approve(String churchId, Meeting m, String uid) =>
-      _col(churchId).doc(m.id).update({
-        'participantIds': FieldValue.arrayUnion([uid]),
-        'pendingIds': FieldValue.arrayRemove([uid]),
-      });
+  /// 신청한 사람에게 보낼 "승인 · 거절" 알림 문서. 눌러서 그 모임을 열 수 있다.
+  static Map<String, dynamic> decisionNotification({
+    required String churchId,
+    required Meeting meeting,
+    required bool approved,
+  }) => {
+    'type':
+        (approved
+                ? NotificationType.meetingApproved
+                : NotificationType.meetingRejected)
+            .name,
+    'title': approved ? '참여 승인 · ${meeting.title}' : '참여 거절 · ${meeting.title}',
+    'body': approved ? '참여 신청이 승인되었어요.' : '참여 신청이 거절되었어요.',
+    'read': false,
+    'churchId': churchId,
+    'meetingId': meeting.id,
+    'createdAt': FieldValue.serverTimestamp(),
+  };
 
-  /// 모임장이 승인 대기 중인 신청을 거절한다.
-  Future<void> reject(String churchId, Meeting m, String uid) =>
-      _col(churchId).doc(m.id).update({
+  Future<void> _decide(
+    String churchId,
+    Meeting m,
+    String uid, {
+    required bool approved,
+  }) {
+    final doc = _col(churchId).doc(m.id);
+    final batch = _paths.db.batch()
+      ..update(doc, {
+        if (approved) 'participantIds': FieldValue.arrayUnion([uid]),
         'pendingIds': FieldValue.arrayRemove([uid]),
-      });
+      })
+      // 신청한 사람에게 알린다 (같은 묶음이라 처리와 알림이 함께 되거나 함께 안 된다).
+      ..set(
+        _paths.db
+            .collection('users')
+            .doc(uid)
+            .collection('notifications')
+            .doc(),
+        decisionNotification(
+          churchId: churchId,
+          meeting: m,
+          approved: approved,
+        ),
+      );
+    return batch.commit();
+  }
+
+  /// 모임장 · 승인 권한이 있는 사람이 승인 대기 중인 신청을 승인한다 (참여자로 옮기고 신청자에게 알린다).
+  /// 정원이 차면 규칙이 거부한다.
+  Future<void> approve(String churchId, Meeting m, String uid) =>
+      _decide(churchId, m, uid, approved: true);
+
+  /// 승인 대기 중인 신청을 거절한다 (신청자에게 알린다).
+  Future<void> reject(String churchId, Meeting m, String uid) =>
+      _decide(churchId, m, uid, approved: false);
 
   /// 모임장 · 교회 운영자가 참여자를 내보낸다.
   Future<void> kick(String churchId, Meeting m, String uid) =>

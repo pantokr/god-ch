@@ -209,7 +209,7 @@ class _ScopePicker extends StatelessWidget {
           return Padding(
             padding: const EdgeInsets.only(bottom: 12),
             child: LabeledField(
-              label: '소속',
+              label: '공개 범위',
               child: DropdownButtonFormField<String?>(
                 initialValue: chosen ? vm.affiliationId : mine.first.id,
                 decoration: const InputDecoration(),
@@ -238,7 +238,7 @@ class _VisibilityPicker extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         ChoiceRow<PrayerVisibility>(
-          label: '공개 범위',
+          label: '공개 여부',
           options: const [
             ChoiceOption(PrayerVisibility.public, '공개'),
             ChoiceOption(PrayerVisibility.private, '교역자 전용'),

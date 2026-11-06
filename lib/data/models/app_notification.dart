@@ -10,6 +10,10 @@ enum NotificationType {
   /// 내가 만든 모임(승인 필요)에 누가 참여를 신청했다.
   meetingJoinRequest,
 
+  /// 내가 신청한 모임에서 승인되었다 · 거절되었다.
+  meetingApproved,
+  meetingRejected,
+
   /// 내 글(기도제목 · 말씀묵상 · 모임)에 누가 댓글을 달았다.
   postComment,
 

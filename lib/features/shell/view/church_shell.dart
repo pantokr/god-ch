@@ -208,18 +208,14 @@ class ChurchShell extends StatelessWidget {
                     if (section == ChurchSection.meetings)
                       NotificationsButton(
                         pendingRequests: pending,
-                        onOpenRequests: () => context.go(
-                          Routes.section(me.churchId, ChurchSection.members),
-                        ),
+                        churchId: me.churchId,
                       ),
                   ],
                 ),
           railActions: [
             NotificationsButton(
               pendingRequests: pending,
-              onOpenRequests: () => context.go(
-                Routes.section(me.churchId, ChurchSection.members),
-              ),
+              churchId: me.churchId,
             ),
           ],
           // 서랍 맨 위: 앱 이름에서 조금 띄워 "내가 속한 교회"를 보여준다.

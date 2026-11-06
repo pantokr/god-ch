@@ -497,14 +497,34 @@ class DevotionCard extends StatelessWidget {
                         case final name?)
                       AffiliationTag(name),
                     const Spacer(),
-                    StatIcons(
-                      horizontal: true,
-                      showViews: settings.showViews,
-                      showLikeCount: settings.showLikeCount,
-                      views: c.views,
-                      likes: c.likes,
-                      liked: c.likedBy.contains(me.id),
-                    ),
+                    // 댓글 수: 댓글이 꺼져 있거나, 비공개이고 교역자가 아니면 읽을 수 없어 뺀다.
+                    if (settings.allowReflections || settings.reflectionsPublic)
+                      StreamBuilder<int>(
+                        stream: settings.reflectionsPublic || me.isStaff
+                            ? AppScope.read(context).reflections
+                                  .count(me.churchId, c.id)
+                            : const Stream<int>.empty(),
+                        builder: (context, n) => StatIcons(
+                          horizontal: true,
+                          showViews: settings.showViews,
+                          showLikeCount: settings.showLikeCount,
+                          views: c.views,
+                          likes: c.likes,
+                          liked: c.likedBy.contains(me.id),
+                          comments: settings.reflectionsPublic || me.isStaff
+                              ? (n.data ?? 0)
+                              : null,
+                        ),
+                      )
+                    else
+                      StatIcons(
+                        horizontal: true,
+                        showViews: settings.showViews,
+                        showLikeCount: settings.showLikeCount,
+                        views: c.views,
+                        likes: c.likes,
+                        liked: c.likedBy.contains(me.id),
+                      ),
                   ],
                 ),
               ),

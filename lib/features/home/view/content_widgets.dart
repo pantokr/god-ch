@@ -2,6 +2,7 @@ import '../../../core/icons.dart';
 
 import 'package:flutter/material.dart';
 
+import '../../../core/storage_url.dart';
 import '../../../core/theme.dart';
 
 /// 주소로 불러오는 이미지. 불러오지 못하면 빈 면을 보여준다.
@@ -20,7 +21,8 @@ class ContentImage extends StatelessWidget {
       ),
     );
     final u = url;
-    if (u == null || u.isEmpty) return placeholder;
+    // Storage의 사진만 쓴다 (외부 · 로컬 주소는 기본 이미지).
+    if (u == null || !isStorageUrl(u)) return placeholder;
     return Image.network(
       u,
       fit: BoxFit.cover,

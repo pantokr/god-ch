@@ -242,6 +242,14 @@ class PrayerRepository {
   Stream<List<TextEntry>> comments(String churchId, String prayerId) =>
       _entries(churchId, prayerId, 'comments');
 
+  /// 지우지 않은 댓글 수 (목록의 댓글 표시).
+  Stream<int> commentCount(String churchId, String prayerId) => _paths
+      .prayers(churchId)
+      .doc(prayerId)
+      .collection('comments')
+      .snapshots()
+      .map((s) => s.docs.where((d) => d.data()['deleted'] != true).length);
+
   Stream<List<TextEntry>> responses(String churchId, String prayerId) =>
       _entries(churchId, prayerId, 'responses');
 

@@ -24,6 +24,7 @@ class Meeting {
     this.views = 0,
     this.deleted = false,
     this.createdAt,
+    this.affiliationId,
   });
 
   /// 글자 수 제한 (`firestore.rules`와 같아야 한다).
@@ -65,6 +66,9 @@ class Meeting {
   final bool deleted;
   final DateTime? createdAt;
 
+  /// 공개 범위: 이 소속의 교인만 참여할 수 있다. null이면 교회 전체.
+  final String? affiliationId;
+
   int get joined => participantIds.length;
   int get likes => likedBy.length;
 
@@ -75,6 +79,12 @@ class Meeting {
 
   /// 이미 지난 모임인가.
   bool get ended => date.isBefore(DateTime.now());
+
+  /// 이 교인이 참여할 수 있는 공개 범위인가 (교역자 이상은 어느 범위든 된다).
+  bool openTo({required bool isStaff, required List<String> affiliationIds}) =>
+      affiliationId == null ||
+      isStaff ||
+      affiliationIds.contains(affiliationId);
 
   bool joinedBy(String uid) => participantIds.contains(uid);
 
@@ -107,6 +117,7 @@ class Meeting {
       views: (d['views'] as num?)?.toInt() ?? 0,
       deleted: d['deleted'] == true,
       createdAt: toDate(d['createdAt']),
+      affiliationId: d['affiliationId'] as String?,
     );
   }
 }

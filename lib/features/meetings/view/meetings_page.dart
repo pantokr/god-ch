@@ -152,7 +152,11 @@ class MeetingsPage extends StatelessWidget {
   }
 
   Future<void> _create(BuildContext context, MeetingsViewModel vm) async {
-    final result = await showMeetingForm(context, upload: vm.uploadImage);
+    final result = await showMeetingForm(
+      context,
+      me: me,
+      upload: vm.uploadImage,
+    );
     if (result == null || !context.mounted) return;
     final messenger = ScaffoldMessenger.of(context);
     final inset = MediaQuery.paddingOf(context).bottom;

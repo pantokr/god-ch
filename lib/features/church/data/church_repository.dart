@@ -15,6 +15,9 @@ import '../../../data/models/profile_field.dart';
 import '../../auth/data/auth_repository.dart';
 import '../../auth/data/profile_repository.dart';
 
+/// 차단된 계정이 입장을 신청할 때의 안내. 화면은 이 문구를 토스트로 보여 준다.
+const blockedChurchMessage = '이 교회에 접근할 수 없어요.';
+
 /// 초대 코드 발급·사용(입장 신청)과 내 소속 교회 목록.
 /// 교회 생성은 [ChurchRequestRepository]가 맡는다.
 class ChurchRepository {
@@ -328,7 +331,7 @@ class ChurchRepository {
     final ref = _paths.members(churchId).doc(_auth.uid);
     final blocked = await _paths.blocked(churchId).doc(_auth.uid).get();
     if (blocked.exists && blocked.data()?['revoked'] != true) {
-      throw const AppException('이 교회에 접근할 수 없어요. 차단된 계정입니다.');
+      throw const AppException(blockedChurchMessage);
     }
     final current = await ref.get();
     // 추방된 사람은 다시 신청할 수 있다 (같은 문서를 새 신청으로 덮는다).

@@ -18,6 +18,7 @@ class AppIcons {
   static const IconData calendarBlank = LucideIcons.calendar;
   static const IconData clock = LucideIcons.clock;
   static const IconData caretDown = LucideIcons.chevronDown;
+  static const IconData moreVertical = LucideIcons.ellipsisVertical;
   static const IconData caretRight = LucideIcons.chevronRight;
   static const IconData caretLeft = LucideIcons.chevronLeft;
   static const IconData caretUpDown = LucideIcons.chevronsUpDown;

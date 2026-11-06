@@ -88,45 +88,40 @@ class DevotionDetailPage extends StatelessWidget {
                   onPressed: () => _delete(context, vm, c, back),
                 ),
             ],
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _VerseCard(
-                  content: c,
-                  churchId: me.churchId,
-                  showAuthor: vm.settings.showAuthor,
-                  showViews: vm.settings.showViews,
-                ),
-                const SizedBox(height: 12),
-                _MeditationCard(content: c),
-                const SizedBox(height: 12),
-                // 작성 정보는 본문과 묵상 다음에 둔다.
-                _AuthorInfoCard(
-                  content: c,
-                  churchId: me.churchId,
-                  showAuthor: vm.settings.showAuthor,
-                  showViews: vm.settings.showViews,
-                ),
-                // 하트 · 조회수 줄은 위 내용과 여유를 둔다.
-                const SizedBox(height: 20),
-                _ReactionCard(
-                  content: c,
-                  me: me,
-                  vm: vm,
-                  settings: vm.settings,
-                ),
-                const SizedBox(height: 12),
-                if (vm.settings.allowReflections ||
-                    vm.settings.reflectionsPublic)
-                  ReflectionsCard(
-                    devotionId: c.id,
-                    me: me,
-                    publicList: vm.settings.reflectionsPublic,
-                    canWrite:
-                        vm.settings.allowReflections &&
-                        me.can(Permission.devotionComment),
+            child: squareCards(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _VerseCard(
+                    content: c,
+                    churchId: me.churchId,
+                    showAuthor: vm.settings.showAuthor,
+                    showViews: vm.settings.showViews,
                   ),
-              ],
+                  const SizedBox(height: 12),
+                  _MeditationCard(content: c),
+                  const SizedBox(height: 12),
+                  // 작성 정보는 본문과 묵상 다음에 둔다. 좋아요 · 조회수도 같은 카드 안에 있다.
+                  _AuthorInfoCard(
+                    content: c,
+                    churchId: me.churchId,
+                    me: me,
+                    vm: vm,
+                    settings: vm.settings,
+                  ),
+                  const SizedBox(height: 12),
+                  if (vm.settings.allowReflections ||
+                      vm.settings.reflectionsPublic)
+                    ReflectionsCard(
+                      devotionId: c.id,
+                      me: me,
+                      publicList: vm.settings.reflectionsPublic,
+                      canWrite:
+                          vm.settings.allowReflections &&
+                          me.can(Permission.devotionComment),
+                    ),
+                ],
+              ),
             ),
           );
         },
@@ -249,7 +244,7 @@ class _VerseCard extends StatelessWidget {
     return DecoratedBox(
       decoration: BoxDecoration(
         color: paper,
-        borderRadius: BorderRadius.circular(AppRadius.panel),
+        borderRadius: BorderRadius.zero,
         border: Border.all(color: edge),
         boxShadow: [
           BoxShadow(
@@ -262,7 +257,7 @@ class _VerseCard extends StatelessWidget {
         ],
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(AppRadius.panel),
+        borderRadius: BorderRadius.zero,
         child: Stack(
           children: [
             // 큰 인용 부호 장식.
@@ -336,80 +331,72 @@ class _VerseCard extends StatelessWidget {
   }
 }
 
-/// 작성 정보 카드: 글쓴이(프로필 · 이름)와 날짜 · 조회수 등. 본문과 묵상 아래에 둔다.
+/// 작성 정보 카드: 글쓴이(프로필 · 이름)와 작성일이 한 줄에 나란히, 그 아래 조회수 · 공개 범위, 맨 아래 좋아요.
+/// 본문과 묵상 아래에 두고, 좋아요 · 조회수도 이 카드 안에 있다.
 class _AuthorInfoCard extends StatelessWidget {
   const _AuthorInfoCard({
     required this.content,
     required this.churchId,
-    this.showAuthor = true,
-    this.showViews = true,
+    required this.me,
+    required this.vm,
+    required this.settings,
   });
 
   final ChurchContent content;
   final String churchId;
-  final bool showViews;
-  final bool showAuthor;
+  final Member me;
+  final DevotionDetailViewModel vm;
+  final DevotionSettings settings;
 
   @override
   Widget build(BuildContext context) {
-    final palette = context.palette;
-    final onColor = palette.ink;
-    return Card(
-      shape: context.edgedCardShape,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (content.authorName.isNotEmpty && showAuthor) ...[
-              Row(
-                children: [
-                  PersonTap(
-                    churchId: churchId,
-                    uid: content.authorId,
-                    name: content.authorName,
-                    photoUrl: content.authorPhotoUrl,
-                    child: ThumbnailAvatar(
-                      name: content.authorName,
-                      url: content.authorPhotoUrl,
-                      radius: 13,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Align(
-                      alignment: Alignment.centerLeft,
-                      child: PersonTap(
-                        churchId: churchId,
-                        uid: content.authorId,
-                        name: content.authorName,
-                        photoUrl: content.authorPhotoUrl,
-                        child: Text(
-                          content.authorName,
-                          style: TextStyle(
-                            color: onColor,
-                            fontWeight: FontWeight.w700,
-                            fontSize: 16,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 4),
-            ],
-            PostMeta(
+    final date = fmtDateAt(content.date, content.createdAt);
+    final showByline = content.authorName.isNotEmpty && settings.showAuthor;
+    final liked = content.likedBy.contains(me.id);
+    final author = showByline
+        ? PostAuthor(
+            avatar: PersonTap(
               churchId: churchId,
-              date: fmtDateAt(content.date, content.createdAt),
-              views: showViews ? content.views : null,
-              isPrivate: content.isPrivate,
-              affiliationId: content.affiliationId,
-              color: onColor.withValues(alpha: 0.8),
+              uid: content.authorId,
+              name: content.authorName,
+              photoUrl: content.authorPhotoUrl,
+              child: ThumbnailAvatar(
+                name: content.authorName,
+                url: content.authorPhotoUrl,
+                radius: PostAuthor.avatarRadius,
+              ),
             ),
-          ],
-        ),
+            name: PersonTap(
+              churchId: churchId,
+              uid: content.authorId,
+              name: content.authorName,
+              photoUrl: content.authorPhotoUrl,
+              child: Text(
+                content.authorName,
+                style: PostAuthor.nameStyle(context),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          )
+        : null;
+    return PostInfoCard(
+      shape: context.edgedCardShape,
+      meta: PostMeta(
+        churchId: churchId,
+        author: author,
+        date: date,
+        views: settings.showViews ? content.views : null,
+        isPrivate: content.isPrivate,
+        affiliationId: content.affiliationId,
       ),
+      footer: settings.allowLikes && me.can(Permission.devotionReact)
+          ? LikeButton(
+              liked: liked,
+              count: content.likes,
+              showCount: settings.showLikeCount,
+              onTap: () => vm.setLike(!liked),
+            )
+          : null,
     );
   }
 }
@@ -427,42 +414,4 @@ class _MeditationCard extends StatelessWidget {
         ? Text('묵상 없음', style: TextStyle(color: context.palette.muted))
         : SelectableText(content.meditation, style: readingStyle(context)),
   );
-}
-
-/// 반응: 좋아요 버튼과 조회수.
-class _ReactionCard extends StatelessWidget {
-  const _ReactionCard({
-    required this.content,
-    required this.me,
-    required this.vm,
-    required this.settings,
-  });
-
-  final ChurchContent content;
-  final Member me;
-  final DevotionDetailViewModel vm;
-  final DevotionSettings settings;
-
-  @override
-  Widget build(BuildContext context) {
-    final liked = content.likedBy.contains(me.id);
-    return Card(
-      shape: context.edgedCardShape,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
-        child: Row(
-          children: [
-            if (settings.allowLikes && me.can(Permission.devotionReact))
-              LikeButton(
-                liked: liked,
-                count: content.likes,
-                showCount: settings.showLikeCount,
-                onTap: () => vm.setLike(!liked),
-              ),
-            const Spacer(),
-          ],
-        ),
-      ),
-    );
-  }
 }

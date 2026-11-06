@@ -58,6 +58,15 @@ class ChurchRegistryViewModel extends ViewModel {
     ),
   );
 
+  /// 교회 한 곳의 실시간 정보 (패널이 폐쇄 · 노출 상태를 바로 보여준다).
+  Stream<Church?> church(String churchId) => _registry.church(churchId);
+
+  Future<bool> setClosed(String churchId, bool closed) =>
+      run(() => _registry.setClosed(churchId, closed));
+
+  Future<bool> setListed(String churchId, bool listed) =>
+      run(() => _registry.setListed(churchId, listed));
+
   /// 썸네일을 올린다. 성공하면 주소, 실패하면 null ([error]에 이유).
   Future<String?> uploadThumbnail(
     String churchId,

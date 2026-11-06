@@ -62,20 +62,23 @@ class _ExitAdSlotState extends State<ExitAdSlot> {
     return SizedBox(
       width: ExitAdSlot.width,
       height: ExitAdSlot.height,
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: palette.brand.withValues(alpha: 0.05),
-          border: Border.all(color: palette.border),
-          borderRadius: BorderRadius.circular(4),
-        ),
-        child: _loaded && _ad != null
-            ? AdWidget(ad: _ad!)
-            : Center(
-                child: Text(
-                  '광고',
-                  style: TextStyle(color: palette.muted, fontSize: 13),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(AppRadius.card),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: palette.brand.withValues(alpha: 0.05),
+            border: Border.all(color: palette.border),
+            borderRadius: BorderRadius.circular(AppRadius.card),
+          ),
+          child: _loaded && _ad != null
+              ? AdWidget(ad: _ad!)
+              : Center(
+                  child: Text(
+                    '광고',
+                    style: TextStyle(color: palette.muted, fontSize: 13),
+                  ),
                 ),
-              ),
+        ),
       ),
     );
   }

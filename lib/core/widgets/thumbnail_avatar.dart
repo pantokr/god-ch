@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../storage_url.dart';
 import '../theme.dart';
 
 /// 프로필 이미지(원)의 테두리. 앱의 모든 프로필 이미지가 같은 테두리를 쓴다.
@@ -50,7 +51,7 @@ class ThumbnailAvatar extends StatelessWidget {
       child: ClipOval(
         child: ColoredBox(
           color: palette.brand.withValues(alpha: 0.12),
-          child: url.isEmpty
+          child: !isStorageUrl(url)
               ? initial
               : Image.network(
                   url,

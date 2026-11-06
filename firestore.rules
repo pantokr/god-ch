@@ -37,7 +37,8 @@ service cloud.firestore {
               'prayer.commentDeleteOthers', 'prayer.deleteOthers',
               'devotion.write', 'devotion.viewPrivate', 'devotion.react', 'devotion.comment',
               'devotion.commentDeleteOthers', 'devotion.deleteOthers',
-              'meeting.create', 'meeting.delete', 'meeting.join'];
+              'meeting.create', 'meeting.delete', 'meeting.join',
+              'meeting.viewParticipants', 'meeting.kick', 'meeting.approve'];
     }
     // 교회가 정한 적이 없을 때 교역자가 갖는 권한 (lib/data/models/permission.dart의 Permission.staffDefault와 같다).
     // 소속 생성 · 삭제는 기본으로 없고, 교회 관리자가 직급으로 줘야 한다.
@@ -47,7 +48,8 @@ service cloud.firestore {
               'prayer.commentDeleteOthers', 'prayer.deleteOthers',
               'devotion.write', 'devotion.viewPrivate', 'devotion.react', 'devotion.comment',
               'devotion.commentDeleteOthers', 'devotion.deleteOthers',
-              'meeting.create', 'meeting.delete', 'meeting.join'];
+              'meeting.create', 'meeting.delete', 'meeting.join',
+              'meeting.viewParticipants', 'meeting.kick', 'meeting.approve'];
     }
     // 교회가 정한 적이 없을 때 회원이 갖는 권한 (지금까지 회원이 하던 일: Permission.memberDefault와 같다).
     function memberDefaults() {
@@ -82,6 +84,10 @@ service cloud.firestore {
     function inAff(cid, affId) {
       return isStaff(cid)
         || (affId != null && affId in get(memberPath(cid)).data.get('affiliationIds', []));
+    }
+    // 모임 일정의 공개 범위: 소속을 정하지 않은(null) 일정은 교회 전체, 정한 일정은 그 소속의 교인(과 교역자 이상)만 참여한다.
+    function inScope(cid, affId) {
+      return affId == null || inAff(cid, affId);
     }
     // 말씀묵상 한 편을 이 사람이 볼 수 있는가: 공개이거나 비공개 조회 권한이 있고, 교역자 이상이거나 자기 소속의 글이다.
     function devotionOpen(cid, did) {
@@ -221,6 +227,19 @@ service cloud.firestore {
               && get(/databases/$(database)/documents/churches/$(request.resource.data.churchId)/meetings/$(request.resource.data.meetingId)).data.get('needsApproval', false) == true
               // 같은 묶음 쓰기에서 내가 이 모임의 신청 대기에 들어간 경우만 (아무 때나 알림을 보낼 수 없다).
               && request.auth.uid in getAfter(/databases/$(database)/documents/churches/$(request.resource.data.churchId)/meetings/$(request.resource.data.meetingId)).data.get('pendingIds', []))
+          // 모임장 · 승인 권한이 있는 사람: 참여 신청을 승인 · 거절하면 신청한 사람에게 알린다 (승인 · 거절과 같은 묶음 쓰기).
+          || (request.resource.data.type in ['meetingApproved', 'meetingRejected']
+              && request.resource.data.churchId is string
+              && request.resource.data.meetingId is string
+              && request.auth.uid != userId
+              && isActive(request.resource.data.churchId)
+              && (get(/databases/$(database)/documents/churches/$(request.resource.data.churchId)/meetings/$(request.resource.data.meetingId)).data.leaderId == request.auth.uid
+                  || can(request.resource.data.churchId, 'meeting.approve'))
+              // 신청 대기 중이던 사람이, 같은 묶음 쓰기에서 대기에서 빠진 경우만 (승인이면 참여자가 되고, 거절이면 아무 쪽에도 없다).
+              && userId in get(/databases/$(database)/documents/churches/$(request.resource.data.churchId)/meetings/$(request.resource.data.meetingId)).data.get('pendingIds', [])
+              && !(userId in getAfter(/databases/$(database)/documents/churches/$(request.resource.data.churchId)/meetings/$(request.resource.data.meetingId)).data.get('pendingIds', []))
+              && (request.resource.data.type == 'meetingApproved')
+                   == (userId in getAfter(/databases/$(database)/documents/churches/$(request.resource.data.churchId)/meetings/$(request.resource.data.meetingId)).data.get('participantIds', [])))
           // 교인: 글쓴이(기도제목 작성자 · 말씀묵상 작성자 · 모임장)에게 댓글 · 좋아요가 달렸음을 알린다 (댓글 · 좋아요와 같은 묶음 쓰기).
           || (request.resource.data.type in ['postComment', 'postLike']
               && request.resource.data.churchId is string
@@ -277,8 +296,8 @@ service cloud.firestore {
         && request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 30
         && request.resource.data.phone is string
         && request.resource.data.phone.size() >= 8 && request.resource.data.phone.size() <= 20;
-      // 앱 탈퇴: 프로필은 지우지 않고 탈퇴 표시만 남긴다.
-      allow update: if signedIn() && request.auth.uid == userId
+      // 앱 탈퇴: 프로필은 지우지 않고 탈퇴 표시만 남긴다. 앱 운영자는 강제로 탈퇴시킬 수 있다.
+      allow update: if signedIn() && (request.auth.uid == userId || isPlatformAdmin())
         && changed().hasOnly(['withdrawn', 'withdrawnAt'])
         && request.resource.data.withdrawn == true;
       allow delete: if false;
@@ -922,8 +941,17 @@ service cloud.firestore {
         // 모임은 교역자 이상이 만든다.
         allow create: if can(churchId, 'meeting.create')
           && request.resource.data.keys().hasOnly(['title', 'description', 'place', 'date', 'capacity', 'imageUrl',
-               'leaderId', 'leaderName', 'participantIds', 'pendingIds', 'fee', 'needsApproval', 'likedBy', 'views', 'deleted', 'createdAt'])
+               'leaderId', 'leaderName', 'participantIds', 'pendingIds', 'fee', 'needsApproval', 'likedBy', 'views', 'deleted', 'createdAt',
+               'affiliationId'])
           && request.resource.data.leaderId == request.auth.uid
+          // 공개 범위: 교회 전체(null)는 교역자 이상(또는 소속이 없는 교인)만, 소속 전용은 내가 속한 소속에만 만든다.
+          && (request.resource.data.get('affiliationId', null) == null
+              || request.resource.data.affiliationId is string)
+          && (isStaff(churchId)
+              || (request.resource.data.get('affiliationId', null) != null
+                  && request.resource.data.affiliationId in get(memberPath(churchId)).data.get('affiliationIds', []))
+              || (request.resource.data.get('affiliationId', null) == null
+                  && get(memberPath(churchId)).data.get('affiliationIds', []).size() == 0))
           && request.resource.data.title is string
           && request.resource.data.title.size() > 0 && request.resource.data.title.size() <= 24
           && request.resource.data.get('imageUrl', '') is string && request.resource.data.get('imageUrl', '').size() <= 1000
@@ -950,7 +978,12 @@ service cloud.firestore {
           // 모임장 · 교역자: 내용 수정 (정원은 이미 참여한 사람 수 이상) 또는 삭제 표시
           ((resource.data.leaderId == request.auth.uid || can(churchId, 'meeting.delete'))
             && changed().hasOnly(['title', 'description', 'place', 'date', 'capacity', 'imageUrl', 'fee', 'needsApproval', 'updatedAt',
-                 'deleted', 'deletedAt', 'deletedBy'])
+                 'deleted', 'deletedAt', 'deletedBy', 'affiliationId'])
+            // 공개 범위를 바꿀 때: 교역자 이상이거나 내가 속한 소속으로만 바꾼다.
+            && (request.resource.data.get('affiliationId', null) == resource.data.get('affiliationId', null)
+                || isStaff(churchId)
+                || (request.resource.data.get('affiliationId', null) is string
+                    && request.resource.data.affiliationId in get(memberPath(churchId)).data.get('affiliationIds', [])))
             && request.resource.data.get('fee', 0) is int
             && request.resource.data.get('fee', 0) >= 0 && request.resource.data.get('fee', 0) <= 10000000
             && request.resource.data.get('needsApproval', false) is bool
@@ -967,6 +1000,9 @@ service cloud.firestore {
           || (changed().hasOnly(['participantIds'])
               && resource.data.date > request.time
               && can(churchId, 'meeting.join')
+              // 공개 범위 밖의 교인은 참여할 수 없다 (빠지는 것은 언제나 된다).
+              && (inScope(churchId, resource.data.get('affiliationId', null))
+                  || request.resource.data.participantIds.size() < resource.data.participantIds.size())
               && onlyMeDiff(resource.data.participantIds, request.resource.data.participantIds)
               && request.resource.data.participantIds.size() <= resource.data.capacity
               // 모임장 승인이 필요한 모임은 (모임장이 아닌 사람은) 스스로 참여자가 될 수 없고, 빠지기만 한다.
@@ -978,9 +1014,12 @@ service cloud.firestore {
               && resource.data.date > request.time
               && resource.data.get('needsApproval', false)
               && can(churchId, 'meeting.join')
+              && (inScope(churchId, resource.data.get('affiliationId', null))
+                  || request.resource.data.pendingIds.size() < resource.data.get('pendingIds', []).size())
               && onlyMeDiff(resource.data.get('pendingIds', []), request.resource.data.pendingIds))
           // 모임장: 승인 대기 신청을 승인(참여자로 옮김, 정원 안에서) 또는 거절
-          || (resource.data.leaderId == request.auth.uid
+          // (모임장 외에 일정 참여 승인 권한이 있는 사람 · 교회 관리자도 한다.)
+          || ((resource.data.leaderId == request.auth.uid || can(churchId, 'meeting.approve'))
               && changed().hasOnly(['participantIds', 'pendingIds'])
               && resource.data.date > request.time
               && request.resource.data.participantIds.size() <= resource.data.capacity
@@ -988,8 +1027,8 @@ service cloud.firestore {
                    .hasOnly(resource.data.get('pendingIds', []))
               && resource.data.participantIds.toSet().difference(request.resource.data.participantIds.toSet()).size() == 0
               && request.resource.data.pendingIds.toSet().difference(resource.data.get('pendingIds', []).toSet()).size() == 0)
-          // 모임장 · 교회 운영자: 참여자(또는 대기자)를 내보낸다 (빼기만 가능)
-          || ((resource.data.leaderId == request.auth.uid || isOwner(churchId))
+          // 모임장 · 추방 권한이 있는 사람: 참여자(또는 대기자)를 내보낸다 (빼기만 가능)
+          || ((resource.data.leaderId == request.auth.uid || can(churchId, 'meeting.kick'))
               && changed().hasOnly(['participantIds', 'pendingIds'])
               && resource.data.date > request.time
               && request.resource.data.participantIds.toSet().difference(resource.data.participantIds.toSet()).size() == 0

@@ -23,7 +23,7 @@ class AppField {
   AppField._();
 
   /// 입력칸 최소 높이.
-  static const height = 44.0;
+  static const height = 50.0;
 
   /// 위아래로 이어지는 입력칸 사이 간격.
   static const gap = 8.0;
@@ -243,12 +243,27 @@ extension PaletteContext on BuildContext {
     alpha: Theme.of(this).brightness == Brightness.dark ? 0.28 : 0.22,
   );
 
-  /// 연한 테두리가 있는 카드 모양 (말씀묵상 카드들).
+  /// 연한 테두리가 있는 각진 카드 모양 (말씀묵상 카드들).
   RoundedRectangleBorder get edgedCardShape => RoundedRectangleBorder(
-    borderRadius: BorderRadius.circular(AppRadius.card),
+    borderRadius: BorderRadius.zero,
     side: BorderSide(color: cardEdge),
   );
 }
+
+/// 안의 카드(Card)를 모서리 없이 각지게 보이게 한다 (중보기도 · 말씀묵상 글 상세).
+Widget squareCards({required Widget child}) => Builder(
+  builder: (context) {
+    final theme = Theme.of(context);
+    return Theme(
+      data: theme.copyWith(
+        cardTheme: theme.cardTheme.copyWith(
+          shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+        ),
+      ),
+      child: child,
+    );
+  },
+);
 
 /// 말씀 구절처럼 길게 읽는 글에 쓰는 명조 글꼴.
 TextStyle readingStyle(BuildContext context) => GoogleFonts.notoSerifKr(
@@ -473,6 +488,24 @@ ThemeData buildTheme(Brightness brightness) {
         borderRadius: BorderRadius.circular(AppRadius.card),
         side: BorderSide(color: p.border),
       ),
+    ),
+    // 체크박스: 둥근 네모, 선택하면 달력의 고른 날처럼 잉크색 칸에 반전 체크.
+    checkboxTheme: CheckboxThemeData(
+      visualDensity: VisualDensity.compact,
+      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(7)),
+      side: WidgetStateBorderSide.resolveWith(
+        (states) => BorderSide(
+          width: 1.6,
+          color: states.contains(WidgetState.selected)
+              ? p.ink
+              : p.ink.withValues(alpha: 0.35),
+        ),
+      ),
+      fillColor: WidgetStateProperty.resolveWith(
+        (states) => states.contains(WidgetState.selected) ? p.ink : p.surface,
+      ),
+      checkColor: WidgetStatePropertyAll(p.surface),
     ),
     // 선택 버튼(공개 범위·필터)도 약한 모서리로 맞춘다.
     segmentedButtonTheme: SegmentedButtonThemeData(

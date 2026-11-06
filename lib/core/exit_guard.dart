@@ -113,33 +113,45 @@ class _ExitDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Dialog(
-      // 좁은 폰에서도 300px 광고가 들어가도록 바깥 · 안쪽 여백을 줄인다.
-      insetPadding: const EdgeInsets.all(12),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text('앱을 종료할까요?', style: Theme.of(context).textTheme.titleLarge),
-            const SizedBox(height: 16),
-            const Center(child: ExitAdSlot()),
-            const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context, false),
-                  child: const Text('취소'),
-                ),
-                const SizedBox(width: 8),
-                FilledButton(
-                  onPressed: () => Navigator.pop(context, true),
-                  child: const Text('종료'),
-                ),
-              ],
-            ),
-          ],
+      // 좁은 폰에서도 300px 광고가 들어가도록 바깥 여백을 줄인다.
+      insetPadding: const EdgeInsets.all(16),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 360),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                '앱 종료',
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.titleLarge
+                    ?.copyWith(fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 20),
+              const Center(child: ExitAdSlot()),
+              const SizedBox(height: 24),
+              // 두 버튼이 한 줄을 반씩 나눠 쓴다.
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.pop(context, false),
+                      child: const Text('취소'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: FilledButton(
+                      onPressed: () => Navigator.pop(context, true),
+                      child: const Text('종료'),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );

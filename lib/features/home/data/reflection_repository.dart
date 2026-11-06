@@ -38,6 +38,12 @@ class ReflectionRepository {
             .toList(),
       );
 
+  /// 지우지 않은 댓글 수 (목록의 댓글 표시). 댓글을 비공개로 둔 교회에서는 교역자만 읽을 수 있다.
+  Stream<int> count(String churchId, String devotionId) =>
+      _col(churchId, devotionId).snapshots().map(
+        (s) => s.docs.where((d) => d.data()['deleted'] != true).length,
+      );
+
   /// 내가 쓴 댓글만 실시간으로 읽는다 (댓글을 비공개로 둔 교회에서 교인이 쓴다). 오래된 것이 위.
   Stream<List<DevotionReflection>> onlyMine(
     String churchId,

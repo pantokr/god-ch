@@ -100,9 +100,22 @@ class MemberRepository {
       _removeAndNotify(
         churchId,
         userId,
-        '$churchName 교회에서 추방되었어요',
+        '$churchName에서 나오게 되었어요',
         '다시 들어오려면 초대 코드로 새로 신청해야 해요.',
       );
+
+  /// 입장 요청을 거절한다 (교회 운영자만). 기록은 남기고, 당사자에게 알린다.
+  /// 차단과 달리 초대 코드로 다시 신청할 수 있다.
+  Future<void> rejectRequest(
+    String churchId,
+    String churchName,
+    String userId,
+  ) => _removeAndNotify(
+    churchId,
+    userId,
+    '$churchName 입장 요청이 거절되었어요',
+    '초대 코드로 다시 신청할 수 있어요.',
+  );
 
   /// 내가 이 교회에서 탈퇴한다. 교인 문서는 지우지 않고 removed 표시만 남긴다 (규칙이 강제한다).
   Future<void> leave(String churchId) async {
@@ -162,13 +175,13 @@ class MemberRepository {
             s.docs.map(BlockedUser.fromDoc).where((b) => !b.revoked).toList(),
       );
 
-  /// 등록된 교인 · 입장을 요청한 교인을 차단한다: 목록에 올리고 교회에서 내보낸다 (당사자에게 알림).
+  /// 등록된 교인 · 입장을 요청한 교인을 차단한다: 목록에 올리고 교회에서 내보낸다. 당사자에게 가는 알림은 추방과 같은 문구다.
   Future<void> blockMember(String churchId, String churchName, Member m) =>
       _removeAndNotify(
         churchId,
         m.id,
-        '$churchName 교회에서 차단되었어요',
-        '이 교회에는 더 이상 입장할 수 없어요.',
+        '$churchName에서 나오게 되었어요',
+        '다시 들어오려면 초대 코드로 새로 신청해야 해요.',
         block: _blockData(m.loginId, m.name),
       );
 
@@ -197,8 +210,8 @@ class MemberRepository {
       await _removeAndNotify(
         churchId,
         uid,
-        '$churchName 교회에서 차단되었어요',
-        '이 교회에는 더 이상 입장할 수 없어요.',
+        '$churchName에서 나오게 되었어요',
+        '다시 들어오려면 초대 코드로 새로 신청해야 해요.',
         block: _blockData(id, name),
       );
     } else {

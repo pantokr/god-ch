@@ -41,6 +41,7 @@ class PlatformShell extends StatelessWidget {
   Widget build(BuildContext context) {
     return SidebarScaffold(
       userName: userName,
+      title: _labels[section],
       onProfile: () => context.push(Routes.account),
       onSignOut: onSignOut,
       railActions: const [NotificationsButton()],

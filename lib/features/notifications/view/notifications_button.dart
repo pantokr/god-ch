@@ -6,8 +6,6 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/app_scope.dart';
 import '../../../app/routes.dart';
-import '../../../core/layout/sidebar_scaffold.dart' show PanelCloser;
-import 'notifications_page.dart';
 
 /// 알림 버튼 배지의 글자: 읽지 않은 알림 수(99 넘으면 99+), 알림은 없고 처리할 요청만 있으면 N.
 String notificationBadgeLabel(int unread) =>
@@ -18,12 +16,14 @@ class NotificationsButton extends StatefulWidget {
   const NotificationsButton({
     super.key,
     this.pendingRequests = 0,
-    this.onOpenRequests,
+    this.churchId,
   });
 
   /// 승인을 기다리는 입장 요청 수 (교역자·교회 운영자에게만 넘긴다). 알림 목록 맨 위에 안내로 보인다.
   final int pendingRequests;
-  final VoidCallback? onOpenRequests;
+
+  /// 입장 요청 안내를 눌렀을 때 회원 관리를 열 교회.
+  final String? churchId;
 
   @override
   State<NotificationsButton> createState() => _NotificationsButtonState();
@@ -45,34 +45,13 @@ class _NotificationsButtonState extends State<NotificationsButton> {
         final hasNew = count > 0 || widget.pendingRequests > 0;
         return IconButton(
           tooltip: '알림',
-          onPressed: () {
-            // 좁은 화면에서는 이 버튼이 서랍(계정 띠) 안에 있다: 입장 요청으로 이동할 때 서랍을 함께 닫는다.
-            final closeDrawer = PanelCloser.of(context);
-            final router = GoRouter.of(context);
-            Navigator.of(context).push(
-              MaterialPageRoute<void>(
-                builder: (_) => NotificationsPage(
-                  pendingRequests: widget.pendingRequests,
-                  onOpenMeeting: (churchId, meetingId) {
-                    closeDrawer?.call();
-                    router.push(Routes.meeting(churchId, meetingId));
-                  },
-                  onOpenPost: (churchId, kind, id) {
-                    closeDrawer?.call();
-                    router.push(
-                      kind == 'prayer'
-                          ? Routes.prayer(churchId, id)
-                          : Routes.devotion(churchId, id),
-                    );
-                  },
-                  onOpenRequests: () {
-                    closeDrawer?.call();
-                    widget.onOpenRequests?.call();
-                  },
-                ),
-              ),
-            );
-          },
+          onPressed: () => context.push(
+            Routes.notifications,
+            extra: {
+              'pending': widget.pendingRequests,
+              'churchId': widget.churchId,
+            },
+          ),
           icon: Badge(
             isLabelVisible: hasNew,
             label: Text(notificationBadgeLabel(count)),

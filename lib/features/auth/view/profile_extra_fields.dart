@@ -1,11 +1,8 @@
 import '../../../core/icons.dart';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
-import '../../../core/theme.dart';
-
-import '../../../core/address/address_search.dart';
+import '../../../core/widgets/address_input.dart';
 import '../../../core/widgets/app_date_picker.dart';
 import '../../../core/widgets/labeled_field.dart';
 
@@ -40,19 +37,6 @@ class ProfileExtraFields extends StatefulWidget {
 class _ProfileExtraFieldsState extends State<ProfileExtraFields> {
   final _addressField = GlobalKey<FormFieldState<String>>();
   String? _searchError;
-
-  Future<void> _searchAddress() async {
-    setState(() => _searchError = null);
-    try {
-      final result = await searchRoadAddress(context);
-      if (result == null || !mounted) return;
-      setState(() => widget.address.text = result.roadAddress);
-      _addressField.currentState?.didChange(widget.address.text);
-      _addressField.currentState?.validate();
-    } catch (e) {
-      if (mounted) setState(() => _searchError = '$e');
-    }
-  }
 
   Future<void> _pickBirthDate() async {
     final now = DateTime.now();
@@ -118,57 +102,19 @@ class _ProfileExtraFieldsState extends State<ProfileExtraFields> {
                 ? '주소를 입력해 주세요'
                 : null,
             builder: (state) => Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                _above(
-                  '주소',
-                  widget.requireAddress,
-                  // 버튼 안의 LayoutBuilder는 IntrinsicHeight를 못 쓰므로 입력칸 높이로 고정한다.
-                  SizedBox(
-                    height: AppField.height,
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Expanded(
-                          child: TextField(
-                            controller: widget.address,
-                            enabled: widget.enabled,
-                            // 비어 있는 칸을 누르면 검색이 열리고, 고른 뒤에는 직접 고쳐 동·호수 같은 상세 주소를 덧붙일 수 있다.
-                            onTap:
-                                isAddressSearchSupported &&
-                                    widget.enabled &&
-                                    widget.address.text.isEmpty
-                                ? _searchAddress
-                                : null,
-                            onChanged: (_) =>
-                                state.didChange(widget.address.text),
-                            inputFormatters: [
-                              LengthLimitingTextInputFormatter(200),
-                            ],
-                            decoration: InputDecoration(
-                              // 볼 수만 있는 화면(회원 상세)에서 비어 있으면 "미제공"이다.
-                              hintText: !widget.enabled
-                                  ? '미제공'
-                                  : isAddressSearchSupported
-                                  ? '주소 검색으로 고른 뒤 상세 주소를 덧붙이세요'
-                                  : '도로명 주소를 입력하세요',
-                            ),
-                          ),
-                        ),
-                        if (isAddressSearchSupported && widget.enabled) ...[
-                          const SizedBox(width: 8),
-                          OutlinedButton.icon(
-                            onPressed: _searchAddress,
-                            icon: const Icon(
-                              AppIcons.magnifyingGlass,
-                              size: 18,
-                            ),
-                            label: const Text('주소 검색'),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
+                // 기본 주소(검색 아이콘 버튼) + 상세 주소 두 칸.
+                AddressInput(
+                  controller: widget.address,
+                  enabled: widget.enabled,
+                  required: widget.requireAddress,
+                  onChanged: () => state.didChange(widget.address.text),
+                  onSearched: () {
+                    setState(() => _searchError = null);
+                    state.validate();
+                  },
+                  onError: (e) => setState(() => _searchError = e),
                 ),
                 if (state.hasError)
                   Padding(

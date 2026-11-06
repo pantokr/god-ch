@@ -4,6 +4,7 @@ import '../../../core/format.dart';
 import '../../../core/icons.dart';
 import '../../../core/layout/app_dialog.dart';
 import '../../../core/layout/manage_list_row.dart';
+import '../../../core/widgets/toast.dart';
 import '../../../data/models/affiliation.dart';
 import '../../../core/position_style.dart';
 import '../../../data/models/member.dart';
@@ -12,9 +13,9 @@ import '../view_model/member_admin_view_model.dart';
 import 'member_detail_dialog.dart';
 import 'pending_member_dialogs.dart';
 
-/// 교인 한 명: 이름 · 소속 교회 · 소속만 보여주고, 관리를 누르면 역할 · 소속 · 상태를 고치는 창이, 상세를 누르면 본인이 입력한 정보를 보는 창이 열린다.
-/// 본인 줄에는 '본인' 표시가 붙는다. 관리 창에서 교회 운영자는 회원을 추방할 수 있다.
-/// 승인 대기 계정은 관리 대신 상세(조회)와 승인 버튼이 있고, 승인하면 역할과 소속을 고르는 창이 뜬다.
+/// 교인 한 명: 이름 · 수락일 · 소속을 보여주고, 관리를 누르면 역할 · 소속 · 상태를 고치는 창이 열린다.
+/// 본인 줄에는 '본인' 표시가 붙는다. 관리 창에서 교회 운영자는 회원을 추방 · 차단할 수 있다.
+/// 승인 대기 계정은 관리 대신 승인 · 거절 버튼이 있고, 승인하면 역할과 소속을 고르는 창이 뜬다.
 class MemberTile extends StatelessWidget {
   const MemberTile({
     super.key,
@@ -70,22 +71,26 @@ class MemberTile extends StatelessWidget {
           ? '요청일 ${fmtDate(member.createdAt)}'
           : '수락일 ${fmtDate(member.memberSince)}',
       line2: affiliationNames.join(', '),
-      onTap: () => _info(context),
       trailing: [
-        // 신규 입장 요청은 관리 대신 상세(조회)와 승인만 있다. 승인하면 역할과 소속을 고르는 창이 뜬다.
+        // 신규 입장 요청은 승인 · 거절 두 버튼뿐이다. 승인하면 역할과 소속을 고르는 창이 뜬다.
         if (pending) ...[
-          // 승인은 왼쪽, 상세는 오른쪽.
           if (vm.canChangeStatus(member))
             FilledButton.tonal(
               onPressed: () => _approve(context),
               child: const Text('승인'),
             ),
-          TextButton(onPressed: () => _info(context), child: const Text('상세')),
-        ] else ...[
-          // 관리는 교회 관리자가 고치는 역할 · 소속 · 상태, 상세는 본인이 입력한 정보를 보기만 한다.
+          // 거절은 교회 운영자만 (추방과 같다).
+          if (vm.canDelete(member))
+            TextButton(
+              style: TextButton.styleFrom(
+                foregroundColor: Theme.of(context).colorScheme.error,
+              ),
+              onPressed: () => _confirmReject(context),
+              child: const Text('거절'),
+            ),
+        ] else
+          // 교회 회원은 관리 하나: 역할 · 소속 · 상태를 고친다.
           TextButton(onPressed: () => _edit(context), child: const Text('관리')),
-          TextButton(onPressed: () => _info(context), child: const Text('상세')),
-        ],
       ],
     );
   }
@@ -136,11 +141,6 @@ class MemberTile extends StatelessWidget {
     return null;
   }
 
-  /// 입장 요청 상세: 정보를 보기만 한다.
-  void _info(BuildContext context) {
-    showAppDialog(context, child: PendingMemberInfoDialog(member: member));
-  }
-
   /// 승인: 역할과 소속을 고르는 창을 띄우고, 고른 대로 승인한다.
   Future<void> _approve(BuildContext context) async {
     final choice = await showAppDialog<ApproveChoice>(
@@ -152,12 +152,51 @@ class MemberTile extends StatelessWidget {
         canAffiliation: vm.canAssignAffiliation(member),
       ),
     );
-    if (choice == null) return;
-    await vm.approveWith(
+    if (choice == null || !context.mounted) return;
+    final messenger = ScaffoldMessenger.of(context);
+    final bottom = MediaQuery.paddingOf(context).bottom;
+    // 소속을 고르지 못하는 사람이 승인하면 요청자가 가진 소속이 그대로다. 교회 관리자는 모든 소속에 속한다.
+    final affiliated =
+        choice.role == Role.admin ||
+        (vm.canAssignAffiliation(member)
+            ? choice.affiliationIds.isNotEmpty
+            : member.affiliationIds.isNotEmpty);
+    final ok = await vm.approveWith(
       member,
       role: choice.role,
       affiliationIds: choice.affiliationIds,
     );
+    if (ok) {
+      showToastOn(
+        messenger,
+        affiliated ? '승인했습니다.' : '미배정 소속으로 승인했습니다.',
+        bottom: bottom,
+      );
+    }
+  }
+
+  /// 입장 요청 거절 확인 창. 거절했으면 true.
+  Future<bool> _confirmReject(BuildContext context) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('입장 거절'),
+        content: Text('${member.name}님의 입장 요청을 거절할까요?\n초대 코드로 다시 신청할 수 있어요.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('취소'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('거절'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return false;
+    await vm.reject(member);
+    return vm.error == null;
   }
 
   /// 추방 확인 창. 추방했으면 true.

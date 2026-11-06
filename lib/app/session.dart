@@ -41,7 +41,7 @@ class SessionNotifier extends ChangeNotifier {
   StreamSubscription<UserProfile?>? _profileSub;
 
   /// 앱을 켤 때 스플래시가 적어도 이만큼은 보이도록, 첫 판단은 이 시간이 지난 뒤에 알린다.
-  static const minSplash = Duration(seconds: 1);
+  static const minSplash = Duration(seconds: 3);
 
   SessionStatus _status = SessionStatus.loading;
   final _started = DateTime.now();
@@ -78,6 +78,11 @@ class SessionNotifier extends ChangeNotifier {
         .listen(
           (profile) {
             if (generation != _generation) return;
+            // 앱 운영자가 강제 탈퇴시킨 계정은 로그인해도 바로 로그아웃한다.
+            if (profile != null && profile.withdrawn) {
+              _auth.signOut();
+              return;
+            }
             _set(
               profile == null
                   ? SessionStatus.needsProfile

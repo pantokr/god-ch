@@ -71,6 +71,7 @@ class MeetingDetailViewModel extends ViewModel {
       fee: v.fee,
       needsApproval: v.needsApproval,
       imageUrl: v.imageUrl,
+      affiliationId: v.affiliationId,
     ),
   );
 

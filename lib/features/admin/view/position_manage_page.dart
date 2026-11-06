@@ -429,13 +429,33 @@ class _BuiltInSection extends StatelessWidget {
   }
 }
 
-/// 이 앱의 권한 전체: 묶음마다 권한과 줄 수 있는지 (현재 역할 기본값 + 직급으로 줄 수 있는 것).
+/// 이 앱의 권한 전체: 묶음마다 권한 이름과, 오른쪽에 기본으로 갖는 사람(교인 · 교역자)과 직급으로 줄 수 있는지를 표시로 보여 준다.
+/// 교회 운영자는 모두 가지므로 열을 두지 않는다.
 class _CatalogCard extends StatelessWidget {
   const _CatalogCard();
+
+  static const _col = 52.0;
 
   @override
   Widget build(BuildContext context) {
     final palette = context.palette;
+    Widget cell(Widget child) => SizedBox(
+      width: _col,
+      child: Center(child: child),
+    );
+    Widget head(String text) => cell(
+      Text(
+        text,
+        style: TextStyle(
+          color: palette.muted,
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+    Widget mark(bool on) => on
+        ? Icon(AppIcons.check, size: 18, color: palette.ink)
+        : Text('–', style: TextStyle(color: palette.border));
     return Card(
       child: ExpansionTile(
         tilePadding: const EdgeInsets.symmetric(horizontal: 20),
@@ -446,32 +466,35 @@ class _CatalogCard extends StatelessWidget {
         children: [
           for (final g in PermissionGroup.values) ...[
             Padding(
-              padding: const EdgeInsets.only(top: 12, bottom: 4),
-              child: Text(
-                g.label,
-                style: TextStyle(
-                  color: palette.muted,
-                  fontSize: 12.5,
-                  fontWeight: FontWeight.w700,
-                ),
+              padding: const EdgeInsets.only(top: 14, bottom: 4),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      g.label,
+                      style: TextStyle(
+                        color: palette.ink,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                  head('교인'),
+                  head('교역자'),
+                  head('직급'),
+                ],
               ),
             ),
+            Divider(height: 1, color: palette.border),
             for (final p in Permission.values.where((p) => p.group == g))
               Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4),
+                padding: const EdgeInsets.symmetric(vertical: 8),
                 child: Row(
                   children: [
                     Expanded(child: Text(p.label)),
-                    const SizedBox(width: 8),
-                    Text(
-                      [
-                        if (p.requires.isNotEmpty)
-                          '필요: ${p.requires.map((r) => r.label).join(' · ')}',
-                        if (p.staffDefault) '교역자 기본',
-                        p.grantable ? '직급 부여' : '부여 불가',
-                      ].join(' · '),
-                      style: TextStyle(color: palette.muted, fontSize: 12),
-                    ),
+                    cell(mark(p.memberDefault)),
+                    cell(mark(p.staffDefault)),
+                    cell(mark(p.grantable)),
                   ],
                 ),
               ),

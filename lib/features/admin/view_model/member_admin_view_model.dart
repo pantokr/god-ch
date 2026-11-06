@@ -149,7 +149,7 @@ class MemberAdminViewModel extends ViewModel {
       run(() => _members.setStatus(me.churchId, m.id, MemberStatus.approved));
 
   /// 입장 요청을 승인하면서 역할과 소속을 함께 정한다. 바뀌지 않은 항목은 쓰지 않는다.
-  Future<void> approveWith(
+  Future<bool> approveWith(
     Member m, {
     required Role role,
     required List<String> affiliationIds,
@@ -165,6 +165,10 @@ class MemberAdminViewModel extends ViewModel {
   /// 소속 인원 배치 권한이 있는가 (본인 문서는 제외).
   bool canAssignAffiliation(Member m) =>
       m.id != me.id && me.can(Permission.affiliationAssign);
+
+  /// 입장 요청 거절 · 차단은 추방과 같이 교회 운영자만 한다.
+  Future<void> reject(Member m) =>
+      run(() => _members.rejectRequest(me.churchId, me.churchName, m.id));
 
   Future<void> remove(Member m) =>
       run(() => _members.remove(me.churchId, me.churchName, m.id));

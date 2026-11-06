@@ -70,6 +70,7 @@ class _ChangePasswordFormState extends State<ChangePasswordForm> {
                     (v == null || v.isEmpty) ? '현재 비밀번호를 입력해 주세요' : null,
               ),
             ),
+            const SizedBox(height: 16),
             LabeledField(
               label: '새 비밀번호',
               required: true,
@@ -81,6 +82,7 @@ class _ChangePasswordFormState extends State<ChangePasswordForm> {
                 validator: PasswordRule.validate,
               ),
             ),
+            const SizedBox(height: 16),
             LabeledField(
               label: '새 비밀번호 확인',
               required: true,

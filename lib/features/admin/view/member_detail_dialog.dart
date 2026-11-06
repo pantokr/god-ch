@@ -10,6 +10,7 @@ import '../../../core/mvvm/view_model.dart';
 import '../../../core/theme.dart';
 import '../../../data/models/affiliation.dart';
 import '../../../data/models/member.dart';
+import '../../../core/widgets/thumbnail_avatar.dart';
 import '../../../core/widgets/thumbnail_field.dart';
 import '../../auth/view/profile_extra_fields.dart';
 import '../../../core/widgets/app_inputs.dart';
@@ -90,6 +91,8 @@ class MemberDetailDialog extends StatefulWidget {
     this.showChurchNames = false,
     this.onRemove,
     this.onBlock,
+    this.onRemoveFrom,
+    this.onWithdraw,
   });
 
   /// 저장 중·오류 표시에 쓴다.
@@ -121,6 +124,12 @@ class MemberDetailDialog extends StatefulWidget {
 
   /// 회원을 차단 목록에 올린다 (추방과 같은 방식). null이면 차단 버튼을 보이지 않는다.
   final Future<bool> Function()? onBlock;
+
+  /// 회원을 한 교회에서 강제로 추방한다 (앱 운영자). 확인까지 거친 뒤 내보냈으면 true. null이면 버튼을 보이지 않는다.
+  final Future<bool> Function(Member member)? onRemoveFrom;
+
+  /// 회원을 앱에서 강제로 탈퇴시킨다 (앱 운영자). 확인까지 거친 뒤 탈퇴시켰으면 true. null이면 버튼을 보이지 않는다.
+  final Future<bool> Function()? onWithdraw;
 
   static const roleLabel = {
     Role.member: '교인',
@@ -221,6 +230,16 @@ class _MemberDetailDialogState extends State<MemberDetailDialog> {
     if (await widget.onRemove!()) navigator.pop();
   }
 
+  Future<void> _removeFrom(Member m) async {
+    final navigator = Navigator.of(context);
+    if (await widget.onRemoveFrom!(m)) navigator.pop();
+  }
+
+  Future<void> _withdraw() async {
+    final navigator = Navigator.of(context);
+    if (await widget.onWithdraw!()) navigator.pop();
+  }
+
   Future<void> _block() async {
     final navigator = Navigator.of(context);
     if (await widget.onBlock!()) navigator.pop();
@@ -236,136 +255,199 @@ class _MemberDetailDialogState extends State<MemberDetailDialog> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(widget.title, style: theme.textTheme.titleLarge),
-          if (widget.subtitle.isNotEmpty)
-            Text(
-              widget.subtitle,
-              style: TextStyle(color: context.palette.muted),
-            ),
-          const SizedBox(height: 16),
-          // 본인이 입력한 정보(사진 · 이름 · 전화번호 · 주소 · 생년월일)는 고칠 수 있는 화면에서만 보인다.
-          // 교회 회원 관리에서는 "상세"에서 보기만 하고, 이 창은 역할 · 소속 · 상태만 다룬다.
-          if (widget.canEditProfile) ...[
-            ThumbnailField(
-              controller: _photo,
-              name: widget.name,
-              label: '썸네일(프로필 사진)',
-              enabled: widget.onUploadPhoto != null,
-              upload: widget.onUploadPhoto ?? (_, _) async => null,
-            ),
-            AppField.spacer,
-            LabeledField(
-              label: '이름',
-              child: TextField(
-                controller: _name,
-                enabled: widget.canEditProfile,
-                maxLength: 30,
-                decoration: const InputDecoration(),
+          Row(
+            children: [
+              ThumbnailAvatar(
+                name: widget.name,
+                url: widget.photoUrl,
+                radius: 24,
               ),
-            ),
-            AppField.spacer,
-            LabeledField(
-              label: '전화번호',
-              child: TextField(
-                controller: _phone,
-                enabled: widget.canEditProfile,
-                keyboardType: TextInputType.phone,
-                maxLength: 20,
-                decoration: InputDecoration(
-                  hintText: widget.canEditProfile ? null : '미제공',
-                ),
-              ),
-            ),
-            AppField.spacer,
-            ProfileExtraFields(
-              address: _address,
-              birthDate: _birthDate,
-              enabled: widget.canEditProfile,
-            ),
-          ],
-          if (widget.memberships.isEmpty) ...[
-            const SizedBox(height: 8),
-            Text('소속된 교회가 없어요.', style: muted),
-          ],
-          for (var i = 0; i < widget.memberships.length; i++) ...[
-            const Divider(height: 32),
-            if (widget.showChurchNames)
-              Text(
-                widget.memberships[i].member.churchName,
-                style: const TextStyle(fontWeight: FontWeight.w700),
-              ),
-            if (widget.memberships[i].canRole ||
-                widget.memberships[i].statusEditable)
-              Padding(
-                padding: const EdgeInsets.only(top: 8),
-                child: Row(
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    if (widget.memberships[i].canRole)
-                      Expanded(
-                        child: AppDropdown<Role>(
-                          value: _roles[i],
-                          label: '역할',
-                          items: [
-                            for (final r in Role.values)
-                              DropdownMenuItem(
-                                value: r,
-                                child: Text(MemberDetailDialog.roleLabel[r]!),
-                              ),
-                          ],
-                          onChanged: (v) => setState(() => _roles[i] = v!),
-                        ),
-                      ),
-                    if (widget.memberships[i].canRole &&
-                        widget.memberships[i].statusEditable)
-                      const SizedBox(width: 12),
-                    if (widget.memberships[i].statusEditable)
-                      Expanded(
-                        child: AppDropdown<MemberStatus>(
-                          value: _statuses[i],
-                          label: '상태',
-                          items: [
-                            // 추방은 따로 있는 추방 버튼으로 한다. 이미 추방된 사람일 때만 현재 상태로 보인다.
-                            for (final s in MemberStatus.values)
-                              if (s != MemberStatus.removed ||
-                                  _statuses[i] == MemberStatus.removed)
-                                DropdownMenuItem(
-                                  value: s,
-                                  child: Text(
-                                    MemberDetailDialog.statusLabel[s] ?? s.name,
-                                  ),
-                                ),
-                          ],
-                          onChanged: (v) => setState(() => _statuses[i] = v!),
-                        ),
-                      ),
+                    Text(widget.title, style: theme.textTheme.titleLarge),
+                    if (widget.subtitle.isNotEmpty)
+                      Text(widget.subtitle, style: muted),
                   ],
                 ),
               ),
-            const SizedBox(height: 12),
-            Text('소속', style: muted),
-            if (widget.memberships[i].affiliations.isEmpty)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                child: Text('만들어진 소속이 없어요.', style: muted),
+            ],
+          ),
+          const SizedBox(height: 20),
+          // 본인이 입력한 정보(사진 · 이름 · 전화번호 · 주소 · 생년월일)는 고칠 수 있는 화면에서만 보인다.
+          // 교회 회원 관리에서는 "상세"에서 보기만 하고, 이 창은 역할 · 소속 · 상태만 다룬다.
+          if (widget.canEditProfile) ...[
+            _Section(
+              title: '기본 정보',
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  ThumbnailField(
+                    controller: _photo,
+                    name: widget.name,
+                    label: '썸네일(프로필 사진)',
+                    enabled: widget.onUploadPhoto != null,
+                    upload: widget.onUploadPhoto ?? (_, _) async => null,
+                  ),
+                  AppField.spacer,
+                  LabeledField(
+                    label: '이름',
+                    child: TextField(
+                      controller: _name,
+                      enabled: widget.canEditProfile,
+                      maxLength: 30,
+                      decoration: const InputDecoration(counterText: ''),
+                    ),
+                  ),
+                  AppField.spacer,
+                  LabeledField(
+                    label: '전화번호',
+                    child: TextField(
+                      controller: _phone,
+                      enabled: widget.canEditProfile,
+                      keyboardType: TextInputType.phone,
+                      maxLength: 20,
+                      decoration: InputDecoration(
+                        counterText: '',
+                        hintText: widget.canEditProfile ? null : '미제공',
+                      ),
+                    ),
+                  ),
+                  AppField.spacer,
+                  ProfileExtraFields(
+                    address: _address,
+                    birthDate: _birthDate,
+                    enabled: widget.canEditProfile,
+                  ),
+                ],
               ),
-            for (final a in widget.memberships[i].affiliations)
-              CheckboxListTile(
-                dense: true,
-                contentPadding: EdgeInsets.zero,
-                controlAffinity: ListTileControlAffinity.leading,
-                title: Text(a.name),
-                // 교회 운영자는 모든 소속에 자동으로 속한다.
-                value: _roles[i] == Role.admin || _affs[i].contains(a.id),
-                onChanged: _roles[i] == Role.admin
-                    ? null
-                    : (v) => setState(() {
-                        if (v ?? false) {
-                          _affs[i].add(a.id);
-                        } else {
-                          _affs[i].remove(a.id);
-                        }
-                      }),
+            ),
+            const SizedBox(height: 16),
+          ],
+          if (widget.memberships.isEmpty)
+            _Section(
+              title: '소속 교회',
+              child: Text('소속된 교회가 없어요.', style: muted),
+            ),
+          for (var i = 0; i < widget.memberships.length; i++) ...[
+            if (i > 0) const SizedBox(height: 16),
+            _Section(
+              title: widget.showChurchNames
+                  ? widget.memberships[i].member.churchName
+                  : '교회 정보',
+              trailing: widget.onRemoveFrom == null
+                  ? null
+                  : TextButton.icon(
+                      onPressed: widget.vm.busy
+                          ? null
+                          : () => _removeFrom(widget.memberships[i].member),
+                      style: TextButton.styleFrom(
+                        foregroundColor: theme.colorScheme.error,
+                        visualDensity: VisualDensity.compact,
+                      ),
+                      icon: const Icon(AppIcons.userMinus, size: 16),
+                      label: const Text('추방'),
+                    ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (widget.memberships[i].canRole ||
+                      widget.memberships[i].statusEditable)
+                    Row(
+                      children: [
+                        if (widget.memberships[i].canRole)
+                          Expanded(
+                            child: AppDropdown<Role>(
+                              value: _roles[i],
+                              label: '역할',
+                              items: [
+                                for (final r in Role.values)
+                                  DropdownMenuItem(
+                                    value: r,
+                                    child: Text(
+                                      MemberDetailDialog.roleLabel[r]!,
+                                    ),
+                                  ),
+                              ],
+                              onChanged: (v) => setState(() => _roles[i] = v!),
+                            ),
+                          ),
+                        if (widget.memberships[i].canRole &&
+                            widget.memberships[i].statusEditable)
+                          const SizedBox(width: 12),
+                        if (widget.memberships[i].statusEditable)
+                          Expanded(
+                            child: AppDropdown<MemberStatus>(
+                              value: _statuses[i],
+                              label: '상태',
+                              items: [
+                                // 추방은 따로 있는 추방 버튼으로 한다. 이미 추방된 사람일 때만 현재 상태로 보인다.
+                                for (final s in MemberStatus.values)
+                                  if (s != MemberStatus.removed ||
+                                      _statuses[i] == MemberStatus.removed)
+                                    DropdownMenuItem(
+                                      value: s,
+                                      child: Text(
+                                        MemberDetailDialog.statusLabel[s] ??
+                                            s.name,
+                                      ),
+                                    ),
+                              ],
+                              onChanged: (v) =>
+                                  setState(() => _statuses[i] = v!),
+                            ),
+                          ),
+                      ],
+                    ),
+                  const SizedBox(height: 12),
+                  Text('소속', style: muted),
+                  if (widget.memberships[i].affiliations.isEmpty)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      child: Text('만들어진 소속이 없어요.', style: muted),
+                    ),
+                  for (final a in widget.memberships[i].affiliations)
+                    CheckboxListTile(
+                      dense: true,
+                      contentPadding: EdgeInsets.zero,
+                      controlAffinity: ListTileControlAffinity.leading,
+                      title: Text(a.name),
+                      // 교회 운영자는 모든 소속에 자동으로 속한다.
+                      value: _roles[i] == Role.admin || _affs[i].contains(a.id),
+                      onChanged: _roles[i] == Role.admin
+                          ? null
+                          : (v) => setState(() {
+                              if (v ?? false) {
+                                _affs[i].add(a.id);
+                              } else {
+                                _affs[i].remove(a.id);
+                              }
+                            }),
+                    ),
+                ],
               ),
+            ),
+          ],
+          if (widget.onWithdraw != null) ...[
+            const SizedBox(height: 16),
+            _Section(
+              title: '앱 탈퇴',
+              danger: true,
+              child: SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: widget.vm.busy ? null : _withdraw,
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: theme.colorScheme.error,
+                    side: BorderSide(color: theme.colorScheme.error),
+                  ),
+                  icon: const Icon(AppIcons.signOut, size: 18),
+                  label: const Text('강제 탈퇴'),
+                ),
+              ),
+            ),
           ],
           if (widget.vm.error != null) ...[
             const SizedBox(height: 12),
@@ -409,6 +491,57 @@ class _MemberDetailDialogState extends State<MemberDetailDialog> {
               ),
             ],
           ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 상세 창의 한 구역: 옅은 면 위에 제목과 내용. [danger]이면 붉은 테두리.
+class _Section extends StatelessWidget {
+  const _Section({
+    required this.title,
+    required this.child,
+    this.trailing,
+    this.danger = false,
+  });
+
+  final String title;
+  final Widget child;
+  final Widget? trailing;
+  final bool danger;
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = context.palette;
+    final error = Theme.of(context).colorScheme.error;
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+      decoration: BoxDecoration(
+        color: palette.brand.withValues(alpha: 0.04),
+        borderRadius: BorderRadius.circular(AppRadius.card),
+        border: Border.all(color: danger ? error : palette.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  title,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 15,
+                    color: danger ? error : null,
+                  ),
+                ),
+              ),
+              ?trailing,
+            ],
+          ),
+          const SizedBox(height: 12),
+          child,
         ],
       ),
     );

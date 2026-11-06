@@ -14,6 +14,7 @@ import '../features/bible/view/devotion_detail_page.dart';
 import '../features/church/view/church_explore_page.dart';
 import '../features/church/view/member_gate.dart';
 import '../features/meetings/view/meeting_detail_page.dart';
+import '../features/notifications/view/notifications_page.dart';
 import '../features/meetings/view/meeting_participants_page.dart';
 import '../features/church/view/my_churches_route.dart';
 import '../features/platform/view/church_registry_page.dart';
@@ -42,6 +43,30 @@ GoRouter buildRouter(SessionNotifier session) {
               ? state.extra as List<ProfileDetail>
               : const [],
         ),
+      ),
+      // 알림: 교회 틀 밖의 전체 화면. 알림에서 연 모임 · 글 · 회원 관리는 그 위에 쌓여 뒤로가기로 알림에 돌아온다.
+      // extra: {'pending': 입장 요청 수, 'churchId': 교회 아이디} (없을 수 있다).
+      GoRoute(
+        path: Routes.notifications,
+        builder: (context, state) {
+          final extra = state.extra is Map ? state.extra as Map : const {};
+          final churchId = extra['churchId'] as String?;
+          return NotificationsPage(
+            pendingRequests: extra['pending'] as int? ?? 0,
+            onOpenRequests: churchId == null
+                ? null
+                : () => context.push(
+                    Routes.section(churchId, ChurchSection.members),
+                  ),
+            onOpenMeeting: (churchId, meetingId) =>
+                context.push(Routes.meeting(churchId, meetingId)),
+            onOpenPost: (churchId, kind, id) => context.push(
+              kind == 'prayer'
+                  ? Routes.prayer(churchId, id)
+                  : Routes.devotion(churchId, id),
+            ),
+          );
+        },
       ),
       GoRoute(
         path: Routes.explore,

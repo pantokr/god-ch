@@ -78,7 +78,9 @@ class PrayerDetailPage extends StatelessWidget {
             title: '기도제목',
             fallbackLocation: back,
             actions: _actions(context, vm, p!),
-            child: _Body(vm: vm, prayer: p),
+            child: squareCards(
+              child: _Body(vm: vm, prayer: p),
+            ),
           );
         },
       ),
@@ -169,75 +171,53 @@ class _Body extends StatelessWidget {
         ),
         const SizedBox(height: 12),
         // 작성 정보는 본문과 분리한 카드에 둔다: 이름 → 날짜와 각종 정보 (말씀묵상과 같은 순서와 모양).
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    PersonTap(
-                      churchId: vm.me.churchId,
-                      uid: p.authorId,
-                      name: p.authorName,
-                      photoUrl: '',
-                      child: PersonAvatar(
-                        churchId: vm.me.churchId,
-                        uid: p.authorId,
-                        name: p.authorName.isEmpty ? '?' : p.authorName,
-                        radius: 13,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Align(
-                        alignment: Alignment.centerLeft,
-                        child: PersonTap(
-                          churchId: vm.me.churchId,
-                          uid: p.authorId,
-                          name: p.authorName,
-                          photoUrl: '',
-                          child: Text(
-                            p.authorName.isEmpty ? '이름 없음' : p.authorName,
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                PostMeta(
+        PostInfoCard(
+          meta: PostMeta(
+            churchId: vm.me.churchId,
+            author: PostAuthor(
+              avatar: PersonTap(
+                churchId: vm.me.churchId,
+                uid: p.authorId,
+                name: p.authorName,
+                photoUrl: '',
+                child: PersonAvatar(
                   churchId: vm.me.churchId,
-                  date: fmtDateTime(p.createdAt),
-                  views: p.views,
-                  isPrivate: !p.isPublic,
-                  affiliationId: p.affiliationId,
+                  uid: p.authorId,
+                  name: p.authorName.isEmpty ? '?' : p.authorName,
+                  radius: PostAuthor.avatarRadius,
                 ),
-              ],
+              ),
+              name: PersonTap(
+                churchId: vm.me.churchId,
+                uid: p.authorId,
+                name: p.authorName,
+                photoUrl: '',
+                child: Text(
+                  p.authorName.isEmpty ? '이름 없음' : p.authorName,
+                  style: PostAuthor.nameStyle(context),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
             ),
+            date: fmtDateTime(p.createdAt),
+            views: vm.settings.showViews ? p.views : null,
+            isPrivate: !p.isPublic,
+            affiliationId: p.affiliationId,
           ),
+          // 반응(이모티콘 응원)
+          footer:
+              p.isPublic &&
+                  !p.deleted &&
+                  vm.settings.reactionsOn &&
+                  vm.me.can(Permission.prayerReact)
+              ? ReactionBar(churchId: vm.me.churchId, prayerId: p.id)
+              : null,
         ),
-        // 반응(이모티콘 응원)은 작성 정보와 분리한 카드에 둔다.
-        if (p.isPublic &&
-            !p.deleted &&
-            vm.settings.reactionsOn &&
-            vm.me.can(Permission.prayerReact)) ...[
-          const SizedBox(height: 12),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(20),
-              child: ReactionBar(churchId: vm.me.churchId, prayerId: p.id),
-            ),
-          ),
-        ],
         const SizedBox(height: 16),
         if (p.isPublic && !p.deleted)
           EntrySection(
             title: '댓글',
+            churchId: vm.me.churchId,
             entries: vm.comments,
             canWrite: vm.me.canPrayerComment && vm.settings.allowComments,
             hint: '댓글 쓰기',
@@ -251,6 +231,7 @@ class _Body extends StatelessWidget {
         if (!p.isPublic && vm.settings.privateResponses)
           EntrySection(
             title: '교역자 답변',
+            churchId: vm.me.churchId,
             entries: vm.responses,
             canWrite: vm.me.isStaff && !p.deleted,
             hint: '답변 작성',

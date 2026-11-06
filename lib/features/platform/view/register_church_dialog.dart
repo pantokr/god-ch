@@ -4,7 +4,7 @@ import '../../../core/theme.dart';
 import '../../church/view/church_info_fields.dart';
 import '../view_model/church_registry_view_model.dart';
 
-/// 앱 운영자가 교회를 직접 등록한다. 전화번호는 비워 둘 수 있다.
+/// 앱 운영자가 교회를 직접 생성한다. 전화번호는 비워 둘 수 있다.
 class RegisterChurchDialog extends StatefulWidget {
   const RegisterChurchDialog({super.key, required this.vm});
 
@@ -61,10 +61,10 @@ class _RegisterChurchDialogState extends State<RegisterChurchDialog> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text('교회 등록', style: theme.textTheme.titleLarge),
+          Text('교회 생성', style: theme.textTheme.titleLarge),
           const SizedBox(height: 4),
           Text(
-            '등록하면 바로 교회가 만들어져요. 앱 운영자는 교회에 소속되지 않으므로, '
+            '생성하면 바로 교회가 만들어져요. 앱 운영자는 교회에 소속되지 않으므로, '
             '교회 관리에서 초대 코드를 만들어 교회 관리자가 될 분을 초대하고 "교회 관리자로 지정"해 주세요.',
             style: TextStyle(color: context.palette.muted),
           ),
@@ -85,7 +85,7 @@ class _RegisterChurchDialogState extends State<RegisterChurchDialog> {
               const SizedBox(width: 8),
               FilledButton(
                 onPressed: _busy ? null : _submit,
-                child: const Text('등록'),
+                child: const Text('생성'),
               ),
             ],
           ),

@@ -94,9 +94,16 @@ class _ProfileEditDialogState extends State<ProfileEditDialog> {
               gap,
             ],
             LabeledField(
-              label: '이름',
+              // 회원 관리와 같은 표기: 이름  (ID)
+              label: (vm.profile?.loginId ?? '').isEmpty
+                  ? '이름'
+                  : '이름  (${vm.profile!.loginId})',
               required: true,
-              child: TextField(controller: _name, maxLength: 30),
+              child: TextField(
+                controller: _name,
+                maxLength: 30,
+                decoration: const InputDecoration(counterText: ''),
+              ),
             ),
             if (hasProfile) ...[
               gap,
@@ -107,6 +114,7 @@ class _ProfileEditDialogState extends State<ProfileEditDialog> {
                   controller: _phone,
                   keyboardType: TextInputType.phone,
                   maxLength: 20,
+                  decoration: const InputDecoration(counterText: ''),
                   onSubmitted: (_) => _save(vm),
                 ),
               ),

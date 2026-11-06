@@ -5,8 +5,36 @@ import '../../../core/icons.dart';
 import '../../../core/theme.dart';
 import '../../../data/models/affiliation.dart';
 
-/// 글 상세의 정보 줄 (중보기도 · 말씀묵상이 같은 모양을 쓴다):
-/// 날짜와 시각 · 조회수 · 공개 여부(공개 / 교역자 전용) · 소속(없으면 "전체")을 한 줄에 하나씩 아래로 쌓는다 (모임 일정 상세의 정보 줄과 같은 모양).
+/// 작성자 줄의 내용: 아바타와 이름 (눌러서 프로필을 연다). 중보기도 · 말씀묵상 · 모임 일정이 같은 모양을 쓴다.
+class PostAuthor extends StatelessWidget {
+  const PostAuthor({super.key, required this.avatar, required this.name});
+
+  /// 눌러서 프로필을 여는 아바타.
+  final Widget avatar;
+
+  /// 눌러서 프로필을 여는 이름.
+  final Widget name;
+
+  /// 이름 글자 모양.
+  static TextStyle nameStyle(BuildContext context) =>
+      TextStyle(color: context.palette.ink, fontWeight: FontWeight.w600);
+
+  /// 아바타 크기.
+  static const avatarRadius = 12.0;
+
+  @override
+  Widget build(BuildContext context) => Row(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      avatar,
+      const SizedBox(width: 8),
+      Flexible(child: name),
+    ],
+  );
+}
+
+/// 글 상세의 정보 줄 (중보기도 · 말씀묵상 · 모임 일정이 같은 모양을 쓴다):
+/// 작성자 · 작성일 · 조회수 · 공개 여부(공개 / 교역자 전용) · 소속(없으면 "전체")을 한 줄에 하나씩 아래로 쌓는다 (모임 일정 상세의 정보 줄과 같은 모양).
 class PostMeta extends StatefulWidget {
   const PostMeta({
     super.key,
@@ -16,7 +44,16 @@ class PostMeta extends StatefulWidget {
     this.affiliationId,
     this.views,
     this.color,
+    this.showScope = true,
+    this.showPrivacy = true,
+    this.author,
   });
+
+  /// 작성자 줄(아바타 · 이름). 없으면 줄을 두지 않는다 (작성자를 숨기는 글).
+  final Widget? author;
+
+  /// false이면 공개 여부(공개 · 교역자 전용) 줄만 뺀다 (모임 일정은 공개 범위(소속)만 있다).
+  final bool showPrivacy;
 
   final String churchId;
 
@@ -26,6 +63,9 @@ class PostMeta extends StatefulWidget {
 
   /// 글의 소속. 없으면 "전체".
   final String? affiliationId;
+
+  /// false이면 공개 여부와 소속 줄을 빼고 날짜 · 조회수만 보인다 (모임 일정처럼 공개 범위가 없는 글).
+  final bool showScope;
 
   /// 조회수. 없으면 보여주지 않는다.
   final int? views;
@@ -48,15 +88,21 @@ class _PostMetaState extends State<PostMeta> {
     final palette = context.palette;
     final textColor = widget.color ?? palette.ink;
     final iconColor = widget.color ?? palette.muted;
-    Widget item(IconData icon, String text) => Padding(
-      padding: const EdgeInsets.only(top: 10),
+    Widget item(IconData icon, String label, Object value) => Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Icon(icon, size: 18, color: iconColor),
           const SizedBox(width: 10),
+          SizedBox(
+            width: 72,
+            child: Text(label, style: TextStyle(color: palette.muted)),
+          ),
           Expanded(
-            child: Text(text, style: TextStyle(color: textColor)),
+            child: value is Widget
+                ? Align(alignment: Alignment.centerLeft, child: value)
+                : Text('$value', style: TextStyle(color: textColor)),
           ),
         ],
       ),
@@ -74,17 +120,64 @@ class _PostMetaState extends State<PostMeta> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            item(AppIcons.calendarDays, widget.date),
+            if (widget.author != null)
+              item(AppIcons.user, '작성자', widget.author!),
+            if (widget.date.isNotEmpty)
+              item(AppIcons.calendarDays, '작성일', widget.date),
             if (widget.views != null)
-              item(AppIcons.eyeCount, '조회 ${widget.views}'),
-            item(
-              widget.isPrivate ? AppIcons.lock : AppIcons.globe,
-              widget.isPrivate ? '교역자 전용' : '공개',
-            ),
-            if (name != null) item(AppIcons.usersThree, '소속 $name'),
+              item(AppIcons.eyeCount, '조회수', '${widget.views}회'),
+            if (widget.showScope && widget.showPrivacy)
+              item(
+                widget.isPrivate ? AppIcons.lock : AppIcons.globe,
+                '공개 여부',
+                widget.isPrivate ? '교역자 전용' : '공개',
+              ),
+            if (widget.showScope && name != null)
+              item(AppIcons.usersThree, '공개 범위', name),
           ],
         );
       },
+    );
+  }
+}
+
+/// 글 상세의 작성 정보 카드 (중보기도 · 말씀묵상 · 모임 일정이 같은 틀을 쓴다):
+/// 정보 줄([meta])이 한 카드, 반응 · 좋아요([footer])가 그 아래 별개의 카드다.
+/// 정보 줄과 반응은 글의 종류마다 다르지만 카드 틀과 간격은 같다.
+class PostInfoCard extends StatelessWidget {
+  const PostInfoCard({super.key, required this.meta, this.footer, this.shape});
+
+  final Widget meta;
+
+  /// 반응 · 좋아요처럼 누르는 것. 없으면 카드를 두지 않는다.
+  final Widget? footer;
+  final ShapeBorder? shape;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Card(
+          shape: shape,
+          margin: EdgeInsets.zero,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+            child: meta,
+          ),
+        ),
+        if (footer != null) ...[
+          const SizedBox(height: 12),
+          Card(
+            shape: shape,
+            margin: EdgeInsets.zero,
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Align(alignment: Alignment.centerLeft, child: footer),
+            ),
+          ),
+        ],
+      ],
     );
   }
 }

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../../app/app_scope.dart';
 import '../../../core/layout/app_dialog.dart';
+import '../../../core/layout/confirm_dialog.dart';
 import '../../../core/layout/manage_list_row.dart';
 import '../../../core/layout/page_frame.dart';
 import '../../../core/mvvm/view_model_builder.dart';
@@ -13,6 +14,7 @@ import '../../../data/models/member.dart';
 import '../../../data/models/user_profile.dart';
 import '../../admin/view/member_detail_dialog.dart';
 import '../view_model/users_view_model.dart';
+import 'admin_section_header.dart';
 import '../../../core/widgets/app_inputs.dart';
 
 /// 앱 운영자 > 회원 관리: 가입한 전체 회원의 이름과 소속 교회 · 소속을 보고,
@@ -32,12 +34,12 @@ class UsersPage extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const PageTitle(title: '회원 관리'),
               AppSearchField(
+                inset: true,
                 hint: '이름, 아이디, 이메일, 전화번호 검색',
                 onChanged: vm.setQuery,
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 12),
               StreamBuilder<List<UserProfile>>(
                 stream: vm.users,
                 builder: (context, snap) {
@@ -53,25 +55,29 @@ class UsersPage extends StatelessWidget {
                   final users = snap.data!.where(vm.matches).toList();
                   if (users.isEmpty) {
                     return Card(
-                      child: Padding(
-                        padding: EdgeInsets.all(40),
-                        child: Center(
-                          child: Text(
-                            '해당하는 회원이 없어요.',
-                            style: TextStyle(color: context.palette.muted),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          AdminSectionHeader(
+                            title: '가입한 회원',
+                            count: snap.data!.length,
                           ),
-                        ),
+                          Padding(
+                            padding: const EdgeInsets.all(40),
+                            child: Center(
+                              child: Text(
+                                '해당하는 회원이 없어요.',
+                                style: TextStyle(color: context.palette.muted),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     );
                   }
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        '가입한 회원 (${snap.data!.length})',
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                      const SizedBox(height: 8),
                       StreamBuilder<List<Member>>(
                         stream: vm.memberships,
                         builder: (context, ms) =>
@@ -81,8 +87,15 @@ class UsersPage extends StatelessWidget {
                                 final all = ms.data ?? const <Member>[];
                                 final list = affs.data ?? const <Affiliation>[];
                                 return Card(
+                                  clipBehavior: Clip.antiAlias,
                                   child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.stretch,
                                     children: [
+                                      AdminSectionHeader(
+                                        title: '가입한 회원',
+                                        count: snap.data!.length,
+                                      ),
                                       for (
                                         var i = 0;
                                         i < users.length;
@@ -163,8 +176,34 @@ class _UserRow extends StatelessWidget {
             ),
         ],
         onSave: (result) => vm.saveDetail(user, result),
+        onRemoveFrom: (m) => _confirmExpel(context, m),
+        onWithdraw: () => _confirmWithdraw(context),
       ),
     );
+  }
+
+  /// 교회에서 강제 추방: 확인 뒤 내보낸다. 내보냈으면 true.
+  Future<bool> _confirmExpel(BuildContext context, Member m) async {
+    final ok = await confirmChange(
+      context,
+      title: '${m.churchName}에서 추방',
+      body: '${user.name}님을 이 교회에서 내보내요. 다시 들어오려면 초대 코드로 새로 신청해야 해요.',
+      confirmLabel: '추방',
+      danger: true,
+    );
+    return ok && await vm.expel(m);
+  }
+
+  /// 앱 강제 탈퇴: 확인 뒤 모든 교회에서 내보내고 탈퇴 처리한다. 처리했으면 true.
+  Future<bool> _confirmWithdraw(BuildContext context) async {
+    final ok = await confirmChange(
+      context,
+      title: '${user.name}님 강제 탈퇴',
+      body: '속한 모든 교회에서 내보내고, 이 계정은 더 이상 쓸 수 없어요.',
+      confirmLabel: '탈퇴',
+      danger: true,
+    );
+    return ok && await vm.withdraw(user, memberships);
   }
 
   /// 소속 교회 이름들.

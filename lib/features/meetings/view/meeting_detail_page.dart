@@ -17,15 +17,15 @@ import '../../../core/layout/confirm_dialog.dart';
 import '../../../core/layout/sub_page.dart';
 import '../../../core/mvvm/view_model_builder.dart';
 import '../../../core/theme.dart';
-import '../../../core/widgets/stat_icons.dart';
 import '../../../data/models/permission.dart';
 import '../../../data/models/meeting.dart';
 import '../../../data/models/member.dart';
 import '../view_model/meeting_detail_view_model.dart';
 import 'meeting_comments_card.dart';
 import 'meeting_form.dart';
-import '../../home/view/content_widgets.dart';
 import 'meeting_format.dart';
+import '../../../core/format.dart';
+import '../../home/view/post_meta.dart';
 import 'meetings_page.dart' show seatStatus;
 
 /// 주소 `/churches/:cid/meeting/:id`: 모임 상세. 정보 · 소개 · 참여 · 반응이 분리된 카드로 보인다.
@@ -90,7 +90,7 @@ class MeetingDetailPage extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // 사진 · 제목 · 소개 → 일정 정보 · 모임장 → 참여 → 반응 → 댓글.
+                // 사진 · 제목 · 소개 → 일시 · 장소 정보 → 참여 → 모임장(좋아요 · 조회수 포함) → 댓글.
                 _InfoCard(meeting: m, churchId: me.churchId),
                 const SizedBox(height: 12),
                 _InfoCard(meeting: m, churchId: me.churchId, details: true),
@@ -101,10 +101,8 @@ class MeetingDetailPage extends StatelessWidget {
                     child: _JoinCard(meeting: m, me: me, vm: vm),
                   ),
                 ),
-                if (vm.settings.allowLikes || vm.settings.showViews) ...[
-                  const SizedBox(height: 12),
-                  _ReactionCard(meeting: m, me: me, vm: vm),
-                ],
+                const SizedBox(height: 12),
+                _LeaderCard(meeting: m, churchId: me.churchId, me: me, vm: vm),
                 const SizedBox(height: 12),
                 MeetingCommentsCard(
                   meetingId: m.id,
@@ -128,6 +126,7 @@ class MeetingDetailPage extends StatelessWidget {
     final result = await showMeetingForm(
       context,
       initial: m,
+      me: me,
       upload: vm.uploadImage,
     );
     if (result == null || !context.mounted) return;
@@ -205,49 +204,6 @@ class _InfoCard extends StatelessWidget {
                 '입장 조건',
                 m.needsApproval ? '모임장 승인' : '자유 참여',
               ),
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 6),
-                child: Row(
-                  children: [
-                    Icon(AppIcons.crown, size: 18, color: palette.muted),
-                    const SizedBox(width: 10),
-                    SizedBox(
-                      width: 72,
-                      child: Text(
-                        '모임장',
-                        style: TextStyle(color: palette.muted),
-                      ),
-                    ),
-                    // 프로필과 이름 부분만 눌린다 (줄 전체가 아니다).
-                    Flexible(
-                      child: PersonTap(
-                        churchId: churchId,
-                        uid: m.leaderId,
-                        name: m.leaderName,
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            PersonAvatar(
-                              churchId: churchId,
-                              uid: m.leaderId,
-                              name: m.leaderName.isEmpty ? '?' : m.leaderName,
-                              radius: 11,
-                            ),
-                            const SizedBox(width: 8),
-                            Flexible(
-                              child: Text(
-                                m.leaderName,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
             ],
           ),
         ),
@@ -259,16 +215,12 @@ class _InfoCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (m.imageUrl.isNotEmpty) ...[
-              ClipRRect(
-                borderRadius: BorderRadius.circular(AppRadius.control),
-                child: AspectRatio(
-                  aspectRatio: 1.3,
-                  child: ContentImage(m.imageUrl),
-                ),
-              ),
-              const SizedBox(height: 16),
-            ],
+            // 사진이 없어도 목록처럼 기본 이미지 칸을 보여준다.
+            ClipRRect(
+              borderRadius: BorderRadius.circular(AppRadius.control),
+              child: AspectRatio(aspectRatio: 1.3, child: MeetingThumb(m)),
+            ),
+            const SizedBox(height: 16),
             Text(m.title, style: Theme.of(context).textTheme.titleLarge),
             if (m.description.isNotEmpty) ...[
               const SizedBox(height: 28),
@@ -307,14 +259,26 @@ class _JoinCard extends StatelessWidget {
       button = OutlinedButton(
         // 이미 지난(종료된) 모임은 참여를 취소할 수 없다.
         onPressed: vm.busy || m.ended ? null : () => vm.setJoined(m, false),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: Theme.of(context).colorScheme.error,
+        ),
         child: const Text('참여 취소'),
       );
     } else if (pending) {
       // 모임장 승인 대기 중: 신청을 취소할 수 있다.
       button = OutlinedButton(
         onPressed: vm.busy || m.ended ? null : () => vm.setJoined(m, false),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: Theme.of(context).colorScheme.error,
+        ),
         child: const Text('신청 취소'),
       );
+    } else if (!m.openTo(
+      isStaff: me.isStaff,
+      affiliationIds: me.affiliationIds,
+    )) {
+      // 공개 범위(소속) 밖의 교인은 참여할 수 없다.
+      button = const OutlinedButton(onPressed: null, child: Text('소속 전용'));
     } else {
       button = FilledButton(
         onPressed: vm.busy || m.isFull || m.ended
@@ -369,13 +333,16 @@ class _JoinCard extends StatelessWidget {
         ],
         const SizedBox(height: 14),
         button,
-        // 모임장에게만: 승인을 기다리는 신청자 목록.
-        if (isLeader && m.pendingIds.isNotEmpty) ...[
+        // 모임장과 승인 권한이 있는 사람(교회 관리자 포함)에게만: 승인을 기다리는 신청자 목록.
+        if ((isLeader || me.can(Permission.meetingApprove)) &&
+            m.pendingIds.isNotEmpty) ...[
           const SizedBox(height: 20),
           _PendingRequests(meeting: m, me: me, vm: vm),
         ],
         // 모임장 · 교회 운영자에게만: 참여자 목록 페이지로 가는 줄.
-        if ((isLeader || me.isAdmin || me.isOperatorView) &&
+        if ((isLeader ||
+                me.isOperatorView ||
+                me.can(Permission.meetingViewParticipants)) &&
             m.participantIds.isNotEmpty) ...[
           const SizedBox(height: 12),
           OutlinedButton.icon(
@@ -419,49 +386,72 @@ class _StatusBubble extends StatelessWidget {
   }
 }
 
-/// 반응: 좋아요 버튼과 조회수. 말씀묵상 상세의 반응 카드와 같은 모양이다.
-class _ReactionCard extends StatelessWidget {
-  const _ReactionCard({
+/// 모임장 정보 카드: 프로필 · 이름과 등록일이 한 줄에 나란히, 그 아래 조회수, 맨 아래 좋아요
+/// (중보기도 · 말씀묵상 상세의 작성 정보 카드와 같은 모양).
+class _LeaderCard extends StatelessWidget {
+  const _LeaderCard({
     required this.meeting,
+    required this.churchId,
     required this.me,
     required this.vm,
   });
 
   final Meeting meeting;
+  final String churchId;
   final Member me;
   final MeetingDetailViewModel vm;
 
   @override
   Widget build(BuildContext context) {
-    final liked = meeting.likedByUser(me.id);
-    final muted = context.palette.muted;
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
-        child: Row(
-          children: [
-            if (vm.settings.allowLikes)
-              LikeButton(
-                liked: liked,
-                count: meeting.likes,
-                showCount: vm.settings.showLikeCount,
-                onTap: me.isOperatorView ? null : () => vm.setLike(!liked),
-              ),
-            const Spacer(),
-            if (vm.settings.showViews) ...[
-              Icon(AppIcons.eyeCount, size: 16, color: muted),
-              const SizedBox(width: 4),
-              Text(
-                '조회 ${StatIcons.compact(meeting.views)}',
-                style: TextStyle(color: muted, fontSize: 13),
-              ),
-            ],
-          ],
+    final m = meeting;
+    final liked = m.likedByUser(me.id);
+    return PostInfoCard(
+      meta: PostMeta(
+        churchId: churchId,
+        author: PostAuthor(
+          avatar: PersonTap(
+            churchId: churchId,
+            uid: m.leaderId,
+            name: m.leaderName,
+            child: PersonAvatar(
+              churchId: churchId,
+              uid: m.leaderId,
+              name: m.leaderName.isEmpty ? '?' : m.leaderName,
+              radius: PostAuthor.avatarRadius,
+            ),
+          ),
+          name: PersonTap(
+            churchId: churchId,
+            uid: m.leaderId,
+            name: m.leaderName,
+            child: Text(
+              m.leaderName.isEmpty ? '이름 없음' : m.leaderName,
+              style: PostAuthor.nameStyle(context),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
         ),
+        date: fmtDateTime(m.createdAt),
+        views: vm.settings.showViews ? m.views : null,
+        isPrivate: false,
+        // 공개 여부(공개 · 교역자 전용)는 없고, 공개 범위(소속)만 보인다.
+        showPrivacy: false,
+        affiliationId: m.affiliationId,
       ),
+      footer: vm.settings.allowLikes
+          ? LikeButton(
+              liked: liked,
+              count: m.likes,
+              showCount: vm.settings.showLikeCount,
+              onTap: me.isOperatorView ? null : () => vm.setLike(!liked),
+            )
+          : null,
     );
   }
 }
+
+/// 상세에서 바로 처리할 수 있게 보여 주는 승인 대기 인원 (나머지는 참여자 페이지에서 처리한다).
+const _pendingPreview = 3;
 
 /// 승인을 기다리는 참여 신청자 목록(모임장 전용): 이름과 승인 · 거절 버튼.
 class _PendingRequests extends StatelessWidget {
@@ -493,7 +483,8 @@ class _PendingRequests extends StatelessWidget {
               style: const TextStyle(fontWeight: FontWeight.w800),
             ),
             const SizedBox(height: 8),
-            for (final uid in m.pendingIds)
+            // 대기자가 많아져도 화면이 끝없이 늘어나지 않게 앞의 몇 명만 보인다.
+            for (final uid in m.pendingIds.take(_pendingPreview))
               SizedBox(
                 height: 52,
                 child: Row(
@@ -532,6 +523,18 @@ class _PendingRequests extends StatelessWidget {
                       child: const Text('승인'),
                     ),
                   ],
+                ),
+              ),
+            if (m.pendingIds.length > _pendingPreview)
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton(
+                  onPressed: () => context.push(
+                    Routes.meetingParticipants(me.churchId, m.id),
+                  ),
+                  child: Text(
+                    '더보기 (+${m.pendingIds.length - _pendingPreview})',
+                  ),
                 ),
               ),
           ],

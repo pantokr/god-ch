@@ -1,13 +1,10 @@
 import 'package:flutter/material.dart';
 
-import '../../people/view/person_popup.dart';
-
 import '../../../app/app_scope.dart';
-import '../../../core/format.dart';
 import '../../../core/icons.dart';
 import '../../../core/mvvm/view_model_builder.dart';
-import '../../../core/theme.dart';
 import '../../../core/widgets/comment_composer.dart';
+import '../../../core/widgets/comment_parts.dart';
 import '../../../core/widgets/comment_edit_dialog.dart';
 import '../../../core/widgets/toast.dart';
 import '../../../core/widgets/trash_icon.dart';
@@ -40,7 +37,6 @@ class ReflectionsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final palette = context.palette;
     return ViewModelBuilder<DevotionReflectionsViewModel>(
       key: ValueKey('$devotionId/${me.id}/$publicList'),
       create: (context) => DevotionReflectionsViewModel(
@@ -56,50 +52,21 @@ class ReflectionsCard extends StatelessWidget {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Card(
-                margin: EdgeInsets.zero,
-                child: Padding(
-                  padding: const EdgeInsets.all(20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(
-                            AppIcons.messageCircle,
-                            size: 18,
-                            color: palette.accent,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            '댓글 ${items.length}',
-                            style: Theme.of(context).textTheme.titleMedium,
-                          ),
-                        ],
-                      ),
-                      if (canWrite && !me.isOperatorView) ...[
-                        const SizedBox(height: 12),
-                        CommentComposer(
-                          hint: '댓글 쓰기',
-                          maxLength: DevotionReflection.maxLength,
-                          busy: vm.busy,
-                          onSend: (text) async {
-                            final ok = await vm.add(text);
-                            if (ok && context.mounted) showAddedToast(context);
-                            return ok;
-                          },
-                        ),
-                      ],
-                      if (snap.hasError) ...[
-                        const SizedBox(height: 12),
-                        Text(
-                          '불러오지 못했습니다',
-                          style: TextStyle(color: palette.muted),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
+              CommentHeaderCard(
+                title: '댓글 ${items.length}',
+                hasError: snap.hasError,
+                composer: canWrite && !me.isOperatorView
+                    ? CommentComposer(
+                        hint: '댓글 쓰기',
+                        maxLength: DevotionReflection.maxLength,
+                        busy: vm.busy,
+                        onSend: (text) async {
+                          final ok = await vm.add(text);
+                          if (ok && context.mounted) showAddedToast(context);
+                          return ok;
+                        },
+                      )
+                    : null,
               ),
               // 댓글 하나에 카드 하나. 새 댓글은 맨 위(글쓰기 카드 바로 아래)에 카드로 붙는다.
               for (final r in items.reversed)
@@ -165,7 +132,6 @@ class _Comment extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final palette = context.palette;
     final r = reflection;
     return Card(
       margin: EdgeInsets.zero,
@@ -178,34 +144,12 @@ class _Comment extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    children: [
-                      PersonTap(
-                        churchId: churchId,
-                        uid: r.authorId,
-                        name: r.authorName,
-                        child: Text(
-                          r.authorName.isEmpty ? '이름 없음' : r.authorName,
-                          style: TextStyle(
-                            color: palette.brand,
-                            fontWeight: FontWeight.w800,
-                            fontSize: 13,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        fmtDateTime(r.updatedAt),
-                        style: TextStyle(color: palette.muted, fontSize: 12),
-                      ),
-                      if (r.editedAt != null) ...[
-                        const SizedBox(width: 6),
-                        Text(
-                          '수정됨',
-                          style: TextStyle(color: palette.muted, fontSize: 12),
-                        ),
-                      ],
-                    ],
+                  CommentByline(
+                    churchId: churchId,
+                    uid: r.authorId,
+                    name: r.authorName,
+                    time: r.updatedAt,
+                    edited: r.editedAt != null,
                   ),
                   const SizedBox(height: 4),
                   Text(r.text),

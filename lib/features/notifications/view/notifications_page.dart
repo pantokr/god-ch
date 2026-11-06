@@ -3,7 +3,10 @@ import '../../../core/icons.dart';
 
 import 'package:flutter/material.dart';
 
+import 'package:go_router/go_router.dart';
+
 import '../../../app/app_scope.dart';
+import '../../../app/routes.dart';
 import '../../../core/format.dart';
 import '../../../core/layout/page_frame.dart';
 import '../../../core/layout/sidebar_scaffold.dart';
@@ -84,7 +87,9 @@ class _NotificationsPageState extends State<NotificationsPage> {
                 icon: Icon(_selecting ? AppIcons.x : AppIcons.arrowLeft),
                 onPressed: _selecting
                     ? () => _setSelecting(false)
-                    : () => Navigator.of(context).maybePop(),
+                    : () => context.canPop()
+                          ? context.pop()
+                          : context.go(Routes.churches),
               ),
               Expanded(
                 child: Padding(
@@ -119,11 +124,8 @@ class _NotificationsPageState extends State<NotificationsPage> {
                   child: const Text('삭제'),
                 ),
               ] else if (items.isNotEmpty) ...[
-                // 읽지 않은 알림이 있을 때만 누를 수 있다.
                 TextButton(
-                  onPressed: items.any((n) => !n.read) && !vm.busy
-                      ? () => vm.markAllRead(items)
-                      : null,
+                  onPressed: vm.busy ? null : () => vm.markAllRead(items),
                   child: const Text('모두 읽음'),
                 ),
                 TextButton(
@@ -178,15 +180,43 @@ class _NotificationsPageState extends State<NotificationsPage> {
                                       AppIcons.userPlus,
                                       color: context.palette.brand,
                                     ),
-                                    title: Text('신규 입장 요청 $pendingRequests건'),
+                                    // 처리하지 않은 요청이 있는 동안 N 표시가 붙는다.
+                                    title: Row(
+                                      children: [
+                                        Flexible(
+                                          child: Text(
+                                            '신규 입장 요청 $pendingRequests건',
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 6,
+                                            vertical: 1,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: context.palette.accent,
+                                            borderRadius: BorderRadius.circular(
+                                              99,
+                                            ),
+                                          ),
+                                          child: const Text(
+                                            'N',
+                                            style: TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w800,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                                     subtitle: const Text('회원 관리'),
                                     trailing: const Icon(AppIcons.caretRight),
-                                    // 알림 화면을 닫은 뒤 회원 관리로 이동한다.
-                                    onTap: () async {
-                                      final open = onOpenRequests;
-                                      await Navigator.of(context).maybePop();
-                                      open?.call();
-                                    },
+                                    onTap: onOpenRequests,
                                   ),
                                 ),
                               ),
@@ -230,18 +260,17 @@ class _NotificationsPageState extends State<NotificationsPage> {
                                           vm.markRead(n);
                                           if (!n.hasTarget) return;
                                           final (kind, id) = n.target;
-                                          Navigator.of(context).maybePop().then(
-                                            (_) => kind == 'meeting'
-                                                ? widget.onOpenMeeting?.call(
-                                                    n.churchId,
-                                                    id,
-                                                  )
-                                                : widget.onOpenPost?.call(
-                                                    n.churchId,
-                                                    kind,
-                                                    id,
-                                                  ),
-                                          );
+                                          // 알림은 페이지 스택에 남아 있어 뒤로가기로 돌아온다.
+                                          kind == 'meeting'
+                                              ? widget.onOpenMeeting?.call(
+                                                  n.churchId,
+                                                  id,
+                                                )
+                                              : widget.onOpenPost?.call(
+                                                  n.churchId,
+                                                  kind,
+                                                  id,
+                                                );
                                         },
                                       ),
                                     ],
@@ -285,6 +314,8 @@ class _Row extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final palette = context.palette;
+    // 테마의 보조 글자색이 본문색과 같아서, 읽은 알림은 본문색을 흐리게 한 회색을 따로 쓴다.
+    final gray = palette.ink.withValues(alpha: 0.4);
     return InkWell(
       onTap: onTap,
       child: Padding(
@@ -319,17 +350,24 @@ class _Row extends StatelessWidget {
                     style: TextStyle(
                       fontWeight: isNew ? FontWeight.w700 : FontWeight.w500,
                       // 읽은 알림은 흐리게.
-                      color: isNew ? null : palette.muted,
+                      color: isNew ? null : gray,
                     ),
                   ),
                   if (item.body.isNotEmpty) ...[
                     const SizedBox(height: 2),
-                    Text(item.body, style: TextStyle(color: palette.muted)),
+                    Text(
+                      item.body,
+                      // 읽은 알림은 회색 글씨.
+                      style: TextStyle(color: isNew ? null : gray),
+                    ),
                   ],
                   const SizedBox(height: 4),
                   Text(
                     fmtDate(item.createdAt),
-                    style: TextStyle(color: palette.muted, fontSize: 12),
+                    style: TextStyle(
+                      color: isNew ? palette.muted : gray,
+                      fontSize: 12,
+                    ),
                   ),
                 ],
               ),

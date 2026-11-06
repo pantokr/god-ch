@@ -6,6 +6,7 @@ import '../../../app/app_scope.dart';
 import '../../../core/mvvm/view_model_builder.dart';
 import '../../../core/theme.dart';
 import '../../../data/models/profile_field.dart';
+import '../data/church_repository.dart' show blockedChurchMessage;
 import '../../auth/view/profile_extra_fields.dart';
 import '../view_model/join_church_view_model.dart';
 
@@ -43,6 +44,12 @@ class _JoinChurchDialogState extends State<JoinChurchDialog> {
       navigator.pop();
       messenger.showSnackBar(
         const SnackBar(content: Text('입장을 신청했어요. 교역자의 승인을 기다려 주세요.')),
+      );
+    } else if (vm.error == blockedChurchMessage) {
+      // 접근할 수 없는 교회는 창을 닫고 토스트로 알린다.
+      navigator.pop();
+      messenger.showSnackBar(
+        const SnackBar(content: Text(blockedChurchMessage)),
       );
     }
   }
@@ -87,7 +94,9 @@ class _JoinChurchDialogState extends State<JoinChurchDialog> {
                 requireBirthDate: true,
               ),
             ],
-            if (vm.error != null && vm.missing.isEmpty) ...[
+            if (vm.error != null &&
+                vm.missing.isEmpty &&
+                vm.error != blockedChurchMessage) ...[
               const SizedBox(height: 12),
               Text(vm.error!, style: TextStyle(color: theme.colorScheme.error)),
             ],

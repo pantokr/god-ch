@@ -47,8 +47,8 @@ class Bible {
       _byChapter[book]?[chapter] ?? const [];
 }
 
-/// 성경 본문(`bible/verse.csv`, Firebase Storage)을 올리고 읽는다.
-/// 파일은 앱 운영자가 한 번 올려 두고, 말씀묵상을 쓸 때 구절을 골라 가져온다.
+/// 성경 본문(`bible/verse.csv`, Firebase Storage)을 읽는다.
+/// 파일은 Firebase 콘솔의 Storage에서 직접 올리고, 말씀묵상을 쓸 때 구절을 골라 가져온다.
 class BibleRepository {
   BibleRepository(this._storage);
 
@@ -60,27 +60,6 @@ class BibleRepository {
   static const _maxBytes = 60 * 1024 * 1024;
 
   Future<Bible>? _loaded;
-
-  /// 올린 성경 파일이 있는가.
-  Future<bool> exists() async {
-    try {
-      await _storage.ref(path).getMetadata();
-      return true;
-    } on FirebaseException catch (e) {
-      if (e.code == 'object-not-found') return false;
-      rethrow;
-    }
-  }
-
-  /// `verse.csv`를 올린다. 머리글과 내용을 확인해서 잘못된 파일이면 올리지 않는다.
-  Future<void> upload(Uint8List bytes) async {
-    // 올리기 전에 읽어 본다 (형식이 틀리면 예외).
-    parse(bytes);
-    await _storage
-        .ref(path)
-        .putData(bytes, SettableMetadata(contentType: 'text/csv'));
-    _loaded = null;
-  }
 
   /// 성경 전체. 처음 한 번만 내려받아 읽고 이후에는 메모리에 둔 것을 쓴다.
   /// 실패하면 다음에 다시 시도할 수 있게 기억하지 않는다.

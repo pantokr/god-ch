@@ -219,7 +219,7 @@ class _FormState extends State<_Form> {
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 20),
                       child: LabeledField(
-                        label: '소속',
+                        label: '공개 범위',
                         child: DropdownButtonFormField<String?>(
                           initialValue: chosen ? _affiliationId : list.first.id,
                           decoration: const InputDecoration(),
@@ -238,7 +238,7 @@ class _FormState extends State<_Form> {
                 ),
                 // 비공개: 말씀묵상 비공개 조회 권한이 있는 사람(교역자)만 볼 수 있다.
                 ChoiceRow<bool>(
-                  label: '공개 범위',
+                  label: '공개 여부',
                   options: const [
                     ChoiceOption(false, '공개'),
                     ChoiceOption(true, '교역자 전용'),

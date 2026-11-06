@@ -103,7 +103,7 @@ enum Permission {
   ),
   devotionViewPrivate(
     'devotion.viewPrivate',
-    '비공개(소속 전용) 조회',
+    '비공개 조회',
     PermissionGroup.devotion,
     staffDefault: true,
   ),
@@ -153,6 +153,24 @@ enum Permission {
     PermissionGroup.meeting,
     staffDefault: true,
     memberDefault: true,
+  ),
+  meetingViewParticipants(
+    'meeting.viewParticipants',
+    '일정 참여자 조회 (타인 일정 포함)',
+    PermissionGroup.meeting,
+    staffDefault: true,
+  ),
+  meetingKick(
+    'meeting.kick',
+    '일정 참여자 추방 (타인 일정 포함)',
+    PermissionGroup.meeting,
+    staffDefault: true,
+  ),
+  meetingApprove(
+    'meeting.approve',
+    '일정 참여 승인 · 거절 (타인 일정 포함)',
+    PermissionGroup.meeting,
+    staffDefault: true,
   ),
 
   // ---- 관리자 고정 (직급으로 줄 수 없다) ----
@@ -229,12 +247,14 @@ enum Permission {
     meetingCreate ||
     affiliationCreate ||
     meetingJoin => PermissionKind.create,
+    meetingViewParticipants => PermissionKind.view,
     prayerCommentDeleteOthers ||
     prayerDeleteOthers ||
     devotionCommentDeleteOthers ||
     devotionDeleteOthers ||
     affiliationDelete ||
-    meetingDelete => PermissionKind.delete,
+    meetingDelete ||
+    meetingKick => PermissionKind.delete,
     _ => PermissionKind.manage,
   };
 

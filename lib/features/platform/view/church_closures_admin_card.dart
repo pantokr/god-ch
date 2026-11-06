@@ -1,5 +1,3 @@
-import '../../../core/icons.dart';
-
 import 'package:flutter/material.dart';
 
 import '../../../app/app_scope.dart';
@@ -12,6 +10,7 @@ import '../../../data/models/church_closure_request.dart';
 import '../../church/view/church_requests_admin_card.dart'
     show RejectReasonForm;
 import '../../church/view_model/church_closure_view_model.dart';
+import 'admin_section_header.dart';
 
 /// 앱 운영자 전용: 교회 폐쇄 요청을 확인하고 승인/거절한다. 승인해도 교회와 기록은 지우지 않는다.
 class ChurchClosuresAdminCard extends StatelessWidget {
@@ -27,47 +26,48 @@ class ChurchClosuresAdminCard extends StatelessWidget {
         builder: (context, snap) {
           final items = snap.data ?? const <ChurchClosureRequest>[];
           return Card(
-            child: Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Row(
-                    children: [
-                      const Icon(AppIcons.warning),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          '교회 폐쇄 요청 · ${items.length}건',
-                          style: Theme.of(context).textTheme.titleMedium,
-                        ),
-                      ),
-                    ],
-                  ),
-                  if (vm.error != null) ...[
-                    const SizedBox(height: 8),
-                    Text(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                AdminSectionHeader(
+                  title: '교회 폐쇄 요청',
+                  count: items.length,
+                  highlight: true,
+                ),
+                if (vm.error != null)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                    child: Text(
                       vm.error!,
                       style: TextStyle(
                         color: Theme.of(context).colorScheme.error,
                       ),
                     ),
+                  ),
+                if (snap.hasError)
+                  Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Text('불러오지 못했습니다\n${snap.error}'),
+                  )
+                else if (items.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Center(
+                      child: Text(
+                        '처리할 폐쇄 요청이 없어요.',
+                        style: TextStyle(color: context.palette.muted),
+                      ),
+                    ),
+                  )
+                else
+                  for (var i = 0; i < items.length; i++) ...[
+                    if (i > 0) const Divider(),
+                    Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: _Row(request: items[i], vm: vm),
+                    ),
                   ],
-                  const SizedBox(height: 12),
-                  if (snap.hasError)
-                    Text('불러오지 못했습니다\n${snap.error}')
-                  else if (items.isEmpty)
-                    Text(
-                      '처리할 폐쇄 요청이 없어요.',
-                      style: TextStyle(color: context.palette.muted),
-                    )
-                  else
-                    for (var i = 0; i < items.length; i++) ...[
-                      if (i > 0) const Divider(height: 32),
-                      _Row(request: items[i], vm: vm),
-                    ],
-                ],
-              ),
+              ],
             ),
           );
         },

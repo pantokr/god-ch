@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 
+import '../../../core/app_exception.dart';
 import '../../../core/mvvm/view_model.dart';
 import '../../../data/models/affiliation.dart';
 import '../../../data/models/member.dart';
@@ -56,6 +57,23 @@ class UsersViewModel extends ViewModel {
     );
     return url;
   }
+
+  /// 회원을 한 교회에서 강제로 추방한다 (당사자에게 알림이 간다).
+  Future<bool> expel(Member m) =>
+      run(() => _members.remove(m.churchId, m.churchName, m.id));
+
+  /// 회원을 앱에서 강제로 탈퇴시킨다: 속한 모든 교회에서 내보내고 프로필에 탈퇴 표시를 남긴다.
+  /// 이후 이 계정은 로그인해도 바로 로그아웃된다. 교회 관리자인 교회가 있으면 먼저 넘겨야 한다.
+  Future<bool> withdraw(UserProfile u, List<Member> memberships) =>
+      run(() async {
+        if (memberships.any((m) => m.role == Role.admin)) {
+          throw const AppException('교회 관리자인 교회가 있어요. 관리자를 넘긴 뒤 탈퇴시켜 주세요.');
+        }
+        for (final m in memberships) {
+          await _members.remove(m.churchId, m.churchName, m.id);
+        }
+        await _registry.markWithdrawn(u.uid);
+      });
 
   /// 상세 관리 저장: 바뀐 항목만 쓴다. 앱 운영자는 모든 교회에서 교회 운영자와 같은 권한이다.
   Future<bool> saveDetail(UserProfile u, MemberDetailResult r) => run(() async {

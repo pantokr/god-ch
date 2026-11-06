@@ -83,7 +83,9 @@ class _ProfileCompletionPageState extends State<ProfileCompletionPage> {
                             child: TextFormField(
                               controller: _name,
                               maxLength: 30,
-                              decoration: const InputDecoration(),
+                              decoration: const InputDecoration(
+                                counterText: '',
+                              ),
                               validator: (v) => (v == null || v.trim().isEmpty)
                                   ? '이름을 입력해 주세요'
                                   : null,

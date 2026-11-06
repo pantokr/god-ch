@@ -68,7 +68,7 @@ class _BiblePickerDialogState extends State<BiblePickerDialog> {
           return _Message(
             title: '성경 본문을 불러오지 못했어요',
             body:
-                '${snap.error}\n\n앱 운영자가 대시보드에서 성경 파일(verse.csv)을 올렸는지, '
+                '${snap.error}\n\nStorage에 성경 파일(bible/verse.csv)이 있는지, '
                 '그리고 Storage에 CORS 설정(tool/cors.json)이 적용됐는지 확인해 주세요.',
           );
         }

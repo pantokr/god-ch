@@ -1,16 +1,14 @@
 import 'package:flutter/material.dart';
 
-import '../../people/view/person_popup.dart';
-
 import '../../../app/app_scope.dart';
 import '../../../core/widgets/comment_edit_dialog.dart';
 import '../../../core/widgets/toast.dart';
 import '../../../core/widgets/trash_icon.dart';
-import '../../../core/format.dart';
 import '../../../core/icons.dart';
 import '../../../core/mvvm/view_model_builder.dart';
 import '../../../core/theme.dart';
 import '../../../core/widgets/comment_composer.dart';
+import '../../../core/widgets/comment_parts.dart';
 import '../../../data/models/meeting_comment.dart';
 import '../../../data/models/member.dart';
 import '../../../data/models/permission.dart';
@@ -94,7 +92,6 @@ class _MeetingCommentsCardState extends State<MeetingCommentsCard> {
 
   @override
   Widget build(BuildContext context) {
-    final palette = context.palette;
     final me = widget.me;
     return ViewModelBuilder<MeetingCommentsViewModel>(
       key: ValueKey(
@@ -115,50 +112,21 @@ class _MeetingCommentsCardState extends State<MeetingCommentsCard> {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Card(
-                margin: EdgeInsets.zero,
-                child: Padding(
-                  padding: const EdgeInsets.all(20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(
-                            AppIcons.messageCircle,
-                            size: 18,
-                            color: palette.accent,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            '댓글 $count',
-                            style: Theme.of(context).textTheme.titleMedium,
-                          ),
-                        ],
-                      ),
-                      if (!me.isOperatorView && widget.canWrite) ...[
-                        const SizedBox(height: 12),
-                        CommentComposer(
-                          hint: '댓글 쓰기',
-                          maxLength: MeetingComment.maxLength,
-                          busy: vm.busy,
-                          onSend: (text) async {
-                            final ok = await vm.add(text);
-                            if (ok && context.mounted) showAddedToast(context);
-                            return ok;
-                          },
-                        ),
-                      ],
-                      if (snap.hasError) ...[
-                        const SizedBox(height: 12),
-                        Text(
-                          '불러오지 못했습니다',
-                          style: TextStyle(color: palette.muted),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
+              CommentHeaderCard(
+                title: '댓글 $count',
+                hasError: snap.hasError,
+                composer: !me.isOperatorView && widget.canWrite
+                    ? CommentComposer(
+                        hint: '댓글 쓰기',
+                        maxLength: MeetingComment.maxLength,
+                        busy: vm.busy,
+                        onSend: (text) async {
+                          final ok = await vm.add(text);
+                          if (ok && context.mounted) showAddedToast(context);
+                          return ok;
+                        },
+                      )
+                    : null,
               ),
               // 댓글 하나에 카드 하나. 답글은 들여쓰기 단계마다 16씩 안으로 들어간다.
               for (final n in nodes)
@@ -269,34 +237,12 @@ class _CommentCard extends StatelessWidget {
           children: [
             Padding(
               padding: const EdgeInsets.only(right: 8),
-              child: Row(
-                children: [
-                  PersonTap(
-                    churchId: me.churchId,
-                    uid: c.authorId,
-                    name: c.authorName,
-                    child: Text(
-                      c.authorName.isEmpty ? '이름 없음' : c.authorName,
-                      style: TextStyle(
-                        color: palette.brand,
-                        fontWeight: FontWeight.w800,
-                        fontSize: 13,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    fmtDateTime(c.createdAt),
-                    style: TextStyle(color: palette.muted, fontSize: 12),
-                  ),
-                  if (c.editedAt != null) ...[
-                    const SizedBox(width: 6),
-                    Text(
-                      '수정됨',
-                      style: TextStyle(color: palette.muted, fontSize: 12),
-                    ),
-                  ],
-                ],
+              child: CommentByline(
+                churchId: me.churchId,
+                uid: c.authorId,
+                name: c.authorName,
+                time: c.createdAt,
+                edited: c.editedAt != null,
               ),
             ),
             const SizedBox(height: 4),

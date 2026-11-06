@@ -60,7 +60,8 @@ class _BlurValidatedFieldState extends State<BlurValidatedField> {
     return TextFormField(
       focusNode: _focus,
       controller: widget.controller,
-      decoration: widget.decoration,
+      // 글자 수 표시는 숨기되 자리도 차지하지 않게 한다 (한 줄 입력칸 높이를 모두 같게).
+      decoration: widget.decoration.copyWith(counterText: ''),
       validator: widget.validator,
       obscureText: widget.obscureText,
       autocorrect: widget.autocorrect,

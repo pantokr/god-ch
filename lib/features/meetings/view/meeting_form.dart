@@ -4,12 +4,15 @@ import '../../../core/widgets/labeled_field.dart';
 
 import 'package:flutter/services.dart';
 
+import '../../../app/app_scope.dart';
 import '../../../core/icons.dart';
 import '../../../core/layout/sub_page.dart';
 import '../../../core/widgets/choice_row.dart';
 import '../../../core/widgets/app_date_picker.dart';
 import '../../../core/widgets/thumbnail_field.dart';
+import '../../../data/models/affiliation.dart';
 import '../../../data/models/meeting.dart';
+import '../../../data/models/member.dart';
 import 'meeting_format.dart';
 
 /// 모임 만들기 · 수정에서 입력한 값.
@@ -23,8 +26,11 @@ class MeetingFormResult {
     this.fee = 0,
     this.needsApproval = false,
     this.imageUrl = '',
+    this.affiliationId,
   });
 
+  /// 공개 범위(소속). null이면 교회 전체.
+  final String? affiliationId;
   final String imageUrl;
   final String title;
   final String description;
@@ -43,6 +49,7 @@ class MeetingFormResult {
 Future<MeetingFormResult?> showMeetingForm(
   BuildContext context, {
   Meeting? initial,
+  required Member me,
   required Future<String?> Function(String fileName, Uint8List bytes) upload,
 }) => Navigator.of(context, rootNavigator: true).push<MeetingFormResult>(
   MaterialPageRoute(
@@ -52,16 +59,17 @@ Future<MeetingFormResult?> showMeetingForm(
         barTitle: initial == null ? '모임 만들기' : '모임 수정',
         fallbackLocation: '',
         onBack: () => Navigator.of(context).maybePop(),
-        child: _Form(initial: initial, upload: upload),
+        child: _Form(initial: initial, me: me, upload: upload),
       ),
     ),
   ),
 );
 
 class _Form extends StatefulWidget {
-  const _Form({this.initial, required this.upload});
+  const _Form({this.initial, required this.me, required this.upload});
 
   final Meeting? initial;
+  final Member me;
   final Future<String?> Function(String fileName, Uint8List bytes) upload;
 
   @override
@@ -84,6 +92,7 @@ class _FormState extends State<_Form> {
   // 회비 유무를 먼저 고르고, 있으면 금액을 입력한다.
   late bool _hasFee = (widget.initial?.fee ?? 0) > 0;
   late bool _needsApproval = widget.initial?.needsApproval ?? false;
+  late String? _affiliationId = widget.initial?.affiliationId;
   late DateTime _date =
       widget.initial?.date ??
       DateTime.now()
@@ -168,7 +177,7 @@ class _FormState extends State<_Form> {
                   child: TextField(
                     controller: _title,
                     maxLength: Meeting.maxTitle,
-                    decoration: const InputDecoration(),
+                    decoration: const InputDecoration(counterText: ''),
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -228,7 +237,7 @@ class _FormState extends State<_Form> {
                   child: TextField(
                     controller: _place,
                     maxLength: Meeting.maxPlace,
-                    decoration: const InputDecoration(),
+                    decoration: const InputDecoration(counterText: ''),
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -277,6 +286,53 @@ class _FormState extends State<_Form> {
                   value: _needsApproval,
                   onChanged: (v) => setState(() => _needsApproval = v),
                 ),
+                const SizedBox(height: 16),
+                // 공개 범위: 참여할 수 있는 소속. 교역자 이상은 교회 전체도 고를 수 있다.
+                StreamBuilder<List<Affiliation>>(
+                  stream: AppScope.read(context).affiliations
+                      .affiliations(widget.me.churchId),
+                  builder: (context, snap) {
+                    final staff = widget.me.isStaff;
+                    final list = [
+                      for (final a in snap.data ?? const <Affiliation>[])
+                        if (staff || widget.me.affiliationIds.contains(a.id)) a,
+                    ];
+                    // 고를 수 있는 소속이 없고 교역자도 아니면 늘 교회 전체다.
+                    if (list.isEmpty && !staff) return const SizedBox.shrink();
+                    // 교역자가 아니면 교회 전체는 고를 수 없다: 고른 소속이 없으면 첫 소속이 골라진다.
+                    final chosen = list.any((a) => a.id == _affiliationId);
+                    final value = chosen
+                        ? _affiliationId
+                        : (staff ? null : list.first.id);
+                    if (!staff && !chosen) {
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        if (mounted) {
+                          setState(() => _affiliationId = list.first.id);
+                        }
+                      });
+                    }
+                    return LabeledField(
+                      label: '공개 범위',
+                      child: DropdownButtonFormField<String?>(
+                        initialValue: value,
+                        decoration: const InputDecoration(),
+                        items: [
+                          if (staff)
+                            const DropdownMenuItem<String?>(
+                              value: null,
+                              child: Text('전체'),
+                            ),
+                          for (final a in list)
+                            DropdownMenuItem<String?>(
+                              value: a.id,
+                              child: Text(a.name),
+                            ),
+                        ],
+                        onChanged: (v) => setState(() => _affiliationId = v),
+                      ),
+                    );
+                  },
+                ),
                 const SizedBox(height: 24),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.end,
@@ -298,6 +354,7 @@ class _FormState extends State<_Form> {
                           fee: _hasFee ? (int.tryParse(_fee.text) ?? 0) : 0,
                           needsApproval: _needsApproval,
                           imageUrl: _image.text,
+                          affiliationId: _affiliationId,
                         ),
                       ),
                       child: const Text('저장'),

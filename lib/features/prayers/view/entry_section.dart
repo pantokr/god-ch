@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/widgets/comment_composer.dart';
 import '../../../core/widgets/comment_edit_dialog.dart';
+import '../../../core/widgets/comment_parts.dart';
 import '../../../core/widgets/toast.dart';
 import '../../../core/widgets/trash_icon.dart';
-import '../../../core/format.dart';
 import '../../../core/icons.dart';
-import '../../../core/theme.dart';
 import '../../../data/models/text_entry.dart';
 
 /// 댓글 / 비공개 글 답변(댓글에는 쓴 사람 이름이 붙는다): 맨 위 카드에 제목과 입력란, 그 아래에 글마다 카드 하나씩 최신 글부터 이어진다.
@@ -13,6 +13,7 @@ class EntrySection extends StatefulWidget {
   const EntrySection({
     super.key,
     required this.title,
+    required this.churchId,
     required this.entries,
     required this.canWrite,
     required this.hint,
@@ -26,6 +27,9 @@ class EntrySection extends StatefulWidget {
   });
 
   final String title;
+
+  /// 이름을 눌렀을 때 프로필을 여는 교회.
+  final String churchId;
   final Stream<List<TextEntry>> entries;
   final bool canWrite;
   final String hint;
@@ -50,26 +54,18 @@ class EntrySection extends StatefulWidget {
 }
 
 class _EntrySectionState extends State<EntrySection> {
-  final _controller = TextEditingController();
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  Future<void> _send() async {
-    final text = _controller.text.trim();
-    if (text.isEmpty) return;
+  Future<bool> _send(String text) async {
     final messenger = ScaffoldMessenger.of(context);
-    if (await widget.onSend(text)) {
-      _controller.clear();
-      if (mounted) showAddedToast(context);
+    final ok = await widget.onSend(text);
+    if (!mounted) return ok;
+    if (ok) {
+      showAddedToast(context);
     } else {
       messenger.showSnackBar(
         SnackBar(content: Text('전송하지 못했습니다: ${widget.errorOf()}')),
       );
     }
+    return ok;
   }
 
   Future<void> _edit(TextEntry e) async {
@@ -89,7 +85,6 @@ class _EntrySectionState extends State<EntrySection> {
 
   @override
   Widget build(BuildContext context) {
-    final palette = context.palette;
     return StreamBuilder<List<TextEntry>>(
       stream: widget.entries,
       builder: (context, snap) {
@@ -98,43 +93,16 @@ class _EntrySectionState extends State<EntrySection> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Card(
-              margin: EdgeInsets.zero,
-              child: Padding(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      widget.title,
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                    if (widget.canWrite) ...[
-                      const SizedBox(height: 12),
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          Expanded(
-                            child: TextField(
-                              controller: _controller,
-                              minLines: 1,
-                              maxLines: 4,
-                              decoration: InputDecoration(
-                                hintText: widget.hint,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          FilledButton(
-                            onPressed: _send,
-                            child: const Text('등록'),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ],
-                ),
-              ),
+            CommentHeaderCard(
+              title: '${widget.title} ${items.length}',
+              hasError: snap.hasError,
+              composer: widget.canWrite
+                  ? CommentComposer(
+                      hint: widget.hint,
+                      maxLength: widget.maxLength,
+                      onSend: _send,
+                    )
+                  : null,
             ),
             // 글 하나에 카드 하나.
             for (final e in items.reversed)
@@ -151,16 +119,12 @@ class _EntrySectionState extends State<EntrySection> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
-                                [
-                                  if (e.authorName.isNotEmpty) e.authorName,
-                                  fmtDateTime(e.createdAt),
-                                  if (e.edited) '수정됨',
-                                ].join(' · '),
-                                style: TextStyle(
-                                  color: palette.muted,
-                                  fontSize: 12.5,
-                                ),
+                              CommentByline(
+                                churchId: widget.churchId,
+                                uid: e.authorId,
+                                name: e.authorName,
+                                time: e.createdAt,
+                                edited: e.edited,
                               ),
                               const SizedBox(height: 4),
                               Text(e.content),

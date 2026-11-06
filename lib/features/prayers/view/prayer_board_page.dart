@@ -560,12 +560,19 @@ class _Stats extends StatelessWidget {
       stream: repo.reactions(me.churchId, prayer.id),
       builder: (context, snap) {
         final r = snap.data ?? ReactionSummary.empty;
-        return StatIcons(
+        Widget stats(int? comments) => StatIcons(
           horizontal: true,
           showViews: showViews,
           views: prayer.views,
           likes: r.total,
           liked: r.mine.isNotEmpty,
+          comments: comments,
+        );
+        // 댓글은 공개 글에만 달린다.
+        if (!prayer.isPublic) return stats(null);
+        return StreamBuilder<int>(
+          stream: repo.commentCount(me.churchId, prayer.id),
+          builder: (context, c) => stats(c.data ?? 0),
         );
       },
     );

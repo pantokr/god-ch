@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import '../icons.dart';
@@ -384,8 +386,10 @@ class _DatePickerBodyState extends State<_DatePickerBody> {
   }
 }
 
-/// 앱 전용 시각 고르기. 달력과 같은 모양의 칸을 눌러 고른다: 오전 / 오후, 시(1~12), 분(5분 단위 + 1분 조절).
-/// 고른 칸은 달력의 고른 날처럼 잉크색 칸에 반전 글자이고, 지금 시각의 칸은 잉크색 테두리다.
+/// 앱 전용 시각 고르기: 흔한 아날로그 시계판을 돌려 고른다.
+/// - 맨 위의 큰 "시 : 분" 숫자를 누르면 시계판이 시 / 분으로 바뀐다 (시를 고르면 바로 분으로 넘어간다).
+/// - 시계판의 숫자를 누르거나 바늘 끝을 끌어서 고르고, 분은 1분 단위로 맞춘다.
+/// - 고른 값은 잉크색 둥근 표식과 바늘로 보이고, 오전 / 오후는 오른쪽 두 칸에서 고른다.
 /// 모든 글자가 한글이다. 닫으면 null.
 Future<TimeOfDay?> showAppTimePicker(
   BuildContext context, {
@@ -421,89 +425,68 @@ class _TimePickerBodyState extends State<_TimePickerBody> {
       : widget.initial.hour % 12;
   late int _minute = widget.initial.minute;
 
+  /// true이면 시계판이 분을 고른다.
+  bool _minuteMode = false;
+
   TimeOfDay get _value =>
       TimeOfDay(hour: (_hour12 % 12) + (_pm ? 12 : 0), minute: _minute);
 
-  /// 달력의 날 칸과 같은 모양의 칸 하나. [selected]는 잉크색 칸, [ring]은 잉크색 테두리.
-  Widget _cell(
-    BuildContext context, {
-    required String label,
-    required bool selected,
-    required VoidCallback onTap,
-    bool ring = false,
-  }) {
+  /// 큰 숫자 한 칸: 고른 쪽은 잉크색 칸에 반전 글자.
+  Widget _digit(String text, {required bool selected, VoidCallback? onTap}) {
     final palette = context.palette;
-    return Padding(
-      padding: const EdgeInsets.all(2),
-      child: InkWell(
-        borderRadius: AppField.radius,
-        onTap: onTap,
-        child: Container(
-          height: 40,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: selected ? palette.ink : null,
-            borderRadius: AppField.radius,
-            border: !selected && ring
-                ? Border.all(color: palette.ink, width: 1.2)
-                : null,
-          ),
-          child: Text(
-            label,
-            style: TextStyle(
-              color: selected ? palette.surface : palette.ink,
-              fontWeight: selected || ring ? FontWeight.w800 : FontWeight.w500,
-            ),
+    return InkWell(
+      borderRadius: AppField.radius,
+      onTap: onTap,
+      child: Container(
+        width: 72,
+        height: 60,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: selected ? palette.ink : palette.ink.withValues(alpha: 0.06),
+          borderRadius: AppField.radius,
+        ),
+        child: Text(
+          text,
+          style: TextStyle(
+            fontSize: 32,
+            fontWeight: FontWeight.w800,
+            color: selected ? palette.surface : palette.ink,
           ),
         ),
       ),
     );
   }
 
-  /// 칸 여러 개를 [columns]열로 늘어놓는다.
-  Widget _grid(int columns, List<Widget> cells) {
-    final rows = (cells.length / columns).ceil();
-    return Column(
-      children: [
-        for (var r = 0; r < rows; r++)
-          Row(
-            children: [
-              for (var c = 0; c < columns; c++)
-                Expanded(
-                  child: r * columns + c < cells.length
-                      ? cells[r * columns + c]
-                      : const SizedBox(),
-                ),
-            ],
+  Widget _period(String label, {required bool selected}) {
+    final palette = context.palette;
+    return InkWell(
+      borderRadius: AppField.radius,
+      onTap: () => setState(() => _pm = label == '오후'),
+      child: Container(
+        width: 56,
+        height: 28,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: selected ? palette.ink : null,
+          borderRadius: AppField.radius,
+          border: selected ? null : Border.all(color: palette.border),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w800,
+            color: selected ? palette.surface : palette.muted,
           ),
-      ],
+        ),
+      ),
     );
   }
-
-  Widget _label(BuildContext context, String text) => Padding(
-    padding: const EdgeInsets.only(left: 4, top: 12, bottom: 4),
-    child: Text(
-      text,
-      style: TextStyle(
-        color: context.palette.muted,
-        fontSize: 12.5,
-        fontWeight: FontWeight.w700,
-      ),
-    ),
-  );
-
-  void _step(int delta) => setState(() {
-    final total = (_minute + delta) % 60;
-    _minute = total < 0 ? total + 60 : total;
-  });
 
   @override
   Widget build(BuildContext context) {
     final palette = context.palette;
-    final t = _value;
     final now = TimeOfDay.now();
-    final nowPm = now.hour >= 12;
-    final nowHour12 = now.hour % 12 == 0 ? 12 : now.hour % 12;
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
       child: Column(
@@ -519,106 +502,61 @@ class _TimePickerBodyState extends State<_TimePickerBody> {
               letterSpacing: 0.4,
             ),
           ),
-          const SizedBox(height: 6),
-          Text(
-            '${t.hour < 12 ? '오전' : '오후'} ${t.hourOfPeriod == 0 ? 12 : t.hourOfPeriod}시 ${t.minute}분',
-            style: Theme.of(context).textTheme.titleLarge
-                ?.copyWith(fontWeight: FontWeight.w800),
-          ),
-          const SizedBox(height: 14),
-          Divider(height: 1, color: palette.border),
-          // 오전 / 오후
-          _grid(2, [
-            _cell(
-              context,
-              label: '오전',
-              selected: !_pm,
-              ring: !nowPm,
-              onTap: () => setState(() => _pm = false),
-            ),
-            _cell(
-              context,
-              label: '오후',
-              selected: _pm,
-              ring: nowPm,
-              onTap: () => setState(() => _pm = true),
-            ),
-          ]),
-          // 시와 분이 나란히 있다.
+          const SizedBox(height: 12),
+          // 큰 "시 : 분"과 오전 / 오후.
           Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    _label(context, '시'),
-                    _grid(3, [
-                      for (var h = 1; h <= 12; h++)
-                        _cell(
-                          context,
-                          label: '$h',
-                          selected: _hour12 == h,
-                          ring: nowPm == _pm && nowHour12 == h,
-                          onTap: () => setState(() => _hour12 = h),
-                        ),
-                    ]),
-                  ],
+              _digit(
+                '$_hour12',
+                selected: !_minuteMode,
+                onTap: () => setState(() => _minuteMode = false),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 6),
+                child: Text(
+                  ':',
+                  style: TextStyle(
+                    fontSize: 32,
+                    fontWeight: FontWeight.w800,
+                    color: palette.ink,
+                  ),
                 ),
               ),
-              Container(
-                width: 1,
-                height: 200,
-                margin: const EdgeInsets.symmetric(horizontal: 8),
-                color: palette.border,
+              _digit(
+                _minute.toString().padLeft(2, '0'),
+                selected: _minuteMode,
+                onTap: () => setState(() => _minuteMode = true),
               ),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    _label(context, '분'),
-                    _grid(3, [
-                      for (var m = 0; m < 60; m += 5)
-                        _cell(
-                          context,
-                          label: m.toString().padLeft(2, '0'),
-                          selected: _minute == m,
-                          onTap: () => setState(() => _minute = m),
-                        ),
-                    ]),
-                    // 1분 조절
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        IconButton(
-                          tooltip: '1분 전',
-                          visualDensity: VisualDensity.compact,
-                          onPressed: () => _step(-1),
-                          icon: const Icon(AppIcons.caretLeft, size: 18),
-                        ),
-                        SizedBox(
-                          width: 44,
-                          child: Center(
-                            child: Text(
-                              '${_minute.toString().padLeft(2, '0')}분',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ),
-                          ),
-                        ),
-                        IconButton(
-                          tooltip: '1분 후',
-                          visualDensity: VisualDensity.compact,
-                          onPressed: () => _step(1),
-                          icon: const Icon(AppIcons.caretRight, size: 18),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
+              const SizedBox(width: 12),
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _period('오전', selected: !_pm),
+                  const SizedBox(height: 4),
+                  _period('오후', selected: _pm),
+                ],
               ),
             ],
+          ),
+          const SizedBox(height: 16),
+          // 시계판: 시는 1~12, 분은 0~59.
+          Center(
+            child: _ClockDial(
+              minuteMode: _minuteMode,
+              value: _minuteMode ? _minute : _hour12,
+              onChanged: (v) => setState(() {
+                if (_minuteMode) {
+                  _minute = v;
+                } else {
+                  _hour12 = v;
+                }
+              }),
+              // 시를 고르고 손을 떼면 분으로 넘어간다.
+              onEnd: () {
+                if (!_minuteMode) setState(() => _minuteMode = true);
+              },
+            ),
           ),
           const SizedBox(height: 8),
           Row(
@@ -626,7 +564,7 @@ class _TimePickerBodyState extends State<_TimePickerBody> {
               TextButton(
                 onPressed: () => setState(() {
                   _pm = now.hour >= 12;
-                  _hour12 = nowHour12;
+                  _hour12 = now.hour % 12 == 0 ? 12 : now.hour % 12;
                   _minute = now.minute;
                 }),
                 child: const Text('지금'),
@@ -647,4 +585,164 @@ class _TimePickerBodyState extends State<_TimePickerBody> {
       ),
     );
   }
+}
+
+/// 둥근 시계판. 눌러서 또는 끌어서 시(1~12) / 분(0~59)을 고른다.
+class _ClockDial extends StatelessWidget {
+  const _ClockDial({
+    required this.minuteMode,
+    required this.value,
+    required this.onChanged,
+    required this.onEnd,
+  });
+
+  static const double size = 248;
+
+  final bool minuteMode;
+  final int value;
+  final ValueChanged<int> onChanged;
+  final VoidCallback onEnd;
+
+  /// 눌린 자리(시계판 좌표)를 값으로 바꾼다: 위쪽이 12시 / 0분, 시계 방향.
+  void _pick(Offset p) {
+    const c = size / 2;
+    var angle = math.atan2(p.dx - c, -(p.dy - c));
+    if (angle < 0) angle += 2 * math.pi;
+    if (minuteMode) {
+      onChanged((angle / (2 * math.pi) * 60).round() % 60);
+    } else {
+      final h = (angle / (2 * math.pi) * 12).round() % 12;
+      onChanged(h == 0 ? 12 : h);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = context.palette;
+    return GestureDetector(
+      onPanDown: (d) => _pick(d.localPosition),
+      onPanUpdate: (d) => _pick(d.localPosition),
+      onPanEnd: (_) => onEnd(),
+      onTapUp: (d) {
+        _pick(d.localPosition);
+        onEnd();
+      },
+      child: CustomPaint(
+        size: const Size(size, size),
+        painter: _ClockPainter(
+          minuteMode: minuteMode,
+          value: value,
+          ink: palette.ink,
+          onInk: palette.surface,
+          muted: palette.muted,
+        ),
+      ),
+    );
+  }
+}
+
+class _ClockPainter extends CustomPainter {
+  _ClockPainter({
+    required this.minuteMode,
+    required this.value,
+    required this.ink,
+    required this.onInk,
+    required this.muted,
+  });
+
+  final bool minuteMode;
+  final int value;
+  final Color ink;
+  final Color onInk;
+  final Color muted;
+
+  /// 시계판 가운데에서 [angle](위쪽 0, 시계 방향) 방향으로 [radius]만큼 간 자리.
+  Offset _at(Offset c, double angle, double radius) =>
+      c + Offset(math.sin(angle) * radius, -math.cos(angle) * radius);
+
+  void _text(
+    Canvas canvas,
+    String text,
+    Offset center,
+    Color color,
+    FontWeight weight,
+  ) {
+    final tp = TextPainter(
+      text: TextSpan(
+        text: text,
+        style: TextStyle(fontSize: 16, fontWeight: weight, color: color),
+      ),
+      textDirection: TextDirection.ltr,
+    )..layout();
+    tp.paint(canvas, center - Offset(tp.width / 2, tp.height / 2));
+  }
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final c = size.center(Offset.zero);
+    final r = size.width / 2;
+    final labelRadius = r - 28;
+
+    // 바탕: 옅은 원과 얇은 테두리.
+    canvas.drawCircle(c, r, Paint()..color = ink.withValues(alpha: 0.06));
+    canvas.drawCircle(
+      c,
+      r - 0.5,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1
+        ..color = ink.withValues(alpha: 0.12),
+    );
+
+    // 분 눈금: 분 화면에서만 1분마다 작은 점.
+    if (minuteMode) {
+      final dot = Paint()..color = muted.withValues(alpha: 0.45);
+      for (var i = 0; i < 60; i++) {
+        if (i % 5 == 0) continue;
+        canvas.drawCircle(_at(c, i * math.pi / 30, r - 8), 1.2, dot);
+      }
+    }
+
+    // 바늘과 표식.
+    final angle = minuteMode
+        ? value * math.pi / 30
+        : (value % 12) * math.pi / 6;
+    final tip = _at(c, angle, labelRadius);
+    canvas.drawLine(
+      c,
+      tip,
+      Paint()
+        ..color = ink
+        ..strokeWidth = 2
+        ..strokeCap = StrokeCap.round,
+    );
+    canvas.drawCircle(c, 4.5, Paint()..color = ink);
+    canvas.drawCircle(tip, 20, Paint()..color = ink);
+
+    // 숫자: 시는 1~12, 분은 5분마다. 고른 숫자는 표식 위에서 반전 글자.
+    final onLabel = minuteMode ? value % 5 == 0 : true;
+    for (var i = 0; i < 12; i++) {
+      final shown = minuteMode ? i * 5 : (i == 0 ? 12 : i);
+      final selected = onLabel && shown == (minuteMode ? value : value);
+      _text(
+        canvas,
+        '$shown',
+        _at(c, i * math.pi / 6, labelRadius),
+        selected ? onInk : ink,
+        selected ? FontWeight.w800 : FontWeight.w500,
+      );
+    }
+    // 5분 눈금 사이를 고른 분은 표식 안에 숫자로 보인다.
+    if (minuteMode && !onLabel) {
+      _text(canvas, '$value', tip, onInk, FontWeight.w800);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_ClockPainter old) =>
+      old.minuteMode != minuteMode ||
+      old.value != value ||
+      old.ink != ink ||
+      old.onInk != onInk ||
+      old.muted != muted;
 }

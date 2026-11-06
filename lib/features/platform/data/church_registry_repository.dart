@@ -69,6 +69,12 @@ class ChurchRegistryRepository {
         ],
       );
 
+  /// 회원에게 탈퇴 표시를 남긴다 (앱 운영자). 프로필은 지우지 않고, 이 계정은 로그인해도 바로 로그아웃된다.
+  Future<void> markWithdrawn(String uid) => _db
+      .collection('users')
+      .doc(uid)
+      .update({'withdrawn': true, 'withdrawnAt': FieldValue.serverTimestamp()});
+
   /// 회원의 이름·전화번호를 고친다. 소속된 모든 교회의 교인 정보에도 같이 반영한다.
   Future<void> updateUser(
     String uid, {
@@ -169,6 +175,18 @@ class ChurchRegistryRepository {
       await batch.commit();
     }
   }
+
+  /// 교회를 폐쇄하거나 폐쇄를 푼다 (앱 운영자). 데이터는 지우지 않는다.
+  Future<void> setClosed(String churchId, bool closed) =>
+      _paths.church(churchId).update({
+        'closed': closed,
+        'closedAt': FieldValue.serverTimestamp(),
+        'closedBy': _auth.uid,
+      });
+
+  /// 공개 탐색에 노출할지 정한다.
+  Future<void> setListed(String churchId, bool listed) =>
+      _paths.church(churchId).update({'listed': listed});
 
   /// 교회를 직접 등록한다. 교회 운영자는 이후 초대 코드로 들어온 교인에게 역할을 지정해 정한다.
   Future<void> register({

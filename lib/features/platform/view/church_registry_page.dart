@@ -8,7 +8,6 @@ import '../../../app/app_scope.dart';
 import '../../../app/routes.dart';
 import '../../../core/layout/app_dialog.dart';
 import '../../../core/layout/page_frame.dart';
-import '../../../core/layout/responsive.dart';
 import '../../../core/mvvm/view_model_builder.dart';
 import '../../../data/models/church.dart';
 import '../../church/view/church_requests_admin_card.dart';
@@ -27,7 +26,6 @@ class ChurchRegistryPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final narrow = MediaQuery.sizeOf(context).width < kNarrow;
     return ViewModelBuilder<ChurchRegistryViewModel>(
       create: (context) =>
           ChurchRegistryViewModel(AppScope.read(context).churchRegistry),
@@ -36,27 +34,31 @@ class ChurchRegistryPage extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const PageTitle(title: '교회 관리'),
-              // 제목과 다른 줄에 둔다. 좁은 화면에서는 가로로 가득 채운다.
-              Align(
-                alignment: narrow ? Alignment.center : Alignment.centerLeft,
-                child: SizedBox(
-                  width: narrow ? double.infinity : null,
-                  child: FilledButton.icon(
-                    onPressed: () => showAppDialog<void>(
-                      context,
-                      child: RegisterChurchDialog(vm: vm),
+              // 제목은 위쪽 바에 있다. 생성 버튼만 오른쪽에 둔다.
+              PageTitle(
+                title: '',
+                gap: 16,
+                action: FilledButton.icon(
+                  onPressed: () => showAppDialog<void>(
+                    context,
+                    child: RegisterChurchDialog(vm: vm),
+                  ),
+                  icon: const Icon(AppIcons.plus, size: 18),
+                  label: const Text('교회 생성'),
+                  style: FilledButton.styleFrom(
+                    shape: const StadiumBorder(),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 18,
+                      vertical: 12,
                     ),
-                    icon: const Icon(AppIcons.plus, size: 18),
-                    label: const Text('교회 등록'),
+                    elevation: 0,
                   ),
                 ),
               ),
-              const SizedBox(height: 20),
               const ChurchRequestsAdminCard(),
-              const SizedBox(height: 16),
+              const SizedBox(height: 24),
               const ChurchClosuresAdminCard(),
-              const SizedBox(height: 32),
+              const SizedBox(height: 24),
               RegisteredChurches(
                 vm: vm,
                 onManage: (church) => _openChurch(context, church),

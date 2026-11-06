@@ -1,12 +1,8 @@
-import '../../../core/icons.dart';
-
 import 'package:flutter/material.dart';
 
 import '../../../core/widgets/labeled_field.dart';
 
-import 'package:flutter/services.dart';
-
-import '../../../core/address/address_search.dart';
+import '../../../core/widgets/address_input.dart';
 import '../../../core/formatters/korean_phone.dart';
 import '../../../core/widgets/blur_validated_field.dart';
 import '../../../core/theme.dart';
@@ -40,20 +36,6 @@ class ChurchInfoFields extends StatefulWidget {
 class _ChurchInfoFieldsState extends State<ChurchInfoFields> {
   final _addressField = GlobalKey<FormFieldState<String>>();
   String? _searchError;
-
-  Future<void> _searchAddress() async {
-    setState(() => _searchError = null);
-    try {
-      final result = await searchRoadAddress(context);
-      if (result == null || !mounted) return;
-      setState(() => widget.address.text = result.roadAddress);
-      // 주소를 고르면 이전에 떠 있던 "주소를 입력해 주세요" 오류를 지운다.
-      _addressField.currentState?.didChange(widget.address.text);
-      _addressField.currentState?.validate();
-    } catch (e) {
-      if (mounted) setState(() => _searchError = '$e');
-    }
-  }
 
   String? _validatePhone(String? v) {
     final text = (v ?? '').trim();
@@ -94,58 +76,25 @@ class _ChurchInfoFieldsState extends State<ChurchInfoFields> {
             validator: _validatePhone,
           ),
         ),
-        const SizedBox(height: 16),
-        // 오류 문구는 입력창 바깥(아래)에 따로 보여준다. 그래야 오류가 떠도
-        // 입력창과 검색 버튼의 높이가 서로 같게 유지된다.
+        AppField.spacer,
+        // 주소는 기본 / 상세 두 칸이다. 오류 문구는 입력창 바깥(아래)에 따로 보여준다.
         FormField<String>(
           key: _addressField,
           validator: (_) =>
               widget.address.text.trim().isEmpty ? '주소를 입력해 주세요' : null,
           builder: (state) => Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // 이름표는 입력칸 + 검색 버튼 줄 위에 한 번만 놓는다. 줄 높이는 입력칸 높이로 고정한다
-              // (버튼 안의 LayoutBuilder는 IntrinsicHeight를 못 쓴다).
-              LabeledField(
-                label: '주소',
+              AddressInput(
+                controller: widget.address,
                 required: true,
-                child: SizedBox(
-                  height: AppField.height,
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: widget.address,
-                          // 검색으로 고른 주소만 쓰도록 직접 수정은 막는다. 검색을 못 쓰는 플랫폼은 직접 입력.
-                          readOnly: isAddressSearchSupported,
-                          onTap:
-                              isAddressSearchSupported &&
-                                  widget.address.text.isEmpty
-                              ? _searchAddress
-                              : null,
-                          onChanged: (_) =>
-                              state.didChange(widget.address.text),
-                          inputFormatters: [
-                            LengthLimitingTextInputFormatter(200),
-                          ],
-                          decoration: InputDecoration(
-                            hintText: isAddressSearchSupported
-                                ? '주소 검색'
-                                : '도로명 주소',
-                          ),
-                        ),
-                      ),
-                      if (isAddressSearchSupported) ...[
-                        const SizedBox(width: 8),
-                        OutlinedButton(
-                          onPressed: _searchAddress,
-                          child: const Icon(AppIcons.magnifyingGlass, size: 18),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
+                onChanged: () => state.didChange(widget.address.text),
+                // 주소를 고르면 이전에 떠 있던 "주소를 입력해 주세요" 오류를 지운다.
+                onSearched: () {
+                  setState(() => _searchError = null);
+                  state.validate();
+                },
+                onError: (e) => setState(() => _searchError = e),
               ),
               if (state.hasError)
                 Padding(

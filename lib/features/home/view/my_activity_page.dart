@@ -13,6 +13,7 @@ import '../../../core/widgets/app_loader.dart';
 import '../../../core/widgets/shadow_switch.dart';
 import '../../../core/widgets/stat_icons.dart' show Pastel;
 import '../../../core/widgets/sort_pad.dart';
+import '../../../core/widgets/view_mode_toggle.dart';
 import '../../../data/models/affiliation.dart';
 import '../../../data/models/church_content.dart';
 import '../../../data/models/devotion_settings.dart';
@@ -260,6 +261,9 @@ class _MyPostsState extends State<_MyPosts> {
   late final _affiliations = AppScope.read(context).affiliations
       .affiliations(widget.me.churchId);
 
+  /// 격자형(2열)으로 보는가. 아니면 리스트형이다 (중보기도 · 말씀묵상 목록과 같다).
+  bool _grid = false;
+
   @override
   Widget build(BuildContext context) {
     final me = widget.me;
@@ -289,6 +293,13 @@ class _MyPostsState extends State<_MyPosts> {
           ),
           const SizedBox(height: 16),
           SortStrip(
+            // 댓글은 카드 목록이 아니라 리스트형만 있다.
+            viewToggle: vm.filter == MyPostFilter.comment
+                ? null
+                : ViewModeToggle(
+                    grid: _grid,
+                    onChanged: (g) => setState(() => _grid = g),
+                  ),
             options: [
               for (final s in vm.sortOptions)
                 PadOption(
@@ -314,6 +325,7 @@ class _MyPostsState extends State<_MyPosts> {
                     prayerSettings: _prayerSettings,
                     devotionSettings: _devotionSettings,
                     affiliations: _affiliations,
+                    grid: _grid,
                     cards: (names, prayerSet, devotionSet) => [
                       for (final p in vm.sortedPrayers(list))
                         PrayerTile(
@@ -321,6 +333,8 @@ class _MyPostsState extends State<_MyPosts> {
                           me: me,
                           affiliationNames: names,
                           settings: prayerSet,
+                          gutter: _grid ? 0 : null,
+                          grid: _grid,
                         ),
                     ],
                   );
@@ -334,6 +348,7 @@ class _MyPostsState extends State<_MyPosts> {
                   prayerSettings: _prayerSettings,
                   devotionSettings: _devotionSettings,
                   affiliations: _affiliations,
+                  grid: _grid,
                   cards: (names, prayerSet, devotionSet) => [
                     for (final c in vm.sortedDevotions(list))
                       DevotionCard(
@@ -341,6 +356,8 @@ class _MyPostsState extends State<_MyPosts> {
                         me: me,
                         affiliationNames: names,
                         settings: devotionSet,
+                        gutter: _grid ? 0 : null,
+                        grid: _grid,
                       ),
                   ],
                 ),
@@ -399,8 +416,11 @@ class _CardList extends StatelessWidget {
     required this.devotionSettings,
     required this.affiliations,
     required this.cards,
+    required this.grid,
   });
 
+  /// 격자형이면 카드를 2열로 놓는다.
+  final bool grid;
   final Stream<PrayerSettings> prayerSettings;
   final Stream<DevotionSettings> devotionSettings;
   final Stream<List<Affiliation>> affiliations;
@@ -425,13 +445,15 @@ class _CardList extends StatelessWidget {
             final names = {
               for (final a in affs.data ?? const <Affiliation>[]) a.id: a.name,
             };
+            final children = cards(
+              names,
+              prayerSet.data ?? PrayerSettings.standard,
+              devotionSet.data ?? DevotionSettings.standard,
+            );
+            if (grid) return TwoColumn(children: children);
             return Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: cards(
-                names,
-                prayerSet.data ?? PrayerSettings.standard,
-                devotionSet.data ?? DevotionSettings.standard,
-              ),
+              children: children,
             );
           },
         ),
