@@ -3,6 +3,8 @@ import '../../../core/icons.dart';
 
 import 'package:flutter/material.dart';
 
+import '../../../core/layout/confirm_dialog.dart';
+
 import '../../../app/app_scope.dart';
 import '../../../core/mvvm/view_model_builder.dart';
 import '../../../core/theme.dart';
@@ -37,24 +39,13 @@ class _BlockedUsersCardState extends State<BlockedUsersCard> {
   }
 
   Future<void> _unblock(BlockedUsersViewModel vm, BlockedUser u) async {
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('차단 해제'),
-        content: Text('${u.label}님의 차단을 풀까요?\n다시 초대 코드로 입장을 신청할 수 있게 돼요.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('취소'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('해제'),
-          ),
-        ],
-      ),
+    final ok = await confirmChange(
+      context,
+      title: '차단 해제',
+      body: '${u.label}님의 차단을 풀습니다',
+      confirmLabel: '해제',
     );
-    if (ok == true) await vm.unblock(u);
+    if (ok) await vm.unblock(u);
   }
 
   @override

@@ -2,14 +2,15 @@ import '../../../core/widgets/app_loader.dart';
 
 import 'package:flutter/material.dart';
 
-import '../../../core/widgets/choice_row.dart';
+import '../../../core/widgets/toast.dart';
+
+import '../../../core/widgets/settings_table.dart';
 
 import '../../../app/app_scope.dart';
 import '../../../core/layout/page_frame.dart';
+import '../../../core/layout/responsive.dart';
 import '../../../core/mvvm/view_model.dart';
 import '../../../core/mvvm/view_model_builder.dart';
-import '../../../core/theme.dart';
-import '../../../core/widgets/panel_surface.dart';
 import '../../../data/models/devotion_settings.dart';
 import '../../../data/models/member.dart';
 import '../../home/data/content_repository.dart';
@@ -50,32 +51,37 @@ class DevotionSettingsPage extends StatelessWidget {
                     children: [
                       _Panel(settings: current, onChanged: vm.edit),
                       const SizedBox(height: 16),
-                      if (vm.error != null)
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 8),
-                          child: Text(
-                            vm.error!,
-                            style: TextStyle(
-                              color: Theme.of(context).colorScheme.error,
+                      Gutter(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            if (vm.error != null)
+                              Padding(
+                                padding: const EdgeInsets.only(bottom: 8),
+                                child: Text(
+                                  vm.error!,
+                                  style: TextStyle(
+                                    color: Theme.of(context).colorScheme.error,
+                                  ),
+                                ),
+                              ),
+                            Align(
+                              alignment: Alignment.centerRight,
+                              child: FilledButton(
+                                onPressed: vm.edited == null || vm.busy
+                                    ? null
+                                    : () async {
+                                        final messenger = ScaffoldMessenger.of(
+                                          context,
+                                        );
+                                        if (await vm.save()) {
+                                          showToastOn(messenger, '저장했어요.');
+                                        }
+                                      },
+                                child: const Text('저장'),
+                              ),
                             ),
-                          ),
-                        ),
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: FilledButton(
-                          onPressed: vm.edited == null || vm.busy
-                              ? null
-                              : () async {
-                                  final messenger = ScaffoldMessenger.of(
-                                    context,
-                                  );
-                                  if (await vm.save()) {
-                                    messenger.showSnackBar(
-                                      const SnackBar(content: Text('저장했어요.')),
-                                    );
-                                  }
-                                },
-                          child: const Text('저장'),
+                          ],
                         ),
                       ),
                     ],
@@ -90,7 +96,7 @@ class DevotionSettingsPage extends StatelessWidget {
   }
 }
 
-/// 운영 원칙: 공개 · 댓글 · 반응 세 묶음.
+/// 운영 원칙: 공개 · 댓글 · 반응 세 묶음. 직급 권한과 같은 표 모양이다 (설정 이름 · 켬 · 끔).
 class _Panel extends StatelessWidget {
   const _Panel({required this.settings, required this.onChanged});
 
@@ -100,99 +106,63 @@ class _Panel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final s = settings;
-    return PanelSurface(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text('운영 원칙', style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: 12),
-          // 공개 · 댓글 · 반응 세 묶음. 허용한 항목만 세부 설정을 고칠 수 있다.
-          const _Group('공개'),
-          _Check(
-            label: '조회수 공개',
-            value: s.showViews,
-            onChanged: (v) => onChanged(s.copyWith(showViews: v)),
-          ),
-          _Check(
-            label: '글쓴이 공개',
-            value: s.showAuthor,
-            onChanged: (v) => onChanged(s.copyWith(showAuthor: v)),
-          ),
-          const _Group('댓글'),
-          _Check(
-            label: '댓글 허용',
-            value: s.allowReflections,
-            onChanged: (v) => onChanged(s.copyWith(allowReflections: v)),
-          ),
-          _Check(
-            label: '댓글 공개 (끄면 본인과 교역자만)',
-            value: s.reflectionsPublic,
-            indent: true,
-            onChanged: s.allowReflections
-                ? (v) => onChanged(s.copyWith(reflectionsPublic: v))
-                : null,
-          ),
-          const _Group('반응'),
-          _Check(
-            label: '반응 허용',
-            value: s.allowLikes,
-            onChanged: (v) => onChanged(s.copyWith(allowLikes: v)),
-          ),
-          _Check(
-            label: '좋아요 수 공개',
-            value: s.showLikeCount,
-            indent: true,
-            onChanged: s.allowLikes
-                ? (v) => onChanged(s.copyWith(showLikeCount: v))
-                : null,
-          ),
-        ],
-      ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SettingsTable(
+          title: '공개',
+          rows: [
+            SettingRow(
+              label: '조회수 공개',
+              value: s.showViews,
+              onChanged: (v) => onChanged(s.copyWith(showViews: v)),
+            ),
+            SettingRow(
+              label: '글쓴이 공개',
+              value: s.showAuthor,
+              onChanged: (v) => onChanged(s.copyWith(showAuthor: v)),
+            ),
+          ],
+        ),
+        SettingsTable(
+          title: '댓글',
+          rows: [
+            SettingRow(
+              label: '댓글 허용',
+              value: s.allowReflections,
+              onChanged: (v) => onChanged(s.copyWith(allowReflections: v)),
+            ),
+            SettingRow(
+              label: '댓글 공개',
+              value: s.reflectionsPublic,
+              indent: true,
+              onChanged: s.allowReflections
+                  ? (v) => onChanged(s.copyWith(reflectionsPublic: v))
+                  : null,
+            ),
+          ],
+        ),
+        SettingsTable(
+          title: '반응',
+          rows: [
+            SettingRow(
+              label: '반응 허용',
+              value: s.allowLikes,
+              onChanged: (v) => onChanged(s.copyWith(allowLikes: v)),
+            ),
+            SettingRow(
+              label: '좋아요 수 공개',
+              value: s.showLikeCount,
+              indent: true,
+              onChanged: s.allowLikes
+                  ? (v) => onChanged(s.copyWith(showLikeCount: v))
+                  : null,
+            ),
+          ],
+        ),
+      ],
     );
   }
-}
-
-class _Group extends StatelessWidget {
-  const _Group(this.title);
-
-  final String title;
-
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(top: 12, bottom: 4),
-    child: Text(
-      title,
-      style: TextStyle(
-        color: context.palette.muted,
-        fontSize: 12.5,
-        fontWeight: FontWeight.w700,
-      ),
-    ),
-  );
-}
-
-class _Check extends StatelessWidget {
-  const _Check({
-    required this.label,
-    required this.value,
-    required this.onChanged,
-    this.indent = false,
-  });
-
-  final String label;
-  final bool value;
-
-  /// 허용 항목에 딸린 세부 설정이면 안으로 들여 쓴다. null이면 눌리지 않는다.
-  final ValueChanged<bool>? onChanged;
-  final bool indent;
-
-  @override
-  Widget build(BuildContext context) => OnOffRow(
-    label: label,
-    value: value,
-    onChanged: onChanged,
-    indent: indent,
-  );
 }
 
 class _SettingsViewModel extends ViewModel {

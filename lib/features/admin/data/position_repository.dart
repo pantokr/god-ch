@@ -34,6 +34,19 @@ class PositionRepository {
         ]..sort((a, b) => a.name.compareTo(b.name)),
       );
 
+  DocumentReference<Map<String, dynamic>> _orderDoc(String churchId) =>
+      _paths.church(churchId).collection('settings').doc('positionOrder');
+
+  /// 직급 카드의 순서 (직급 ID들: `admin` · `staff` · `member`와 직접 만든 직급의 ID). 정한 적이 없으면 빈 목록이다.
+  Stream<List<String>> order(String churchId) =>
+      _orderDoc(churchId)
+          .snapshots()
+          .map((d) => [...?(d.data()?['order'] as List?)?.whereType<String>()]);
+
+  /// 직급 카드의 순서를 저장한다.
+  Future<void> saveOrder(String churchId, List<String> ids) =>
+      _orderDoc(churchId).set({'order': ids});
+
   String _checkName(String name) {
     final n = name.trim();
     if (n.isEmpty) throw const AppException('직급 이름을 입력해 주세요.');
@@ -53,10 +66,20 @@ class PositionRepository {
     ];
   }
 
+  /// 켜 둔 권한의 범위만 남기고, 값은 소속 ID와 `@mine`뿐이다 (비면 그 권한은 제한 없음이라 저장하지 않는다).
+  Map<String, List<String>> _cleanScopes(
+    List<String> keys,
+    Map<String, Set<String>> scopes,
+  ) => {
+    for (final k in keys)
+      if ((scopes[k] ?? const {}).isNotEmpty) k: (scopes[k]!.toList()..sort()),
+  };
+
   Future<void> create(
     String churchId, {
     required String name,
     required Set<String> permissions,
+    Map<String, Set<String>> scopes = const {},
     String icon = 'shield',
     int color = 0xFF6C63FF,
   }) {
@@ -66,6 +89,7 @@ class PositionRepository {
       'icon': icon,
       'color': color,
       'permissions': _clean(permissions),
+      'scopes': _cleanScopes(_clean(permissions), scopes),
       'deleted': false,
       'createdBy': _auth.uid,
       'createdAt': FieldValue.serverTimestamp(),
@@ -78,16 +102,19 @@ class PositionRepository {
     Position p, {
     required String name,
     required Set<String> permissions,
+    Map<String, Set<String>> scopes = const {},
     String? icon,
     int? color,
   }) async {
     final n = _checkName(name);
     final keys = _clean(permissions);
+    final scopeMap = _cleanScopes(keys, scopes);
     await _col(churchId).doc(p.id).update({
       'name': n,
       'icon': ?icon,
       'color': ?color,
       'permissions': keys,
+      'scopes': scopeMap,
       'updatedAt': FieldValue.serverTimestamp(),
     });
     final holders = await _paths
@@ -96,7 +123,10 @@ class PositionRepository {
         .get();
     final batch = _db.batch();
     for (final d in holders.docs) {
-      batch.update(d.reference, {'permissions': keys});
+      batch.update(d.reference, {
+        'permissions': keys,
+        'permissionScopes': scopeMap,
+      });
     }
     if (holders.docs.isNotEmpty) await batch.commit();
     for (final d in holders.docs) {
@@ -120,6 +150,7 @@ class PositionRepository {
       batch.update(d.reference, {
         'positionId': null,
         'permissions': <String>[],
+        'permissionScopes': <String, List<String>>{},
       });
     }
     if (holders.docs.isNotEmpty) await batch.commit();
@@ -133,6 +164,8 @@ class PositionRepository {
     String churchId,
     BuiltInPosition position,
     Set<String> permissions, {
+    Map<String, Set<String>> scopes = const {},
+    String? name,
     String? icon,
     int? color,
   }) {
@@ -140,8 +173,9 @@ class PositionRepository {
       throw const AppException('교회 관리자는 모든 권한을 가져요.');
     }
     return _col(churchId).doc(position.id).set({
-      'name': position.name,
+      'name': _checkName(name ?? position.name),
       'permissions': _clean(permissions),
+      'scopes': _cleanScopes(_clean(permissions), scopes),
       'icon': ?icon,
       'color': ?color,
       'builtIn': true,
@@ -160,7 +194,19 @@ class PositionRepository {
       'permissions': position == null
           ? <String>[]
           : _clean(position.permissions),
+      'permissionScopes': position == null
+          ? <String, List<String>>{}
+          : _cleanScopes(_clean(position.permissions), position.scopes),
     });
     await mirrorPersonCard(_paths, churchId, memberId);
+  }
+
+  /// 기본 직급(교역자 · 회원) 문서를 지운다: 이름 · 모양 · 권한이 기본값으로 돌아간다.
+  /// 교인의 역할은 그대로라 교역자 · 회원 카드는 남는다.
+  Future<void> deleteBuiltIn(String churchId, BuiltInPosition position) {
+    if (position == BuiltInPosition.admin) {
+      throw const AppException('교회 관리자는 지울 수 없어요.');
+    }
+    return _col(churchId).doc(position.id).delete();
   }
 }

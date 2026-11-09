@@ -127,7 +127,7 @@ class _List extends StatelessWidget {
     return ListenableBuilder(
       listenable: vm,
       builder: (context, _) => Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           // 제목은 박스 안 맨 위에 있다.
           Card(

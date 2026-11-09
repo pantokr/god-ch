@@ -210,12 +210,12 @@ class _UserRow extends StatelessWidget {
   String get _churches => memberships.map((m) => m.churchName).join(', ');
 
   /// 소속 이름들 (모든 교회의 것).
-  String get _affiliationNames => [
+  List<String> get _affiliationNames => [
     for (final m in memberships)
       for (final id in m.affiliationIds)
         for (final a in _churchAffiliations(m.churchId))
           if (a.id == id) a.name,
-  ].join(', ');
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -230,7 +230,7 @@ class _UserRow extends StatelessWidget {
           ? user.name
           : '${user.name}  (${user.loginId})',
       line1: _churches,
-      line2: _affiliationNames,
+      affiliations: _affiliationNames,
       onTap: () => _edit(context),
       trailing: [
         TextButton(onPressed: () => _edit(context), child: const Text('관리')),

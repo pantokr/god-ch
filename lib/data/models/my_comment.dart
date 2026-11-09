@@ -27,7 +27,7 @@ class MyComment {
   /// 댓글 내용.
   final String text;
 
-  /// 댓글이 달린 글의 제목(중보기도는 내용 앞부분). 읽을 수 없으면 비어 있다.
+  /// 댓글이 달린 글의 제목(중보기도는 글쓴이 이름). 읽을 수 없으면 비어 있다.
   final String targetTitle;
   final DateTime? date;
 }

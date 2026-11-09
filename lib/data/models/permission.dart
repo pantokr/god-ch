@@ -2,6 +2,7 @@
 enum PermissionGroup {
   people('인원'),
   meeting('일정'),
+  meetingJoin('일정 참여'),
   prayer('중보기도'),
   devotion('말씀묵상'),
   fixed('관리자 고정');
@@ -33,144 +34,80 @@ enum PermissionKind {
 /// - [grantable]이 false인 권한은 역할(교회 관리자 · 교역자)로만 정해지고 직급으로 줄 수 없다.
 enum Permission {
   // ---- 인원 ----
-  memberApprove(
-    'member.approve',
-    '인원 승인 · 상태 변경',
+  memberManage(
+    'member.manage',
+    '인원 관리',
     PermissionGroup.people,
     staffDefault: true,
   ),
-  inviteManage(
-    'invite.manage',
-    '초대 코드 관리',
-    PermissionGroup.people,
-    staffDefault: true,
-  ),
-  affiliationAssign(
-    'affiliation.assign',
-    '소속 인원 배치',
-    PermissionGroup.people,
-    staffDefault: true,
-  ),
-  affiliationCreate('affiliation.create', '소속 생성', PermissionGroup.people),
-  affiliationDelete('affiliation.delete', '소속 삭제', PermissionGroup.people),
+  affiliationEdit('affiliation.edit', '소속 만들기·삭제', PermissionGroup.people),
 
   // ---- 중보기도 ----
-  prayerWrite(
-    'prayer.write',
-    '글 작성',
+  // 범위: 전체 = 타인의 글 · 댓글까지, 본인만 = 본인이 쓴 것만.
+  prayerPost(
+    'prayer.post',
+    '글 관리',
     PermissionGroup.prayer,
     staffDefault: true,
     memberDefault: true,
+    memberOwnOnly: true,
   ),
-  prayerViewPrivate(
-    'prayer.viewPrivate',
-    '비공개 조회',
-    PermissionGroup.prayer,
-    staffDefault: true,
-  ),
-  prayerReact(
-    'prayer.react',
-    '반응(이모티콘 응원)',
+  prayerEngage(
+    'prayer.engage',
+    '반응 · 댓글 관리',
     PermissionGroup.prayer,
     staffDefault: true,
     memberDefault: true,
+    memberOwnOnly: true,
   ),
-  prayerComment(
-    'prayer.comment',
-    '댓글 작성',
-    PermissionGroup.prayer,
-    staffDefault: true,
-  ),
-  prayerCommentDeleteOthers(
-    'prayer.commentDeleteOthers',
-    '타인 댓글 삭제',
-    PermissionGroup.prayer,
-    staffDefault: true,
-  ),
-  prayerDeleteOthers(
-    'prayer.deleteOthers',
-    '타인 글 삭제',
+  prayerPrivate(
+    'prayer.private',
+    '비공개 글 조회',
     PermissionGroup.prayer,
     staffDefault: true,
   ),
 
   // ---- 말씀묵상 ----
-  devotionWrite(
-    'devotion.write',
-    '글 작성',
+  devotionPost(
+    'devotion.post',
+    '글 관리',
     PermissionGroup.devotion,
     staffDefault: true,
   ),
-  devotionViewPrivate(
-    'devotion.viewPrivate',
-    '비공개 조회',
-    PermissionGroup.devotion,
-    staffDefault: true,
-  ),
-  devotionReact(
-    'devotion.react',
-    '반응(좋아요)',
+  devotionEngage(
+    'devotion.engage',
+    '반응 · 댓글 관리',
     PermissionGroup.devotion,
     staffDefault: true,
     memberDefault: true,
+    memberOwnOnly: true,
   ),
-  devotionComment(
-    'devotion.comment',
-    '댓글 작성',
-    PermissionGroup.devotion,
-    staffDefault: true,
-    memberDefault: true,
-  ),
-  devotionCommentDeleteOthers(
-    'devotion.commentDeleteOthers',
-    '타인 댓글 삭제',
-    PermissionGroup.devotion,
-    staffDefault: true,
-  ),
-  devotionDeleteOthers(
-    'devotion.deleteOthers',
-    '타인 글 삭제',
+  devotionPrivate(
+    'devotion.private',
+    '비공개 글 조회',
     PermissionGroup.devotion,
     staffDefault: true,
   ),
 
   // ---- 일정 ----
-  meetingCreate(
-    'meeting.create',
-    '일정 생성',
+  meetingManage(
+    'meeting.manage',
+    '일정 관리',
     PermissionGroup.meeting,
     staffDefault: true,
   ),
-  meetingDelete(
-    'meeting.delete',
-    '일정 삭제 (타인 일정 포함)',
+  meetingParticipants(
+    'meeting.participants',
+    '참여자 관리',
     PermissionGroup.meeting,
     staffDefault: true,
   ),
   meetingJoin(
     'meeting.join',
     '일정 참여',
-    PermissionGroup.meeting,
+    PermissionGroup.meetingJoin,
     staffDefault: true,
     memberDefault: true,
-  ),
-  meetingViewParticipants(
-    'meeting.viewParticipants',
-    '일정 참여자 조회 (타인 일정 포함)',
-    PermissionGroup.meeting,
-    staffDefault: true,
-  ),
-  meetingKick(
-    'meeting.kick',
-    '일정 참여자 추방 (타인 일정 포함)',
-    PermissionGroup.meeting,
-    staffDefault: true,
-  ),
-  meetingApprove(
-    'meeting.approve',
-    '일정 참여 승인 · 거절 (타인 일정 포함)',
-    PermissionGroup.meeting,
-    staffDefault: true,
   ),
 
   // ---- 관리자 고정 (직급으로 줄 수 없다) ----
@@ -219,6 +156,7 @@ enum Permission {
     this.grantable = true,
     this.staffDefault = false,
     this.memberDefault = false,
+    this.memberOwnOnly = false,
   });
 
   /// 저장되는 이름 (`firestore.rules`와 같다).
@@ -235,26 +173,49 @@ enum Permission {
   /// 교회가 따로 정하지 않았을 때 회원이 갖는가 (지금까지 회원이 하던 일).
   final bool memberDefault;
 
+  /// 교인 기본 직급이 이 권한을 "본인만"(본인이 쓴 것만) 범위로 갖는가. 정한 적이 없을 때의 교인 기본이다.
+  final bool memberOwnOnly;
+
+  /// 범위(전체 · 본인만)가 뜻이 있는가: 타인의 것까지 다루느냐 본인 것만 다루느냐가 갈리는 권한이다
+  /// (글 · 반응 · 댓글 · 일정 · 참여자 관리). 그 밖의 권한(비공개 글 조회 · 일정 참여 · 인원 관리 ·
+  /// 소속 만들기 · 삭제)은 쓰거나 못 쓰거나 둘뿐이다.
+  bool get scoped => switch (this) {
+    prayerPost ||
+    prayerEngage ||
+    devotionPost ||
+    devotionEngage ||
+    meetingManage ||
+    meetingParticipants => true,
+    _ => false,
+  };
+
+  /// 이름 아래에 작게 보이는 한 줄 설명: 이 권한으로 하는 일만 짧게 쓴다 (범위 · 비공개 여부는 옆의 체크 칸이 말해 준다).
+  String get hint => switch (this) {
+    memberManage => '입장 승인 · 초대 코드 · 소속 배치',
+    prayerPost => '제목 작성 · 수정 · 삭제',
+    prayerEngage => '반응 · 댓글 작성 · 삭제',
+    prayerPrivate => '비공개 글 보기',
+    devotionPost => '글 작성 · 수정 · 삭제',
+    devotionEngage => '반응 · 댓글 작성 · 삭제',
+    devotionPrivate => '비공개 글 보기',
+    meetingManage => '일정 만들기 · 수정 · 삭제',
+    meetingParticipants => '참여자 조회 · 승인 · 거절 · 추방',
+    meetingJoin => '참여 신청',
+    _ => '',
+  };
+
+  /// [keys] 안에 이 권한이 들어 있는가.
+  bool inKeys(Iterable<String> keys) => keys.contains(key);
+
   /// 목록에서 어느 소분류에 놓이는가. 조회 · 생성(글 · 댓글 · 좋아요 · 참여) · 삭제 · 관리(인원 업무).
   PermissionKind get kind => switch (this) {
-    prayerViewPrivate || devotionViewPrivate => PermissionKind.view,
-    prayerWrite ||
-    prayerReact ||
-    prayerComment ||
-    devotionWrite ||
-    devotionReact ||
-    devotionComment ||
-    meetingCreate ||
-    affiliationCreate ||
+    prayerPost ||
+    prayerEngage ||
+    devotionPost ||
+    devotionEngage ||
     meetingJoin => PermissionKind.create,
-    meetingViewParticipants => PermissionKind.view,
-    prayerCommentDeleteOthers ||
-    prayerDeleteOthers ||
-    devotionCommentDeleteOthers ||
-    devotionDeleteOthers ||
-    affiliationDelete ||
-    meetingDelete ||
-    meetingKick => PermissionKind.delete,
+    prayerPrivate || devotionPrivate => PermissionKind.view,
+    meetingManage => PermissionKind.delete,
     _ => PermissionKind.manage,
   };
 

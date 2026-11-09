@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../app/app_scope.dart';
 import '../../../core/icons.dart';
 import '../../../core/theme.dart';
+import '../../../core/widgets/role_chips.dart';
 import '../../../data/models/affiliation.dart';
 
 /// 작성자 줄의 내용: 아바타와 이름 (눌러서 프로필을 연다). 중보기도 · 말씀묵상 · 모임 일정이 같은 모양을 쓴다.
@@ -42,6 +43,7 @@ class PostMeta extends StatefulWidget {
     required this.date,
     required this.isPrivate,
     this.affiliationId,
+    this.affiliationIds,
     this.views,
     this.color,
     this.showScope = true,
@@ -63,6 +65,9 @@ class PostMeta extends StatefulWidget {
 
   /// 글의 소속. 없으면 "전체".
   final String? affiliationId;
+
+  /// 공개 범위가 여러 소속일 때(모임): 이 값이 있으면 [affiliationId] 대신 쓴다. 비어 있으면 전체다.
+  final List<String>? affiliationIds;
 
   /// false이면 공개 여부와 소속 줄을 빼고 날짜 · 조회수만 보인다 (모임 일정처럼 공개 범위가 없는 글).
   final bool showScope;
@@ -96,7 +101,8 @@ class _PostMetaState extends State<PostMeta> {
           Icon(icon, size: 18, color: iconColor),
           const SizedBox(width: 10),
           SizedBox(
-            width: 72,
+            // 글씨가 커져도 라벨이 값에 맞닿지 않게 칸 너비가 글씨 배율을 따르고, 사이에 여백을 둔다.
+            width: MediaQuery.textScalerOf(context).scale(72) + 8,
             child: Text(label, style: TextStyle(color: palette.muted)),
           ),
           Expanded(
@@ -107,16 +113,19 @@ class _PostMetaState extends State<PostMeta> {
         ],
       ),
     );
+    // 공개 범위: 소속 여럿(모임)이거나 하나. 하나도 없으면 전체다.
+    final ids =
+        widget.affiliationIds ??
+        [if (widget.affiliationId != null) widget.affiliationId!];
     return StreamBuilder<List<Affiliation>>(
-      stream: widget.affiliationId == null ? null : _affiliations,
+      stream: ids.isEmpty ? null : _affiliations,
       builder: (context, snap) {
-        final id = widget.affiliationId;
-        final name = id == null
+        final name = ids.isEmpty
             ? '전체'
-            : (snap.data ?? const <Affiliation>[])
-                  .where((a) => a.id == id)
-                  .map((a) => a.name)
-                  .firstOrNull;
+            : [
+                for (final a in snap.data ?? const <Affiliation>[])
+                  if (ids.contains(a.id)) a.name,
+              ].join(', ');
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -132,7 +141,17 @@ class _PostMetaState extends State<PostMeta> {
                 '공개 여부',
                 widget.isPrivate ? '교역자 전용' : '공개',
               ),
-            if (widget.showScope && name != null)
+            if (widget.showScope && widget.affiliationIds != null)
+              // 모임 일정: 공개 범위를 소속 칩으로 보이고 차례로 떠오르게 한다.
+              item(
+                AppIcons.usersThree,
+                '공개 범위',
+                AffiliationChips([
+                  for (final a in snap.data ?? const <Affiliation>[])
+                    if (ids.contains(a.id)) a.name,
+                ]),
+              )
+            else if (widget.showScope && name.isNotEmpty)
               item(AppIcons.usersThree, '공개 범위', name),
           ],
         );
@@ -145,7 +164,16 @@ class _PostMetaState extends State<PostMeta> {
 /// 정보 줄([meta])이 한 카드, 반응 · 좋아요([footer])가 그 아래 별개의 카드다.
 /// 정보 줄과 반응은 글의 종류마다 다르지만 카드 틀과 간격은 같다.
 class PostInfoCard extends StatelessWidget {
-  const PostInfoCard({super.key, required this.meta, this.footer, this.shape});
+  const PostInfoCard({
+    super.key,
+    required this.meta,
+    this.footer,
+    this.shape,
+    this.color,
+  });
+
+  /// 카드 바탕색 (개인 설정의 카드 색). 없으면 카드 기본색이다.
+  final Color? color;
 
   final Widget meta;
 
@@ -160,6 +188,7 @@ class PostInfoCard extends StatelessWidget {
       children: [
         Card(
           shape: shape,
+          color: color,
           margin: EdgeInsets.zero,
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
@@ -170,6 +199,7 @@ class PostInfoCard extends StatelessWidget {
           const SizedBox(height: 12),
           Card(
             shape: shape,
+            color: color,
             margin: EdgeInsets.zero,
             child: Padding(
               padding: const EdgeInsets.all(16),

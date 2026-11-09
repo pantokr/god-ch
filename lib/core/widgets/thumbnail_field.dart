@@ -7,6 +7,7 @@ import 'dart:typed_data';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
+import '../layout/confirm_dialog.dart';
 import '../theme.dart';
 import '../../features/home/view/content_widgets.dart';
 import 'thumbnail_avatar.dart';
@@ -50,6 +51,16 @@ class _ThumbnailFieldState extends State<ThumbnailField> {
   String? _error;
 
   Future<void> _pick() async {
+    // 이미 이미지가 있으면 바꾸기 전에 확인받는다.
+    if (widget.controller.text.isNotEmpty &&
+        !await confirmChange(
+          context,
+          title: '이미지 변경',
+          body: '저장하면 반영됩니다',
+          confirmLabel: '변경',
+        )) {
+      return;
+    }
     final file = await FilePicker.pickFile(type: FileType.image);
     if (file == null) return;
     setState(() {
@@ -122,8 +133,18 @@ class _ThumbnailFieldState extends State<ThumbnailField> {
                         if (url.isNotEmpty)
                           TextButton(
                             style: TrashIcon.textStyle(context),
-                            onPressed: () =>
-                                setState(() => widget.controller.clear()),
+                            onPressed: () async {
+                              if (!await confirmChange(
+                                context,
+                                title: '이미지 삭제',
+                                body: '저장하면 반영됩니다',
+                                confirmLabel: '삭제',
+                                danger: true,
+                              )) {
+                                return;
+                              }
+                              setState(() => widget.controller.clear());
+                            },
                             child: const Text('삭제'),
                           ),
                       ],

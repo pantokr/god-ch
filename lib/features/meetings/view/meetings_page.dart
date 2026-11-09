@@ -6,6 +6,8 @@ import '../../../core/widgets/app_loader.dart';
 
 import 'package:flutter/material.dart';
 
+import '../../../core/widgets/view_mode_toggle.dart';
+
 import 'package:go_router/go_router.dart';
 
 import '../../../app/app_scope.dart';
@@ -66,8 +68,7 @@ class MeetingsPage extends StatelessWidget {
                         PageTitle(
                           gap: 32,
                           title: '',
-                          description:
-                              '교회 안에서 열리는 모임의 일정입니다. 날짜와 장소, 모집 현황을 한눈에 봅니다.',
+                          description: '관심 있는 모임을 찾아 참여해 보세요. 직접 모임을 만들어 함께할 사람을 모아 보세요.',
                         ),
                         BleedBox(
                           padding: const EdgeInsets.only(top: 20),
@@ -136,7 +137,7 @@ class MeetingsPage extends StatelessWidget {
                   ),
                 ),
                 // 모임은 교역자 이상이 만든다. 앱 개발자는 교인이 아니라 만들지 않는다.
-                if (me.can(Permission.meetingCreate) && !me.isOperatorView)
+                if (me.can(Permission.meetingManage) && !me.isOperatorView)
                   Positioned(
                     right: 16,
                     bottom: 16 + MediaQuery.paddingOf(context).bottom,
@@ -163,7 +164,7 @@ class MeetingsPage extends StatelessWidget {
     if (await vm.create(result)) {
       showToastOn(messenger, '추가되었습니다', bottom: inset);
     } else if (vm.error != null) {
-      messenger.showSnackBar(SnackBar(content: Text(vm.error!)));
+      showToastOn(messenger, vm.error!);
     }
   }
 }
@@ -299,11 +300,12 @@ class _CardGrid extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, box) {
-        final width = (box.maxWidth - gap) / 2;
+        final cols = TwoColumn.columnsFor(box.maxWidth);
+        final width = (box.maxWidth - gap * (cols - 1)) / cols;
         final scale = MediaQuery.textScalerOf(context).scale(1);
         return GridView.count(
           padding: EdgeInsets.zero,
-          crossAxisCount: 2,
+          crossAxisCount: cols,
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           mainAxisSpacing: gap,
@@ -419,7 +421,7 @@ class _ColorfulCard extends StatelessWidget {
                           child: LikeHeart(
                             liked: liked,
                             size: 22,
-                            likedColor: const Color(0xFFFF6B7A),
+                            likedColor: AppColors.like,
                             unlikedColor: Colors.white,
                             shadows: const [
                               Shadow(blurRadius: 6, color: Color(0x73000000)),
@@ -449,7 +451,7 @@ class _ColorfulCard extends StatelessWidget {
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
-                        fontWeight: FontWeight.w800,
+                        fontWeight: FontWeight.w600,
                         fontSize: 15,
                         height: 1.3,
                       ),
@@ -523,7 +525,7 @@ class DDayBadge extends StatelessWidget {
           style: const TextStyle(
             color: Colors.white,
             fontSize: 12,
-            fontWeight: FontWeight.w800,
+            fontWeight: FontWeight.w600,
           ),
         ),
       ),
@@ -541,7 +543,7 @@ class SeatBadge extends StatelessWidget {
     final gray = meeting.ended || meeting.isFull;
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: gray ? const Color(0xFF6B6B7B) : const Color(0xFFD7261E),
+        color: gray ? const Color(0xFF6B6B7B) : AppColors.danger,
         borderRadius: BorderRadius.circular(6),
       ),
       child: Padding(
@@ -559,7 +561,7 @@ class SeatBadge extends StatelessWidget {
               style: const TextStyle(
                 color: Colors.white,
                 fontSize: 12,
-                fontWeight: FontWeight.w800,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ],
@@ -649,7 +651,7 @@ class _MinimalRow extends StatelessWidget {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
-                            fontWeight: FontWeight.w800,
+                            fontWeight: FontWeight.w600,
                             fontSize: 16,
                           ),
                         ),

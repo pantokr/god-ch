@@ -32,7 +32,10 @@ class SidebarItem {
 
 /// 제목이 붙은 메뉴 묶음 (예: "관리").
 class SidebarGroup {
-  const SidebarGroup({this.title, required this.items});
+  const SidebarGroup({this.title, this.panel, required this.items});
+
+  /// 이 묶음이 속한 패널 이름 (예: 일반 · 관리). 이어진 묶음들이 같은 패널이면 패널 제목은 맨 앞에 한 번만 나온다.
+  final String? panel;
 
   final String? title;
   final List<SidebarItem> items;
@@ -119,15 +122,12 @@ class SidebarScaffold extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final narrow = MediaQuery.sizeOf(context).width < kNarrow;
     final panel = _SidebarPanel(
-      groups: narrow || tabs.isEmpty
-          ? groups
-          : [SidebarGroup(items: tabs), ...groups],
+      groups: groups,
       header: sidebarHeader,
       footer: footer,
       // 서랍 안에서는 메뉴를 고르면 서랍을 닫는다.
-      closeOnTap: narrow,
+      closeOnTap: true,
     );
     final rail = AccountRail(
       userName: userName,
@@ -137,34 +137,22 @@ class SidebarScaffold extends StatelessWidget {
       actions: railActions,
     );
 
-    final Widget frame;
-    if (narrow) {
-      frame = _NarrowFrame(
-        panel: Material(
-          color: context.palette.surface,
-          child: SafeArea(child: panel),
-        ),
-        rail: rail,
-        bottomBar: tabs.isEmpty || onBack != null
-            ? null
-            : _PillTabBar(items: tabs),
-        topBarTrailing: topBarTrailing,
-        backdrop: backdrop,
-        onBack: onBack,
-        title: title,
-        child: child,
-      );
-    } else {
-      frame = _WideFrame(
-        sidebar: panel,
-        rail: rail,
-        topBarTrailing: topBarTrailing,
-        backdrop: backdrop,
-        onBack: onBack,
-        title: title,
-        child: child,
-      );
-    }
+    // 넓은 화면도 폰과 같은 서랍 방식이다: 버튼 하나로 왼쪽 메뉴와 오른쪽 계정 띠가 함께 열리고 닫힌다.
+    final frame = _NarrowFrame(
+      panel: Material(
+        color: context.palette.surface,
+        child: SafeArea(child: panel),
+      ),
+      rail: rail,
+      bottomBar: tabs.isEmpty || onBack != null
+          ? null
+          : _PillTabBar(items: tabs),
+      topBarTrailing: topBarTrailing,
+      backdrop: backdrop,
+      onBack: onBack,
+      title: title,
+      child: child,
+    );
     final color = backgroundColor;
     if (color == null) return frame;
     return Theme(
@@ -385,8 +373,18 @@ class _SidebarPanel extends StatelessWidget {
             child: ListView(
               padding: const EdgeInsets.fromLTRB(0, 8, 16, 24),
               children: [
-                for (final g in groups) ...[
-                  if (g.title != null)
+                for (var i = 0; i < groups.length; i++) ...[
+                  // 패널이 바뀌는 곳에 패널 제목과 구분선을 둔다 (일반 패널 · 관리 패널).
+                  // 패널이 하나뿐이면(관리 메뉴가 없는 교인) 제목 없이 메뉴만 보인다.
+                  if (groups[i].panel != null &&
+                      {for (final g in groups) g.panel}.length > 1 &&
+                      (i == 0 || groups[i - 1].panel != groups[i].panel))
+                    _PanelHeading(
+                      title: groups[i].panel!,
+                      first: i == 0,
+                      compact: closeOnTap,
+                    ),
+                  if (groups[i].title != null)
                     Padding(
                       padding: EdgeInsets.fromLTRB(
                         20,
@@ -395,16 +393,16 @@ class _SidebarPanel extends StatelessWidget {
                         closeOnTap ? 6 : 10,
                       ),
                       child: Text(
-                        g.title!,
+                        groups[i].title!,
                         style: TextStyle(
                           color: palette.muted,
                           fontSize: 12,
                           letterSpacing: 0.6,
-                          fontWeight: FontWeight.w700,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                     ),
-                  for (final item in g.items)
+                  for (final item in groups[i].items)
                     _SidebarTile(item: item, closeOnTap: closeOnTap),
                 ],
               ],
@@ -415,6 +413,41 @@ class _SidebarPanel extends StatelessWidget {
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
               child: footer,
             ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 패널 제목: 굵은 이름과 가로 구분선. 패널마다 메뉴가 확실히 나뉘어 보이게 한다.
+class _PanelHeading extends StatelessWidget {
+  const _PanelHeading({
+    required this.title,
+    required this.first,
+    required this.compact,
+  });
+
+  final String title;
+  final bool first;
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = context.palette;
+    return Padding(
+      padding: EdgeInsets.fromLTRB(20, first ? 4 : (compact ? 20 : 28), 4, 4),
+      child: Row(
+        children: [
+          Text(
+            title,
+            style: TextStyle(
+              color: palette.ink,
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(child: Divider(height: 1, color: palette.border)),
         ],
       ),
     );
@@ -490,7 +523,7 @@ class _SidebarTile extends StatelessWidget {
                   style: TextStyle(
                     color: selected ? palette.ink : palette.muted,
                     fontSize: 15,
-                    fontWeight: selected ? FontWeight.w800 : FontWeight.w500,
+                    fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
                   ),
                 ),
               ),
@@ -512,7 +545,7 @@ class _SidebarTile extends StatelessWidget {
                         style: TextStyle(
                           color: palette.onBrand,
                           fontSize: 12,
-                          fontWeight: FontWeight.w800,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                     ),
@@ -540,21 +573,29 @@ class _PillTabBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final palette = context.palette;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: palette.surface,
-          borderRadius: const BorderRadius.all(Radius.circular(999)),
-          border: Border.all(color: palette.border),
-          boxShadow: AppShadow.soft(context),
-        ),
-        child: SizedBox(
-          height: _bar,
-          child: Row(
-            children: [
-              for (final item in items) Expanded(child: _SideTab(item: item)),
-            ],
+    // 넓은 화면에서는 알약이 내용 너비 안에 가운데로 모인다.
+    return Center(
+      heightFactor: 1,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: kContentWidth),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: palette.surface,
+              borderRadius: const BorderRadius.all(Radius.circular(999)),
+              border: Border.all(color: palette.border),
+              boxShadow: AppShadow.soft(context),
+            ),
+            child: SizedBox(
+              height: _bar,
+              child: Row(
+                children: [
+                  for (final item in items)
+                    Expanded(child: _SideTab(item: item)),
+                ],
+              ),
+            ),
           ),
         ),
       ),
@@ -593,7 +634,7 @@ class _SideTab extends StatelessWidget {
               style: TextStyle(
                 color: color,
                 fontSize: 12,
-                fontWeight: selected ? FontWeight.w800 : FontWeight.w500,
+                fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
               ),
             ),
           ],
@@ -651,8 +692,8 @@ class _TopBar extends StatelessWidget {
                   tooltip: '뒤로',
                   icon: const Icon(AppIcons.arrowLeft),
                   onPressed: onBack,
-                )
-              else
+                ),
+              if (onBack == null)
                 IconButton(
                   tooltip: tooltip,
                   icon: Icon(icon),
@@ -669,7 +710,7 @@ class _TopBar extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                           style: Theme.of(context).textTheme.titleLarge
                               ?.copyWith(
-                                fontWeight: FontWeight.w800,
+                                fontWeight: FontWeight.w600,
                                 fontSize: 17,
                               ),
                         ),
@@ -822,94 +863,6 @@ class _NarrowFrameState extends State<_NarrowFrame> {
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-/// 데스크탑 틀: 왼쪽 메뉴 + (상단바 + 내용) + 오른쪽 계정 띠.
-/// 상단바의 버튼으로 왼쪽 메뉴를 접고 펼 수 있다.
-class _WideFrame extends StatefulWidget {
-  const _WideFrame({
-    required this.sidebar,
-    required this.rail,
-    required this.child,
-    this.topBarTrailing,
-    this.backdrop,
-    this.onBack,
-    this.title,
-  });
-
-  final String? title;
-  final VoidCallback? onBack;
-  final Widget sidebar;
-  final Widget rail;
-  final Widget child;
-  final Widget? topBarTrailing;
-  final Widget? backdrop;
-
-  @override
-  State<_WideFrame> createState() => _WideFrameState();
-}
-
-class _WideFrameState extends State<_WideFrame> {
-  bool _open = true;
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: Row(
-        children: [
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 180),
-            curve: Curves.easeOut,
-            width: _open ? SidebarScaffold.sidebarWidth : 0,
-            clipBehavior: Clip.hardEdge,
-            decoration: BoxDecoration(
-              color: _warmPaper(context),
-              border: _open
-                  ? Border(right: BorderSide(color: context.palette.border))
-                  : null,
-            ),
-            // 접히는 동안에도 메뉴가 찌그러지지 않게 원래 너비로 둔다.
-            child: OverflowBox(
-              alignment: Alignment.centerLeft,
-              minWidth: SidebarScaffold.sidebarWidth,
-              maxWidth: SidebarScaffold.sidebarWidth,
-              child: widget.sidebar,
-            ),
-          ),
-          Expanded(
-            child: Stack(
-              children: [
-                ?widget.backdrop,
-                Column(
-                  children: [
-                    _TopBar(
-                      icon: _open
-                          ? AppIcons.sidebarSimpleFill
-                          : AppIcons.sidebarSimple,
-                      tooltip: _open ? '메뉴 접기' : '메뉴 펼치기',
-                      onTap: () => setState(() => _open = !_open),
-                      trailing: widget.topBarTrailing,
-                      onBack: widget.onBack,
-                      title: widget.title,
-                      transparent: widget.backdrop != null,
-                    ),
-                    Expanded(
-                      child: MediaQuery.removePadding(
-                        context: context,
-                        removeTop: true,
-                        child: widget.child,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          widget.rail,
-        ],
       ),
     );
   }

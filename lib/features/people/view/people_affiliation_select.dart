@@ -23,7 +23,7 @@ class PeopleAffiliationSelect extends StatefulWidget {
   static List<Affiliation> optionsOf(Member me, List<Affiliation> all) => [
     for (final a in all)
       if (me.sees(a)) a,
-  ]..sort((a, b) => a.name.compareTo(b.name));
+  ].sortedByName();
 
   /// 지금 보는 소속: 고른 소속이 선택지에 있으면 그것, 아니면 첫째.
   static Affiliation? currentOf(
@@ -51,7 +51,7 @@ class _PeopleAffiliationSelectState extends State<PeopleAffiliationSelect> {
     final style = TextStyle(
       color: palette.ink,
       fontSize: 15,
-      fontWeight: FontWeight.w700,
+      fontWeight: FontWeight.w600,
     );
     return StreamBuilder<List<Affiliation>>(
       stream: _affiliations,

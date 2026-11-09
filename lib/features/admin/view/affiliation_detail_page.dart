@@ -20,7 +20,8 @@ import '../../home/view/content_widgets.dart';
 import '../../../core/widgets/sort_pad.dart';
 import '../view_model/affiliation_manage_view_model.dart';
 import '../view_model/member_admin_view_model.dart' show MemberSort;
-import 'pending_member_dialogs.dart';
+import '../../../core/widgets/member_mark.dart';
+import 'member_info_page.dart';
 import '../../../core/widgets/app_inputs.dart';
 
 /// 한 소속의 인원 관리 (주소 `/churches/{교회}/affiliations/{소속}`). 목록으로 돌아가는 버튼이 있다.
@@ -129,7 +130,7 @@ class _AffiliationDetailBodyState extends State<AffiliationDetailBody> {
                                   label: const Text('이름 변경'),
                                 ),
                               // 소속 삭제 권한이 있는 사람만 삭제한다.
-                              if (me.can(Permission.affiliationDelete))
+                              if (me.can(Permission.affiliationEdit))
                                 OutlinedButton.icon(
                                   style: TrashIcon.textStyle(context),
                                   onPressed: vm.busy
@@ -218,6 +219,7 @@ class _AffiliationDetailBodyState extends State<AffiliationDetailBody> {
                                 if (i > 0) const Divider(),
                                 _PersonRow(
                                   member: people[i],
+                                  affiliationName: affiliation.name,
                                   isSelf: people[i].id == me.id,
                                   busy: vm.busy,
                                   readOnly: readOnly,
@@ -361,11 +363,15 @@ class _PersonRow extends StatelessWidget {
     required this.member,
     required this.busy,
     required this.onRemove,
+    required this.affiliationName,
     this.isSelf = false,
     this.readOnly = false,
   });
 
   final Member member;
+
+  /// 이 소속의 이름 (상세 페이지의 소속 칩).
+  final String affiliationName;
   final bool isSelf;
   final bool busy;
   final bool readOnly;
@@ -375,10 +381,7 @@ class _PersonRow extends StatelessWidget {
   Widget build(BuildContext context) {
     // 다른 관리 목록과 같은 줄 모양: 이름 · 소속 교회 · 전화번호 · [제외]. 줄을 누르면 상세가 열린다.
     return ManageListRow(
-      onTap: () => showAppDialog(
-        context,
-        child: PendingMemberInfoDialog(member: member, dateLabel: '등록일'),
-      ),
+      onTap: () => _open(context),
       leading: ManageListRow.avatar(
         context,
         member.name,
@@ -388,34 +391,42 @@ class _PersonRow extends StatelessWidget {
           ? member.name
           : '${member.name}  (${member.loginId})',
       // 교회 관리자는 이름 앞에 왕관, 교역자는 방패로 표시한다 (회원 관리 · 우리 소속과 같다).
-      titleMark: switch (member.role) {
-        Role.admin => const Tooltip(
-          message: '교회 관리자',
-          child: Icon(AppIcons.crown, size: 18, color: Color(0xFFE0A100)),
-        ),
-        Role.staff => Tooltip(
-          message: '교역자',
-          child: Icon(
-            AppIcons.shieldCheck,
-            size: 18,
-            color: context.palette.brand,
-          ),
-        ),
-        Role.member => null,
-      },
+      titleMark: MemberMark(role: member.role),
       badge: isSelf ? '본인' : null,
-      // 소속 교회는 같은 교회라 보이지 않는다: 전화번호만 보인다.
-      line1: member.phone.isEmpty ? '미제공' : member.phone,
       trailing: [
-        // 교회 운영자는 모든 소속에 자동으로 속하므로 뺄 수 없다: 그 칸은 비워 둔다.
-        if (!readOnly && member.role != Role.admin)
-          TextButton(
-            onPressed: busy ? null : onRemove,
-            child: const Text('제외'),
-          ),
+        TextButton(onPressed: () => _open(context), child: const Text('관리')),
       ],
     );
   }
+
+  /// 상세 페이지로 이동한다 (회원 관리와 같은 페이지). 소속에서 제외하는 버튼이 관리 카드에 있다.
+  void _open(BuildContext context) => showMemberInfoPage(
+    context,
+    member: member,
+    positionName: memberPositionLabel(member),
+    affiliationNames: [affiliationName],
+    // 교회 운영자는 모든 소속에 자동으로 속하므로 뺄 수 없다.
+    footer: readOnly || member.role == Role.admin
+        ? null
+        : SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Theme.of(context).colorScheme.error,
+                side: BorderSide(color: Theme.of(context).colorScheme.error),
+              ),
+              onPressed: busy
+                  ? null
+                  : () async {
+                      final navigator = Navigator.of(context);
+                      await onRemove();
+                      navigator.maybePop();
+                    },
+              icon: const Icon(AppIcons.userMinus, size: 18),
+              label: const Text('소속에서 제외'),
+            ),
+          ),
+  );
 }
 
 /// 소속에 넣을 인원을 고르는 대화상자. 이름·전화번호로 찾고 여러 명을 한꺼번에 고른다.

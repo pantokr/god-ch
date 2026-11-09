@@ -46,4 +46,5 @@ firebase deploy --only firestore:rules --dry-run   # 규칙 문법 검사
 - 파일을 PowerShell 문자열로 치환할 때 `$(database)` 같은 `$` 표현이 변수로 해석되지 않게 작은따옴표 here-string을 쓴다.
 - 로그인 정보나 비밀번호, 운영자 계정 비밀번호는 저장소에 커밋하지 않는다.
 - 웹 핫 리로드는 불안정하다. 이상하면 완전히 다시 실행한다. 개발 실행은 `.vscode/launch.json`의 "웹 (로그인 유지)"(포트 5000 + 고정 Chrome 프로필).
+- `firestore.rules`는 규칙 한 번에 문서 읽기(`get`·`exists`)가 10번까지다. 권한 판정(`can`·`isAll`)을 한 줄에 여러 번 부르거나 값싼 조건(`changed()` 등)보다 앞에 두면 한도를 넘어 권한이 있어도 거부된다. 규칙을 고친 뒤에는 `tool/perm_matrix/perm_matrix.py`(환경변수 `PLC_PW`, 테스트 교회에서 실제 규칙 응답 측정)를 돌려 `test/fixtures/permission_matrix.json`을 갱신하고 `test/live_permission_matrix_test.dart`로 앱 권한 모델과 맞춰 본다.
 - 개인정보 제3자 제공 동의 문구(`features/auth/view/consent_checkbox.dart`)는 초안이다.

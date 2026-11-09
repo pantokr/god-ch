@@ -1,23 +1,24 @@
-/// 화면에 보여줄 날짜 (예: 26.10.21). 연도는 두 자리다. 값이 없으면 빈 문자열.
+String _two(int n) => n.toString().padLeft(2, '0');
+
+/// 화면에 보여줄 날짜: 올해면 MM.DD (예: 11.09), 작년과 그 이전이면 YY.MM.DD (예: 25.11.09). 값이 없으면 빈 문자열.
 String fmtDate(DateTime? d) {
   if (d == null) return '';
-  String two(int n) => n.toString().padLeft(2, '0');
-  return '${two(d.year % 100)}.${two(d.month)}.${two(d.day)}';
+  final md = '${_two(d.month)}.${_two(d.day)}';
+  return d.year == DateTime.now().year ? md : '${_two(d.year % 100)}.$md';
 }
 
-/// 글 · 댓글의 작성 일시 (예: 26.10.21 14:05). 값이 없으면 빈 문자열.
+/// 글 · 댓글의 작성 일시: 올해면 MM.DD HH:mm (예: 11.09 14:05), 작년과 그 이전이면 YY.MM.DD HH:mm (예: 25.11.09 14:05).
+/// 값이 없으면 빈 문자열.
 String fmtDateTime(DateTime? d) {
   if (d == null) return '';
-  String two(int n) => n.toString().padLeft(2, '0');
-  return '${fmtDate(d)} ${two(d.hour)}:${two(d.minute)}';
+  return '${fmtDate(d)} ${_two(d.hour)}:${_two(d.minute)}';
 }
 
-/// 글에 정해 둔 날짜([date])에 작성 시각([at])의 시간을 붙인다 (예: 묵상 날짜 26.10.21 + 작성 14:05).
+/// 글에 정해 둔 날짜([date])에 작성 시각([at])의 시간을 붙인다 (예: 묵상 날짜 11.09 + 작성 14:05).
 /// 작성 시각을 모르면 날짜만 보인다.
 String fmtDateAt(DateTime date, DateTime? at) {
   if (at == null) return fmtDate(date);
-  String two(int n) => n.toString().padLeft(2, '0');
-  return '${fmtDate(date)} ${two(at.hour)}:${two(at.minute)}';
+  return '${fmtDate(date)} ${_two(at.hour)}:${_two(at.minute)}';
 }
 
 /// 이메일을 목록에 맞게 줄인다: 앞부분이 [keep]자보다 길면 잘라 "…"를 붙이고 도메인은 그대로 둔다.

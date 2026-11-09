@@ -1,5 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import '../../../data/shared_stream.dart';
+
 import '../../../core/app_exception.dart';
 import '../../../data/firestore_paths.dart';
 import '../../../data/person_card_sync.dart';
@@ -20,7 +22,13 @@ class MemberRepository {
   final AuthRepository _auth;
 
   /// 이 교회의 교인들. 추방된 사람과 앱 운영자(admin 계정)는 교인이 아니므로 뺀다.
-  Stream<List<Member>> members(String churchId) async* {
+  Stream<List<Member>> members(String churchId) =>
+      _shared.of('members/${_auth.uid}/$churchId', () => _members(churchId));
+
+  /// 교인 목록은 여러 화면(회원 관리 · 소속 · 직급 · 입장 요청)이 함께 읽으므로 구독 하나를 나눠 쓴다.
+  final _shared = SharedStreams();
+
+  Stream<List<Member>> _members(String churchId) async* {
     // 앱 운영자로 로그인한 사람은 자기 문서가 남아 있어도 교인으로 보이지 않는다.
     final operatorUid = await _auth.hasOperatorClaim() ? _auth.uid : null;
     yield* _paths

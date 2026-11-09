@@ -1,6 +1,9 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import '../theme.dart';
+import '../widgets/role_chips.dart';
 import '../widgets/thumbnail_avatar.dart';
 
 /// 관리 목록(교회 · 회원 · 인원)의 한 줄. 모든 목록이 같은 모양과 같은 높이를 쓴다.
@@ -15,6 +18,7 @@ class ManageListRow extends StatelessWidget {
     this.titleMark,
     this.line1 = '',
     this.line2 = '',
+    this.affiliations = const [],
     this.trailing = const [],
     this.onTap,
   });
@@ -32,6 +36,9 @@ class ManageListRow extends StatelessWidget {
   final Widget? titleMark;
   final String line1;
   final String line2;
+
+  /// 있으면 마지막 줄에 소속을 칩(테두리 표)으로 보인다 ([line2] 대신).
+  final List<String> affiliations;
   final List<Widget> trailing;
   final VoidCallback? onTap;
 
@@ -57,7 +64,9 @@ class ManageListRow extends StatelessWidget {
     return InkWell(
       onTap: onTap,
       child: SizedBox(
-        height: height,
+        // 글씨가 커져도 이름 · 한 줄 설명 · 칩이 넘치지 않게 높이가 배율만큼 따라 커진다.
+        height:
+            height * math.max(1.0, MediaQuery.textScalerOf(context).scale(1)),
         child: Padding(
           padding: const EdgeInsets.only(left: 16, right: 8),
           child: Row(
@@ -82,7 +91,7 @@ class ManageListRow extends StatelessWidget {
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
                               fontSize: 16,
-                              fontWeight: FontWeight.w700,
+                              fontWeight: FontWeight.w600,
                             ),
                           ),
                         ),
@@ -104,7 +113,7 @@ class ManageListRow extends StatelessWidget {
                               style: TextStyle(
                                 color: palette.accent,
                                 fontSize: 11,
-                                fontWeight: FontWeight.w800,
+                                fontWeight: FontWeight.w600,
                               ),
                             ),
                           ),
@@ -116,7 +125,25 @@ class ManageListRow extends StatelessWidget {
                       const SizedBox(height: 2),
                       _line(context, line1),
                     ],
-                    if (line2.isNotEmpty) _line(context, line2),
+                    if (affiliations.isNotEmpty) ...[
+                      const SizedBox(height: 3),
+                      SizedBox(
+                        height: 20,
+                        child: SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          physics: const NeverScrollableScrollPhysics(),
+                          child: Row(
+                            children: [
+                              for (final a in affiliations) ...[
+                                AffiliationChip(a, compact: true),
+                                const SizedBox(width: 4),
+                              ],
+                            ],
+                          ),
+                        ),
+                      ),
+                    ] else if (line2.isNotEmpty)
+                      _line(context, line2),
                   ],
                 ),
               ),

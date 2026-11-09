@@ -99,7 +99,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.titleLarge
-                        ?.copyWith(fontWeight: FontWeight.w800, fontSize: 17),
+                        ?.copyWith(fontWeight: FontWeight.w600, fontSize: 17),
                   ),
                 ),
               ),
@@ -187,7 +187,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
                                           child: Text(
                                             '신규 입장 요청 $pendingRequests건',
                                             style: const TextStyle(
-                                              fontWeight: FontWeight.w700,
+                                              fontWeight: FontWeight.w600,
                                             ),
                                           ),
                                         ),
@@ -208,7 +208,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
                                             style: TextStyle(
                                               color: Colors.white,
                                               fontSize: 11,
-                                              fontWeight: FontWeight.w800,
+                                              fontWeight: FontWeight.w600,
                                             ),
                                           ),
                                         ),
@@ -348,7 +348,7 @@ class _Row extends StatelessWidget {
                   Text(
                     item.title,
                     style: TextStyle(
-                      fontWeight: isNew ? FontWeight.w700 : FontWeight.w500,
+                      fontWeight: isNew ? FontWeight.w600 : FontWeight.w500,
                       // 읽은 알림은 흐리게.
                       color: isNew ? null : gray,
                     ),

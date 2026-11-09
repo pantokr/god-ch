@@ -35,7 +35,7 @@ class PrayerEditorViewModel extends ViewModel {
   PrayerSettings get settings => _settings;
 
   /// 내가 이 교회에서 새 기도제목을 쓸 수 있는가.
-  bool get canWrite => isEditing || me.can(Permission.prayerWrite);
+  bool get canWrite => isEditing || me.can(Permission.prayerPost);
 
   @override
   void dispose() {

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../features/people/view/person_avatar.dart';
 import '../../features/people/view/person_popup.dart';
 import '../format.dart';
 import '../icons.dart';
@@ -70,19 +71,32 @@ class CommentByline extends StatelessWidget {
   Widget build(BuildContext context) {
     final palette = context.palette;
     final small = TextStyle(color: palette.muted, fontSize: 12);
+    // 다른 곳의 작성자 표시와 같게: 아바타 + 이름 (이름은 보라색이 아니라 본문 글자색).
     return Row(
       children: [
         PersonTap(
           churchId: churchId,
           uid: uid,
           name: name,
-          child: Text(
-            name.isEmpty ? '이름 없음' : name,
-            style: TextStyle(
-              color: palette.brand,
-              fontWeight: FontWeight.w800,
-              fontSize: 13,
-            ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              PersonAvatar(
+                churchId: churchId,
+                uid: uid,
+                name: name.isEmpty ? '?' : name,
+                radius: 10,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                name.isEmpty ? '이름 없음' : name,
+                style: TextStyle(
+                  color: palette.ink,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13,
+                ),
+              ),
+            ],
           ),
         ),
         const SizedBox(width: 8),

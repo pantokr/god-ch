@@ -22,7 +22,7 @@ class SplashPage extends StatelessWidget {
     // 강조: God과 Church의 마지막 ch.
     final strong = base.copyWith(
       color: palette.brand,
-      fontWeight: FontWeight.w900,
+      fontWeight: FontWeight.w600,
     );
     return Scaffold(
       body: TweenAnimationBuilder<double>(
@@ -58,7 +58,7 @@ class SplashPage extends StatelessWidget {
                     Text(
                       '같이',
                       style: Theme.of(context).textTheme.headlineMedium
-                          ?.copyWith(fontWeight: FontWeight.w800),
+                          ?.copyWith(fontWeight: FontWeight.w600),
                     ),
                     const SizedBox(height: 28),
                     const SizedBox(width: 22, height: 22, child: AppLoader()),

@@ -2,6 +2,8 @@ import 'dart:math';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import '../../../data/shared_stream.dart';
+
 import '../../../core/app_exception.dart';
 
 import '../../../data/firestore_codec.dart';
@@ -24,14 +26,19 @@ class PrayerRepository {
   final FirestorePaths _paths;
   final AuthRepository _auth;
 
+  /// 같은 조회(운영 설정 · 글마다의 반응 · 댓글 수)를 카드마다 · 화면마다 따로 듣지 않고 하나를 나눠 쓴다.
+  final _shared = SharedStreams();
+
   // ---- 운영 설정 ----
 
   DocumentReference<Json> _settings(String churchId) =>
       _paths.church(churchId).collection('settings').doc('prayer');
 
   /// 교회가 정한 기도 요청 운영 설정. 정한 적 없으면 표준 설정이다.
-  Stream<PrayerSettings> settings(String churchId) =>
-      _settings(churchId).snapshots().map(PrayerSettings.fromDoc);
+  Stream<PrayerSettings> settings(String churchId) => _shared.of(
+    'settings/$churchId',
+    () => _settings(churchId).snapshots().map(PrayerSettings.fromDoc),
+  );
 
   Future<PrayerSettings> loadSettings(String churchId) async =>
       PrayerSettings.fromDoc(await _settings(churchId).get());
@@ -174,7 +181,13 @@ class PrayerRepository {
   // ---- 이모티콘 응원 ----
 
   /// 반응한 사람의 정보는 노출하지 않고, 이모티콘별 개수와 내 선택만 계산한다.
-  Stream<ReactionSummary> reactions(String churchId, String prayerId) => _paths
+  Stream<ReactionSummary> reactions(String churchId, String prayerId) =>
+      _shared.of(
+        'reactions/${_auth.uid}/$churchId/$prayerId',
+        () => _reactions(churchId, prayerId),
+      );
+
+  Stream<ReactionSummary> _reactions(String churchId, String prayerId) => _paths
       .prayers(churchId)
       .doc(prayerId)
       .collection('reactions')
@@ -243,7 +256,12 @@ class PrayerRepository {
       _entries(churchId, prayerId, 'comments');
 
   /// 지우지 않은 댓글 수 (목록의 댓글 표시).
-  Stream<int> commentCount(String churchId, String prayerId) => _paths
+  Stream<int> commentCount(String churchId, String prayerId) => _shared.of(
+    'commentCount/$churchId/$prayerId',
+    () => _commentCount(churchId, prayerId),
+  );
+
+  Stream<int> _commentCount(String churchId, String prayerId) => _paths
       .prayers(churchId)
       .doc(prayerId)
       .collection('comments')

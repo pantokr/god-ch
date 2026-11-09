@@ -96,7 +96,7 @@ class _DatePickerBodyState extends State<_DatePickerBody> {
             style: TextStyle(
               color: palette.muted,
               fontSize: 12.5,
-              fontWeight: FontWeight.w700,
+              fontWeight: FontWeight.w600,
               letterSpacing: 0.4,
             ),
           ),
@@ -104,7 +104,7 @@ class _DatePickerBodyState extends State<_DatePickerBody> {
           Text(
             _headline(_selected),
             style: Theme.of(context).textTheme.titleLarge
-                ?.copyWith(fontWeight: FontWeight.w800),
+                ?.copyWith(fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 14),
           Divider(height: 1, color: palette.border),
@@ -173,7 +173,7 @@ class _DatePickerBodyState extends State<_DatePickerBody> {
                   Text(
                     '${_month.year % 100}년 ${_month.month}월',
                     style: const TextStyle(
-                      fontWeight: FontWeight.w800,
+                      fontWeight: FontWeight.w600,
                       fontSize: 15,
                     ),
                   ),
@@ -222,7 +222,7 @@ class _DatePickerBodyState extends State<_DatePickerBody> {
                     _weekdays[i],
                     style: TextStyle(
                       fontSize: 12.5,
-                      fontWeight: FontWeight.w700,
+                      fontWeight: FontWeight.w600,
                       color: palette.muted,
                     ),
                   ),
@@ -289,7 +289,7 @@ class _DatePickerBodyState extends State<_DatePickerBody> {
             style: TextStyle(
               color: color,
               fontWeight: selected || isToday
-                  ? FontWeight.w800
+                  ? FontWeight.w600
                   : FontWeight.w500,
             ),
           ),
@@ -319,7 +319,7 @@ class _DatePickerBodyState extends State<_DatePickerBody> {
                 child: Text(
                   '$_year년',
                   style: const TextStyle(
-                    fontWeight: FontWeight.w800,
+                    fontWeight: FontWeight.w600,
                     fontSize: 15,
                   ),
                 ),
@@ -369,7 +369,7 @@ class _DatePickerBodyState extends State<_DatePickerBody> {
                   child: Text(
                     '$m월',
                     style: TextStyle(
-                      fontWeight: FontWeight.w700,
+                      fontWeight: FontWeight.w600,
                       color: !_monthEnabled(_year, m)
                           ? palette.muted.withValues(alpha: 0.35)
                           : (_month.year == _year && _month.month == m
@@ -449,7 +449,7 @@ class _TimePickerBodyState extends State<_TimePickerBody> {
           text,
           style: TextStyle(
             fontSize: 32,
-            fontWeight: FontWeight.w800,
+            fontWeight: FontWeight.w600,
             color: selected ? palette.surface : palette.ink,
           ),
         ),
@@ -475,7 +475,7 @@ class _TimePickerBodyState extends State<_TimePickerBody> {
           label,
           style: TextStyle(
             fontSize: 13,
-            fontWeight: FontWeight.w800,
+            fontWeight: FontWeight.w600,
             color: selected ? palette.surface : palette.muted,
           ),
         ),
@@ -498,7 +498,7 @@ class _TimePickerBodyState extends State<_TimePickerBody> {
             style: TextStyle(
               color: palette.muted,
               fontSize: 12.5,
-              fontWeight: FontWeight.w700,
+              fontWeight: FontWeight.w600,
               letterSpacing: 0.4,
             ),
           ),
@@ -518,7 +518,7 @@ class _TimePickerBodyState extends State<_TimePickerBody> {
                   ':',
                   style: TextStyle(
                     fontSize: 32,
-                    fontWeight: FontWeight.w800,
+                    fontWeight: FontWeight.w600,
                     color: palette.ink,
                   ),
                 ),
@@ -729,12 +729,12 @@ class _ClockPainter extends CustomPainter {
         '$shown',
         _at(c, i * math.pi / 6, labelRadius),
         selected ? onInk : ink,
-        selected ? FontWeight.w800 : FontWeight.w500,
+        selected ? FontWeight.w600 : FontWeight.w500,
       );
     }
     // 5분 눈금 사이를 고른 분은 표식 안에 숫자로 보인다.
     if (minuteMode && !onLabel) {
-      _text(canvas, '$value', tip, onInk, FontWeight.w800);
+      _text(canvas, '$value', tip, onInk, FontWeight.w600);
     }
   }
 

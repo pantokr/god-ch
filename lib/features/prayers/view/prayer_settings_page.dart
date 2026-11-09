@@ -2,8 +2,11 @@ import '../../../core/widgets/app_loader.dart';
 
 import 'package:flutter/material.dart';
 
+import '../../../core/widgets/toast.dart';
+
 import '../../../app/app_scope.dart';
 import '../../../core/layout/page_frame.dart';
+import '../../../core/layout/responsive.dart';
 import '../../../core/mvvm/view_model.dart';
 import '../../../core/mvvm/view_model_builder.dart';
 import '../../../data/models/member.dart';
@@ -49,32 +52,37 @@ class PrayerSettingsPage extends StatelessWidget {
                         onChanged: vm.edit,
                       ),
                       const SizedBox(height: 16),
-                      if (vm.error != null)
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 8),
-                          child: Text(
-                            vm.error!,
-                            style: TextStyle(
-                              color: Theme.of(context).colorScheme.error,
+                      Gutter(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            if (vm.error != null)
+                              Padding(
+                                padding: const EdgeInsets.only(bottom: 8),
+                                child: Text(
+                                  vm.error!,
+                                  style: TextStyle(
+                                    color: Theme.of(context).colorScheme.error,
+                                  ),
+                                ),
+                              ),
+                            Align(
+                              alignment: Alignment.centerRight,
+                              child: FilledButton(
+                                onPressed: vm.edited == null || vm.busy
+                                    ? null
+                                    : () async {
+                                        final messenger = ScaffoldMessenger.of(
+                                          context,
+                                        );
+                                        if (await vm.save()) {
+                                          showToastOn(messenger, '저장했어요.');
+                                        }
+                                      },
+                                child: const Text('저장'),
+                              ),
                             ),
-                          ),
-                        ),
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: FilledButton(
-                          onPressed: vm.edited == null || vm.busy
-                              ? null
-                              : () async {
-                                  final messenger = ScaffoldMessenger.of(
-                                    context,
-                                  );
-                                  if (await vm.save()) {
-                                    messenger.showSnackBar(
-                                      const SnackBar(content: Text('저장했어요.')),
-                                    );
-                                  }
-                                },
-                          child: const Text('저장'),
+                          ],
                         ),
                       ),
                     ],

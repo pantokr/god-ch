@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:god_ch/app/app_scope.dart';
 import 'package:god_ch/app/list_style_controller.dart';
+import 'package:god_ch/app/preferences_controller.dart';
 import 'package:god_ch/app/theme_mode_controller.dart';
 import 'package:god_ch/core/theme.dart';
 import 'package:god_ch/data/models/app_notification.dart';
@@ -153,6 +154,7 @@ AppNotification _joinRequest(String id, {bool read = false}) => AppNotification(
 Widget _app(NotificationRepository notifications, Widget home) => AppScope(
   themeMode: ThemeModeController(null),
   listStyle: ListStyleController(null),
+  preferences: PreferencesController(null),
   auth: _Auth(),
   profiles: _Profiles(),
   churches: _Churches(),
@@ -312,7 +314,7 @@ void main() {
       expect(repo.markedRead, isEmpty);
       expect(repo.unread, 1);
       expect(find.text('참여 신청 · 성경 공부'), findsOneWidget);
-      expect(_weightOf(tester, '참여 신청 · 성경 공부'), FontWeight.w700);
+      expect(_weightOf(tester, '참여 신청 · 성경 공부'), FontWeight.w600);
     });
 
     testWidgets('알림을 누르면 읽음 처리되어 글씨가 흐려진다', (tester) async {

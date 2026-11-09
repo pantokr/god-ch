@@ -24,7 +24,7 @@ class Meeting {
     this.views = 0,
     this.deleted = false,
     this.createdAt,
-    this.affiliationId,
+    this.affiliationIds = const [],
   });
 
   /// 글자 수 제한 (`firestore.rules`와 같아야 한다).
@@ -67,7 +67,8 @@ class Meeting {
   final DateTime? createdAt;
 
   /// 공개 범위: 이 소속의 교인만 참여할 수 있다. null이면 교회 전체.
-  final String? affiliationId;
+  /// 공개 범위(소속)들. 비어 있으면 교회 전체다. 여러 소속을 함께 고를 수 있다.
+  final List<String> affiliationIds;
 
   int get joined => participantIds.length;
   int get likes => likedBy.length;
@@ -81,10 +82,11 @@ class Meeting {
   bool get ended => date.isBefore(DateTime.now());
 
   /// 이 교인이 참여할 수 있는 공개 범위인가 (교역자 이상은 어느 범위든 된다).
+  /// 공개 범위가 여러 소속이면 그중 하나라도 내 소속이면 참여할 수 있다.
   bool openTo({required bool isStaff, required List<String> affiliationIds}) =>
-      affiliationId == null ||
+      this.affiliationIds.isEmpty ||
       isStaff ||
-      affiliationIds.contains(affiliationId);
+      this.affiliationIds.any(affiliationIds.contains);
 
   bool joinedBy(String uid) => participantIds.contains(uid);
 
@@ -117,7 +119,10 @@ class Meeting {
       views: (d['views'] as num?)?.toInt() ?? 0,
       deleted: d['deleted'] == true,
       createdAt: toDate(d['createdAt']),
-      affiliationId: d['affiliationId'] as String?,
+      // 예전 일정은 소속 하나(affiliationId)만 있다.
+      affiliationIds: d['affiliationIds'] is List
+          ? List<String>.from(d['affiliationIds'] as List)
+          : [if (d['affiliationId'] is String) d['affiliationId'] as String],
     );
   }
 }

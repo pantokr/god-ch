@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:god_ch/app/app_scope.dart';
 import 'package:god_ch/app/list_style_controller.dart';
+import 'package:god_ch/app/preferences_controller.dart';
 import 'package:god_ch/app/theme_mode_controller.dart';
 import 'package:god_ch/core/theme.dart';
 import 'package:god_ch/data/models/member.dart';
@@ -54,6 +55,9 @@ class _Bible extends Fake implements BibleRepository {}
 
 class _Positions extends Fake implements PositionRepository {
   @override
+  Stream<List<String>> order(String churchId) => Stream.value(const []);
+
+  @override
   Stream<List<Position>> positions(String churchId) => Stream.value(const [
     Position(id: 'p1', name: '찬양팀', permissions: {'prayer.write'}),
   ]);
@@ -81,6 +85,7 @@ void main() {
       AppScope(
         themeMode: ThemeModeController(null),
         listStyle: ListStyleController(null),
+        preferences: PreferencesController(null),
         auth: _Auth(),
         profiles: _Profiles(),
         churches: _Churches(),
@@ -106,9 +111,9 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
     expect(tester.takeException(), isNull);
-    // 권한 목록을 펼친다.
-    await tester.tap(find.text('권한 목록'));
-    await tester.pump(const Duration(milliseconds: 400));
-    expect(tester.takeException(), isNull);
+    // 직급 카드(찬양팀)와 기본 직급 카드가 보인다.
+    expect(find.text('찬양팀'), findsOneWidget);
+    expect(find.text('교역자'), findsOneWidget);
+    expect(find.text('미배정'), findsNothing);
   });
 }

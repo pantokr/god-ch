@@ -58,7 +58,7 @@ class _EmptyStage extends StatelessWidget {
       alignment: Alignment.center,
       decoration: fullScreen ? null : _stageDecoration(context),
       child: Text(
-        '아직 기도 요청이 없어요.\n첫 기도를 요청해 보세요.',
+        '중보기도 없음',
         textAlign: TextAlign.center,
         style: TextStyle(color: context.palette.muted, height: 1.6),
       ),

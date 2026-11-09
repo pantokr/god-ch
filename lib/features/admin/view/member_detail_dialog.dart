@@ -4,6 +4,8 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 
+import '../../../core/widgets/toast.dart';
+
 import '../../../core/widgets/labeled_field.dart';
 
 import '../../../core/mvvm/view_model.dart';
@@ -93,7 +95,11 @@ class MemberDetailDialog extends StatefulWidget {
     this.onBlock,
     this.onRemoveFrom,
     this.onWithdraw,
+    this.showHeader = true,
   });
+
+  /// 위쪽의 사진 · 이름 머리를 보인다 (상세 페이지에서는 이미 있어 감춘다).
+  final bool showHeader;
 
   /// 저장 중·오류 표시에 쓴다.
   final ViewModel vm;
@@ -222,7 +228,7 @@ class _MemberDetailDialogState extends State<MemberDetailDialog> {
     );
     if (!ok) return;
     navigator.pop();
-    messenger.showSnackBar(const SnackBar(content: Text('저장했어요.')));
+    showToastOn(messenger, '저장했어요.');
   }
 
   Future<void> _remove() async {
@@ -255,27 +261,28 @@ class _MemberDetailDialogState extends State<MemberDetailDialog> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            children: [
-              ThumbnailAvatar(
-                name: widget.name,
-                url: widget.photoUrl,
-                radius: 24,
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(widget.title, style: theme.textTheme.titleLarge),
-                    if (widget.subtitle.isNotEmpty)
-                      Text(widget.subtitle, style: muted),
-                  ],
+          if (widget.showHeader)
+            Row(
+              children: [
+                ThumbnailAvatar(
+                  name: widget.name,
+                  url: widget.photoUrl,
+                  radius: 24,
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(widget.title, style: theme.textTheme.titleLarge),
+                      if (widget.subtitle.isNotEmpty)
+                        Text(widget.subtitle, style: muted),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          if (widget.showHeader) const SizedBox(height: 20),
           // 본인이 입력한 정보(사진 · 이름 · 전화번호 · 주소 · 생년월일)는 고칠 수 있는 화면에서만 보인다.
           // 교회 회원 관리에서는 "상세"에서 보기만 하고, 이 창은 역할 · 소속 · 상태만 다룬다.
           if (widget.canEditProfile) ...[
@@ -531,7 +538,7 @@ class _Section extends StatelessWidget {
                 child: Text(
                   title,
                   style: TextStyle(
-                    fontWeight: FontWeight.w700,
+                    fontWeight: FontWeight.w600,
                     fontSize: 15,
                     color: danger ? error : null,
                   ),
@@ -541,7 +548,8 @@ class _Section extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
-          child,
+          // 색이 깔린 구역 안의 목록 칸(ListTile) 오류를 막으려고 투명한 Material로 감싼다.
+          Material(type: MaterialType.transparency, child: child),
         ],
       ),
     );

@@ -94,7 +94,7 @@ class SortPad extends StatelessWidget {
                               style: TextStyle(
                                 color: palette.ink,
                                 fontSize: 13,
-                                fontWeight: FontWeight.w700,
+                                fontWeight: FontWeight.w600,
                               ),
                             ),
                           ),
@@ -163,7 +163,7 @@ class _PadButton extends StatelessWidget {
       child: Text(
         option.label,
         style: TextStyle(
-          fontWeight: on ? FontWeight.w800 : FontWeight.w500,
+          fontWeight: on ? FontWeight.w600 : FontWeight.w500,
           decoration: on ? TextDecoration.underline : TextDecoration.none,
         ),
       ),
@@ -384,7 +384,7 @@ class _SortSelect extends StatelessWidget {
               options[i].label,
               style: TextStyle(
                 fontWeight: options[i].selected
-                    ? FontWeight.w800
+                    ? FontWeight.w600
                     : FontWeight.w500,
               ),
             ),

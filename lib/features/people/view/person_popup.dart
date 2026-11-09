@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import '../../../app/app_scope.dart';
 import '../../../core/layout/app_dialog.dart';
 import '../../../core/theme.dart';
+import '../../../core/widgets/member_mark.dart';
+import '../../../core/widgets/role_chips.dart';
 import '../../../core/widgets/thumbnail_avatar.dart';
 import '../../../data/models/affiliation.dart';
 import '../../../data/models/member.dart' show Role;
@@ -95,65 +97,124 @@ class _PersonPopup extends StatelessWidget {
           for (final id in person?.affiliationIds ?? const <String>[])
             ?all.where((a) => a.id == id).firstOrNull?.name,
         ];
+        final role = switch (person?.role) {
+          Role.admin => '교회 운영자',
+          Role.staff => '교역자',
+          _ => '교인',
+        };
+        final birth = person?.birthMonthDay ?? '';
+        final birthText = birth.length == 5
+            ? '${person!.birthMonth}월 ${int.tryParse(birth.substring(3))}일'
+            : '';
+        Widget info(String label, Widget value) => Padding(
+          padding: const EdgeInsets.only(top: 14),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(
+                width: 48,
+                child: Text(
+                  label,
+                  style: TextStyle(color: palette.muted, fontSize: 13),
+                ),
+              ),
+              Expanded(child: value),
+            ],
+          ),
+        );
         return Column(
           mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            ThumbnailAvatar(
-              name: person?.name ?? name,
-              url: person?.photoUrl.isNotEmpty == true
-                  ? person!.photoUrl
-                  : photoUrl,
-              radius: 44,
+            // 윗부분: 옅은 색 띠 위에 사진이 반쯤 걸쳐 놓인다.
+            Stack(
+              clipBehavior: Clip.none,
+              alignment: Alignment.center,
+              children: [
+                Container(
+                  height: 76,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(AppRadius.card),
+                    gradient: LinearGradient(
+                      colors: [
+                        palette.brand.withValues(alpha: 0.22),
+                        palette.accent.withValues(alpha: 0.18),
+                      ],
+                    ),
+                  ),
+                ),
+                Positioned(
+                  bottom: -40,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(color: palette.surface, width: 4),
+                    ),
+                    child: ThumbnailAvatar(
+                      name: person?.name ?? name,
+                      url: person?.photoUrl.isNotEmpty == true
+                          ? person!.photoUrl
+                          : photoUrl,
+                      radius: 40,
+                    ),
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 14),
-            Text(
-              person?.name ?? name,
-              style: Theme.of(context).textTheme.titleLarge,
+            const SizedBox(height: 50),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                if (person != null) ...[
+                  MemberMark(role: person.role, size: 20),
+                  const SizedBox(width: 6),
+                ],
+                Flexible(
+                  child: Text(
+                    person?.name ?? name,
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
+                ),
+              ],
             ),
             if (person != null) ...[
               const SizedBox(height: 4),
               Text(
-                person.positionName.isNotEmpty
-                    ? person.positionName
-                    : switch (person.role) {
-                        Role.admin => '교회 운영자',
-                        Role.staff => '교역자',
-                        Role.member => '교인',
-                      },
+                person.positionName.isNotEmpty ? person.positionName : role,
+                textAlign: TextAlign.center,
                 style: TextStyle(color: palette.muted, fontSize: 13.5),
               ),
             ],
-            const SizedBox(height: 14),
+            const SizedBox(height: 18),
+            Divider(height: 1, color: context.cardEdge),
             if (!snap.hasData)
-              const SizedBox(height: 28)
-            else if (names.isEmpty)
-              Text(
-                Affiliation.unassignedName,
-                style: TextStyle(color: palette.muted, fontSize: 13.5),
-              )
-            else
-              Wrap(
-                alignment: WrapAlignment.center,
-                spacing: 6,
-                runSpacing: 6,
-                children: [
-                  for (final n in names)
-                    DecoratedBox(
-                      decoration: BoxDecoration(
-                        color: palette.ink.withValues(alpha: 0.06),
-                        borderRadius: BorderRadius.circular(12),
+              const SizedBox(height: 56)
+            else ...[
+              info(
+                '소속',
+                names.isEmpty
+                    ? Text(
+                        Affiliation.unassignedName,
+                        style: TextStyle(color: palette.muted, fontSize: 13.5),
+                      )
+                    : Wrap(
+                        spacing: 6,
+                        runSpacing: 6,
+                        children: [for (final n in names) AffiliationChip(n)],
                       ),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 5,
-                        ),
-                        child: Text(n, style: const TextStyle(fontSize: 13)),
-                      ),
-                    ),
-                ],
               ),
+              if (birthText.isNotEmpty) info('생일', Text(birthText)),
+            ],
+            DialogActions(
+              top: 20,
+              children: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('닫기'),
+                ),
+              ],
+            ),
           ],
         );
       },

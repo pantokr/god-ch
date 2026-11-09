@@ -24,7 +24,7 @@ import '../../../core/widgets/sort_pad.dart';
 import '../../../core/widgets/stat_icons.dart';
 import '../../../core/theme.dart';
 import '../../../data/models/affiliation.dart';
-import '../../../data/models/church_features.dart';
+import '../../../data/models/tab_access.dart';
 import '../../../data/models/member.dart';
 import '../../../data/models/prayer.dart';
 import '../../../data/models/prayer_settings.dart';
@@ -38,10 +38,10 @@ import 'floating_prayers.dart';
 import 'postit_card.dart' show kPostItEnabled;
 import 'prayer_write_fab.dart';
 
-/// 기도제목: 고른 소속(속한 소속이 없으면 교회 전체)의 공개 기도제목.
+/// 중보기도: 고른 소속(속한 소속이 없으면 교회 전체)의 공개 중보기도.
 /// - 알록달록: 화면 가득 포스트잇 카드가 떠다닌다 (배경은 바깥 틀이 깐다).
 /// - 심플: 카드 격자. 카드마다 제목과 내용 미리보기가 있고 아래에 조회수와 응원 수가 보인다.
-/// 어느 쪽이든 누르면 기도제목 상세가 열린다. 기도 요청 버튼은 오른쪽 아래에 떠 있다.
+/// 어느 쪽이든 누르면 중보기도 상세가 열린다. 기도 요청 버튼은 오른쪽 아래에 떠 있다.
 class PrayerBoardPage extends StatelessWidget {
   const PrayerBoardPage({super.key, required this.me, required this.choice});
 
@@ -61,7 +61,7 @@ class PrayerBoardPage extends StatelessWidget {
       builder: (context, affiliation) => RefreshScope(
         builder: (context, generation, refresh) =>
             ViewModelBuilder<PrayerListViewModel>(
-              // 소속이 바뀌거나 새로고침하면 기도제목을 새로 구독한다.
+              // 소속이 바뀌거나 새로고침하면 중보기도를 새로 구독한다.
               key: ValueKey(
                 'board/${me.churchId}/${affiliation?.id}/$generation',
               ),
@@ -97,14 +97,14 @@ class PrayerBoardPage extends StatelessWidget {
   }
 }
 
-/// 정렬 기준.
-enum _PrayerSort {
+/// 정렬 기준 (개인 설정에서도 고른다).
+enum PrayerSort {
   latest('최신순'),
   oldest('오래된순'),
   views('조회순'),
   likes('좋아요순');
 
-  const _PrayerSort(this.label);
+  const PrayerSort(this.label);
 
   final String label;
 }
@@ -116,7 +116,7 @@ class PrayerSimpleList extends StatefulWidget {
     required this.prayers,
     required this.me,
     this.header,
-    this.emptyText = '기도제목 없음',
+    this.emptyText = '중보기도 없음',
   });
 
   final Stream<List<Prayer>> prayers;
@@ -136,10 +136,14 @@ class _PrayerSimpleListState extends State<PrayerSimpleList> {
 
   /// 이미 읽은 글을 빼고 보는가.
   bool _hideRead = false;
-  _PrayerSort _sort = _PrayerSort.latest;
+  // 개인 설정의 기본 정렬 · 보기로 시작한다.
+  late PrayerSort _sort = PrayerSort.values.firstWhere(
+    (s) => s.name == AppScope.read(context).preferences.sortOf('prayer'),
+    orElse: () => PrayerSort.latest,
+  );
 
   /// 격자형(2열)으로 보는가. 아니면 리스트형이다.
-  bool _grid = false;
+  late bool _grid = AppScope.read(context).preferences.gridOf('prayer');
 
   /// 글별 응원(이모티콘) 합. 좋아요순으로 정렬할 때 처음 한 번 읽어 둔다.
   final Map<String, int> _likes = {};
@@ -199,13 +203,13 @@ class _PrayerSimpleListState extends State<PrayerSimpleList> {
       list.removeWhere((p) => p.readByUser(widget.me.id));
     }
     switch (_sort) {
-      case _PrayerSort.latest:
+      case PrayerSort.latest:
         break;
-      case _PrayerSort.oldest:
+      case PrayerSort.oldest:
         return list.reversed.toList();
-      case _PrayerSort.views:
+      case PrayerSort.views:
         return list..sort((a, b) => b.views.compareTo(a.views));
-      case _PrayerSort.likes:
+      case PrayerSort.likes:
         return list
           ..sort((a, b) => (_likes[b.id] ?? 0).compareTo(_likes[a.id] ?? 0));
     }
@@ -231,7 +235,7 @@ class _PrayerSimpleListState extends State<PrayerSimpleList> {
                       setState(() => _query = v.trim().toLowerCase()),
                   textInputAction: TextInputAction.search,
                   decoration: InputDecoration(
-                    hintText: '기도제목을 입력하세요',
+                    hintText: '중보기도 제목을 입력하세요',
                     isDense: true,
                     suffixIcon: _query.isEmpty
                         ? const Icon(AppIcons.magnifyingGlass, size: 18)
@@ -251,7 +255,7 @@ class _PrayerSimpleListState extends State<PrayerSimpleList> {
               PageTitle(
                 gap: 32,
                 title: '',
-                description: '교인이 서로를 위해 올리는 기도제목입니다. 함께 기도하며 응원을 나눕니다.',
+                description: '서로를 위한 중보기도를 올려 보세요. 함께 중보기도하며 응원을 나눠 보세요.',
               ),
             // 패널 영역과 목록 영역을 가르는 선, 그 아래 목록 윗부분 오른쪽에 새로고침 (말씀묵상과 같다).
             Divider(height: 1, color: context.palette.border),
@@ -276,7 +280,7 @@ class _PrayerSimpleListState extends State<PrayerSimpleList> {
                         : null,
 
                     options: [
-                      for (final o in _PrayerSort.values)
+                      for (final o in PrayerSort.values)
                         PadOption(
                           o.label,
                           selected: _sort == o,
@@ -298,7 +302,7 @@ class _PrayerSimpleListState extends State<PrayerSimpleList> {
                             child: Center(child: AppLoader()),
                           );
                         }
-                        if (_sort == _PrayerSort.likes) {
+                        if (_sort == PrayerSort.likes) {
                           WidgetsBinding.instance.addPostFrameCallback(
                             (_) => _ensureLikes(all),
                           );
@@ -367,7 +371,7 @@ class _PrayerSimpleListState extends State<PrayerSimpleList> {
   }
 }
 
-/// 기도제목 카드 하나 (말씀묵상 카드와 같은 모양): 각진 테두리, 맨 위에 읽은 글은 회색 "읽음" 바, 안 읽은 글은 붉은 "신규" 바.
+/// 중보기도 카드 하나 (말씀묵상 카드와 같은 모양): 각진 테두리, 맨 위에 읽은 글은 회색 "읽음" 바, 안 읽은 글은 붉은 "신규" 바.
 /// 비공개 글은 자물쇠. 위에서 아래로: 하트와 응원 수(오른쪽) → 내용 발췌(두 줄) → 글쓴이(왼쪽)와 날짜·시각(맞은편).
 class PrayerTile extends StatelessWidget {
   const PrayerTile({
@@ -378,8 +382,15 @@ class PrayerTile extends StatelessWidget {
     this.affiliationNames = const {},
     this.gutter,
     this.grid = false,
+    this.alwaysStats = false,
+    this.showFresh = true,
   });
 
+  /// 신규 표시를 붙이는가 (내 활동에서는 끈다).
+  final bool showFresh;
+
+  /// 설정과 상관없이 댓글 · 반응 · 조회수를 0이어도 모두 보인다 (내 활동).
+  final bool alwaysStats;
   final PrayerSettings settings;
   final Prayer prayer;
   final Member me;
@@ -394,17 +405,30 @@ class PrayerTile extends StatelessWidget {
   final bool grid;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => ListenableBuilder(
+    // 글을 열면(개인 설정에 기록) 신규 표시가 바로 사라지도록, 설정이 바뀔 때 다시 그린다.
+    listenable: AppScope.read(context).preferences,
+    builder: (context, _) => _card(context),
+  );
+
+  Widget _card(BuildContext context) {
     final palette = context.palette;
-    final excerptLines = grid ? 6 : 2;
+    // 격자는 본문을 3줄까지만 보이고 말줄임표로 줄인다.
+    final excerptLines = grid ? 3 : 2;
     final p = prayer;
     // 앱 개발자는 교인이 아니라 읽음 표시가 없다.
-    final read = !me.isOperatorView && p.readByUser(me.id);
+    final read =
+        !me.isOperatorView &&
+        (p.readByUser(me.id) ||
+            AppScope.read(context).preferences
+                .seen('p/${me.churchId}/${p.id}'));
     // 읽은 글은 "읽음", 7일 안에 올라온 안 읽은 글은 "신규", 오래된 안 읽은 글은 바가 없다.
     final fresh =
         !me.isOperatorView && !read && ReadStatusBar.isFresh(p.createdAt);
     // 내가 쓴 글은 읽음 · 신규 표시가 필요 없다.
-    final showBar = kReadBarEnabled && p.authorId != me.id && (read || fresh);
+    // 신규 바만 쓴다: 한 번 열어 읽으면 사라지는 1회용이고, 읽음 바는 두지 않는다.
+    final showBar =
+        showFresh && kReadBarEnabled && p.authorId != me.id && fresh;
     // 글이 짧든 길든 카드 높이가 같도록 글 영역은 늘 정해진 줄 수만큼 자리를 잡는다.
     final scaler = MediaQuery.textScalerOf(context);
     return Padding(
@@ -417,127 +441,187 @@ class PrayerTile extends StatelessWidget {
       child: InkWell(
         onTap: () => context.push(Routes.prayer(me.churchId, p.id), extra: p),
         borderRadius: BorderRadius.circular(4),
-        child: Ink(
-          // 읽음 · 신규 바는 카드 맨 위 가장자리에 붙으므로 위쪽 여백은 바 아래에서 시작한다.
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-          decoration: BoxDecoration(
-            color: palette.surface,
-            border: Border.all(color: context.cardEdge),
-            borderRadius: BorderRadius.circular(4),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // 바가 있든 없든 카드 맨 위 높이는 같다 (모든 카드가 같은 높이).
-              if (showBar) ...[
-                read
-                    ? ReadStatusBar.read(color: palette.muted)
-                    : const ReadStatusBar.fresh(),
-                const SizedBox(height: 14),
-              ] else
-                SizedBox(
-                  height: kReadBarEnabled ? ReadStatusBar.height + 14 : 16,
-                ),
-              // 비공개 글의 자물쇠는 내용 앞에 붙는다 (말씀묵상의 제목 앞과 같다).
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (!p.isPublic) ...[
-                    Padding(
-                      padding: const EdgeInsets.only(top: 3),
-                      child: Icon(
-                        AppIcons.lock,
-                        size: 14,
-                        color: palette.muted,
-                      ),
-                    ),
-                    const SizedBox(width: 4),
-                  ],
-                  // 내용은 앞부분만 발췌해 두 줄 자리를 늘 잡는다.
-                  Expanded(
-                    child: SizedBox(
-                      height: scaler.scale(14 * 1.45 * excerptLines) + 4,
-                      child: Text(
-                        p.content,
-                        maxLines: excerptLines,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontSize: 14, height: 1.45),
-                      ),
-                    ),
-                  ),
-                ],
+        child: Stack(
+          fit: StackFit.passthrough,
+          children: [
+            Ink(
+              // 읽음 · 신규 바는 카드 맨 위 가장자리에 붙으므로 위쪽 여백은 바 아래에서 시작한다.
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              decoration: BoxDecoration(
+                // 개인 설정: 중보기도 카드 색.
+                color:
+                    AppScope.read(context).preferences
+                        .tintOf('prayer')
+                        .colorFor(Theme.of(context).brightness) ??
+                    palette.surface,
+                border: Border.all(color: context.cardEdge),
+                borderRadius: BorderRadius.circular(4),
               ),
-              if (grid) const Spacer() else const SizedBox(height: 12),
-              // 하트(응원 수)와 조회수는 오른쪽에, 이 글의 소속은 그 맞은편 왼쪽에 둔다.
-              SizedBox(
-                height: 24,
-                child: Row(
-                  children: [
-                    if (affiliationLabel(affiliationNames, p.affiliationId)
-                        case final name?)
-                      AffiliationTag(name),
-                    // 반응 · 조회수는 오른쪽 끝에 붙는다.
-                    Expanded(
-                      child: Align(
-                        alignment: Alignment.centerRight,
-                        child: _Stats(
-                          prayer: p,
-                          me: me,
-                          showViews: settings.showViews,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const SizedBox(height: 16),
+                  // 비공개 글의 자물쇠는 내용 앞에 붙는다 (말씀묵상의 제목 앞과 같다).
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // 신규 글은 제목(첫 줄) 왼쪽에 붉은 점 하나가 붙는다.
+                      if (showBar) ...[
+                        const Padding(
+                          padding: EdgeInsets.only(top: 7),
+                          child: ReadStatusBar.fresh(),
                         ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  if (settings.showAuthor) ...[
-                    PersonTap(
-                      churchId: me.churchId,
-                      uid: p.authorId,
-                      name: p.authorName,
-                      photoUrl: '',
-                      child: PersonAvatar(
-                        churchId: me.churchId,
-                        uid: p.authorId,
-                        name: p.authorName.isEmpty ? '?' : p.authorName,
-                        radius: 10,
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: Align(
-                        alignment: Alignment.centerLeft,
-                        child: PersonTap(
-                          churchId: me.churchId,
-                          uid: p.authorId,
-                          name: p.authorName,
-                          photoUrl: '',
+                        const SizedBox(width: 8),
+                      ],
+                      // 내용은 앞부분만 발췌해 두 줄 자리를 늘 잡는다.
+                      Expanded(
+                        child: SizedBox(
+                          height: grid
+                              ? null
+                              : scaler.scale(14 * 1.45 * excerptLines) + 4,
                           child: Text(
-                            p.authorName.isEmpty ? '이름 없음' : p.authorName,
-                            maxLines: 1,
+                            p.content,
+                            maxLines: excerptLines,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w600,
-                              fontSize: 13,
-                            ),
+                            style: const TextStyle(fontSize: 14, height: 1.45),
                           ),
                         ),
                       ),
-                    ),
-                  ] else
-                    const Spacer(),
-                  const SizedBox(width: 8),
-                  Text(
-                    fmtDateTime(p.createdAt),
-                    style: TextStyle(color: palette.muted, fontSize: 12),
+                    ],
                   ),
+                  if (grid) ...[
+                    // 격자: 본문과 아래 정보 사이를 넉넉히 띄우고, 정보는 줄마다 나눠 답답하지 않게 놓는다.
+                    const SizedBox(height: 16),
+                    const Spacer(),
+                    Divider(height: 1, color: context.cardEdge),
+                    const SizedBox(height: 12),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: _Stats(
+                          prayer: p,
+                          me: me,
+                          showViews: alwaysStats || settings.showViews,
+                          showAll: alwaysStats,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    if (settings.showAuthor)
+                      Row(
+                        children: [
+                          PersonTap(
+                            churchId: me.churchId,
+                            uid: p.authorId,
+                            name: p.authorName,
+                            photoUrl: '',
+                            child: PersonAvatar(
+                              churchId: me.churchId,
+                              uid: p.authorId,
+                              name: p.authorName.isEmpty ? '?' : p.authorName,
+                              radius: 10,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              p.authorName.isEmpty ? '이름 없음' : p.authorName,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 13,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                  ] else ...[
+                    const SizedBox(height: 12),
+                    // 하트(응원 수)와 조회수는 오른쪽에, 이 글의 소속은 그 맞은편 왼쪽에 둔다.
+                    SizedBox(
+                      height: 24,
+                      child: Row(
+                        children: [
+                          if (affiliationLabel(
+                                affiliationNames,
+                                p.affiliationId,
+                              )
+                              case final name?)
+                            AffiliationTag(name),
+                          // 반응 · 조회수는 오른쪽 끝에 붙는다.
+                          Expanded(
+                            child: Align(
+                              alignment: Alignment.centerRight,
+                              // 좁은 카드에서도 숫자가 넘치지 않게 줄여서 맞춘다.
+                              child: FittedBox(
+                                fit: BoxFit.scaleDown,
+                                alignment: Alignment.centerRight,
+                                child: _Stats(
+                                  prayer: p,
+                                  me: me,
+                                  showViews: alwaysStats || settings.showViews,
+                                  showAll: alwaysStats,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        if (settings.showAuthor) ...[
+                          PersonTap(
+                            churchId: me.churchId,
+                            uid: p.authorId,
+                            name: p.authorName,
+                            photoUrl: '',
+                            child: PersonAvatar(
+                              churchId: me.churchId,
+                              uid: p.authorId,
+                              name: p.authorName.isEmpty ? '?' : p.authorName,
+                              radius: 10,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Align(
+                              alignment: Alignment.centerLeft,
+                              child: PersonTap(
+                                churchId: me.churchId,
+                                uid: p.authorId,
+                                name: p.authorName,
+                                photoUrl: '',
+                                child: Text(
+                                  p.authorName.isEmpty ? '이름 없음' : p.authorName,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ] else
+                          const Spacer(),
+                        const SizedBox(width: 8),
+                        Text(
+                          fmtDateTime(p.createdAt),
+                          style: TextStyle(color: palette.muted, fontSize: 12),
+                        ),
+                      ],
+                    ),
+                  ],
                 ],
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -547,7 +631,15 @@ class PrayerTile extends StatelessWidget {
 /// 모든 이모티콘 반응을 합친 반응 수(하트)와 조회수. 응원 수는 저장소에서 실시간으로 읽는다.
 /// 내가 반응을 남겼다면 하트가 채워진다.
 class _Stats extends StatelessWidget {
-  const _Stats({required this.prayer, required this.me, this.showViews = true});
+  const _Stats({
+    required this.prayer,
+    required this.me,
+    this.showViews = true,
+    this.showAll = false,
+  });
+
+  /// 비공개 글이어도 댓글 수(0)를 보인다.
+  final bool showAll;
 
   final Prayer prayer;
   final Member me;
@@ -561,6 +653,7 @@ class _Stats extends StatelessWidget {
       builder: (context, snap) {
         final r = snap.data ?? ReactionSummary.empty;
         Widget stats(int? comments) => StatIcons(
+          locked: !prayer.isPublic,
           horizontal: true,
           showViews: showViews,
           views: prayer.views,
@@ -569,7 +662,7 @@ class _Stats extends StatelessWidget {
           comments: comments,
         );
         // 댓글은 공개 글에만 달린다.
-        if (!prayer.isPublic) return stats(null);
+        if (!prayer.isPublic) return stats(showAll ? 0 : null);
         return StreamBuilder<int>(
           stream: repo.commentCount(me.churchId, prayer.id),
           builder: (context, c) => stats(c.data ?? 0),

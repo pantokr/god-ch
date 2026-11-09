@@ -102,7 +102,7 @@ class _StatCard extends StatelessWidget {
                   Text(
                     count?.toString() ?? '-',
                     style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                      fontWeight: FontWeight.w800,
+                      fontWeight: FontWeight.w600,
                       color: highlight
                           ? context.palette.brand
                           : context.palette.ink,

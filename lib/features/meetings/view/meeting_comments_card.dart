@@ -227,7 +227,7 @@ class _CommentCard extends StatelessWidget {
         ),
       );
     }
-    final canDelete = c.authorId == me.id || me.can(Permission.meetingDelete);
+    final canDelete = c.authorId == me.id || me.can(Permission.meetingManage);
     return Card(
       margin: EdgeInsets.zero,
       child: Padding(

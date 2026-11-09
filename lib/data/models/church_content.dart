@@ -1,3 +1,5 @@
+import '../bible_reference.dart';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../firestore_codec.dart';
@@ -20,16 +22,51 @@ enum ContentKind {
   }
 }
 
+/// 말씀묵상 글에 함께 담기는 말씀 · 묵상 한 벌. 첫 벌은 글의 title · body · meditation에 있고,
+/// 둘째부터는 [ChurchContent.extras]에 담긴다 (한 글에 최대 [ChurchContent.maxPassages]벌).
+class DevotionPassage {
+  const DevotionPassage({
+    required String title,
+    required this.body,
+    required this.meditation,
+  })
+    // ignore: prefer_initializing_formals
+    : _title = title;
+
+  /// 성경 구절 이름. 저장된 값은 그대로 두고 보여 줄 때 개인 설정(전체 이름 · 줄임말)에 맞춘다.
+  String get title => normalizeVerseTitle(_title);
+  final String _title;
+
+  /// 말씀 본문.
+  final String body;
+
+  /// 이 구절에 대한 묵상.
+  final String meditation;
+
+  Map<String, String> toMap() => {
+    'title': _title.trim(),
+    'body': body.trim(),
+    'meditation': meditation.trim(),
+  };
+
+  factory DevotionPassage.fromMap(Map<String, dynamic> m) => DevotionPassage(
+    title: m['title'] as String? ?? '',
+    body: m['body'] as String? ?? '',
+    meditation: m['meditation'] as String? ?? '',
+  );
+}
+
 /// 말씀묵상 한 건: 제목(성경 구절), 본문(말씀), [meditation](묵상 글), [date]가 묵상 날짜.
 /// 조회수([views])와 좋아요([likedBy]: 누른 사람의 uid들)가 함께 저장된다.
 class ChurchContent {
   const ChurchContent({
     required this.id,
     required this.kind,
-    required this.title,
+    required String title,
     required this.body,
     required this.date,
     this.meditation = '',
+    this.extras = const [],
     this.views = 0,
     this.likedBy = const [],
     this.readBy = const [],
@@ -40,16 +77,33 @@ class ChurchContent {
     this.affiliationId,
     this.createdAt,
     this.deleted = false,
-  });
+  })
+    // ignore: prefer_initializing_formals
+    : _title = title;
 
   final String id;
   final ContentKind kind;
-  final String title;
+
+  /// 성경 구절 이름. 저장된 값은 그대로 두고 보여 줄 때 개인 설정(전체 이름 · 줄임말)에 맞춘다.
+  String get title => normalizeVerseTitle(_title);
+  final String _title;
   final String body;
   final DateTime date;
 
   /// 말씀에 대한 묵상 글 (교역자가 쓴다).
   final String meditation;
+
+  /// 첫 벌 다음에 더해진 말씀 · 묵상 (최대 [maxPassages] - 1벌).
+  final List<DevotionPassage> extras;
+
+  /// 한 글에 담을 수 있는 말씀 · 묵상의 수. `firestore.rules`의 제한과 같아야 한다.
+  static const maxPassages = 10;
+
+  /// 이 글의 말씀 · 묵상 전부 (첫 벌 + 더해진 것들).
+  List<DevotionPassage> get passages => [
+    DevotionPassage(title: title, body: body, meditation: meditation),
+    ...extras,
+  ];
 
   /// 묵상 최소 글자 수. `firestore.rules`의 제한과 같아야 한다.
   static const minMeditation = 10;
@@ -88,6 +142,10 @@ class ChurchContent {
       body: d['body'] as String? ?? '',
       date: toDate(d['date']) ?? created ?? DateTime.now(),
       meditation: d['meditation'] as String? ?? '',
+      extras: [
+        for (final e in d['extras'] as List? ?? const [])
+          if (e is Map) DevotionPassage.fromMap(Map<String, dynamic>.from(e)),
+      ],
       views: (d['views'] as num?)?.toInt() ?? 0,
       likedBy: List<String>.from(d['likedBy'] as List? ?? const []),
       readBy: List<String>.from(d['readBy'] as List? ?? const []),

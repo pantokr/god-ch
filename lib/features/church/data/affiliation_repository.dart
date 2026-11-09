@@ -2,7 +2,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../../../core/app_exception.dart';
 import '../../../data/firestore_paths.dart';
-import '../../../data/models/church_features.dart';
 import '../../../data/models/affiliation.dart';
 import '../../auth/data/auth_repository.dart';
 import 'admin_affiliations.dart';
@@ -17,7 +16,6 @@ class AffiliationRepository {
 
   Stream<List<Affiliation>> affiliations(String churchId) => _paths
       .affiliations(churchId)
-      .orderBy('createdAt')
       .snapshots()
       .map(
         (s) => [
@@ -25,18 +23,8 @@ class AffiliationRepository {
             // 지운 소속은 문서를 남기고 목록에서만 뺀다.
             if (d.data()['deleted'] != true)
               Affiliation(d.id, d.data()['name'] as String? ?? ''),
-        ],
+        ].sortedByName(),
       );
-
-  DocumentReference<Map<String, dynamic>> _features(String churchId) =>
-      _paths.church(churchId).collection('settings').doc('features');
-
-  /// 소속별로 기도 · 말씀 탭을 쓸 수 있는지. 설정한 적 없으면 모두 허용.
-  Stream<ChurchFeatures> features(String churchId) =>
-      _features(churchId).snapshots().map(ChurchFeatures.fromDoc);
-
-  Future<void> setFeatures(String churchId, ChurchFeatures features) =>
-      _features(churchId).set(features.toMap());
 
   Future<void> create(String churchId, String name) {
     final trimmed = name.trim();

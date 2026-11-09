@@ -5,6 +5,8 @@ import '../../../core/icons.dart';
 
 import 'package:flutter/material.dart';
 
+import '../../../core/screen_style.dart';
+
 import '../../people/view/person_popup.dart';
 
 import 'package:go_router/go_router.dart';
@@ -41,48 +43,60 @@ class PrayerDetailPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final back = Routes.section(me.churchId, ChurchSection.prayer);
-    return ViewModelBuilder<PrayerDetailViewModel>(
-      create: (context) =>
-          PrayerDetailViewModel(AppScope.read(context).prayers, me, prayerId),
-      builder: (context, vm) => StreamBuilder<Prayer?>(
-        stream: vm.prayer,
-        initialData: initial,
-        builder: (context, snap) {
-          if (!snap.hasData &&
-              !snap.hasError &&
-              snap.data == null &&
-              snap.connectionState == ConnectionState.waiting) {
-            return SubPage(
-              title: '기도제목',
-              fallbackLocation: back,
-              child: const Padding(
-                padding: EdgeInsets.all(48),
-                child: Center(child: AppLoader()),
-              ),
-            );
-          }
-          final p = snap.data;
-          if (snap.hasError || vm.isHidden(p)) {
-            return SubPage(
-              title: '기도제목',
-              fallbackLocation: back,
-              child: const Card(
-                child: Padding(
-                  padding: EdgeInsets.all(48),
-                  child: Center(child: Text('볼 수 없는 기도제목입니다.')),
-                ),
-              ),
-            );
-          }
-          return SubPage(
-            title: '기도제목',
-            fallbackLocation: back,
-            actions: _actions(context, vm, p!),
-            child: squareCards(
-              child: _Body(vm: vm, prayer: p),
-            ),
+    // 개인 설정의 글씨 크기 · 글꼴(명조)을 이 상세 화면에도 적용한다 (목록은 서랍 틀이 적용한다).
+    return ScreenStyle(
+      screen: 'prayer',
+      child: ViewModelBuilder<PrayerDetailViewModel>(
+        create: (context) {
+          // 이 기기에서 연 글로 기록한다 (목록의 신규 표시가 바로 사라진다).
+          AppScope.read(context).preferences
+              .markSeen('p/${me.churchId}/$prayerId');
+          return PrayerDetailViewModel(
+            AppScope.read(context).prayers,
+            me,
+            prayerId,
           );
         },
+        builder: (context, vm) => StreamBuilder<Prayer?>(
+          stream: vm.prayer,
+          initialData: initial,
+          builder: (context, snap) {
+            if (!snap.hasData &&
+                !snap.hasError &&
+                snap.data == null &&
+                snap.connectionState == ConnectionState.waiting) {
+              return SubPage(
+                title: '중보기도',
+                fallbackLocation: back,
+                child: const Padding(
+                  padding: EdgeInsets.all(48),
+                  child: Center(child: AppLoader()),
+                ),
+              );
+            }
+            final p = snap.data;
+            if (snap.hasError || vm.isHidden(p)) {
+              return SubPage(
+                title: '중보기도',
+                fallbackLocation: back,
+                child: const Card(
+                  child: Padding(
+                    padding: EdgeInsets.all(48),
+                    child: Center(child: Text('볼 수 없는 중보기도입니다.')),
+                  ),
+                ),
+              );
+            }
+            return SubPage(
+              title: '중보기도',
+              fallbackLocation: back,
+              actions: _actions(context, vm, p!),
+              child: squareCards(
+                child: _Body(vm: vm, prayer: p),
+              ),
+            );
+          },
+        ),
       ),
     );
   }
@@ -150,6 +164,10 @@ class _Body extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Card(
+          // 개인 설정: 중보기도 카드 색.
+          color: AppScope.read(context).preferences
+              .tintOf('prayer')
+              .colorFor(Theme.of(context).brightness),
           child: Padding(
             padding: const EdgeInsets.all(28),
             child: Column(
@@ -163,7 +181,7 @@ class _Body extends StatelessWidget {
                   ),
                 ],
                 const SizedBox(height: 20),
-                // 기도제목 본문은 책처럼 읽히도록 명조로 보여준다.
+                // 중보기도 본문은 책처럼 읽히도록 명조로 보여준다.
                 SelectableText(p.content, style: readingStyle(context)),
               ],
             ),
@@ -209,7 +227,7 @@ class _Body extends StatelessWidget {
               p.isPublic &&
                   !p.deleted &&
                   vm.settings.reactionsOn &&
-                  vm.me.can(Permission.prayerReact)
+                  vm.me.can(Permission.prayerEngage)
               ? ReactionBar(churchId: vm.me.churchId, prayerId: p.id)
               : null,
         ),

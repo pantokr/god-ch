@@ -7,16 +7,19 @@ import '../../people/view/people_affiliation_select.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/app_scope.dart';
+
 import '../../../app/list_style_controller.dart';
 import '../../../app/routes.dart';
 import '../../../core/exit_guard.dart';
 import '../../../core/layout/sidebar_scaffold.dart';
 import '../../../core/mvvm/view_model_builder.dart';
+import '../../../core/screen_style.dart';
 import '../../../core/theme.dart';
 import '../../../data/models/member.dart';
+import '../../../data/models/permission.dart';
 import '../../admin/view_model/pending_members_view_model.dart';
 import '../../prayers/view/postit_card.dart';
-import '../../../data/models/church_features.dart';
+import '../../../data/models/tab_access.dart';
 import '../../home/view/affiliation_select.dart';
 import '../../home/view_model/affiliation_choice.dart';
 import '../../notifications/view/notifications_button.dart';
@@ -49,6 +52,13 @@ class ChurchShell extends StatelessWidget {
   /// 기도 · 성경 화면에서 지금 고른 소속.
   final AffiliationChoice affiliationChoice;
 
+  /// 개인 설정에서 화면별 보기(색 · 글씨 · 글꼴)를 고르는 화면의 이름표. 해당 없으면 null.
+  String? get _screenKey => switch (section) {
+    ChurchSection.prayer => 'prayer',
+    ChurchSection.bible => 'bible',
+    _ => null,
+  };
+
   static const _labels = {
     ChurchSection.prayer: '중보기도',
     ChurchSection.meetings: '모임 일정',
@@ -56,7 +66,9 @@ class ChurchShell extends StatelessWidget {
     ChurchSection.mine: '내 활동',
     ChurchSection.people: '우리 소속',
     ChurchSection.calendar: '달력',
-    ChurchSection.myMeetings: '내 일정',
+    ChurchSection.preferences: '개인 설정',
+    ChurchSection.myMeetings: '내 일정 관리',
+    ChurchSection.allMeetings: '전체 일정 조회',
     ChurchSection.prayerSettings: '중보기도 설정',
     ChurchSection.devotionSettings: '말씀묵상 설정',
     ChurchSection.meetingSettings: '모임 일정 설정',
@@ -75,7 +87,9 @@ class ChurchShell extends StatelessWidget {
     ChurchSection.mine: (AppIcons.user, AppIcons.userFill),
     ChurchSection.people: (AppIcons.users, AppIcons.usersFill),
     ChurchSection.calendar: (AppIcons.calendar, AppIcons.calendar),
+    ChurchSection.preferences: (AppIcons.sliders, AppIcons.sliders),
     ChurchSection.myMeetings: (AppIcons.usersThree, AppIcons.usersThreeFill),
+    ChurchSection.allMeetings: (AppIcons.usersThree, AppIcons.usersThreeFill),
     ChurchSection.prayerSettings: (AppIcons.handHeart, AppIcons.handHeartFill),
     ChurchSection.devotionSettings: (AppIcons.bookOpen, AppIcons.bookOpenFill),
     ChurchSection.meetingSettings: (
@@ -91,7 +105,11 @@ class ChurchShell extends StatelessWidget {
   };
 
   /// 모든 교인에게 보이는 메뉴(서랍에서만 들어간다): 우리 소속 · 달력.
-  static const _everyone = [ChurchSection.people, ChurchSection.calendar];
+  static const _everyone = [
+    ChurchSection.people,
+    ChurchSection.calendar,
+    ChurchSection.preferences,
+  ];
 
   /// 교역자 이상에게 보이는 메뉴: 인원 · 입장 · 소속 (조회와 교역자 업무).
   static const _staffOnly = [
@@ -141,7 +159,10 @@ class ChurchShell extends StatelessWidget {
   Widget build(BuildContext context) {
     // 권한이 없는 메뉴 주소로 들어왔다면 첫 화면으로 보낸다 (예: 교인이 인원 관리 주소를 직접 열었을 때).
     if ((_staffOnly.contains(section) && !me.canManage) ||
-        (_adminOnly.contains(section) && !me.isAdmin)) {
+        (_adminOnly.contains(section) && !me.isAdmin) ||
+        // 전체 일정 조회는 일정을 만드는 권한이 있는 사람만 본다.
+        (section == ChurchSection.allMeetings &&
+            !me.can(Permission.meetingManage))) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (context.mounted) context.go(Routes.home(me.churchId));
       });
@@ -154,14 +175,18 @@ class ChurchShell extends StatelessWidget {
         _staffOnly.contains(section) ||
         _adminOnly.contains(section) ||
         _everyone.contains(section) ||
-        section == ChurchSection.myMeetings;
+        section == ChurchSection.myMeetings ||
+        section == ChurchSection.allMeetings;
     final hasList = const {
       ChurchSection.prayer,
       ChurchSection.meetings,
       ChurchSection.bible,
     }.contains(section);
     Widget frame(int pending) => ListenableBuilder(
-      listenable: listStyle,
+      listenable: Listenable.merge([
+        listStyle,
+        AppScope.read(context).preferences,
+      ]),
       builder: (context, _) {
         // 알록달록 기도제목은 상단 바까지 게시판 색 하나로 통일한다. 심플은 일반 배경이다.
         final board =
@@ -181,6 +206,9 @@ class ChurchShell extends StatelessWidget {
                   context,
                   section == ChurchSection.myMeetings
                       ? Routes.section(me.churchId, ChurchSection.mine)
+                      // 전체 일정 조회는 들어온 곳인 내 일정 관리로 돌아간다.
+                      : section == ChurchSection.allMeetings
+                      ? Routes.section(me.churchId, ChurchSection.myMeetings)
                       : Routes.home(me.churchId),
                 )
               : null,
@@ -232,7 +260,7 @@ class ChurchShell extends StatelessWidget {
                     style: TextStyle(
                       color: context.palette.muted,
                       fontSize: 12,
-                      fontWeight: FontWeight.w800,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ),
@@ -253,11 +281,12 @@ class ChurchShell extends StatelessWidget {
             if (!me.isOperatorView) _tab(context, ChurchSection.mine),
           ],
           // 서랍: 교역자에게는 관리 메뉴가 있다.
-          footer: const EdgeBibleAd(),
+          footer: kEdgeBibleAdEnabled ? const EdgeBibleAd() : null,
           groups: [
             // 앱 개발자에게는 앱 개발자 화면으로 돌아가는 길이 있다. 교회 탐색은 서랍이 아니라 "내가 속한 교회"의 교회 추가에 있다.
             if (me.isOperatorView)
               SidebarGroup(
+                panel: '일반',
                 items: [
                   SidebarItem(
                     label: '앱 개발자 화면',
@@ -270,15 +299,26 @@ class ChurchShell extends StatelessWidget {
               ),
             // 교회: 모든 교인이 보는 메뉴.
             SidebarGroup(
+              panel: '일반',
               title: '교회',
               items: [
                 _item(context, ChurchSection.people),
                 _item(context, ChurchSection.calendar),
               ],
             ),
+            // 나: 내 일정 관리(내 활동의 일정과 같은 화면)와 이 기기에서만 쓰는 개인 설정 (모든 교인).
+            SidebarGroup(
+              panel: '일반',
+              title: '나',
+              items: [
+                _item(context, ChurchSection.myMeetings),
+                _item(context, ChurchSection.preferences),
+              ],
+            ),
             // 회원: 사람에 관한 일. 입장 요청이 있으면 회원 관리 오른쪽에 숫자가 나온다.
             if (me.canManage)
               SidebarGroup(
+                panel: '관리',
                 title: '회원',
                 items: [
                   _item(context, ChurchSection.members, badge: pending),
@@ -290,6 +330,7 @@ class ChurchShell extends StatelessWidget {
             // 기능 설정: 하단 탭 순서(일정 · 중보기도 · 말씀묵상)와 같다. 교회 관리자만.
             if (me.isAdmin)
               SidebarGroup(
+                panel: '관리',
                 title: '기능 설정',
                 items: [
                   _item(context, ChurchSection.meetingSettings),
@@ -297,17 +338,21 @@ class ChurchShell extends StatelessWidget {
                   _item(context, ChurchSection.devotionSettings),
                 ],
               ),
-            // 교회: 교회 자체에 관한 일. 교회 관리자만.
+            // 교회 설정: 교회 자체에 관한 일. 교회 관리자만.
             if (me.isAdmin)
               SidebarGroup(
-                title: '교회',
+                panel: '관리',
+                title: '교회 설정',
                 items: [
                   _item(context, ChurchSection.info),
                   _item(context, ChurchSection.memberLog),
                 ],
               ),
           ],
-          child: child,
+          // 개인 설정: 중보기도 · 말씀묵상 화면만의 글씨 크기 · 글꼴.
+          child: _screenKey == null
+              ? child
+              : ScreenStyle(screen: _screenKey!, child: child),
         );
       },
     );
@@ -366,7 +411,7 @@ class _ChurchCard extends StatelessWidget {
                     name,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontWeight: FontWeight.w700),
+                    style: const TextStyle(fontWeight: FontWeight.w600),
                   ),
                 ),
                 const SizedBox(width: 8),

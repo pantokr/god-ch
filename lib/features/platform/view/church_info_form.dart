@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/widgets/toast.dart';
+
 import '../../../app/app_scope.dart';
 import '../../../core/format.dart';
 import '../../../core/layout/page_frame.dart';
@@ -62,7 +64,7 @@ class _ChurchInfoFormState extends State<ChurchInfoForm> {
       thumbnailUrl: _thumbnail.text,
     );
     if (ok) {
-      messenger.showSnackBar(const SnackBar(content: Text('저장했어요.')));
+      showToastOn(messenger, '저장했어요.');
     }
   }
 

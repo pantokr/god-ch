@@ -77,7 +77,7 @@ class _LoginPageState extends State<LoginPage> {
                       Text(
                         '로그인',
                         style: theme.textTheme.headlineSmall?.copyWith(
-                          fontWeight: FontWeight.w700,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                       const SizedBox(height: 24),
@@ -153,7 +153,7 @@ class _Brand extends StatelessWidget {
       children: [
         Icon(AppIcons.handHeart, color: context.palette.brand, size: 40),
         SizedBox(height: 12),
-        Text('같이', style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800)),
+        Text('같이', style: TextStyle(fontSize: 26, fontWeight: FontWeight.w600)),
         SizedBox(height: 6),
         Text(
           '교회가 함께 말씀을 나누는 공간',

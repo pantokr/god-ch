@@ -1,6 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+/// 뜻이 정해진 색: 좋아요 · 삭제 · 교회 관리자. 화면마다 따로 적지 않고 여기서 쓴다.
+class AppColors {
+  AppColors._();
+
+  /// 좋아요 · 신규 표시 빨강.
+  static const like = Color(0xFFE5484D);
+
+  /// 삭제 · 마감 빨강 (다크 모드는 [dangerDark]).
+  static const danger = Color(0xFFD7261E);
+  static const dangerDark = Color(0xFFFF6B6B);
+
+  /// 교회 관리자 왕관 금색.
+  static const crown = Color(0xFFE0A100);
+}
+
 /// 앱 전체의 모서리 둥글기. 아주 약하게(각진 느낌) 둔다 — 둥글게 뭉개서 흔한 느낌이 나지 않게.
 class AppRadius {
   AppRadius._();
@@ -265,10 +280,14 @@ Widget squareCards({required Widget child}) => Builder(
   },
 );
 
-/// 말씀 구절처럼 길게 읽는 글에 쓰는 명조 글꼴.
-TextStyle readingStyle(BuildContext context) => GoogleFonts.notoSerifKr(
-  textStyle: Theme.of(context).textTheme.bodyLarge?.copyWith(height: 1.85),
-);
+/// 길게 읽는 글(묵상 · 기도 · 댓글)의 글자 모양: 줄 간격만 넓힌 기본 글꼴(고딕)이다.
+TextStyle readingStyle(BuildContext context) =>
+    Theme.of(context).textTheme.bodyLarge?.copyWith(height: 1.85) ??
+    const TextStyle();
+
+/// 말씀 본문 전용 글자 모양: 신명조는 앱에서 오직 말씀 본문 한 군데([VerseCard])에만 쓴다.
+TextStyle verseTextStyle(BuildContext context) =>
+    GoogleFonts.notoSerifKr(textStyle: readingStyle(context));
 
 /// 플랫폼 기본 전환(슬라이드) 대신 웹처럼 부드러운 페이드를 쓴다.
 class _FadeTransitions extends PageTransitionsBuilder {
@@ -302,7 +321,7 @@ ThemeData buildTheme(Brightness brightness) {
   final base = ThemeData(brightness: brightness).textTheme
       .apply(bodyColor: p.ink, displayColor: p.ink);
   TextStyle? serif(TextStyle? style) =>
-      style?.copyWith(fontWeight: FontWeight.w800, letterSpacing: -0.4);
+      style?.copyWith(fontWeight: FontWeight.w600, letterSpacing: -0.4);
   final textTheme = base.copyWith(
     displayLarge: serif(base.displayLarge),
     displayMedium: serif(base.displayMedium),
@@ -312,7 +331,7 @@ ThemeData buildTheme(Brightness brightness) {
     headlineSmall: serif(base.headlineSmall),
     titleLarge: serif(base.titleLarge),
     titleMedium: base.titleMedium?.copyWith(
-      fontWeight: FontWeight.w700,
+      fontWeight: FontWeight.w600,
       height: 1.5,
     ),
     titleSmall: base.titleSmall?.copyWith(height: 1.5),
@@ -406,7 +425,7 @@ ThemeData buildTheme(Brightness brightness) {
         shape: shape,
         minimumSize: const Size(0, 48),
         padding: const EdgeInsets.symmetric(horizontal: 22),
-        textStyle: const TextStyle(fontWeight: FontWeight.w700),
+        textStyle: const TextStyle(fontWeight: FontWeight.w600),
         elevation: 0,
         foregroundColor: p.onBrand,
         // 눌리지 않는 버튼은 회색으로 둔다 (보조 글자색이 검정이 되었어도).
@@ -435,7 +454,7 @@ ThemeData buildTheme(Brightness brightness) {
         shape: shape,
         minimumSize: const Size(0, 48),
         padding: const EdgeInsets.symmetric(horizontal: 22),
-        textStyle: const TextStyle(fontWeight: FontWeight.w700),
+        textStyle: const TextStyle(fontWeight: FontWeight.w600),
         side: BorderSide(color: p.border, width: 1.5),
         foregroundColor: p.ink,
       ),
@@ -543,7 +562,7 @@ ThemeData buildTheme(Brightness brightness) {
         (states) => TextStyle(
           fontSize: 12,
           fontWeight: states.contains(WidgetState.selected)
-              ? FontWeight.w700
+              ? FontWeight.w600
               : FontWeight.w500,
           color: states.contains(WidgetState.selected) ? p.brand : p.muted,
         ),
@@ -553,6 +572,132 @@ ThemeData buildTheme(Brightness brightness) {
           color: states.contains(WidgetState.selected) ? p.brand : p.muted,
         ),
       ),
+    ),
+    // ---- 기본(머티리얼) 모양이 그대로 나오는 곳이 없도록, 나머지 구성요소도 모두 앱의 색 · 모서리로 정한다 ----
+    canvasColor: p.surface,
+    iconTheme: IconThemeData(color: p.ink),
+    iconButtonTheme: IconButtonThemeData(
+      style: IconButton.styleFrom(
+        foregroundColor: p.ink,
+        shape: shape,
+        hoverColor: p.brand.withValues(alpha: 0.08),
+        highlightColor: Colors.transparent,
+      ),
+    ),
+    tooltipTheme: TooltipThemeData(
+      decoration: BoxDecoration(
+        color: p.ink,
+        borderRadius: BorderRadius.circular(AppRadius.control),
+      ),
+      textStyle: TextStyle(color: p.bg, fontSize: 12.5),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      waitDuration: const Duration(milliseconds: 400),
+    ),
+    switchTheme: SwitchThemeData(
+      thumbColor: WidgetStateProperty.resolveWith(
+        (states) => states.contains(WidgetState.selected)
+            ? p.surface
+            : p.ink.withValues(alpha: 0.55),
+      ),
+      trackColor: WidgetStateProperty.resolveWith(
+        (states) => states.contains(WidgetState.selected) ? p.ink : p.surface,
+      ),
+      trackOutlineColor: WidgetStateProperty.resolveWith(
+        (states) => states.contains(WidgetState.selected)
+            ? p.ink
+            : p.ink.withValues(alpha: 0.35),
+      ),
+    ),
+    radioTheme: RadioThemeData(
+      visualDensity: VisualDensity.compact,
+      fillColor: WidgetStateProperty.resolveWith(
+        (states) => states.contains(WidgetState.selected)
+            ? p.ink
+            : p.ink.withValues(alpha: 0.4),
+      ),
+    ),
+    sliderTheme: SliderThemeData(
+      activeTrackColor: p.ink,
+      inactiveTrackColor: p.border,
+      thumbColor: p.ink,
+      overlayColor: p.ink.withValues(alpha: 0.12),
+    ),
+    listTileTheme: ListTileThemeData(
+      iconColor: p.ink,
+      textColor: p.ink,
+      shape: shape,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+    ),
+    expansionTileTheme: ExpansionTileThemeData(
+      iconColor: p.ink,
+      collapsedIconColor: p.muted,
+      textColor: p.ink,
+      collapsedTextColor: p.ink,
+      shape: const Border(),
+      collapsedShape: const Border(),
+    ),
+    scrollbarTheme: ScrollbarThemeData(
+      thumbColor: WidgetStatePropertyAll(p.ink.withValues(alpha: 0.28)),
+      radius: const Radius.circular(99),
+      thickness: const WidgetStatePropertyAll(6),
+    ),
+    progressIndicatorTheme: ProgressIndicatorThemeData(
+      color: p.ink,
+      circularTrackColor: p.border,
+      linearTrackColor: p.border,
+    ),
+    textSelectionTheme: TextSelectionThemeData(
+      cursorColor: p.ink,
+      selectionColor: p.brand.withValues(alpha: 0.22),
+      selectionHandleColor: p.ink,
+    ),
+    bottomSheetTheme: BottomSheetThemeData(
+      backgroundColor: p.surface,
+      surfaceTintColor: Colors.transparent,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(AppRadius.dialog),
+        ),
+      ),
+    ),
+    appBarTheme: AppBarTheme(
+      backgroundColor: p.surface,
+      foregroundColor: p.ink,
+      surfaceTintColor: Colors.transparent,
+      elevation: 0,
+      scrolledUnderElevation: 0,
+      iconTheme: IconThemeData(color: p.ink),
+      titleTextStyle: TextStyle(
+        color: p.ink,
+        fontSize: 17,
+        fontWeight: FontWeight.w600,
+      ),
+    ),
+    floatingActionButtonTheme: FloatingActionButtonThemeData(
+      backgroundColor: p.ink,
+      foregroundColor: p.bg,
+      elevation: 3,
+      shape: shape,
+    ),
+    badgeTheme: const BadgeThemeData(
+      backgroundColor: AppColors.like,
+      textColor: Colors.white,
+    ),
+    datePickerTheme: DatePickerThemeData(
+      backgroundColor: p.surface,
+      surfaceTintColor: Colors.transparent,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppRadius.dialog),
+      ),
+    ),
+    timePickerTheme: TimePickerThemeData(
+      backgroundColor: p.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppRadius.dialog),
+      ),
+    ),
+    menuButtonTheme: MenuButtonThemeData(
+      style: MenuItemButton.styleFrom(foregroundColor: p.ink, shape: shape),
     ),
     tabBarTheme: TabBarThemeData(
       dividerColor: p.border,

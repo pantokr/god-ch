@@ -48,7 +48,7 @@ class ChurchCard extends StatelessWidget {
                         Text(
                           member.churchName,
                           style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w700,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
                         Text(switch (member.role) {

@@ -17,10 +17,14 @@ class StatIcons extends StatelessWidget {
     this.showLikeCount = true,
     this.horizontal = false,
     this.comments,
+    this.locked = false,
   });
 
   /// 댓글 수. 없으면(null) 댓글 표시를 두지 않는다.
   final int? comments;
+
+  /// 비공개 글이면 자물쇠를 가장 왼쪽(반응 · 댓글 · 조회수 앞)에 둔다.
+  final bool locked;
 
   /// 조회수를 보여 주는가 (교회 설정). 끄면 좋아요만 나온다.
   final bool showViews;
@@ -64,13 +68,17 @@ class StatIcons extends StatelessWidget {
     final heart = item(
       liked ? AppIcons.heartFill : AppIcons.heart,
       likes,
-      tint: liked ? const Color(0xFFE5484D) : null,
+      tint: liked ? AppColors.like : null,
       count: showLikeCount,
     );
     if (horizontal) {
       return Row(
         mainAxisSize: MainAxisSize.min,
         children: [
+          if (locked) ...[
+            Icon(AppIcons.lock, size: 16, color: muted),
+            const SizedBox(width: 12),
+          ],
           heart,
           if (comments != null) ...[
             const SizedBox(width: 12),
@@ -87,6 +95,10 @@ class StatIcons extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
+        if (locked) ...[
+          Icon(AppIcons.lock, size: 16, color: muted),
+          const SizedBox(height: 8),
+        ],
         if (showViews) ...[
           item(AppIcons.eyeCount, views),
           const SizedBox(height: 8),
@@ -98,7 +110,7 @@ class StatIcons extends StatelessWidget {
         item(
           liked ? AppIcons.heartFill : AppIcons.heart,
           likes,
-          tint: liked ? const Color(0xFFE5484D) : null,
+          tint: liked ? AppColors.like : null,
           count: showLikeCount,
         ),
       ],

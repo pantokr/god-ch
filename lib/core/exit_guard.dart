@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 
 import 'back_navigation.dart';
+import 'layout/app_dialog.dart';
 import 'widgets/exit_ad_slot.dart';
 
 /// 뒤로 가기 처리. 화면 위에 쌓인 화면에서는 평소처럼 이전 화면으로 돌아간다.
@@ -94,9 +95,10 @@ class _ExitGuardState extends State<ExitGuard> {
         if (didPop) return;
         // 기본 페이지가 아니면 먼저 직전에 보던 화면으로 돌아간다.
         if (!_onBasePage && _goBack(context)) return;
-        final exit = await showDialog<bool>(
-          context: context,
-          builder: (_) => const _ExitDialog(),
+        final exit = await showAppDialog<bool>(
+          context,
+          maxWidth: 360,
+          child: const _ExitDialog(),
         );
         if (exit == true) await SystemNavigator.pop();
       },
@@ -105,55 +107,32 @@ class _ExitGuardState extends State<ExitGuard> {
   }
 }
 
-/// 앱 종료 확인 창: 제목, 크기가 고정된 광고 자리, 취소 · 종료 버튼.
+/// 앱 종료 확인 창: 제목, 크기가 고정된 광고 자리, 취소 · 종료 버튼 (다른 대화상자와 같은 틀).
 /// 광고 자리가 고정이라 광고가 늦게 오거나 오지 않아도 창이 커지거나 줄어들지 않는다.
 class _ExitDialog extends StatelessWidget {
   const _ExitDialog();
 
   @override
   Widget build(BuildContext context) {
-    return Dialog(
-      // 좁은 폰에서도 300px 광고가 들어가도록 바깥 여백을 줄인다.
-      insetPadding: const EdgeInsets.all(16),
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 360),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                '앱 종료',
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.titleLarge
-                    ?.copyWith(fontWeight: FontWeight.w700),
-              ),
-              const SizedBox(height: 20),
-              const Center(child: ExitAdSlot()),
-              const SizedBox(height: 24),
-              // 두 버튼이 한 줄을 반씩 나눠 쓴다.
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () => Navigator.pop(context, false),
-                      child: const Text('취소'),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: FilledButton(
-                      onPressed: () => Navigator.pop(context, true),
-                      child: const Text('종료'),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const DialogTitle('앱 종료'),
+        const Center(child: ExitAdSlot()),
+        DialogActions(
+          children: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('취소'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('종료'),
+            ),
+          ],
         ),
-      ),
+      ],
     );
   }
 }

@@ -32,7 +32,6 @@ class PrayerCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final hasBadge =
         prayer.affiliationId != null || !prayer.isPublic || prayer.deleted;
     final body = InkWell(
@@ -83,12 +82,12 @@ class PrayerCard extends StatelessWidget {
                   Icon(
                     AppIcons.envelopeSimple,
                     size: 18,
-                    color: theme.colorScheme.primary,
+                    color: context.palette.ink,
                   ),
                   const SizedBox(width: 6),
                   Text(
                     '교역자의 답변이 도착했어요',
-                    style: TextStyle(color: theme.colorScheme.primary),
+                    style: TextStyle(color: context.palette.ink),
                   ),
                 ],
               ),

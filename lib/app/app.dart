@@ -7,6 +7,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 
+import '../core/layout/responsive.dart';
+
 import '../core/theme.dart';
 import '../features/admin/data/position_repository.dart';
 import '../features/auth/data/auth_repository.dart';
@@ -27,10 +29,19 @@ import 'connectivity_controller.dart';
 import 'router.dart';
 import 'session.dart';
 import 'list_style_controller.dart';
+import 'preferences_controller.dart';
 import 'theme_mode_controller.dart';
 
 class App extends StatefulWidget {
-  const App({super.key, required this.themeMode, required this.listStyle});
+  const App({
+    super.key,
+    required this.themeMode,
+    required this.listStyle,
+    required this.preferences,
+  });
+
+  /// 개인 설정(글씨 크기, 신규 표시, 화면별 기본 보기 · 정렬).
+  final PreferencesController preferences;
 
   /// 저장된 화면 모드. 앱이 시작될 때 한 번 불러와 넘겨 준다.
   final ThemeModeController themeMode;
@@ -124,6 +135,7 @@ class _AppState extends State<App> {
     return AppScope(
       themeMode: widget.themeMode,
       listStyle: widget.listStyle,
+      preferences: widget.preferences,
       auth: _auth,
       profiles: _profiles,
       churches: _churches,
@@ -150,20 +162,33 @@ class _AppState extends State<App> {
           darkTheme: _dark,
           themeMode: widget.themeMode.mode,
           routerConfig: _router,
-          builder: (context, child) => MediaQuery(
-            data: MediaQuery.of(context),
-            // 모든 페이지가 아래쪽 시스템 내비게이션 바(제스처 바·버튼)에 가리지 않도록 그만큼 비워 둔다.
-            child: ColoredBox(
-              color: Theme.of(context).scaffoldBackgroundColor,
-              child: SafeArea(
-                top: false,
-                left: false,
-                right: false,
-                child: ListenableBuilder(
-                  listenable: _connectivity,
-                  builder: (context, _) => OfflineBanner(
-                    visible: !_connectivity.online,
-                    child: child!,
+          builder: (context, child) => ListenableBuilder(
+            listenable: widget.preferences,
+            builder: (context, _) => MediaQuery(
+              // 글씨를 키운다: 폰은 조금, 와이드는 더. 사용자가 정한 글씨 크기에 곱하고 너무 커지지 않게 상한을 둔다.
+              data: MediaQuery.of(context).copyWith(
+                textScaler: TextScaler.linear(
+                  (MediaQuery.textScalerOf(context).scale(1) *
+                          (MediaQuery.sizeOf(context).width < kNarrow
+                              ? 1.08
+                              : 1.18) *
+                          widget.preferences.textSize.factor)
+                      .clamp(0.9, 1.5),
+                ),
+              ),
+              // 모든 페이지가 아래쪽 시스템 내비게이션 바(제스처 바·버튼)에 가리지 않도록 그만큼 비워 둔다.
+              child: ColoredBox(
+                color: Theme.of(context).scaffoldBackgroundColor,
+                child: SafeArea(
+                  top: false,
+                  left: false,
+                  right: false,
+                  child: ListenableBuilder(
+                    listenable: _connectivity,
+                    builder: (context, _) => OfflineBanner(
+                      visible: !_connectivity.online,
+                      child: child!,
+                    ),
                   ),
                 ),
               ),

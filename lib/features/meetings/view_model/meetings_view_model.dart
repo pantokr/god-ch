@@ -69,7 +69,8 @@ class MeetingsViewModel extends ViewModel {
   bool shows(Meeting m) => switch (_filter) {
     MeetingFilter.open => !(m.ended || m.isFull),
     MeetingFilter.all => true,
-    MeetingFilter.closed => m.ended || m.isFull,
+    // 마감은 정원이 찬 모임만이다: 종료된 모임은 마감 탭에 나오지 않고 전체 · 내 일정(완료)에서 본다.
+    MeetingFilter.closed => !m.ended && m.isFull,
   };
 
   /// 검색어(제목 · 장소 · 모임장 · 소개), 보기(전체 · 신청 가능 · 마감), 정렬을 적용한 목록.
@@ -114,7 +115,7 @@ class MeetingsViewModel extends ViewModel {
       fee: v.fee,
       needsApproval: v.needsApproval,
       imageUrl: v.imageUrl,
-      affiliationId: v.affiliationId,
+      affiliationIds: v.affiliationIds,
     ),
   );
 

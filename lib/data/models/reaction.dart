@@ -8,7 +8,7 @@ class ReactionType {
 
 /// firestore.rules의 허용 목록과 반드시 일치해야 한다.
 const reactionTypes = [
-  ReactionType('pray', '🙏', '함께 기도해요'),
+  ReactionType('pray', '🙏', '함께 중보기도해요'),
   ReactionType('love', '❤️', '사랑해요'),
   ReactionType('cheer', '💪', '힘내세요'),
   ReactionType('peace', '🕊️', '평안을 빌어요'),

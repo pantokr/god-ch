@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/widgets/toast.dart';
+
 import '../../../app/app_scope.dart';
 import '../../../core/format.dart';
 import '../../../core/icons.dart';
@@ -71,7 +73,7 @@ class _ChurchDetailDialogState extends State<ChurchDetailDialog> {
     );
     if (!ok) return;
     navigator.pop();
-    messenger.showSnackBar(const SnackBar(content: Text('저장했어요.')));
+    showToastOn(messenger, '저장했어요.');
   }
 
   Future<void> _toggleListed(Church c) async {
@@ -338,7 +340,7 @@ class _Tag extends StatelessWidget {
         style: TextStyle(
           color: color,
           fontSize: 12,
-          fontWeight: FontWeight.w800,
+          fontWeight: FontWeight.w600,
         ),
       ),
     );
@@ -367,10 +369,11 @@ class _Section extends StatelessWidget {
         children: [
           Text(
             title,
-            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
           ),
           const SizedBox(height: 12),
-          child,
+          // 색이 깔린 구역 안의 목록 칸(ListTile) 오류를 막으려고 투명한 Material로 감싼다.
+          Material(type: MaterialType.transparency, child: child),
         ],
       ),
     );

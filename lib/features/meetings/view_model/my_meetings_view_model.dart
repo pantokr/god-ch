@@ -3,18 +3,18 @@ import '../../../data/models/meeting.dart';
 import '../data/meeting_repository.dart';
 import 'meetings_view_model.dart';
 
-/// 내 활동의 일정을 나누어 보는 방식.
+/// 내 일정을 나누어 보는 방식: 참여 예정 · 관심 일정 · 참여 완료 한 묶음.
 enum MyMeetingView {
   upcoming('참여 예정'),
   liked('관심 일정'),
-  attended('완료');
+  attended('참여 완료');
 
   const MyMeetingView(this.label);
 
   final String label;
 }
 
-/// 내 활동의 "일정": 최근 모임을 참여 예정 · 관심 · 참여 일정으로 나누어 본다.
+/// 내 일정 관리: 참여 예정 · 관심 일정 · 참여 완료는 스위치로 본다. 전체 일정 조회는 위의 바로가기 카드로 들어간다.
 /// 참여는 내가 참여자이거나 모임장인 경우다. 스트림은 한 번만 만들고 나누기는 화면이 바로 한다.
 class MyMeetingsViewModel extends ViewModel {
   MyMeetingsViewModel(this._repo, this._churchId, this._uid)

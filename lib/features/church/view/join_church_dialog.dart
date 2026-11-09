@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/widgets/toast.dart';
+
 import '../../../core/widgets/labeled_field.dart';
 
 import '../../../app/app_scope.dart';
@@ -42,15 +44,11 @@ class _JoinChurchDialogState extends State<JoinChurchDialog> {
       birthDate: _birthDate.text,
     )) {
       navigator.pop();
-      messenger.showSnackBar(
-        const SnackBar(content: Text('입장을 신청했어요. 교역자의 승인을 기다려 주세요.')),
-      );
+      showToastOn(messenger, '입장을 신청했어요. 교역자의 승인을 기다려 주세요.');
     } else if (vm.error == blockedChurchMessage) {
       // 접근할 수 없는 교회는 창을 닫고 토스트로 알린다.
       navigator.pop();
-      messenger.showSnackBar(
-        const SnackBar(content: Text(blockedChurchMessage)),
-      );
+      showToastOn(messenger, blockedChurchMessage);
     }
   }
 

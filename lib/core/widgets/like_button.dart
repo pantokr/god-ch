@@ -22,7 +22,7 @@ class LikeButton extends StatelessWidget {
   final bool showCount;
   final VoidCallback? onTap;
 
-  static const _red = Color(0xFFE5484D);
+  static const _red = AppColors.like;
 
   @override
   Widget build(BuildContext context) {
@@ -63,7 +63,7 @@ class LikeButton extends StatelessWidget {
                     style: TextStyle(
                       color: palette.ink,
                       fontSize: 14,
-                      fontWeight: liked ? FontWeight.w800 : FontWeight.w600,
+                      fontWeight: liked ? FontWeight.w600 : FontWeight.w600,
                     ),
                   ),
                 ],

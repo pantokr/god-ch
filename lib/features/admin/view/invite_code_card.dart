@@ -3,6 +3,8 @@ import '../../../core/icons.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 
+import '../../../core/widgets/toast.dart';
+
 import '../../../core/widgets/choice_row.dart';
 
 import '../../../core/widgets/labeled_field.dart';
@@ -298,7 +300,7 @@ class _CodeRow extends StatelessWidget {
   }
 
   void _snack(BuildContext context, String text) =>
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
+      showToastOn(ScaffoldMessenger.of(context), text);
 
   /// 초대 코드만 복사한다.
   void _copyCode(BuildContext context) {
@@ -339,7 +341,7 @@ class _CodeRow extends StatelessWidget {
             style: const TextStyle(
               fontSize: 22,
               letterSpacing: 3,
-              fontWeight: FontWeight.w700,
+              fontWeight: FontWeight.w600,
             ),
           ),
           const SizedBox(height: 6),

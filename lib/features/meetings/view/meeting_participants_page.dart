@@ -14,8 +14,7 @@ import '../../../data/models/meeting.dart';
 import '../../../data/models/member.dart';
 import '../../../data/models/permission.dart';
 import '../../../data/models/person_card.dart';
-import '../../people/view/person_avatar.dart';
-import '../../people/view/person_popup.dart';
+import '../../people/view/person_row.dart';
 import '../view_model/meeting_detail_view_model.dart';
 
 enum _ParticipantSort {
@@ -78,12 +77,12 @@ class _MeetingParticipantsPageState extends State<MeetingParticipantsPage> {
               m != null &&
               (m.leaderId == me.id ||
                   me.isOperatorView ||
-                  me.can(Permission.meetingViewParticipants));
+                  me.canAll(Permission.meetingParticipants));
           final canApprove =
               m != null &&
               (m.leaderId == me.id ||
                   me.isOperatorView ||
-                  me.can(Permission.meetingApprove));
+                  me.canAll(Permission.meetingParticipants));
           final allowed = canView || canApprove;
           return SubPage(
             title: '참여자',
@@ -94,7 +93,8 @@ class _MeetingParticipantsPageState extends State<MeetingParticipantsPage> {
                     child: Center(
                       child: snap.connectionState == ConnectionState.waiting
                           ? const AppLoader()
-                          : const Text('볼 수 없는 목록입니다.'),
+                          // 일정이 없거나 볼 수 없는 것과, 일정은 있어도 이 권한이 없는 것을 구별해 알린다.
+                          : Text(m == null ? '볼 수 없는 목록입니다.' : '권한이 없습니다'),
                     ),
                   )
                 : StreamBuilder<List<Affiliation>>(
@@ -239,7 +239,8 @@ class _MeetingParticipantsPageState extends State<MeetingParticipantsPage> {
                       canKick:
                           m.leaderId == me.id ||
                           me.isOperatorView ||
-                          me.can(Permission.meetingKick),
+                          // 승인 · 거절 · 추방은 하나의 권한(일정 참여자 승인 · 거절 · 추방)이다.
+                          me.canAll(Permission.meetingParticipants),
                     ),
                   ],
               ],
@@ -282,92 +283,37 @@ class _Row extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final name = card?.name ?? '';
-    final position = card?.positionName ?? '';
     final isLeader = uid == meeting.leaderId;
-    // 직급 줄(모임장 · 직급, 없으면 역할)과 소속 줄이 따로다.
-    final roleLine = [
-      if (isLeader) '모임장',
-      if (position.isNotEmpty)
-        position
-      else if (card != null)
-        switch (card!.role) {
-          Role.admin => '교회 운영자',
-          Role.staff => '교역자',
-          Role.member => '교인',
-        },
-    ];
-    final affiliationLine = [
-      for (final id in card?.affiliationIds ?? const <String>[])
-        if (affiliationNames[id] != null) affiliationNames[id]!,
-    ];
-    Widget sub(String text) => Text(
-      text,
-      maxLines: 1,
-      overflow: TextOverflow.ellipsis,
-      style: TextStyle(color: context.palette.muted, fontSize: 12.5),
-    );
-    // 버튼이 있든 없든 줄 높이가 같도록 고정한다.
-    return SizedBox(
-      height: 72,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        child: Row(
-          children: [
-            PersonTap(
-              churchId: me.churchId,
-              uid: uid,
-              name: name,
-              child: PersonAvatar(
-                churchId: me.churchId,
-                uid: uid,
-                name: name.isEmpty ? '?' : name,
-                radius: 18,
-              ),
+    return PersonRow(
+      churchId: me.churchId,
+      uid: uid,
+      card: card,
+      badge: isLeader ? '모임장' : null,
+      trailing: [
+        if (canKick && !isLeader && !meeting.ended)
+          TextButton(
+            onPressed: vm.busy
+                ? null
+                : () async {
+                    final ok = await confirmChange(
+                      context,
+                      title: '${name.isEmpty ? '참여자' : name} 내보내기',
+                      confirmLabel: '내보내기',
+                      danger: true,
+                    );
+                    if (ok) await vm.kick(meeting, uid);
+                  },
+            style: TextButton.styleFrom(
+              foregroundColor: Theme.of(context).colorScheme.error,
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    name.isEmpty ? '이름 없음' : name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontWeight: FontWeight.w600),
-                  ),
-                  if (roleLine.isNotEmpty) sub(roleLine.join(' · ')),
-                  if (affiliationLine.isNotEmpty)
-                    sub(affiliationLine.join(', ')),
-                ],
-              ),
-            ),
-            if (canKick && !isLeader && !meeting.ended)
-              TextButton(
-                onPressed: vm.busy
-                    ? null
-                    : () async {
-                        final ok = await confirmChange(
-                          context,
-                          title: '${name.isEmpty ? '참여자' : name} 내보내기',
-                          confirmLabel: '내보내기',
-                          danger: true,
-                        );
-                        if (ok) await vm.kick(meeting, uid);
-                      },
-                style: TextButton.styleFrom(
-                  foregroundColor: Theme.of(context).colorScheme.error,
-                ),
-                child: const Text('내보내기'),
-              ),
-          ],
-        ),
-      ),
+            child: const Text('내보내기'),
+          ),
+      ],
     );
   }
 }
 
-/// 승인 대기 한 줄: 이름과 역할, 거절 · 승인 버튼.
+/// 승인 대기 한 줄: 다른 사람 줄과 같은 모양에 거절 · 승인 버튼.
 class _PendingRow extends StatelessWidget {
   const _PendingRow({
     required this.me,
@@ -385,49 +331,26 @@ class _PendingRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final name = card?.name ?? '';
     final palette = context.palette;
-    return SizedBox(
-      height: 64,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        child: Row(
-          children: [
-            PersonTap(
-              churchId: me.churchId,
-              uid: uid,
-              name: name,
-              child: PersonAvatar(
-                churchId: me.churchId,
-                uid: uid,
-                name: name.isEmpty ? '?' : name,
-                radius: 18,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                name.isEmpty ? '이름 없음' : name,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontWeight: FontWeight.w600),
-              ),
-            ),
-            TextButton(
-              onPressed: vm.busy ? null : () => vm.reject(meeting, uid),
-              style: TextButton.styleFrom(foregroundColor: palette.muted),
-              child: const Text('거절'),
-            ),
-            FilledButton(
-              // 정원이 찼으면 승인할 수 없다.
-              onPressed: vm.busy || meeting.isFull
-                  ? null
-                  : () => vm.approve(meeting, uid),
-              child: const Text('승인'),
-            ),
-          ],
+    return PersonRow(
+      churchId: me.churchId,
+      uid: uid,
+      card: card,
+      trailing: [
+        TextButton(
+          onPressed: vm.busy ? null : () => vm.reject(meeting, uid),
+          style: TextButton.styleFrom(foregroundColor: palette.muted),
+          child: const Text('거절'),
         ),
-      ),
+        FilledButton(
+          // 정원이 찼으면 승인할 수 없다.
+          onPressed: vm.busy || meeting.isFull
+              ? null
+              : () => vm.approve(meeting, uid),
+          child: const Text('승인'),
+        ),
+        const SizedBox(width: 8),
+      ],
     );
   }
 }

@@ -27,6 +27,7 @@ class Member {
     this.affiliationIds = const [],
     this.positionId,
     this.permissions = const [],
+    this.permissionScopes = const {},
     this.rolePermissions = RolePermissions.defaults,
     this.createdAt,
     this.approvedAt,
@@ -62,6 +63,9 @@ class Member {
   final String? positionId;
   final List<String> permissions;
 
+  /// 직급에서 복사된 권한 범위 (권한 키 → 소속 ID들, `@mine` = 내가 속한 소속). 없으면 제한 없음.
+  final Map<String, Set<String>> permissionScopes;
+
   /// 교회가 기본 직급(교역자 · 회원)에 정한 권한. 저장되는 값이 아니라 교인 정보를 읽을 때 함께 붙인다.
   final RolePermissions rolePermissions;
   final Role role;
@@ -92,13 +96,38 @@ class Member {
     if (!isApproved) return false;
     if (role == Role.admin) return true; // 교회 총괄 관리자: 그 교회의 절대 권한
     if (!p.grantable) return role == Role.staff && p.staffDefault;
-    if (permissions.contains(p.key)) return true;
+    if (p.inKeys(permissions)) return true;
     return switch (role) {
       Role.staff => rolePermissions.staffHas(p),
       Role.member => rolePermissions.memberHas(p),
       Role.admin => true,
     };
   }
+
+  /// 이 권한의 범위: 비어 있으면 전체(타인의 것까지), `@mine`이 있으면 본인만(본인이 쓴 것 · 만든 것만).
+  /// 직급으로 받은 권한이면 그 직급의 범위, 교역자 · 회원 기본 권한이면 그 기본 직급에 정한 범위다.
+  /// 정한 적이 없을 때 교인의 글 관리 · 반응 · 댓글 관리는 본인만이다.
+  Set<String> scopeOf(Permission p) {
+    if (role == Role.admin) return const {};
+    if (p.inKeys(permissions)) {
+      return permissionScopes[p.key] ?? const {};
+    }
+    final scopes = switch (role) {
+      Role.staff => rolePermissions.staffScopes,
+      Role.member => rolePermissions.memberScopes,
+      Role.admin => null,
+    };
+    if (scopes != null) {
+      return scopes[p.key] ?? const {};
+    }
+    return role == Role.member && p.memberOwnOnly
+        ? const {scopeMine}
+        : const {};
+  }
+
+  /// 이 권한이 있고 범위가 "전체"인가: 타인의 글 · 댓글 · 일정까지 다룰 수 있다. 본인만이면 false다.
+  /// 교회 관리자는 늘 true다.
+  bool canAll(Permission p) => can(p) && !scopeOf(p).contains(scopeMine);
 
   /// 기본 직급 권한을 붙인 복사본.
   Member withRolePermissions(RolePermissions r) => Member(
@@ -116,6 +145,7 @@ class Member {
     affiliationIds: affiliationIds,
     positionId: positionId,
     permissions: permissions,
+    permissionScopes: permissionScopes,
     rolePermissions: r,
     createdAt: createdAt,
     approvedAt: approvedAt,
@@ -123,7 +153,7 @@ class Member {
   );
 
   /// 중보기도 댓글을 쓸 수 있는가: 댓글 작성 권한이 있는 교역자, 또는 직급으로 그 권한을 받은 교인 (회원 기본은 반응까지).
-  bool get canPrayerComment => can(Permission.prayerComment);
+  bool get canPrayerComment => can(Permission.prayerEngage);
 
   /// "미배정": 속한 곳이 하나도 없다 (소속도 직급도 없다). 하나라도 있으면 미배정이 아니다.
   bool get isUnassigned => affiliationIds.isEmpty && positionId == null;
@@ -131,11 +161,8 @@ class Member {
   /// 관리 메뉴(인원 · 입장 · 소속)를 쓸 수 있는가: 교역자 이상이거나 관련 권한이 있다.
   bool get canManage =>
       isStaff ||
-      can(Permission.memberApprove) ||
-      can(Permission.inviteManage) ||
-      can(Permission.affiliationAssign) ||
-      can(Permission.affiliationCreate) ||
-      can(Permission.affiliationDelete);
+      can(Permission.memberManage) ||
+      can(Permission.affiliationEdit);
 
   factory Member.fromDoc(DocumentSnapshot<Json> doc) {
     final d = doc.data() ?? const {};
@@ -161,6 +188,7 @@ class Member {
       ),
       positionId: d['positionId'] as String?,
       permissions: List<String>.from(d['permissions'] as List? ?? const []),
+      permissionScopes: readScopes(d['permissionScopes']),
       createdAt: toDate(d['createdAt']),
       approvedAt: toDate(d['approvedAt']),
     );

@@ -34,7 +34,7 @@ class PrayerWriteFab extends StatelessWidget {
         initialData: PrayerSettings.standard,
         builder: (context, cfg) {
           // 글을 쓸 수 있는 사람은 직급 권한(글 작성)으로 정한다.
-          final allowed = me.can(Permission.prayerWrite);
+          final allowed = me.can(Permission.prayerPost);
           // 앱 개발자는 기도제목을 쓰지 않는다.
           // 교역자 이상이 아닌 교인은 자기 소속에만 올릴 수 있다: 소속이 없는(미배정) 교인에게는 보이지 않는다.
           final hasPlace = me.isStaff || affiliation != null;

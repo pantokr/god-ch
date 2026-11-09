@@ -61,9 +61,7 @@ class _EntrySectionState extends State<EntrySection> {
     if (ok) {
       showAddedToast(context);
     } else {
-      messenger.showSnackBar(
-        SnackBar(content: Text('전송하지 못했습니다: ${widget.errorOf()}')),
-      );
+      showToastOn(messenger, '전송하지 못했습니다: ${widget.errorOf()}');
     }
     return ok;
   }
@@ -77,9 +75,7 @@ class _EntrySectionState extends State<EntrySection> {
     );
     if (text == null) return;
     if (!(await widget.onEdit?.call(e, text) ?? false)) {
-      messenger.showSnackBar(
-        SnackBar(content: Text('수정하지 못했습니다: ${widget.errorOf()}')),
-      );
+      showToastOn(messenger, '수정하지 못했습니다: ${widget.errorOf()}');
     }
   }
 

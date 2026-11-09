@@ -30,6 +30,10 @@ class RolePermissions {
     this.member,
     this.staffStyle,
     this.memberStyle,
+    this.staffScopes,
+    this.memberScopes,
+    this.staffName,
+    this.memberName,
   });
 
   static const defaults = RolePermissions();
@@ -41,6 +45,21 @@ class RolePermissions {
   final BuiltInStyle? staffStyle;
   final BuiltInStyle? memberStyle;
 
+  /// 교회가 고친 교역자 · 회원 직급의 이름. 고친 적이 없으면 null (기본 이름)이다.
+  final String? staffName;
+  final String? memberName;
+
+  /// [position]의 이름: 고쳤으면 그 이름, 아니면 기본 이름.
+  String nameOf(BuiltInPosition position) => switch (position) {
+    BuiltInPosition.staff => staffName ?? position.name,
+    BuiltInPosition.member => memberName ?? position.name,
+    BuiltInPosition.admin => position.name,
+  };
+
+  /// 교역자 · 회원 직급의 권한 범위 (권한 키 → 소속 ID들). 없으면 모두 제한 없음.
+  final Map<String, Set<String>>? staffScopes;
+  final Map<String, Set<String>>? memberScopes;
+
   /// [position] 직급의 모양 (정한 적이 없으면 기본 모양).
   BuiltInStyle styleOf(BuiltInPosition position) => switch (position) {
     BuiltInPosition.staff => staffStyle ?? BuiltInStyle.staffDefault,
@@ -49,9 +68,21 @@ class RolePermissions {
   };
 
   /// 교역자가 이 권한을 갖는가 (직급으로 줄 수 있는 권한 기준).
-  bool staffHas(Permission p) => staff?.contains(p.key) ?? p.staffDefault;
+  bool staffHas(Permission p) =>
+      staff == null ? p.staffDefault : p.inKeys(staff!);
 
-  bool memberHas(Permission p) => member?.contains(p.key) ?? p.memberDefault;
+  bool memberHas(Permission p) =>
+      member == null ? p.memberDefault : p.inKeys(member!);
+
+  static String? _name(DocumentSnapshot<Json>? doc) {
+    final v = doc?.data()?['name'];
+    return v is String && v.trim().isNotEmpty ? v : null;
+  }
+
+  static Map<String, Set<String>>? _scopes(DocumentSnapshot<Json>? doc) {
+    final d = doc?.data();
+    return d == null ? null : readScopes(d['scopes']);
+  }
 
   static Set<String>? _read(DocumentSnapshot<Json>? doc) {
     final d = doc?.data();
@@ -76,8 +107,31 @@ class RolePermissions {
     member: _read(member),
     staffStyle: _style(staff),
     memberStyle: _style(member),
+    staffScopes: _scopes(staff),
+    memberScopes: _scopes(member),
+    staffName: _name(staff),
+    memberName: _name(member),
   );
 }
+
+/// 저장된 권한 범위(`scopes` · `permissionScopes`)를 읽는다. 권한 키 → 소속 ID들 (+ `@mine`). 없으면 빈 맵.
+Map<String, Set<String>> readScopes(Object? raw) {
+  if (raw is! Map) return const {};
+  return {
+    for (final e in raw.entries)
+      if (e.value is List) '${e.key}': Set<String>.from(e.value as List),
+  };
+}
+
+/// 권한 범위의 "내가 속한 소속" 표시 값.
+const scopeMine = '@mine';
+
+/// 권한 범위의 "비공개 글 제외" 표시 값: 글 관리 권한에 이것이 있으면 비공개 글은 볼 수 없다 (공개 글만 본다).
+const scopePublicOnly = '@public';
+
+/// 범위에서 소속만 뽑는다 (`*` · `@public`은 소속이 아니다). 비어 있으면 모든 소속이다.
+Set<String> scopeAffiliations(Set<String> scope) =>
+    scope.difference({'*', scopePublicOnly});
 
 /// 기본 직급의 아이콘(키)과 색(ARGB 정수).
 class BuiltInStyle {
@@ -99,6 +153,7 @@ class Position {
     required this.id,
     required this.name,
     this.permissions = const {},
+    this.scopes = const {},
     this.icon = 'shield',
     this.color = 0xFF6C63FF,
   });
@@ -116,10 +171,13 @@ class Position {
   /// 줄 수 있는 권한의 키들 ([Permission.key]).
   final Set<String> permissions;
 
+  /// 권한마다의 범위 (권한 키 → 소속 ID들, `@mine` = 내가 속한 소속). 없거나 비어 있으면 모든 소속이다.
+  final Map<String, Set<String>> scopes;
+
   /// 알려진 권한 (정해진 순서대로).
   List<Permission> get granted => [
     for (final p in Permission.delegable)
-      if (permissions.contains(p.key)) p,
+      if (p.inKeys(permissions)) p,
   ];
 
   factory Position.fromDoc(DocumentSnapshot<Json> doc) {
@@ -128,6 +186,7 @@ class Position {
       id: doc.id,
       name: d['name'] as String? ?? '',
       permissions: Set<String>.from(d['permissions'] as List? ?? const []),
+      scopes: readScopes(d['scopes']),
       icon: d['icon'] as String? ?? 'shield',
       color: (d['color'] as num?)?.toInt() ?? 0xFF6C63FF,
     );

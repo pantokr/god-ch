@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/widgets/toast.dart';
+
 import '../../../app/app_scope.dart';
 import '../../../core/layout/confirm_dialog.dart';
 import '../../../data/models/member.dart';
@@ -17,8 +19,8 @@ Future<void> leaveChurch(BuildContext context, Member member) async {
   if (!ok) return;
   try {
     await members.leave(member.churchId);
-    messenger.showSnackBar(const SnackBar(content: Text('교회에서 탈퇴했어요')));
+    showToastOn(messenger, '교회에서 탈퇴했어요');
   } catch (_) {
-    messenger.showSnackBar(const SnackBar(content: Text('교회 탈퇴에 실패했어요')));
+    showToastOn(messenger, '교회 탈퇴에 실패했어요');
   }
 }

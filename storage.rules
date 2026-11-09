@@ -11,9 +11,6 @@ service firebase.storage {
         && firestore.exists(memberDoc(cid))
         && firestore.get(memberDoc(cid)).data.status == 'approved';
     }
-    function isStaff(cid) {
-      return isActive(cid) && firestore.get(memberDoc(cid)).data.role in ['staff', 'admin'];
-    }
     function isAdmin(cid) {
       return isActive(cid) && firestore.get(memberDoc(cid)).data.role == 'admin';
     }

@@ -46,7 +46,14 @@ enum ChurchSection {
   calendar('calendar'),
 
   /// 내 일정 (내 활동의 자세히 보기): 참여 예정 · 관심 · 완료 일정.
-  myMeetings('my-meetings');
+  myMeetings('my-meetings'),
+
+  /// 전체 일정 조회 (일정을 만드는 교역자 · 교회 관리자): 내 일정 관리 위의 바로가기로 들어가는 별도 화면.
+  /// 모든 일정을 검색 · 필터로 찾고, 그 안에서 내가 만든 일정만 볼 수 있다.
+  allMeetings('all-meetings'),
+
+  /// 개인 설정 (모든 교인): 이 기기에서만 쓰는 화면별 취향 (글씨 크기 · 기본 보기 · 정렬 등).
+  preferences('preferences');
 
   const ChurchSection(this.path);
 

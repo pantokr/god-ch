@@ -11,7 +11,7 @@ class MeetingCommentsViewModel extends ViewModel {
     this.me,
     this.meetingId, {
     bool publicList = true,
-  }) : comments = publicList || me.can(Permission.meetingDelete)
+  }) : comments = publicList || me.can(Permission.meetingManage)
            ? _repo.comments(me.churchId, meetingId)
            : _repo.myComments(me.churchId, meetingId, me.id);
 

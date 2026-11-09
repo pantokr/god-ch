@@ -101,7 +101,7 @@ class _RequestRow extends StatelessWidget {
         Text(
           r.name,
           style: Theme.of(context).textTheme.titleSmall
-              ?.copyWith(fontWeight: FontWeight.w700),
+              ?.copyWith(fontWeight: FontWeight.w600),
         ),
         const SizedBox(height: 4),
         Text('전화  ${r.phone}', style: muted),

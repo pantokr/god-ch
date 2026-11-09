@@ -41,7 +41,7 @@ class ProfileSummary extends StatelessWidget {
                   Text(
                     name,
                     style: theme.textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.w700,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ],

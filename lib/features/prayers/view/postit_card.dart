@@ -298,7 +298,7 @@ class PostItNote extends StatelessWidget {
                           style: const TextStyle(
                             color: _soft,
                             fontSize: 11,
-                            fontWeight: FontWeight.w700,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
                         const SizedBox(height: 3),
@@ -310,7 +310,7 @@ class PostItNote extends StatelessWidget {
                         style: const TextStyle(
                           color: _ink,
                           fontSize: 15,
-                          fontWeight: FontWeight.w800,
+                          fontWeight: FontWeight.w600,
                           height: 1.3,
                         ),
                       ),

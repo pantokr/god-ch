@@ -20,6 +20,7 @@ import '../../people/view/calendar_page.dart';
 import '../../prayers/view/prayer_board_page.dart';
 import '../../prayers/view/prayer_settings_page.dart';
 import 'church_scope.dart';
+import 'preferences_page.dart';
 
 /// 교회 틀 안에 들어가는 메뉴별 페이지들. 필요한 정보는 [ChurchScope]에서 꺼낸다.
 
@@ -70,6 +71,23 @@ class MyMeetingsSectionPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) =>
       MyMeetingsPage(me: ChurchScope.of(context).me);
+}
+
+/// 전체 일정 조회: 내 일정 관리의 바로가기로 들어가는 별도 화면.
+class AllMeetingsSectionPage extends StatelessWidget {
+  const AllMeetingsSectionPage({super.key});
+
+  @override
+  Widget build(BuildContext context) =>
+      AllMeetingsPage(me: ChurchScope.of(context).me);
+}
+
+/// 개인 설정 (모든 교인).
+class PreferencesSectionPage extends StatelessWidget {
+  const PreferencesSectionPage({super.key});
+
+  @override
+  Widget build(BuildContext context) => const PreferencesPage();
 }
 
 /// 우리 소속: 내가 속한 소속의 사람들 (모든 교인).

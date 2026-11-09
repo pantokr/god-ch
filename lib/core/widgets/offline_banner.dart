@@ -42,7 +42,7 @@ class OfflineBanner extends StatelessWidget {
                             style: TextStyle(
                               color: Colors.white,
                               fontSize: 13.5,
-                              fontWeight: FontWeight.w700,
+                              fontWeight: FontWeight.w600,
                             ),
                           ),
                         ],

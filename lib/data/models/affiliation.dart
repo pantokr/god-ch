@@ -19,6 +19,13 @@ class Affiliation {
   static const unassigned = Affiliation('unassigned', unassignedName);
 }
 
+/// 소속을 늘어놓는 순서는 앱 어디서나 같다: 이름 가나다순.
+/// (우측 상단 소속 선택 · 우리 소속 · 소속 관리 · 일정 공개 범위 · 초대 코드가 모두 이 순서를 쓴다.)
+extension AffiliationOrder on Iterable<Affiliation> {
+  List<Affiliation> sortedByName() =>
+      [...this]..sort((a, b) => a.name.compareTo(b.name));
+}
+
 /// 교인이 소속 분류 줄에서 볼 수 있는 소속.
 /// 교회 관리자(와 교회를 보는 앱 개발자)는 모든 소속을, 그 밖의 교인은 자기가 속한 소속만 본다.
 /// 소속이 하나도 없는 교인은 아무것도 보지 못한다.

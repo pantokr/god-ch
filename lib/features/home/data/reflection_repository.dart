@@ -1,5 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import '../../../data/shared_stream.dart';
+
 import '../../../core/app_exception.dart';
 import '../../../data/firestore_codec.dart';
 import '../../../data/firestore_paths.dart';
@@ -39,7 +41,15 @@ class ReflectionRepository {
       );
 
   /// 지우지 않은 댓글 수 (목록의 댓글 표시). 댓글을 비공개로 둔 교회에서는 교역자만 읽을 수 있다.
-  Stream<int> count(String churchId, String devotionId) =>
+  /// 같은 조회(글마다의 댓글 수)를 카드마다 따로 듣지 않고 하나를 나눠 쓴다.
+  final _shared = SharedStreams();
+
+  Stream<int> count(String churchId, String devotionId) => _shared.of(
+    'count/$churchId/$devotionId',
+    () => _count(churchId, devotionId),
+  );
+
+  Stream<int> _count(String churchId, String devotionId) =>
       _col(churchId, devotionId).snapshots().map(
         (s) => s.docs.where((d) => d.data()['deleted'] != true).length,
       );
@@ -155,7 +165,7 @@ class ReflectionRepository {
       });
 
   /// 내가 이 교회의 일정 · 중보기도 · 말씀묵상에 남긴 댓글을 모두 모은다 (collection group 조회, 본인 댓글만 읽힌다).
-  /// 댓글이 달린 글의 제목은 한 번씩 읽어 붙이고, 읽을 수 없으면 비워 둔다. 지운 댓글은 뺀다.
+  /// 댓글이 달린 글의 제목(중보기도는 글쓴이 이름)은 한 번씩 읽어 붙이고, 읽을 수 없으면 비워 둔다. 지운 댓글은 뺀다.
   Future<List<MyComment>> mineAcrossChurch(String churchId) async {
     final uid = _auth.uid;
     final found = <MyComment>[];
@@ -177,6 +187,11 @@ class ReflectionRepository {
           .collectionGroup(group)
           .where('authorId', isEqualTo: uid)
           .get();
+      // 이 교회의 지우지 않은 댓글만 추린다 (지운 댓글이 많아도 글 제목은 필요한 글만 읽는다).
+      final rows =
+          <
+            ({CommentTarget target, DocumentReference<Json> parent, Json data})
+          >[];
       for (final d in snap.docs) {
         final data = d.data();
         final parts = d.reference.path.split('/');
@@ -190,24 +205,40 @@ class ReflectionRepository {
           _ => null,
         };
         if (target == null) continue;
-        final parent = d.reference.parent.parent!;
+        rows.add((
+          target: target,
+          parent: d.reference.parent.parent!,
+          data: data,
+        ));
+      }
+      // 글 제목은 글마다 한 번씩, 한꺼번에 읽는다 (하나씩 차례로 읽으면 댓글이 많을 때 오래 걸린다).
+      final pending = [
+        for (final r in rows)
+          titleOf(
+            r.parent,
+            // 중보기도는 내용 요약 대신 글쓴이 이름을 보인다.
+            r.target == CommentTarget.prayer ? 'authorName' : 'title',
+          ),
+      ];
+      final resolved = await Future.wait(pending);
+      for (var i = 0; i < rows.length; i++) {
+        final r = rows[i];
         found.add(
           MyComment(
-            target: target,
-            targetId: parent.id,
-            text: (data[textField] ?? data['content']) as String? ?? '',
-            targetTitle: await titleOf(
-              parent,
-              target == CommentTarget.prayer ? 'content' : 'title',
-            ),
-            date: toDate(data['createdAt'] ?? data['updatedAt']),
+            target: r.target,
+            targetId: r.parent.id,
+            text: (r.data[textField] ?? r.data['content']) as String? ?? '',
+            targetTitle: resolved[i],
+            date: toDate(r.data['createdAt'] ?? r.data['updatedAt']),
           ),
         );
       }
     }
 
-    await collect('comments', 'text');
-    await collect('reflections', 'text');
+    await Future.wait([
+      collect('comments', 'text'),
+      collect('reflections', 'text'),
+    ]);
     return found;
   }
 }

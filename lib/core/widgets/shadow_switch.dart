@@ -13,12 +13,20 @@ class ShadowSwitch<T> extends StatelessWidget {
     required this.selected,
     required this.onChanged,
     required this.labelOf,
+    this.dividerBefore = const {},
+    this.itemPadding = 12,
   });
 
   final List<T> values;
   final T selected;
   final ValueChanged<T> onChanged;
   final String Function(T value) labelOf;
+
+  /// 이 번호의 항목 앞에 가는 세로 구분선: 항목들을 묶음으로 나눈다 (예: 0 · 1 · 2 | 3).
+  final Set<int> dividerBefore;
+
+  /// 항목 글자 좌우 여백. 항목이 많아 좁은 화면에 모자랄 때 줄인다.
+  final double itemPadding;
 
   /// 알약 모양의 둥근 모서리.
   static const _radius = 999.0;
@@ -54,11 +62,18 @@ class ShadowSwitch<T> extends StatelessWidget {
             padding: const EdgeInsets.all(4),
             child: Row(
               children: [
-                for (final v in values)
+                for (var i = 0; i < values.length; i++) ...[
+                  if (dividerBefore.contains(i))
+                    Container(
+                      width: 1,
+                      height: 18,
+                      margin: const EdgeInsets.symmetric(horizontal: 4),
+                      color: palette.ink.withValues(alpha: 0.18),
+                    ),
                   Expanded(
                     child: GestureDetector(
                       behavior: HitTestBehavior.opaque,
-                      onTap: () => onChanged(v),
+                      onTap: () => onChanged(values[i]),
                       child: Stack(
                         clipBehavior: Clip.none,
                         alignment: Alignment.center,
@@ -70,7 +85,7 @@ class ShadowSwitch<T> extends StatelessWidget {
                             bottom: -_grow.dy,
                             child: AnimatedOpacity(
                               duration: const Duration(milliseconds: 180),
-                              opacity: v == selected ? 1 : 0,
+                              opacity: values[i] == selected ? 1 : 0,
                               child: DecoratedBox(
                                 decoration: BoxDecoration(
                                   // 다크 모드에서는 바탕보다 밝은 판이어야 선택이 보인다.
@@ -97,18 +112,18 @@ class ShadowSwitch<T> extends StatelessWidget {
                             ),
                           ),
                           Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
+                            padding: EdgeInsets.symmetric(
+                              horizontal: itemPadding,
                               vertical: 6,
                             ),
                             child: Text(
-                              labelOf(v),
+                              labelOf(values[i]),
                               style: TextStyle(
                                 fontSize: 14,
-                                fontWeight: v == selected
-                                    ? FontWeight.w800
+                                fontWeight: values[i] == selected
+                                    ? FontWeight.w600
                                     : FontWeight.w500,
-                                color: v == selected
+                                color: values[i] == selected
                                     ? palette.ink
                                     : palette.muted,
                               ),
@@ -118,6 +133,7 @@ class ShadowSwitch<T> extends StatelessWidget {
                       ),
                     ),
                   ),
+                ],
               ],
             ),
           ),

@@ -3,6 +3,9 @@ import '../../../core/icons.dart';
 import '../../../core/format.dart';
 
 import 'package:flutter/material.dart';
+
+import '../../../core/widgets/toast.dart';
+
 import 'package:go_router/go_router.dart';
 
 import '../../../app/app_scope.dart';
@@ -242,12 +245,10 @@ class _ExploreBody extends StatelessWidget {
       );
     }
     if (done) {
-      messenger.showSnackBar(const SnackBar(content: Text('입장을 요청했어요.')));
+      showToastOn(messenger, '입장을 요청했어요.');
     } else if (vm.error == blockedChurchMessage) {
       // 접근할 수 없는 교회는 토스트로 알린다.
-      messenger.showSnackBar(
-        const SnackBar(content: Text(blockedChurchMessage)),
-      );
+      showToastOn(messenger, blockedChurchMessage);
     }
   }
 }
@@ -338,7 +339,8 @@ class _ChurchDetail extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
-            width: 64,
+            // 글씨가 커져도 라벨이 값에 맞닿지 않게 칸 너비가 글씨 배율을 따르고, 사이에 여백을 둔다.
+            width: MediaQuery.textScalerOf(context).scale(64) + 8,
             child: Text(label, style: TextStyle(color: context.palette.muted)),
           ),
           Expanded(child: Text(value.isEmpty ? '-' : value)),

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/widgets/toast.dart';
+
 import '../../../app/app_scope.dart';
 import '../../../core/layout/profile_summary.dart';
 import '../../../core/mvvm/view_model_builder.dart';
@@ -57,7 +59,7 @@ class _ProfileEditDialogState extends State<ProfileEditDialog> {
       photoUrl: _photo.text,
     )) {
       if (!widget.embedded) navigator.pop();
-      messenger.showSnackBar(const SnackBar(content: Text('내 정보를 저장했어요.')));
+      showToastOn(messenger, '내 정보를 저장했어요.');
     }
   }
 
@@ -93,11 +95,21 @@ class _ProfileEditDialogState extends State<ProfileEditDialog> {
               ),
               gap,
             ],
+            if ((vm.profile?.loginId ?? '').isNotEmpty) ...[
+              LabeledField(
+                label: '아이디',
+                child: TextFormField(
+                  key: ValueKey(vm.profile!.loginId),
+                  initialValue: vm.profile!.loginId,
+                  readOnly: true,
+                  enabled: false,
+                  decoration: const InputDecoration(counterText: ''),
+                ),
+              ),
+              gap,
+            ],
             LabeledField(
-              // 회원 관리와 같은 표기: 이름  (ID)
-              label: (vm.profile?.loginId ?? '').isEmpty
-                  ? '이름'
-                  : '이름  (${vm.profile!.loginId})',
+              label: '이름',
               required: true,
               child: TextField(
                 controller: _name,

@@ -1,5 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import '../../../data/shared_stream.dart';
+
 import '../../../core/app_exception.dart';
 import '../../../data/firestore_paths.dart';
 import '../../../data/models/app_notification.dart';
@@ -56,8 +58,13 @@ class MeetingRepository {
       _paths.church(churchId).collection('settings').doc('meeting');
 
   /// 교회가 정한 모임 일정 운영 설정 (실시간). 정한 적 없으면 모두 허용 · 공개.
-  Stream<MeetingSettings> settings(String churchId) =>
-      _settings(churchId).snapshots().map(MeetingSettings.fromDoc);
+  /// 같은 조회(운영 설정)를 화면마다 따로 듣지 않고 하나를 나눠 쓴다.
+  final _shared = SharedStreams();
+
+  Stream<MeetingSettings> settings(String churchId) => _shared.of(
+    'settings/$churchId',
+    () => _settings(churchId).snapshots().map(MeetingSettings.fromDoc),
+  );
 
   Future<MeetingSettings> loadSettings(String churchId) async =>
       MeetingSettings.fromDoc(await _settings(churchId).get());
@@ -65,17 +72,17 @@ class MeetingRepository {
   Future<void> saveSettings(String churchId, MeetingSettings settings) =>
       _settings(churchId).set(settings.toMap());
 
-  /// 모임 날짜가 가까운 쪽이 위. 지워진 모임은 뺀다.
-  Stream<List<Meeting>> latest(String churchId, {int limit = 100}) =>
+  /// 모임 날짜가 가까운 쪽이 위. 지운 모임은 서버에서 걸러, 지운 모임이 많아도 목록이 밀려나지 않는다
+  /// (같음 조건 하나라 복합 색인이 필요 없다. 날짜순 정렬은 받은 뒤에 한다).
+  Stream<List<Meeting>> latest(String churchId, {int limit = 300}) =>
       _col(churchId)
-          .orderBy('date', descending: true)
+          .where('deleted', isEqualTo: false)
           .limit(limit)
           .snapshots()
           .map(
-            (s) => [
-              for (final d in s.docs)
-                if (d.data()['deleted'] != true) Meeting.fromDoc(d),
-            ],
+            (s) =>
+                [for (final d in s.docs) Meeting.fromDoc(d)]
+                  ..sort((a, b) => b.date.compareTo(a.date)),
           );
 
   /// 모임 한 건. 지워졌거나 없으면 null.
@@ -125,7 +132,7 @@ class MeetingRepository {
     int fee = 0,
     bool needsApproval = false,
     String imageUrl = '',
-    String? affiliationId,
+    List<String> affiliationIds = const [],
   }) {
     final t = _check(title, description, place, capacity, fee);
     return _col(churchId).add({
@@ -145,7 +152,9 @@ class MeetingRepository {
       'views': 0,
       'deleted': false,
       'createdAt': FieldValue.serverTimestamp(),
-      'affiliationId': affiliationId,
+      'affiliationIds': affiliationIds,
+      // 예전 일정의 소속 하나 표시는 비운다 (여러 소속은 affiliationIds에 있다).
+      'affiliationId': null,
     });
   }
 
@@ -161,7 +170,7 @@ class MeetingRepository {
     int fee = 0,
     bool needsApproval = false,
     String imageUrl = '',
-    String? affiliationId,
+    List<String> affiliationIds = const [],
   }) {
     final t = _check(title, description, place, capacity, fee);
     if (capacity < m.joined) {
@@ -176,7 +185,9 @@ class MeetingRepository {
       'capacity': capacity,
       'fee': fee,
       'needsApproval': needsApproval,
-      'affiliationId': affiliationId,
+      'affiliationIds': affiliationIds,
+      // 예전 일정의 소속 하나 표시는 비운다 (여러 소속은 affiliationIds에 있다).
+      'affiliationId': null,
       'updatedAt': FieldValue.serverTimestamp(),
     });
   }

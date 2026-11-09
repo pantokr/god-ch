@@ -170,7 +170,7 @@ class _CalendarPageState extends State<CalendarPage> {
                     style: TextStyle(
                       fontSize: 15,
                       fontWeight: isSelected || isToday
-                          ? FontWeight.w800
+                          ? FontWeight.w600
                           : FontWeight.w500,
                       color: isSelected ? palette.surface : palette.ink,
                     ),
@@ -227,7 +227,7 @@ class _CalendarPageState extends State<CalendarPage> {
               '${_month.month}월',
               style: const TextStyle(
                 fontSize: 30,
-                fontWeight: FontWeight.w800,
+                fontWeight: FontWeight.w600,
                 height: 1.1,
               ),
             ),
@@ -320,7 +320,7 @@ class _CalendarPageState extends State<CalendarPage> {
         Gutter(
           child: Text(
             '${_selected.month}월 ${_selected.day}일 ${_weekdays[_selected.weekday % 7]}요일',
-            style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
+            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
           ),
         ),
         const SizedBox(height: 8),
@@ -438,7 +438,7 @@ class _Bubble extends StatelessWidget {
                       style: TextStyle(
                         color: palette.muted,
                         fontSize: 11.5,
-                        fontWeight: FontWeight.w700,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                     Text(
@@ -446,7 +446,7 @@ class _Bubble extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
-                        fontWeight: FontWeight.w700,
+                        fontWeight: FontWeight.w600,
                         fontSize: 14.5,
                       ),
                     ),

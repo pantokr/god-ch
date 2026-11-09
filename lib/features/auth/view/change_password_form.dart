@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/widgets/toast.dart';
+
 import '../../../core/widgets/labeled_field.dart';
 
 import '../../../app/app_scope.dart';
@@ -42,7 +44,7 @@ class _ChangePasswordFormState extends State<ChangePasswordForm> {
       _current.clear();
       _next.clear();
       _confirm.clear();
-      messenger.showSnackBar(const SnackBar(content: Text('비밀번호를 바꿨어요.')));
+      showToastOn(messenger, '비밀번호를 바꿨어요.');
       widget.onDone?.call();
     }
   }

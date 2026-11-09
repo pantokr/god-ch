@@ -83,6 +83,15 @@ class DevotionsViewModel extends ViewModel {
 
   bool get grid => _grid;
 
+  /// 개인 설정의 기본 보기 · 정렬을 처음 한 번 적용한다 (만들 때 부른다).
+  void initDefaults({required bool grid, String? sort}) {
+    _grid = grid;
+    _sort = DevotionSort.values.firstWhere(
+      (s) => s.name == sort,
+      orElse: () => DevotionSort.latest,
+    );
+  }
+
   void setGrid(bool value) {
     if (_grid == value) return;
     _grid = value;
@@ -176,6 +185,7 @@ class DevotionsViewModel extends ViewModel {
     required String title,
     required String body,
     required String meditation,
+    List<DevotionPassage> extras = const [],
     required DateTime date,
     String? affiliationId,
     bool isPrivate = false,
@@ -186,6 +196,7 @@ class DevotionsViewModel extends ViewModel {
       title: title,
       body: body,
       meditation: meditation,
+      extras: extras,
       date: date,
       authorName: authorName,
       authorPhotoUrl: authorPhotoUrl,

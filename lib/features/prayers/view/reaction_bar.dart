@@ -118,7 +118,7 @@ class _ReactionPill extends StatelessWidget {
               showCount ? '${type.emoji} $count' : type.emoji,
               style: TextStyle(
                 color: selected ? context.palette.accent : context.palette.ink,
-                fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
               ),
             ),
           ),

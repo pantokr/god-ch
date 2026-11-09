@@ -1,3 +1,5 @@
+import '../../../data/bible_reference.dart';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -67,7 +69,10 @@ class _MySchedule extends StatelessWidget {
   final Member me;
 
   static const _cardWidth = 232.0;
-  static const _height = 222.0;
+
+  /// 카드 높이: 썸네일 · 여백은 고정이고, 글 영역은 글씨 배율에 따라 커진다 (고정이면 글씨가 커질 때 넘친다).
+  static double heightOf(BuildContext context) =>
+      108 + 22 + 92 * MediaQuery.textScalerOf(context).scale(1);
 
   @override
   Widget build(BuildContext context) {
@@ -98,7 +103,7 @@ class _MySchedule extends StatelessWidget {
                   child: const Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text('내 일정'),
+                      Text('내 일정 관리'),
                       SizedBox(width: 2),
                       Icon(AppIcons.caretRight, size: 16),
                     ],
@@ -115,8 +120,8 @@ class _MySchedule extends StatelessWidget {
                 return const EmptyHint('불러오지 못했습니다');
               }
               if (!snap.hasData) {
-                return const SizedBox(
-                  height: _height,
+                return SizedBox(
+                  height: heightOf(context),
                   child: Center(child: AppLoader()),
                 );
               }
@@ -124,7 +129,7 @@ class _MySchedule extends StatelessWidget {
               final items = vm.apply(snap.data!);
               if (items.isEmpty) return const EmptyHint('참여 신청한 일정 없음');
               return SizedBox(
-                height: _height,
+                height: heightOf(context),
                 child: ListView.separated(
                   // 미는 목록은 화면 끝까지 밀리고, 시작과 끝만 안쪽 여백을 둔다.
                   padding: EdgeInsets.symmetric(
@@ -216,7 +221,7 @@ class _SlideCard extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
-                        fontWeight: FontWeight.w800,
+                        fontWeight: FontWeight.w600,
                         fontSize: 15,
                       ),
                     ),
@@ -262,7 +267,7 @@ class _MyPostsState extends State<_MyPosts> {
       .affiliations(widget.me.churchId);
 
   /// 격자형(2열)으로 보는가. 아니면 리스트형이다 (중보기도 · 말씀묵상 목록과 같다).
-  bool _grid = false;
+  late bool _grid = AppScope.read(context).preferences.gridOf('mine');
 
   @override
   Widget build(BuildContext context) {
@@ -276,9 +281,9 @@ class _MyPostsState extends State<_MyPosts> {
           scope.reflections,
           me.churchId,
           me.id,
-          includePrivate: me.can(Permission.devotionViewPrivate),
+          includePrivate: me.canAll(Permission.devotionPrivate),
           affiliationIds: me.isStaff ? null : me.affiliationIds,
-        );
+        )..initDefaults(sort: scope.preferences.sortOf('mine'));
       },
       builder: (context, vm) => Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -335,6 +340,8 @@ class _MyPostsState extends State<_MyPosts> {
                           settings: prayerSet,
                           gutter: _grid ? 0 : null,
                           grid: _grid,
+                          alwaysStats: true,
+                          showFresh: false,
                         ),
                     ],
                   );
@@ -358,6 +365,8 @@ class _MyPostsState extends State<_MyPosts> {
                         settings: devotionSet,
                         gutter: _grid ? 0 : null,
                         grid: _grid,
+                        alwaysStats: true,
+                        showFresh: false,
                       ),
                   ],
                 ),
@@ -513,29 +522,64 @@ class _CommentList extends StatelessWidget {
                             style: TextStyle(
                               color: palette.ink,
                               fontSize: 12.5,
-                              fontWeight: FontWeight.w800,
+                              fontWeight: FontWeight.w600,
                             ),
                           ),
                         ),
                         if (c.targetTitle.isNotEmpty) ...[
                           const SizedBox(width: 6),
-                          Flexible(
-                            child: _Bubble(
-                              color: palette.ink.withValues(alpha: 0.06),
-                              child: Text(
-                                c.targetTitle,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  color: palette.muted,
-                                  fontSize: 12.5,
-                                ),
-                              ),
+                          Expanded(
+                            child: Align(
+                              alignment: Alignment.centerLeft,
+                              child: c.target == CommentTarget.prayer
+                                  // 중보기도: 그 사람을 향해 보냈다는 표시로, 이름 앞에 보냄 아이콘이 붙는다.
+                                  ? _Bubble(
+                                      color: palette.accent.withValues(
+                                        alpha: 0.18,
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(
+                                            AppIcons.paperPlaneRight,
+                                            size: 13,
+                                            color: palette.accent,
+                                          ),
+                                          const SizedBox(width: 5),
+                                          Flexible(
+                                            child: Text(
+                                              c.targetTitle,
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: TextStyle(
+                                                color: palette.ink,
+                                                fontSize: 12.5,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    )
+                                  : _Bubble(
+                                      color: palette.ink.withValues(
+                                        alpha: 0.06,
+                                      ),
+                                      child: Text(
+                                        normalizeVerseTitle(c.targetTitle),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(
+                                          color: palette.muted,
+                                          fontSize: 12.5,
+                                        ),
+                                      ),
+                                    ),
                             ),
                           ),
-                        ],
+                        ] else
+                          const Spacer(),
                         const SizedBox(width: 8),
-                        const Spacer(),
                         Text(
                           fmtDateTime(c.date),
                           style: TextStyle(

@@ -59,19 +59,28 @@ class TwoColumn extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, box) {
         final gutter = textGutter(context);
-        final width = (box.maxWidth - gutter * 2 - gap) / 2;
-        return _build(context, gutter, width * minHeightPerWidth);
+        final cols = columnsFor(box.maxWidth);
+        final width = (box.maxWidth - gutter * 2 - gap * (cols - 1)) / cols;
+        return _build(context, gutter, width * minHeightPerWidth, cols);
       },
     );
   }
 
-  Widget _build(BuildContext context, double gutter, double minHeight) {
+  /// 한 행의 카드 수: 좁으면 2개, 넓은 화면은 4개.
+  static int columnsFor(double width) => width >= 640 ? 4 : 2;
+
+  Widget _build(
+    BuildContext context,
+    double gutter,
+    double minHeight,
+    int cols,
+  ) {
     Widget tall(Widget c) => ConstrainedBox(
       constraints: BoxConstraints(minHeight: minHeight),
       child: c,
     );
     final rows = <Widget>[];
-    for (var i = 0; i < children.length; i += 2) {
+    for (var i = 0; i < children.length; i += cols) {
       rows.add(
         Padding(
           padding: EdgeInsets.only(bottom: gap),
@@ -79,13 +88,14 @@ class TwoColumn extends StatelessWidget {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Expanded(child: tall(children[i])),
-                SizedBox(width: gap),
-                Expanded(
-                  child: i + 1 < children.length
-                      ? tall(children[i + 1])
-                      : const SizedBox.shrink(),
-                ),
+                for (var k = 0; k < cols; k++) ...[
+                  if (k > 0) SizedBox(width: gap),
+                  Expanded(
+                    child: i + k < children.length
+                        ? tall(children[i + k])
+                        : const SizedBox.shrink(),
+                  ),
+                ],
               ],
             ),
           ),

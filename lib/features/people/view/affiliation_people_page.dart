@@ -1,13 +1,10 @@
 import 'package:flutter/material.dart';
 
-import 'person_popup.dart';
-
 import '../../../core/layout/responsive.dart';
 import '../../../app/app_scope.dart';
-import '../../../core/icons.dart';
-import '../../../core/layout/manage_list_row.dart';
 import '../../../core/layout/page_frame.dart';
 import '../../../core/theme.dart';
+import 'person_row.dart';
 import '../../../core/widgets/app_inputs.dart';
 import '../../../core/widgets/app_loader.dart';
 import '../../../data/models/affiliation.dart';
@@ -45,12 +42,6 @@ class _AffiliationPeoplePageState extends State<AffiliationPeoplePage> {
       .people(widget.me.churchId);
 
   String _query = '';
-
-  static const _roleLabel = {
-    Role.admin: '교회 관리자',
-    Role.staff: '교역자',
-    Role.member: '교인',
-  };
 
   @override
   Widget build(BuildContext context) {
@@ -96,7 +87,9 @@ class _AffiliationPeoplePageState extends State<AffiliationPeoplePage> {
                               (q.isEmpty || p.name.toLowerCase().contains(q)))
                             p,
                       ]..sort(_byRoleThenName);
-                      return _body(context, current, members);
+                      return _body(context, current, members, {
+                        for (final a in affSnap.data!) a.id: a.name,
+                      });
                     },
                   );
                 },
@@ -112,6 +105,7 @@ class _AffiliationPeoplePageState extends State<AffiliationPeoplePage> {
     BuildContext context,
     Affiliation current,
     List<PersonCard> members,
+    Map<String, String> names,
   ) {
     final me = widget.me;
     return Column(
@@ -135,7 +129,7 @@ class _AffiliationPeoplePageState extends State<AffiliationPeoplePage> {
             '${current.name} ${members.length}명',
             style: TextStyle(
               color: context.palette.muted,
-              fontWeight: FontWeight.w700,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ),
@@ -152,7 +146,6 @@ class _AffiliationPeoplePageState extends State<AffiliationPeoplePage> {
                     churchId: widget.me.churchId,
                     person: members[i],
                     isMe: members[i].id == me.id,
-                    roleLabel: _roleLabel[members[i].role]!,
                   ),
                 ],
               ],
@@ -174,48 +167,17 @@ class _PersonRow extends StatelessWidget {
     required this.churchId,
     required this.person,
     required this.isMe,
-    required this.roleLabel,
   });
 
   final String churchId;
   final PersonCard person;
   final bool isMe;
-  final String roleLabel;
 
   @override
-  Widget build(BuildContext context) {
-    return ManageListRow(
-      onTap: () => showPersonPopup(
-        context,
-        churchId: churchId,
-        uid: person.id,
-        name: person.name,
-        photoUrl: person.photoUrl,
-      ),
-      leading: ManageListRow.avatar(
-        context,
-        person.name,
-        imageUrl: person.photoUrl,
-      ),
-      title: person.name,
-      // 교회 관리자는 이름 앞에 왕관으로 따로 표시한다.
-      titleMark: switch (person.role) {
-        Role.admin => const Tooltip(
-          message: '교회 관리자',
-          child: Icon(AppIcons.crown, size: 18, color: Color(0xFFE0A100)),
-        ),
-        Role.staff => Tooltip(
-          message: '교역자',
-          child: Icon(
-            AppIcons.shieldCheck,
-            size: 18,
-            color: context.palette.brand,
-          ),
-        ),
-        Role.member => null,
-      },
-      badge: isMe ? '본인' : null,
-      line1: roleLabel,
-    );
-  }
+  Widget build(BuildContext context) => PersonRow(
+    churchId: churchId,
+    uid: person.id,
+    card: person,
+    badge: isMe ? '본인' : null,
+  );
 }

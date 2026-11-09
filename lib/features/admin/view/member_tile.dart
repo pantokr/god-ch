@@ -1,16 +1,17 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/format.dart';
-import '../../../core/icons.dart';
 import '../../../core/layout/app_dialog.dart';
+import '../../../core/layout/confirm_dialog.dart';
 import '../../../core/layout/manage_list_row.dart';
 import '../../../core/widgets/toast.dart';
 import '../../../data/models/affiliation.dart';
-import '../../../core/position_style.dart';
 import '../../../data/models/member.dart';
 import '../../../data/models/position.dart';
 import '../view_model/member_admin_view_model.dart';
+import '../../../core/widgets/member_mark.dart';
 import 'member_detail_dialog.dart';
+import 'member_info_page.dart';
 import 'pending_member_dialogs.dart';
 
 /// 교인 한 명: 이름 · 수락일 · 소속을 보여주고, 관리를 누르면 역할 · 소속 · 상태를 고치는 창이 열린다.
@@ -60,17 +61,20 @@ class MemberTile extends StatelessWidget {
       ),
       title: name,
       // 교회 관리자는 이름 앞에 왕관으로 따로 표시한다.
-      titleMark: _titleMark(context),
+      titleMark: MemberMark(
+        role: member.isAppOperator ? Role.member : member.role,
+        position: position,
+        roles: vm.me.rolePermissions,
+      ),
       badge: isSelf
           ? '본인'
           : isNew
           ? 'NEW'
           : null,
       // 신규 입장 요청은 요청일, 교회 회원은 수락일(시작일)이 보인다.
-      line1: pending
-          ? '요청일 ${fmtDate(member.createdAt)}'
-          : '수락일 ${fmtDate(member.memberSince)}',
-      line2: affiliationNames.join(', '),
+      // 교회 회원은 직급만 보인다 (소속 · 수락일은 상세 페이지에서).
+      line1: pending ? '요청일 ${fmtDate(member.createdAt)}' : '',
+      affiliations: pending ? affiliationNames : const [],
       trailing: [
         // 신규 입장 요청은 승인 · 거절 두 버튼뿐이다. 승인하면 역할과 소속을 고르는 창이 뜬다.
         if (pending) ...[
@@ -95,51 +99,7 @@ class MemberTile extends StatelessWidget {
     );
   }
 
-  /// 이름 앞의 아이콘: 교회 관리자는 왕관, 직급이 있으면 그 직급의 아이콘과 색, 교역자는 방패.
-  Widget? _titleMark(BuildContext context) {
-    if (member.role == Role.admin && !member.isAppOperator) {
-      return const Tooltip(
-        message: '교회 관리자',
-        child: Icon(AppIcons.crown, size: 18, color: Color(0xFFE0A100)),
-      );
-    }
-    final p = position;
-    if (p != null) {
-      return Tooltip(
-        message: p.name,
-        child: Icon(
-          PositionStyle.iconOf(p.icon),
-          size: 18,
-          color: PositionStyle.colorOf(p.color),
-        ),
-      );
-    }
-    // 직급이 없으면 역할(교역자 · 회원)의 기본 직급 모양을 따른다. 교인은 모양을 정했을 때만 보인다.
-    final roles = vm.me.rolePermissions;
-    if (member.role == Role.staff) {
-      final st = roles.styleOf(BuiltInPosition.staff);
-      return Tooltip(
-        message: '교역자',
-        child: Icon(
-          PositionStyle.iconOf(st.icon),
-          size: 18,
-          color: PositionStyle.colorOf(st.color),
-        ),
-      );
-    }
-    if (roles.memberStyle != null) {
-      final st = roles.memberStyle!;
-      return Tooltip(
-        message: '회원',
-        child: Icon(
-          PositionStyle.iconOf(st.icon),
-          size: 18,
-          color: PositionStyle.colorOf(st.color),
-        ),
-      );
-    }
-    return null;
-  }
+  String get _positionName => memberPositionLabel(member, position: position);
 
   /// 승인: 역할과 소속을 고르는 창을 띄우고, 고른 대로 승인한다.
   Future<void> _approve(BuildContext context) async {
@@ -177,82 +137,55 @@ class MemberTile extends StatelessWidget {
 
   /// 입장 요청 거절 확인 창. 거절했으면 true.
   Future<bool> _confirmReject(BuildContext context) async {
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('입장 거절'),
-        content: Text('${member.name}님의 입장 요청을 거절할까요?\n초대 코드로 다시 신청할 수 있어요.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('취소'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('거절'),
-          ),
-        ],
-      ),
+    final ok = await confirmChange(
+      context,
+      title: '입장 거절',
+      body: '${member.name}님의 요청을 거절합니다',
+      confirmLabel: '거절',
+      danger: true,
     );
-    if (ok != true) return false;
+    if (!ok) return false;
     await vm.reject(member);
     return vm.error == null;
   }
 
   /// 추방 확인 창. 추방했으면 true.
   Future<bool> _confirmDelete(BuildContext context) async {
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('회원 추방'),
-        content: Text('${member.name}님을 추방할까요?\n다시 들어오려면 초대 코드로 새로 신청해야 해요.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('취소'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('추방'),
-          ),
-        ],
-      ),
+    final ok = await confirmChange(
+      context,
+      title: '회원 추방',
+      body: '${member.name}님을 추방합니다',
+      confirmLabel: '추방',
+      danger: true,
     );
-    if (ok != true) return false;
+    if (!ok) return false;
     await vm.remove(member);
     return vm.error == null;
   }
 
   /// 차단 확인 창. 차단했으면 true.
   Future<bool> _confirmBlock(BuildContext context) async {
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('회원 차단'),
-        content: Text(
-          '${member.name}님을 차단할까요?\n교회에서 내보내고, 이 교회에는 다시 입장할 수 없어요. 차단 목록에서 풀 수 있어요.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('취소'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('차단'),
-          ),
-        ],
-      ),
+    final ok = await confirmChange(
+      context,
+      title: '회원 차단',
+      body: '${member.name}님을 차단합니다',
+      confirmLabel: '차단',
+      danger: true,
     );
-    if (ok != true) return false;
+    if (!ok) return false;
     await vm.block(member);
     return vm.error == null;
   }
 
   void _edit(BuildContext context) {
-    showAppDialog(
+    showMemberInfoPage(
       context,
-      child: MemberDetailDialog(
+      member: member,
+      positionName: _positionName,
+      position: position,
+      affiliationNames: affiliationNames,
+      editor: MemberDetailDialog(
+        showHeader: false,
         vm: vm,
         title: member.name,
         name: member.name,

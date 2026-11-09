@@ -48,7 +48,7 @@ class CreateFab extends StatelessWidget {
                   style: TextStyle(
                     color: palette.onBrand,
                     fontSize: 15,
-                    fontWeight: FontWeight.w800,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ],

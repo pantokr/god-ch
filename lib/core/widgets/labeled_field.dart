@@ -36,7 +36,7 @@ class LabeledField extends StatelessWidget {
     final style = TextStyle(
       color: context.palette.ink,
       fontSize: 14,
-      fontWeight: FontWeight.w700,
+      fontWeight: FontWeight.w600,
       height: 1.3,
     );
     final text = DefaultTextStyle.merge(
@@ -67,12 +67,8 @@ class LabeledField extends StatelessWidget {
               child: Padding(
                 // 위쪽에 맞출 때는 첫 줄의 글자 높이에 맞춘다.
                 padding: EdgeInsets.only(right: 12, top: alignTop ? 14 : 0),
-                // 이름표는 줄을 바꾸지 않는다: 칸보다 길면 글자가 조금 작아진다.
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  alignment: Alignment.centerLeft,
-                  child: text,
-                ),
+                // 이름표가 칸보다 길면 글자를 줄이지 않고 줄을 바꾼다.
+                child: text,
               ),
             ),
             Expanded(child: child),

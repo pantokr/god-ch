@@ -40,7 +40,7 @@ class ThumbnailAvatar extends StatelessWidget {
         style: TextStyle(
           color: palette.brand,
           fontSize: radius * 0.8,
-          fontWeight: FontWeight.w700,
+          fontWeight: FontWeight.w600,
         ),
       ),
     );

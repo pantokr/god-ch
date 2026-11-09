@@ -77,7 +77,7 @@ class ReflectionsCard extends StatelessWidget {
                     reflection: r,
                     canDelete:
                         r.authorId == me.id ||
-                        me.can(Permission.devotionCommentDeleteOthers),
+                        me.canAll(Permission.devotionEngage),
                     busy: vm.busy,
                     canEdit:
                         canWrite && !me.isOperatorView && r.authorId == me.id,
@@ -135,6 +135,10 @@ class _Comment extends StatelessWidget {
     final r = reflection;
     return Card(
       margin: EdgeInsets.zero,
+      // 개인 설정: 말씀묵상 카드 색.
+      color: AppScope.read(context).preferences
+          .tintOf('bible')
+          .colorFor(Theme.of(context).brightness),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 14, 8, 14),
         child: Row(

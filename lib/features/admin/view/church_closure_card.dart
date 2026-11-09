@@ -2,6 +2,8 @@ import '../../../core/icons.dart';
 
 import 'package:flutter/material.dart';
 
+import '../../../core/widgets/toast.dart';
+
 import '../../../core/widgets/labeled_field.dart';
 
 import 'package:flutter/services.dart';
@@ -32,8 +34,7 @@ class ChurchClosureCard extends StatelessWidget {
     if (reason == null) return;
     final ok = await vm.request(reason);
     if (ok && context.mounted) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('폐쇄를 요청했어요.')));
+      showToastOn(ScaffoldMessenger.of(context), '폐쇄를 요청했어요.');
     }
   }
 
@@ -77,7 +78,7 @@ class ChurchClosureCard extends StatelessWidget {
                     const SizedBox(height: 12),
                     Text(
                       '폐쇄 요청 처리를 기다리고 있어요 · ${fmtDate(r!.createdAt)}',
-                      style: const TextStyle(fontWeight: FontWeight.w700),
+                      style: const TextStyle(fontWeight: FontWeight.w600),
                     ),
                     const SizedBox(height: 4),
                     Text(

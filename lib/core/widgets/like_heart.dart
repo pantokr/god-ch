@@ -2,6 +2,8 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../theme.dart';
+
 import '../icons.dart';
 
 /// 좋아요 하트: 눌러서 채워지는 순간 하트가 통통 튀고 작은 하트들이 사방으로 퍼지며 사라진다.
@@ -12,7 +14,7 @@ class LikeHeart extends StatefulWidget {
     super.key,
     required this.liked,
     this.size = 22,
-    this.likedColor = const Color(0xFFE5484D),
+    this.likedColor = AppColors.like,
     this.unlikedColor,
     this.shadows,
   });

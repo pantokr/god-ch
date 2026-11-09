@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/widgets/role_chips.dart';
+
 import '../../../core/widgets/labeled_field.dart';
 
 import 'package:flutter/services.dart';
 
 import '../../../app/app_scope.dart';
 import '../../../core/icons.dart';
+import '../../../core/layout/discard_guard.dart';
 import '../../../core/layout/sub_page.dart';
 import '../../../core/widgets/choice_row.dart';
 import '../../../core/widgets/app_date_picker.dart';
@@ -26,11 +29,11 @@ class MeetingFormResult {
     this.fee = 0,
     this.needsApproval = false,
     this.imageUrl = '',
-    this.affiliationId,
+    this.affiliationIds = const [],
   });
 
-  /// 공개 범위(소속). null이면 교회 전체.
-  final String? affiliationId;
+  /// 공개 범위(소속들). 비어 있으면 교회 전체.
+  final List<String> affiliationIds;
   final String imageUrl;
   final String title;
   final String description;
@@ -92,7 +95,7 @@ class _FormState extends State<_Form> {
   // 회비 유무를 먼저 고르고, 있으면 금액을 입력한다.
   late bool _hasFee = (widget.initial?.fee ?? 0) > 0;
   late bool _needsApproval = widget.initial?.needsApproval ?? false;
-  late String? _affiliationId = widget.initial?.affiliationId;
+  late final Set<String> _affiliationIds = {...?widget.initial?.affiliationIds};
   late DateTime _date =
       widget.initial?.date ??
       DateTime.now()
@@ -150,8 +153,24 @@ class _FormState extends State<_Form> {
     });
   }
 
+  bool get _dirty {
+    final i = widget.initial;
+    return _title.text != (i?.title ?? '') ||
+        _place.text != (i?.place ?? '') ||
+        _description.text != (i?.description ?? '') ||
+        _image.text != (i?.imageUrl ?? '');
+  }
+
   @override
   Widget build(BuildContext context) {
+    return DiscardGuard(
+      isDirty: () => _dirty,
+      listenable: Listenable.merge([_title, _place, _description, _image]),
+      child: _content(context),
+    );
+  }
+
+  Widget _content(BuildContext context) {
     const cardPadding = EdgeInsets.symmetric(horizontal: 12, vertical: 24);
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -287,7 +306,7 @@ class _FormState extends State<_Form> {
                   onChanged: (v) => setState(() => _needsApproval = v),
                 ),
                 const SizedBox(height: 16),
-                // 공개 범위: 참여할 수 있는 소속. 교역자 이상은 교회 전체도 고를 수 있다.
+                // 공개 범위: 참여할 수 있는 소속들 (여러 개 선택). 교역자 이상은 하나도 고르지 않으면 교회 전체다.
                 StreamBuilder<List<Affiliation>>(
                   stream: AppScope.read(context).affiliations
                       .affiliations(widget.me.churchId),
@@ -300,35 +319,43 @@ class _FormState extends State<_Form> {
                     // 고를 수 있는 소속이 없고 교역자도 아니면 늘 교회 전체다.
                     if (list.isEmpty && !staff) return const SizedBox.shrink();
                     // 교역자가 아니면 교회 전체는 고를 수 없다: 고른 소속이 없으면 첫 소속이 골라진다.
-                    final chosen = list.any((a) => a.id == _affiliationId);
-                    final value = chosen
-                        ? _affiliationId
-                        : (staff ? null : list.first.id);
-                    if (!staff && !chosen) {
+                    if (!staff && _affiliationIds.isEmpty) {
                       WidgetsBinding.instance.addPostFrameCallback((_) {
                         if (mounted) {
-                          setState(() => _affiliationId = list.first.id);
+                          setState(() => _affiliationIds.add(list.first.id));
                         }
                       });
                     }
                     return LabeledField(
                       label: '공개 범위',
-                      child: DropdownButtonFormField<String?>(
-                        initialValue: value,
-                        decoration: const InputDecoration(),
-                        items: [
+                      alignTop: true,
+                      child: Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          // 전체: 소속을 하나도 고르지 않은 상태 (교역자만).
                           if (staff)
-                            const DropdownMenuItem<String?>(
-                              value: null,
-                              child: Text('전체'),
+                            AffiliationChoiceChip(
+                              label: '전체',
+                              selected: _affiliationIds.isEmpty,
+                              onTap: () =>
+                                  setState(() => _affiliationIds.clear()),
                             ),
                           for (final a in list)
-                            DropdownMenuItem<String?>(
-                              value: a.id,
-                              child: Text(a.name),
+                            AffiliationChoiceChip(
+                              label: a.name,
+                              selected: _affiliationIds.contains(a.id),
+                              onTap: () => setState(() {
+                                if (!_affiliationIds.contains(a.id)) {
+                                  _affiliationIds.add(a.id);
+                                } else if (staff ||
+                                    _affiliationIds.length > 1) {
+                                  // 교역자가 아니면 마지막 하나는 풀 수 없다 (소속 없는 교회 전체는 고를 수 없다).
+                                  _affiliationIds.remove(a.id);
+                                }
+                              }),
                             ),
                         ],
-                        onChanged: (v) => setState(() => _affiliationId = v),
                       ),
                     );
                   },
@@ -338,7 +365,7 @@ class _FormState extends State<_Form> {
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
                     TextButton(
-                      onPressed: () => Navigator.pop(context),
+                      onPressed: () => Navigator.of(context).maybePop(),
                       child: const Text('취소'),
                     ),
                     const SizedBox(width: 8),
@@ -354,7 +381,7 @@ class _FormState extends State<_Form> {
                           fee: _hasFee ? (int.tryParse(_fee.text) ?? 0) : 0,
                           needsApproval: _needsApproval,
                           imageUrl: _image.text,
-                          affiliationId: _affiliationId,
+                          affiliationIds: _affiliationIds.toList()..sort(),
                         ),
                       ),
                       child: const Text('저장'),

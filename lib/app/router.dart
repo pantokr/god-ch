@@ -180,8 +180,16 @@ GoRouter buildRouter(SessionNotifier session) {
           _sectionRoute(ChurchSection.people, const PeopleSectionPage()),
           _sectionRoute(ChurchSection.calendar, const CalendarSectionPage()),
           _sectionRoute(
+            ChurchSection.preferences,
+            const PreferencesSectionPage(),
+          ),
+          _sectionRoute(
             ChurchSection.myMeetings,
             const MyMeetingsSectionPage(),
+          ),
+          _sectionRoute(
+            ChurchSection.allMeetings,
+            const AllMeetingsSectionPage(),
           ),
           _sectionRoute(
             ChurchSection.prayerSettings,

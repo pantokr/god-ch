@@ -3,6 +3,9 @@ import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+
+import '../../../data/shared_stream.dart';
+
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:image/image.dart' as img;
 
@@ -33,8 +36,13 @@ class ContentRepository {
       _paths.church(churchId).collection('settings').doc('devotion');
 
   /// 교회가 정한 말씀묵상 운영 설정. 정한 적 없으면 표준 설정이다.
-  Stream<DevotionSettings> settings(String churchId) =>
-      _settings(churchId).snapshots().map(DevotionSettings.fromDoc);
+  Stream<DevotionSettings> settings(String churchId) => _shared.of(
+    'settings/$churchId',
+    () => _settings(churchId).snapshots().map(DevotionSettings.fromDoc),
+  );
+
+  /// 같은 조회(운영 설정)를 화면마다 따로 듣지 않고 하나를 나눠 쓴다.
+  final _shared = SharedStreams();
 
   Future<DevotionSettings> loadSettings(String churchId) async =>
       DevotionSettings.fromDoc(await _settings(churchId).get());
@@ -174,6 +182,7 @@ class ContentRepository {
     required String title,
     required String body,
     required String meditation,
+    List<DevotionPassage> extras = const [],
     required DateTime date,
     String authorName = '',
     String authorPhotoUrl = '',
@@ -192,7 +201,29 @@ class ContentRepository {
     if (meditation.trim().length > 5000) {
       throw const AppException('묵상은 5000자까지 쓸 수 있어요.');
     }
+    if (extras.length > ChurchContent.maxPassages - 1) {
+      throw const AppException(
+        '묵상은 최대 ${ChurchContent.maxPassages}개까지 올릴 수 있어요.',
+      );
+    }
+    for (final e in extras) {
+      if (e.title.trim().isEmpty || e.body.trim().isEmpty) {
+        throw const AppException('추가한 묵상에도 말씀을 불러와 주세요.');
+      }
+      if (e.title.trim().length > 100 || e.body.trim().length > 5000) {
+        throw const AppException('말씀이 너무 길어요.');
+      }
+      if (e.meditation.trim().length < ChurchContent.minMeditation) {
+        throw const AppException(
+          '묵상은 ${ChurchContent.minMeditation}자 이상 써 주세요.',
+        );
+      }
+      if (e.meditation.trim().length > 5000) {
+        throw const AppException('묵상은 5000자까지 쓸 수 있어요.');
+      }
+    }
     final data = {
+      'extras': [for (final e in extras) e.toMap()],
       'title': t,
       'body': body.trim(),
       'meditation': meditation.trim(),

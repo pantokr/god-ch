@@ -18,6 +18,7 @@ import '../features/notifications/data/notification_repository.dart';
 import '../features/platform/data/church_registry_repository.dart';
 import '../features/prayers/data/prayer_repository.dart';
 import 'list_style_controller.dart';
+import 'preferences_controller.dart';
 import 'theme_mode_controller.dart';
 
 /// 앱 전체에서 쓰는 저장소 모음. ViewModel을 만들 때 여기서 꺼내 주입한다.
@@ -26,6 +27,7 @@ class AppScope extends InheritedWidget {
     super.key,
     required this.themeMode,
     required this.listStyle,
+    required this.preferences,
     required this.auth,
     required this.profiles,
     required this.churches,
@@ -50,6 +52,9 @@ class AppScope extends InheritedWidget {
 
   /// 목록 화면 모양(알록달록 · 심플).
   final ListStyleController listStyle;
+
+  /// 개인 설정(글씨 크기, 신규 표시, 화면별 기본 보기 · 정렬).
+  final PreferencesController preferences;
   final AuthRepository auth;
   final ProfileRepository profiles;
   final ChurchRepository churches;

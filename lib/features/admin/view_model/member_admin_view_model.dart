@@ -164,7 +164,7 @@ class MemberAdminViewModel extends ViewModel {
 
   /// 소속 인원 배치 권한이 있는가 (본인 문서는 제외).
   bool canAssignAffiliation(Member m) =>
-      m.id != me.id && me.can(Permission.affiliationAssign);
+      m.id != me.id && me.can(Permission.memberManage);
 
   /// 입장 요청 거절 · 차단은 추방과 같이 교회 운영자만 한다.
   Future<void> reject(Member m) =>

@@ -41,7 +41,7 @@ class _DeletePrayerFormState extends State<_DeletePrayerForm> {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text('기도제목을 삭제할까요?', style: Theme.of(context).textTheme.titleLarge),
+        Text('중보기도를 삭제할까요?', style: Theme.of(context).textTheme.titleLarge),
         const SizedBox(height: 16),
         if (widget.needsReason)
           LabeledField(
@@ -56,7 +56,7 @@ class _DeletePrayerFormState extends State<_DeletePrayerForm> {
             ),
           )
         else
-          const Text('삭제한 기도제목은 목록에서 사라집니다.'),
+          const Text('삭제한 중보기도는 목록에서 사라집니다.'),
         const SizedBox(height: 20),
         Row(
           mainAxisAlignment: MainAxisAlignment.end,

@@ -24,7 +24,8 @@ class _AppInfo extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
-            width: 72,
+            // 글씨가 커져도 라벨이 값에 맞닿지 않게 칸 너비가 글씨 배율을 따르고, 사이에 여백을 둔다.
+            width: MediaQuery.textScalerOf(context).scale(72) + 8,
             child: Text(
               label,
               style: TextStyle(color: palette.muted, fontSize: 14),

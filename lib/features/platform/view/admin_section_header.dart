@@ -47,7 +47,7 @@ class AdminSectionHeader extends StatelessWidget {
                   style: TextStyle(
                     color: color,
                     fontSize: 13,
-                    fontWeight: FontWeight.w800,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ),

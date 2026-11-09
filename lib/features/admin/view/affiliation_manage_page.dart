@@ -76,7 +76,7 @@ class AffiliationManagePage extends StatelessWidget {
             children: [
               // 제목 옆이 아니라 다음 줄에 둔다.
               // 소속을 만들고 고치는 것은 앱을 고치는 일이라 교회 관리자만 한다 (교역자는 조회와 인원 배치).
-              if (me.can(Permission.affiliationCreate)) ...[
+              if (me.can(Permission.affiliationEdit)) ...[
                 Align(
                   alignment: Alignment.centerRight,
                   child: FilledButton.icon(
@@ -194,7 +194,8 @@ class _AffiliationCard extends StatelessWidget {
         boxShadow: AppShadow.soft(context),
       ),
       child: SizedBox(
-        height: 156,
+        // 글씨가 커져도 넘치지 않게 글 영역만큼 높이가 따라 커진다.
+        height: _cardHeight(context),
         child: Stack(
           children: [
             Padding(
@@ -221,7 +222,7 @@ class _AffiliationCard extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
-                      fontWeight: FontWeight.w800,
+                      fontWeight: FontWeight.w600,
                       fontSize: 16,
                     ),
                   ),
@@ -262,7 +263,8 @@ class _UnassignedCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final palette = context.palette;
     return Container(
-      height: 156,
+      // 글씨가 커져도 넘치지 않게 글 영역만큼 높이가 따라 커진다.
+      height: _cardHeight(context),
       decoration: BoxDecoration(
         color: palette.surface,
         borderRadius: BorderRadius.circular(AppRadius.card),
@@ -276,24 +278,31 @@ class _UnassignedCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: palette.muted.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(AppRadius.control),
-                  ),
-                  child: Icon(
-                    AppIcons.usersThree,
-                    size: 22,
-                    color: palette.muted,
-                  ),
+                // 다른 소속 카드와 같은 모양: 프로필 아이콘 오른쪽에 자물쇠(기본 소속 표시)만 더한다.
+                Row(
+                  children: [
+                    Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: palette.muted.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(AppRadius.control),
+                      ),
+                      child: Icon(
+                        AppIcons.usersThree,
+                        size: 22,
+                        color: palette.muted,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Icon(AppIcons.lock, size: 16, color: palette.muted),
+                  ],
                 ),
                 const Spacer(),
                 Text(
                   Affiliation.unassignedName,
                   style: const TextStyle(
-                    fontWeight: FontWeight.w800,
+                    fontWeight: FontWeight.w600,
                     fontSize: 16,
                   ),
                 ),
@@ -301,17 +310,6 @@ class _UnassignedCard extends StatelessWidget {
                 Text(
                   '$count명',
                   style: TextStyle(color: palette.muted, fontSize: 13),
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Icon(AppIcons.lock, size: 14, color: palette.muted),
-                    const SizedBox(width: 4),
-                    Text(
-                      '기본',
-                      style: TextStyle(color: palette.muted, fontSize: 12.5),
-                    ),
-                  ],
                 ),
               ],
             ),
@@ -390,3 +388,7 @@ class _AffiliationNameFormState extends State<_AffiliationNameForm> {
     );
   }
 }
+
+/// 소속 카드 높이: 기본 156에, 글씨 확대 배율만큼 글 영역(약 60)을 더한다.
+double _cardHeight(BuildContext context) =>
+    156 + 60 * (MediaQuery.textScalerOf(context).scale(1) - 1);

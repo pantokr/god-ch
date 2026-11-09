@@ -81,7 +81,7 @@ class AccountPage extends StatelessWidget {
                             const Expanded(
                               child: Text(
                                 '비밀번호',
-                                style: TextStyle(fontWeight: FontWeight.w700),
+                                style: TextStyle(fontWeight: FontWeight.w600),
                               ),
                             ),
                             OutlinedButton(
@@ -105,7 +105,7 @@ class AccountPage extends StatelessWidget {
                             const Expanded(
                               child: Text(
                                 '앱 탈퇴',
-                                style: TextStyle(fontWeight: FontWeight.w700),
+                                style: TextStyle(fontWeight: FontWeight.w600),
                               ),
                             ),
                             OutlinedButton(

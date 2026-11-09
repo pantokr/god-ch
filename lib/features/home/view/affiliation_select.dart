@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import '../../../app/app_scope.dart';
 import '../../../core/mvvm/view_model_builder.dart';
 import '../../../core/theme.dart';
-import '../../../data/models/church_features.dart';
+import '../../../data/models/tab_access.dart';
 import '../../../data/models/affiliation.dart';
 import '../../../data/models/member.dart';
 import '../view_model/affiliation_choice.dart';
@@ -47,53 +47,50 @@ class AffiliationSelect extends StatelessWidget {
       ),
       builder: (context, vm) => StreamBuilder<List<Affiliation>>(
         stream: vm.affiliations,
-        builder: (context, affs) => StreamBuilder<ChurchFeatures>(
-          stream: vm.features,
-          builder: (context, feat) {
-            if (!affs.hasData || !feat.hasData) return const SizedBox.shrink();
-            final access = feat.data!.accessFor(feature, me, affs.data!);
-            if (access.blocked || access.options.isEmpty) {
-              return const SizedBox.shrink();
-            }
-            final current = chosenAffiliation(access, choice, me);
-            final withAll = me.isStaff;
-            final currentName = current?.name ?? '전체';
-            final palette = context.palette;
-            final style = TextStyle(
-              color: palette.ink,
-              fontSize: 15,
-              fontWeight: FontWeight.w700,
-            );
-            if (access.options.length + (withAll ? 1 : 0) == 1) {
-              return Padding(
-                padding: const EdgeInsets.only(right: 16),
-                child: Text(currentName, style: style),
-              );
-            }
+        builder: (context, affs) {
+          if (!affs.hasData) return const SizedBox.shrink();
+          final access = TabAccess.of(feature, me, affs.data!);
+          if (access.blocked || access.options.isEmpty) {
+            return const SizedBox.shrink();
+          }
+          final current = chosenAffiliation(access, choice, me);
+          final withAll = me.isStaff;
+          final currentName = current?.name ?? '전체';
+          final palette = context.palette;
+          final style = TextStyle(
+            color: palette.ink,
+            fontSize: 15,
+            fontWeight: FontWeight.w600,
+          );
+          if (access.options.length + (withAll ? 1 : 0) == 1) {
             return Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: DropdownButtonHideUnderline(
-                child: DropdownButton<String>(
-                  value: current?.id ?? AffiliationChoice.all,
-                  isDense: true,
-                  style: style,
-                  icon: Icon(AppIcons.caretDown, color: palette.muted),
-                  borderRadius: BorderRadius.circular(AppRadius.card),
-                  items: [
-                    if (withAll)
-                      const DropdownMenuItem(
-                        value: AffiliationChoice.all,
-                        child: Text('전체'),
-                      ),
-                    for (final d in access.options)
-                      DropdownMenuItem(value: d.id, child: Text(d.name)),
-                  ],
-                  onChanged: choice.select,
-                ),
-              ),
+              padding: const EdgeInsets.only(right: 16),
+              child: Text(currentName, style: style),
             );
-          },
-        ),
+          }
+          return Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<String>(
+                value: current?.id ?? AffiliationChoice.all,
+                isDense: true,
+                style: style,
+                icon: Icon(AppIcons.caretDown, color: palette.muted),
+                borderRadius: BorderRadius.circular(AppRadius.card),
+                items: [
+                  if (withAll)
+                    const DropdownMenuItem(
+                      value: AffiliationChoice.all,
+                      child: Text('전체'),
+                    ),
+                  for (final d in access.options)
+                    DropdownMenuItem(value: d.id, child: Text(d.name)),
+                ],
+                onChanged: choice.select,
+              ),
+            ),
+          );
+        },
       ),
     );
   }

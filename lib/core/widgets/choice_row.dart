@@ -60,33 +60,14 @@ class OnOffRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // 다른 선택 줄(ChoiceRow)과 같은 틀: 이름표는 왼쪽 칸에, 켬 · 끔은 같은 칸 너비로 같은 자리에 놓인다.
     return Padding(
       padding: EdgeInsets.only(left: indent ? 28 : 0),
-      child: Row(
-        children: [
-          // 눌리지 않는 종속 설정은 이름도 흐리게 보인다.
-          Expanded(
-            child: Text(
-              label,
-              style: TextStyle(
-                color: onChanged == null
-                    ? context.palette.muted.withValues(alpha: 0.6)
-                    : null,
-              ),
-            ),
-          ),
-          SizedBox(
-            width: 132,
-            child: ChoiceRadios<bool>(
-              options: const [
-                ChoiceOption(true, '켬'),
-                ChoiceOption(false, '끔'),
-              ],
-              value: value,
-              onChanged: onChanged,
-            ),
-          ),
-        ],
+      child: ChoiceRow<bool>(
+        label: label,
+        options: const [ChoiceOption(true, '켬'), ChoiceOption(false, '끔')],
+        value: value,
+        onChanged: onChanged,
       ),
     );
   }
@@ -108,6 +89,28 @@ class ChoiceRadios<T> extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final palette = context.palette;
+    // 선택지가 2개든 3개든 칸 너비가 같아서(줄마다 같은 자리에 놓인다) 여러 줄을 나란히 놓아도 라디오가 어질러지지 않는다.
+    // 자리가 좁으면 칸이 같은 비율로 줄어든다.
+    return LayoutBuilder(
+      builder: (context, box) {
+        final cell = box.maxWidth.isFinite
+            ? (box.maxWidth / options.length).clamp(0.0, cellWidth)
+            : cellWidth;
+        return Align(
+          alignment: Alignment.centerLeft,
+          child: SizedBox(
+            width: cell * options.length,
+            child: _radios(context, palette),
+          ),
+        );
+      },
+    );
+  }
+
+  /// 선택지 한 칸의 너비.
+  static const cellWidth = 104.0;
+
+  Widget _radios(BuildContext context, AppPalette palette) {
     return RadioGroup<T>(
       groupValue: value,
       onChanged: (v) {

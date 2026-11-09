@@ -120,6 +120,14 @@ class MyPostsViewModel extends ViewModel {
   MyPostFilter get filter => _filter;
   MyPostSort get sort => _sort;
 
+  /// 개인 설정의 기본 정렬을 처음 한 번 적용한다 (만들 때 부른다).
+  void initDefaults({String? sort}) {
+    _sort = MyPostSort.values.firstWhere(
+      (s) => s.name == sort,
+      orElse: () => MyPostSort.latest,
+    );
+  }
+
   /// 고른 종류에서 쓸 수 있는 정렬: 댓글에는 조회수 · 좋아요가 없어 최신순 · 오래된순만 있다.
   List<MyPostSort> get sortOptions => _filter == MyPostFilter.comment
       ? const [MyPostSort.latest, MyPostSort.oldest]

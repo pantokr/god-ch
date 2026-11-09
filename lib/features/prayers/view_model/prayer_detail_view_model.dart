@@ -53,14 +53,13 @@ class PrayerDetailViewModel extends ViewModel {
   bool canDelete(Prayer p) =>
       !p.deleted &&
       // 본인 글 삭제는 설정 없이 모두에게 있다.
-      (isAuthor(p) || (!isAuthor(p) && me.can(Permission.prayerDeleteOthers)));
+      (isAuthor(p) || (!isAuthor(p) && me.canAll(Permission.prayerPost)));
 
-  bool canRestore(Prayer p) =>
-      p.deleted && me.can(Permission.prayerDeleteOthers);
+  bool canRestore(Prayer p) => p.deleted && me.canAll(Permission.prayerPost);
 
   /// 삭제되었거나 더 이상 볼 수 없게 된 글인가.
   bool isHidden(Prayer? p) =>
-      p == null || (p.deleted && !me.can(Permission.prayerViewPrivate));
+      p == null || (p.deleted && !me.canAll(Permission.prayerPrivate));
 
   /// 타인의 글을 교역자가 지울 때는 사유를 반드시 기록한다.
   bool needsDeleteReason(Prayer p) =>
@@ -96,7 +95,7 @@ class PrayerDetailViewModel extends ViewModel {
 
   /// 이 댓글을 지울 수 있는가: 본인 댓글은 누구나, 타인 댓글은 타인 댓글 삭제 권한이 있어야 한다.
   bool canDeleteComment(TextEntry e) =>
-      e.authorId == me.id || me.can(Permission.prayerCommentDeleteOthers);
+      e.authorId == me.id || me.canAll(Permission.prayerEngage);
 
   /// 내 댓글을 고칠 수 있는가: 본인 댓글이고 댓글을 쓸 수 있을 때.
   bool canEditComment(TextEntry e) =>

@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import '../../../app/app_scope.dart';
 import '../../../core/mvvm/view_model_builder.dart';
 import '../../../core/theme.dart';
+import '../../../core/widgets/member_mark.dart';
+import '../../../core/widgets/role_chips.dart';
 import '../../../data/models/affiliation.dart';
 import '../../../data/models/member.dart';
 import '../view_model/my_affiliations_view_model.dart';
@@ -43,7 +45,7 @@ class MyAffiliationsCard extends StatelessWidget {
                         const SizedBox(width: 14),
                         const Text(
                           '내가 속한 교회',
-                          style: TextStyle(fontWeight: FontWeight.w700),
+                          style: TextStyle(fontWeight: FontWeight.w600),
                         ),
                       ],
                     ),
@@ -93,11 +95,13 @@ class _Church extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
                   fontSize: 16,
-                  fontWeight: FontWeight.w700,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
             ),
             const SizedBox(width: 8),
+            MemberMark(role: member.role, size: 16),
+            const SizedBox(width: 4),
             Text(_role, style: TextStyle(color: palette.muted, fontSize: 13)),
           ],
         ),
@@ -118,18 +122,7 @@ class _Church extends StatelessWidget {
             return Wrap(
               spacing: 6,
               runSpacing: 6,
-              children: [
-                for (final n in names)
-                  Chip(
-                    visualDensity: VisualDensity.compact,
-                    avatar: Icon(
-                      AppIcons.usersThree,
-                      size: 16,
-                      color: palette.muted,
-                    ),
-                    label: Text(n),
-                  ),
-              ],
+              children: [for (final n in names) AffiliationChip(n)],
             );
           },
         ),

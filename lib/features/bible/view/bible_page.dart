@@ -27,7 +27,7 @@ import '../../../core/widgets/thumbnail_avatar.dart';
 import '../../../data/models/permission.dart';
 import '../../../data/models/affiliation.dart';
 import '../../../data/models/church_content.dart';
-import '../../../data/models/church_features.dart';
+import '../../../data/models/tab_access.dart';
 import '../../../data/models/devotion_settings.dart';
 import '../../../data/models/member.dart';
 import '../../home/view/affiliation_tag.dart';
@@ -56,18 +56,22 @@ class BiblePage extends StatelessWidget {
       builder: (context, affiliation) => RefreshScope(
         builder: (context, generation, refresh) => ViewModelBuilder<DevotionsViewModel>(
           key: ValueKey('bible/${me.churchId}/$generation'),
-          create: (context) => DevotionsViewModel(
-            AppScope.read(context).contents,
-            me.churchId,
-            authorName: me.name,
-            authorPhotoUrl: me.photoUrl,
-            affiliations: AppScope.read(context).affiliations
-                .affiliations(me.churchId),
-            includePrivate: me.can(Permission.devotionViewPrivate),
-            // 교역자 이상이 아니면 자기가 속한 소속의 글만 읽는다 (미배정이면 아무것도 없다).
-            affiliationIds: me.isStaff ? null : me.affiliationIds,
-            readerId: me.id,
-          ),
+          create: (context) =>
+              DevotionsViewModel(
+                AppScope.read(context).contents,
+                me.churchId,
+                authorName: me.name,
+                authorPhotoUrl: me.photoUrl,
+                affiliations: AppScope.read(context).affiliations
+                    .affiliations(me.churchId),
+                includePrivate: me.canAll(Permission.devotionPrivate),
+                // 교역자 이상이 아니면 자기가 속한 소속의 글만 읽는다 (미배정이면 아무것도 없다).
+                affiliationIds: me.isStaff ? null : me.affiliationIds,
+                readerId: me.id,
+              )..initDefaults(
+                grid: AppScope.read(context).preferences.gridOf('bible'),
+                sort: AppScope.read(context).preferences.sortOf('bible'),
+              ),
           builder: (context, vm) => Stack(
             fit: StackFit.expand,
             children: [
@@ -84,8 +88,7 @@ class BiblePage extends StatelessWidget {
                       PageTitle(
                         gap: 32,
                         title: '',
-                        description:
-                            '교역자가 올린 말씀 본문과 그에 대한 묵상입니다. 소속별로 나누어 모아 둡니다.',
+                        description: '오늘의 말씀 구절을 읽어 보세요. 묵상을 읽고 나의 묵상도 남겨 보세요.',
                       ),
                       StreamBuilder<List<Affiliation>>(
                         stream: vm.affiliations,
@@ -220,7 +223,7 @@ class BiblePage extends StatelessWidget {
                   ),
                 ),
               ),
-              if (me.can(Permission.devotionWrite))
+              if (me.can(Permission.devotionPost))
                 Positioned(
                   right: 16,
                   bottom: 16 + MediaQuery.paddingOf(context).bottom,
@@ -249,6 +252,7 @@ class BiblePage extends StatelessWidget {
       title: result.title,
       body: result.body,
       meditation: result.meditation,
+      extras: result.extras,
       date: result.date,
       affiliationId: result.affiliationId,
       isPrivate: result.isPrivate,
@@ -256,7 +260,7 @@ class BiblePage extends StatelessWidget {
     if (ok) {
       showToastOn(messenger, '추가되었습니다', bottom: inset);
     } else if (vm.error != null) {
-      messenger.showSnackBar(SnackBar(content: Text(vm.error!)));
+      showToastOn(messenger, vm.error!);
     }
   }
 }
@@ -348,7 +352,7 @@ class _RecentAuthors extends StatelessWidget {
                                   '+$more',
                                   style: TextStyle(
                                     color: palette.ink,
-                                    fontWeight: FontWeight.w800,
+                                    fontWeight: FontWeight.w600,
                                     fontSize: 11,
                                   ),
                                 ),
@@ -387,8 +391,15 @@ class DevotionCard extends StatelessWidget {
     this.affiliationNames = const {},
     this.gutter,
     this.grid = false,
+    this.alwaysStats = false,
+    this.showFresh = true,
   });
 
+  /// 신규 표시를 붙이는가 (내 활동에서는 끈다).
+  final bool showFresh;
+
+  /// 설정과 상관없이 댓글 · 반응 · 조회수를 0이어도 모두 보인다 (내 활동).
+  final bool alwaysStats;
   final ChurchContent content;
   final Member me;
   final DevotionSettings settings;
@@ -403,17 +414,30 @@ class DevotionCard extends StatelessWidget {
   final bool grid;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => ListenableBuilder(
+    // 글을 열면(개인 설정에 기록) 신규 표시가 바로 사라지도록, 설정이 바뀔 때 다시 그린다.
+    listenable: AppScope.read(context).preferences,
+    builder: (context, _) => _card(context),
+  );
+
+  Widget _card(BuildContext context) {
     final palette = context.palette;
-    final excerptLines = grid ? 6 : 2;
+    // 격자는 묵상을 3줄까지만 보이고 말줄임표로 줄인다.
+    final excerptLines = grid ? 3 : 2;
     final c = content;
     // 앱 개발자는 교인이 아니라 읽음 표시가 없다.
-    final read = !me.isOperatorView && c.readBy.contains(me.id);
+    final read =
+        !me.isOperatorView &&
+        (c.readBy.contains(me.id) ||
+            AppScope.read(context).preferences
+                .seen('d/${me.churchId}/${c.id}'));
     // 읽은 글은 "읽음", 7일 안에 올라온 안 읽은 글은 "신규", 오래된 안 읽은 글은 바가 없다.
     final fresh =
         !me.isOperatorView && !read && ReadStatusBar.isFresh(c.createdAt);
     // 내가 쓴 글은 읽음 · 신규 표시가 필요 없다.
-    final showBar = kReadBarEnabled && c.authorId != me.id && (read || fresh);
+    // 신규 바만 쓴다: 한 번 열어 읽으면 사라지는 1회용이고, 읽음 바는 두지 않는다.
+    final showBar =
+        showFresh && kReadBarEnabled && c.authorId != me.id && fresh;
     // 글이 짧든 길든 카드 높이가 같도록 글 영역은 늘 정해진 줄 수만큼 자리를 잡는다.
     final scaler = MediaQuery.textScalerOf(context);
     return Padding(
@@ -426,135 +450,140 @@ class DevotionCard extends StatelessWidget {
       child: InkWell(
         onTap: () => context.push(Routes.devotion(me.churchId, c.id)),
         borderRadius: BorderRadius.circular(4),
-        child: Ink(
-          // 읽음 · 신규 바는 카드 맨 위 가장자리에 붙으므로 위쪽 여백은 바 아래에서 시작한다.
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-          decoration: BoxDecoration(
-            color: palette.surface,
-            border: Border.all(color: context.cardEdge),
-            borderRadius: BorderRadius.circular(4),
-          ),
-          // 위에서 아래로: 제목 → 묵상(카드 너비 전부) → 좋아요 · 조회수(오른쪽) → 글쓴이(왼쪽)와 날짜(맞은편 오른쪽).
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // 카드 맨 위에 카드 너비를 전부 차지하는 바가 붙는다: 읽은 글은 회색 "읽음", 안 읽은 글은 붉은 "신규".
-              // 바가 있든 없든 카드 맨 위 높이는 같다 (모든 카드가 같은 높이).
-              if (showBar) ...[
-                read
-                    ? ReadStatusBar.read(color: palette.muted)
-                    : const ReadStatusBar.fresh(),
-                const SizedBox(height: 14),
-              ] else
-                SizedBox(
-                  height: kReadBarEnabled ? ReadStatusBar.height + 14 : 16,
-                ),
-              SizedBox(
-                height: scaler.scale(16 * 1.3),
-                child: Row(
-                  children: [
-                    if (c.isPrivate) ...[
-                      Icon(AppIcons.lock, size: 14, color: palette.muted),
-                      const SizedBox(width: 4),
-                    ],
-                    Flexible(
-                      child: Text(
-                        c.title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w800,
-                          fontSize: 16,
-                          height: 1.3,
+        child: Stack(
+          fit: StackFit.passthrough,
+          children: [
+            Ink(
+              // 읽음 · 신규 바는 카드 맨 위 가장자리에 붙으므로 위쪽 여백은 바 아래에서 시작한다.
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              decoration: BoxDecoration(
+                // 개인 설정: 말씀묵상 카드 색.
+                color:
+                    AppScope.read(context).preferences
+                        .tintOf('bible')
+                        .colorFor(Theme.of(context).brightness) ??
+                    palette.surface,
+                border: Border.all(color: context.cardEdge),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              // 위에서 아래로: 제목 → 묵상(카드 너비 전부) → 좋아요 · 조회수(오른쪽) → 글쓴이(왼쪽)와 날짜(맞은편 오른쪽).
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    height: scaler.scale(16 * 1.3),
+                    child: Row(
+                      children: [
+                        // 신규 글은 제목 왼쪽에 붉은 점 하나가 붙는다.
+                        if (showBar) ...[
+                          const ReadStatusBar.fresh(),
+                          const SizedBox(width: 8),
+                        ],
+                        Flexible(
+                          child: Text(
+                            c.title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 16,
+                              height: 1.3,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  // 묵상은 두 줄 자리를 늘 잡는다.
+                  SizedBox(
+                    height: grid
+                        ? null
+                        : scaler.scale(13.5 * 1.4 * excerptLines) + 4,
+                    child: Text(
+                      c.meditation,
+                      maxLines: excerptLines,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: palette.muted,
+                        fontSize: 13.5,
+                        height: 1.4,
+                      ),
+                    ),
+                  ),
+                  if (grid) ...[
+                    // 격자: 본문과 아래 정보 사이를 넉넉히 띄우고, 정보는 줄마다 나눠 답답하지 않게 놓는다.
+                    const SizedBox(height: 16),
+                    const Spacer(),
+                    Divider(height: 1, color: context.cardEdge),
+                    const SizedBox(height: 12),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            // 댓글 수: 댓글이 꺼져 있거나, 비공개이고 교역자가 아니면 읽을 수 없어 뺀다.
+                            if (alwaysStats ||
+                                settings.allowReflections ||
+                                settings.reflectionsPublic)
+                              StreamBuilder<int>(
+                                stream: settings.reflectionsPublic || me.isStaff
+                                    ? AppScope.read(context).reflections
+                                          .count(me.churchId, c.id)
+                                    : Stream<int>.value(0),
+                                builder: (context, n) => StatIcons(
+                                  locked: c.isPrivate,
+                                  horizontal: true,
+                                  showViews: alwaysStats || settings.showViews,
+                                  showLikeCount:
+                                      alwaysStats || settings.showLikeCount,
+                                  views: c.views,
+                                  likes: c.likes,
+                                  liked: c.likedBy.contains(me.id),
+                                  comments:
+                                      alwaysStats ||
+                                          settings.reflectionsPublic ||
+                                          me.isStaff
+                                      ? (n.data ?? 0)
+                                      : null,
+                                ),
+                              )
+                            else
+                              StatIcons(
+                                locked: c.isPrivate,
+                                horizontal: true,
+                                showViews: alwaysStats || settings.showViews,
+                                showLikeCount:
+                                    alwaysStats || settings.showLikeCount,
+                                views: c.views,
+                                likes: c.likes,
+                                liked: c.likedBy.contains(me.id),
+                              ),
+                          ],
                         ),
                       ),
                     ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 8),
-              // 묵상은 두 줄 자리를 늘 잡는다.
-              SizedBox(
-                height: scaler.scale(13.5 * 1.4 * excerptLines) + 4,
-                child: Text(
-                  c.meditation,
-                  maxLines: excerptLines,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: palette.muted,
-                    fontSize: 13.5,
-                    height: 1.4,
-                  ),
-                ),
-              ),
-              if (grid) const Spacer() else const SizedBox(height: 12),
-              // 좋아요 · 조회수는 오른쪽에, 이 글의 소속은 그 맞은편 왼쪽에 둔다.
-              SizedBox(
-                height: 24,
-                child: Row(
-                  children: [
-                    if (affiliationLabel(affiliationNames, c.affiliationId)
-                        case final name?)
-                      AffiliationTag(name),
-                    const Spacer(),
-                    // 댓글 수: 댓글이 꺼져 있거나, 비공개이고 교역자가 아니면 읽을 수 없어 뺀다.
-                    if (settings.allowReflections || settings.reflectionsPublic)
-                      StreamBuilder<int>(
-                        stream: settings.reflectionsPublic || me.isStaff
-                            ? AppScope.read(context).reflections
-                                  .count(me.churchId, c.id)
-                            : const Stream<int>.empty(),
-                        builder: (context, n) => StatIcons(
-                          horizontal: true,
-                          showViews: settings.showViews,
-                          showLikeCount: settings.showLikeCount,
-                          views: c.views,
-                          likes: c.likes,
-                          liked: c.likedBy.contains(me.id),
-                          comments: settings.reflectionsPublic || me.isStaff
-                              ? (n.data ?? 0)
-                              : null,
-                        ),
-                      )
-                    else
-                      StatIcons(
-                        horizontal: true,
-                        showViews: settings.showViews,
-                        showLikeCount: settings.showLikeCount,
-                        views: c.views,
-                        likes: c.likes,
-                        liked: c.likedBy.contains(me.id),
-                      ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 12),
-              // 글쓴이가 없어도 이 줄의 높이는 같다.
-              SizedBox(
-                height: 22,
-                child: Row(
-                  children: [
-                    if (c.authorName.isNotEmpty && settings.showAuthor) ...[
-                      PersonTap(
-                        churchId: me.churchId,
-                        uid: c.authorId,
-                        name: c.authorName,
-                        photoUrl: c.authorPhotoUrl,
-                        child: ThumbnailAvatar(
-                          name: c.authorName,
-                          url: c.authorPhotoUrl,
-                          radius: 10,
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      Expanded(
-                        child: Align(
-                          alignment: Alignment.centerLeft,
-                          child: PersonTap(
+                    const SizedBox(height: 12),
+                    if (c.authorName.isNotEmpty && settings.showAuthor)
+                      Row(
+                        children: [
+                          PersonTap(
                             churchId: me.churchId,
                             uid: c.authorId,
                             name: c.authorName,
                             photoUrl: c.authorPhotoUrl,
+                            child: ThumbnailAvatar(
+                              name: c.authorName,
+                              url: c.authorPhotoUrl,
+                              radius: 10,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Expanded(
                             child: Text(
                               c.authorName,
                               maxLines: 1,
@@ -565,20 +594,137 @@ class DevotionCard extends StatelessWidget {
                               ),
                             ),
                           ),
-                        ),
+                        ],
                       ),
-                    ] else
-                      const Spacer(),
-                    const SizedBox(width: 8),
-                    Text(
-                      fmtDateAt(c.date, c.createdAt),
-                      style: TextStyle(color: palette.muted, fontSize: 12),
+                  ] else ...[
+                    const SizedBox(height: 12),
+                    // 좋아요 · 조회수는 오른쪽에, 이 글의 소속은 그 맞은편 왼쪽에 둔다.
+                    SizedBox(
+                      height: 24,
+                      child: Row(
+                        children: [
+                          if (affiliationLabel(
+                                affiliationNames,
+                                c.affiliationId,
+                              )
+                              case final name?)
+                            AffiliationTag(name),
+                          // 남는 자리를 다 받아 오른쪽 끝에 붙인다 (Spacer와 Flexible이 자리를 반씩 나눠 오른쪽이 비지 않게).
+                          // 좁은 카드에서도 숫자가 넘치지 않게 줄여서 맞춘다.
+                          Expanded(
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              alignment: Alignment.centerRight,
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  // 댓글 수: 댓글이 꺼져 있거나, 비공개이고 교역자가 아니면 읽을 수 없어 뺀다.
+                                  if (alwaysStats ||
+                                      settings.allowReflections ||
+                                      settings.reflectionsPublic)
+                                    StreamBuilder<int>(
+                                      stream:
+                                          settings.reflectionsPublic ||
+                                              me.isStaff
+                                          ? AppScope.read(context).reflections
+                                                .count(me.churchId, c.id)
+                                          : Stream<int>.value(0),
+                                      builder: (context, n) => StatIcons(
+                                        locked: c.isPrivate,
+                                        horizontal: true,
+                                        showViews:
+                                            alwaysStats || settings.showViews,
+                                        showLikeCount:
+                                            alwaysStats ||
+                                            settings.showLikeCount,
+                                        views: c.views,
+                                        likes: c.likes,
+                                        liked: c.likedBy.contains(me.id),
+                                        comments:
+                                            alwaysStats ||
+                                                settings.reflectionsPublic ||
+                                                me.isStaff
+                                            ? (n.data ?? 0)
+                                            : null,
+                                      ),
+                                    )
+                                  else
+                                    StatIcons(
+                                      locked: c.isPrivate,
+                                      horizontal: true,
+                                      showViews:
+                                          alwaysStats || settings.showViews,
+                                      showLikeCount:
+                                          alwaysStats || settings.showLikeCount,
+                                      views: c.views,
+                                      likes: c.likes,
+                                      liked: c.likedBy.contains(me.id),
+                                    ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    // 글쓴이가 없어도 이 줄의 높이는 같다.
+                    SizedBox(
+                      height: 22,
+                      child: Row(
+                        children: [
+                          if (c.authorName.isNotEmpty &&
+                              settings.showAuthor) ...[
+                            PersonTap(
+                              churchId: me.churchId,
+                              uid: c.authorId,
+                              name: c.authorName,
+                              photoUrl: c.authorPhotoUrl,
+                              child: ThumbnailAvatar(
+                                name: c.authorName,
+                                url: c.authorPhotoUrl,
+                                radius: 10,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: Align(
+                                alignment: Alignment.centerLeft,
+                                child: PersonTap(
+                                  churchId: me.churchId,
+                                  uid: c.authorId,
+                                  name: c.authorName,
+                                  photoUrl: c.authorPhotoUrl,
+                                  child: Text(
+                                    c.authorName,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ] else
+                            const Spacer(),
+                          const SizedBox(width: 8),
+                          Text(
+                            fmtDateAt(c.date, c.createdAt),
+                            style: TextStyle(
+                              color: palette.muted,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ],
-                ),
+                ],
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

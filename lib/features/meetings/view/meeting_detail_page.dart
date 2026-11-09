@@ -2,8 +2,11 @@ import '../../../core/widgets/app_loader.dart';
 
 import 'package:flutter/material.dart';
 
+import '../../../core/widgets/toast.dart';
+
 import '../../../data/models/person_card.dart';
 import '../../people/view/person_avatar.dart';
+import '../../people/view/person_row.dart';
 import '../../people/view/person_popup.dart';
 
 import 'package:go_router/go_router.dart';
@@ -68,7 +71,7 @@ class MeetingDetailPage extends StatelessWidget {
             );
           }
           final canManage =
-              m.leaderId == me.id || me.can(Permission.meetingDelete);
+              m.leaderId == me.id || me.canAll(Permission.meetingManage);
           return SubPage(
             title: m.title,
             fallbackLocation: back,
@@ -132,7 +135,7 @@ class MeetingDetailPage extends StatelessWidget {
     if (result == null || !context.mounted) return;
     final messenger = ScaffoldMessenger.of(context);
     if (!await vm.update(m, result) && vm.error != null) {
-      messenger.showSnackBar(SnackBar(content: Text(vm.error!)));
+      showToastOn(messenger, vm.error!);
     }
   }
 
@@ -182,7 +185,8 @@ class _InfoCard extends StatelessWidget {
           Icon(icon, size: 18, color: palette.muted),
           const SizedBox(width: 10),
           SizedBox(
-            width: 72,
+            // 글씨가 커져도 라벨이 값에 맞닿지 않게 칸 너비가 글씨 배율을 따르고, 사이에 여백을 둔다.
+            width: MediaQuery.textScalerOf(context).scale(72) + 8,
             child: Text(label, style: TextStyle(color: palette.muted)),
           ),
           Expanded(child: Text(text)),
@@ -334,7 +338,7 @@ class _JoinCard extends StatelessWidget {
         const SizedBox(height: 14),
         button,
         // 모임장과 승인 권한이 있는 사람(교회 관리자 포함)에게만: 승인을 기다리는 신청자 목록.
-        if ((isLeader || me.can(Permission.meetingApprove)) &&
+        if ((isLeader || me.canAll(Permission.meetingParticipants)) &&
             m.pendingIds.isNotEmpty) ...[
           const SizedBox(height: 20),
           _PendingRequests(meeting: m, me: me, vm: vm),
@@ -342,7 +346,7 @@ class _JoinCard extends StatelessWidget {
         // 모임장 · 교회 운영자에게만: 참여자 목록 페이지로 가는 줄.
         if ((isLeader ||
                 me.isOperatorView ||
-                me.can(Permission.meetingViewParticipants)) &&
+                me.canAll(Permission.meetingParticipants)) &&
             m.participantIds.isNotEmpty) ...[
           const SizedBox(height: 12),
           OutlinedButton.icon(
@@ -379,7 +383,7 @@ class _StatusBubble extends StatelessWidget {
         style: TextStyle(
           color: active ? palette.accent : palette.muted,
           fontSize: 12.5,
-          fontWeight: FontWeight.w700,
+          fontWeight: FontWeight.w600,
         ),
       ),
     );
@@ -436,7 +440,7 @@ class _LeaderCard extends StatelessWidget {
         isPrivate: false,
         // 공개 여부(공개 · 교역자 전용)는 없고, 공개 범위(소속)만 보인다.
         showPrivacy: false,
-        affiliationId: m.affiliationId,
+        affiliationIds: m.affiliationIds,
       ),
       footer: vm.settings.allowLikes
           ? LikeButton(
@@ -472,58 +476,38 @@ class _PendingRequests extends StatelessWidget {
     return StreamBuilder<List<PersonCard>>(
       stream: AppScope.read(context).people.people(me.churchId),
       builder: (context, snap) {
-        final names = {
-          for (final p in snap.data ?? const <PersonCard>[]) p.id: p.name,
+        final cards = {
+          for (final p in snap.data ?? const <PersonCard>[]) p.id: p,
         };
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
               '승인 대기 ${m.pendingIds.length}명',
-              style: const TextStyle(fontWeight: FontWeight.w800),
+              style: const TextStyle(fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 8),
             // 대기자가 많아져도 화면이 끝없이 늘어나지 않게 앞의 몇 명만 보인다.
             for (final uid in m.pendingIds.take(_pendingPreview))
-              SizedBox(
-                height: 52,
-                child: Row(
-                  children: [
-                    PersonTap(
-                      churchId: me.churchId,
-                      uid: uid,
-                      name: names[uid] ?? '',
-                      child: PersonAvatar(
-                        churchId: me.churchId,
-                        uid: uid,
-                        name: names[uid] ?? '?',
-                        radius: 14,
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        names[uid] ?? '이름 없음',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    TextButton(
-                      onPressed: vm.busy ? null : () => vm.reject(m, uid),
-                      style: TextButton.styleFrom(
-                        foregroundColor: palette.muted,
-                      ),
-                      child: const Text('거절'),
-                    ),
-                    FilledButton(
-                      // 정원이 찼으면 승인할 수 없다.
-                      onPressed: vm.busy || m.isFull
-                          ? null
-                          : () => vm.approve(m, uid),
-                      child: const Text('승인'),
-                    ),
-                  ],
-                ),
+              PersonRow(
+                churchId: me.churchId,
+                uid: uid,
+                card: cards[uid],
+                trailing: [
+                  TextButton(
+                    onPressed: vm.busy ? null : () => vm.reject(m, uid),
+                    style: TextButton.styleFrom(foregroundColor: palette.muted),
+                    child: const Text('거절'),
+                  ),
+                  FilledButton(
+                    // 정원이 찼으면 승인할 수 없다.
+                    onPressed: vm.busy || m.isFull
+                        ? null
+                        : () => vm.approve(m, uid),
+                    child: const Text('승인'),
+                  ),
+                  const SizedBox(width: 8),
+                ],
               ),
             if (m.pendingIds.length > _pendingPreview)
               Align(

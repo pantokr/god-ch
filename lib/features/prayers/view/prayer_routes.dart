@@ -12,7 +12,7 @@ import '../view_model/prayer_lookup_view_model.dart';
 import 'prayer_detail_page.dart';
 import 'prayer_editor_page.dart';
 
-/// 주소 `/churches/:cid/prayers/:pid`: 기도제목 상세.
+/// 주소 `/churches/:cid/prayers/:pid`: 중보기도 상세.
 /// 승인된 교인에게만 보이고, 글은 주소의 ID로 불러온다.
 class PrayerDetailRoute extends StatelessWidget {
   const PrayerDetailRoute({
@@ -38,7 +38,7 @@ class PrayerDetailRoute extends StatelessWidget {
   }
 }
 
-/// 주소 `/churches/:cid/prayers/new`: 새 기도제목 쓰기. `?aff=`가 있으면 그 소속이 기본 게시 범위다.
+/// 주소 `/churches/:cid/prayers/new`: 새 중보기도 쓰기. `?aff=`가 있으면 그 소속이 기본 게시 범위다.
 class PrayerCreateRoute extends StatelessWidget {
   const PrayerCreateRoute({
     super.key,
@@ -59,7 +59,7 @@ class PrayerCreateRoute extends StatelessWidget {
   }
 }
 
-/// 주소 `/churches/:cid/prayers/:pid/edit`: 기도제목 수정. 글은 주소의 ID로 불러온다.
+/// 주소 `/churches/:cid/prayers/:pid/edit`: 중보기도 수정. 글은 주소의 ID로 불러온다.
 class PrayerEditRoute extends StatelessWidget {
   const PrayerEditRoute({
     super.key,
@@ -97,7 +97,7 @@ class PrayerEditRoute extends StatelessWidget {
                 child: const Card(
                   child: Padding(
                     padding: EdgeInsets.all(48),
-                    child: Center(child: Text('수정할 수 없는 기도제목입니다.')),
+                    child: Center(child: Text('수정할 수 없는 중보기도입니다.')),
                   ),
                 ),
               );
