@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import '../../../app/app_scope.dart';
 import '../../../app/routes.dart';
 import '../../../core/formatters/korean_phone.dart';
+import '../../../core/layout/sub_page.dart';
 import '../../../core/mvvm/view_model_builder.dart';
 import '../../../core/theme.dart';
 import '../../../core/widgets/blur_validated_field.dart';
@@ -69,158 +70,122 @@ class _SignUpPageState extends State<SignUpPage> {
     final theme = Theme.of(context);
     return ViewModelBuilder<SignUpViewModel>(
       create: (context) => SignUpViewModel(AppScope.read(context).auth),
-      // 상단 바 없이 로그인 화면처럼 가운데에 고정 폭 패널만 놓는다.
-      builder: (context, vm) => Scaffold(
-        body: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 520),
-              child: Card(
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(AppRadius.panel),
-                  side: BorderSide(color: context.palette.border),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(28),
-                  child: Form(
-                    key: _form,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        _FieldGroup(
-                          title: '로그인 정보',
-                          children: [
-                            LabeledField(
-                              label: '아이디',
-                              required: true,
-                              child: BlurValidatedField(
-                                controller: _loginId,
-                                autocorrect: false,
-                                maxLength: 20,
-                                decoration: InputDecoration(),
-                                validator: (v) => LoginId.validate(v ?? ''),
-                              ),
-                            ),
-                            LabeledField(
-                              label: '비밀번호',
-                              required: true,
-                              child: BlurValidatedField(
-                                controller: _password,
-                                onChanged: (_) => setState(() {}),
-                                obscureText: true,
-                                decoration: InputDecoration(
-                                  suffixText: '8자 이상',
-                                ),
-                                validator: PasswordRule.validate,
-                              ),
-                            ),
-                            LabeledField(
-                              label: '비밀번호 확인',
-                              required: true,
-                              child: BlurValidatedField(
-                                controller: _passwordConfirm,
-                                obscureText: true,
-                                decoration: InputDecoration(),
-                                validator: (v) =>
-                                    PasswordRule.confirm(v, _password.text),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
-                        _FieldGroup(
-                          title: '기본 정보',
-                          children: [
-                            LabeledField(
-                              label: '이름',
-                              required: true,
-                              child: BlurValidatedField(
-                                controller: _name,
-                                maxLength: 30,
-                                decoration: InputDecoration(),
-                                validator: (v) =>
-                                    (v == null || v.trim().isEmpty)
-                                    ? '이름을 입력해 주세요'
-                                    : null,
-                              ),
-                            ),
-                            LabeledField(
-                              label: '전화번호',
-                              required: true,
-                              child: BlurValidatedField(
-                                controller: _phone,
-                                keyboardType: TextInputType.phone,
-                                inputFormatters: const [KoreanPhoneFormatter()],
-                                decoration: InputDecoration(
-                                  hintText: '010-1234-5678',
-                                ),
-                                validator: (v) =>
-                                    (v == null || !isValidKoreanPhone(v))
-                                    ? '전화번호 형식이 올바르지 않아요'
-                                    : null,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
-                        _FieldGroup(
-                          title: '추가 정보 (선택)',
-                          description: '비워 두어도 가입할 수 있어요',
-                          children: [
-                            ProfileExtraFields(
-                              address: _address,
-                              birthDate: _birthDate,
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
-                        const Divider(),
-                        ConsentCheckbox(
-                          value: _consent,
-                          onChanged: (v) => setState(() => _consent = v),
-                        ),
-                        if (vm.error != null) ...[
-                          const SizedBox(height: 8),
-                          Text(
-                            vm.error!,
-                            style: TextStyle(color: theme.colorScheme.error),
-                          ),
-                        ],
-                        const SizedBox(height: 16),
-                        FilledButton(
-                          onPressed: (vm.busy || !_consent)
-                              ? null
-                              : () => _submit(vm),
-                          child: const Text('가입하기'),
-                        ),
-                        if (!_consent)
-                          Padding(
-                            padding: EdgeInsets.only(top: 8),
-                            child: Text(
-                              '필수 항목에 동의하면 가입할 수 있어요.',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                color: context.palette.muted,
-                                fontSize: 13,
-                              ),
-                            ),
-                          ),
-                        const SizedBox(height: 8),
-                        TextButton(
-                          onPressed: vm.busy
-                              ? null
-                              : () => context.canPop()
-                                    ? context.pop()
-                                    : context.go(Routes.login),
-                          child: const Text('이미 계정이 있어요 · 로그인'),
-                        ),
-                      ],
+      // 다른 화면들처럼 상단 탭(뒤로가기 + 제목) 아래에 묶음별 카드를 쌓는다.
+      builder: (context, vm) => SubPage(
+        title: '',
+        barTitle: '회원가입',
+        fallbackLocation: Routes.login,
+        maxWidth: 520,
+        inset: true,
+        child: Form(
+          key: _form,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _FieldGroup(
+                title: '로그인 정보',
+                children: [
+                  LabeledField(
+                    label: '아이디',
+                    required: true,
+                    child: BlurValidatedField(
+                      controller: _loginId,
+                      autocorrect: false,
+                      maxLength: 20,
+                      decoration: const InputDecoration(),
+                      validator: (v) => LoginId.validate(v ?? ''),
                     ),
                   ),
-                ),
+                  LabeledField(
+                    label: '비밀번호',
+                    required: true,
+                    child: BlurValidatedField(
+                      controller: _password,
+                      onChanged: (_) => setState(() {}),
+                      obscureText: true,
+                      decoration: const InputDecoration(suffixText: '8자 이상'),
+                      validator: PasswordRule.validate,
+                    ),
+                  ),
+                  LabeledField(
+                    label: '비밀번호 확인',
+                    required: true,
+                    child: BlurValidatedField(
+                      controller: _passwordConfirm,
+                      obscureText: true,
+                      decoration: const InputDecoration(),
+                      validator: (v) => PasswordRule.confirm(v, _password.text),
+                    ),
+                  ),
+                ],
               ),
-            ),
+              const SizedBox(height: 16),
+              _FieldGroup(
+                title: '기본 정보',
+                children: [
+                  LabeledField(
+                    label: '이름',
+                    required: true,
+                    child: BlurValidatedField(
+                      controller: _name,
+                      maxLength: 30,
+                      decoration: const InputDecoration(),
+                      validator: (v) => (v == null || v.trim().isEmpty)
+                          ? '이름을 입력해 주세요'
+                          : null,
+                    ),
+                  ),
+                  LabeledField(
+                    label: '전화번호',
+                    required: true,
+                    child: BlurValidatedField(
+                      controller: _phone,
+                      keyboardType: TextInputType.phone,
+                      inputFormatters: const [KoreanPhoneFormatter()],
+                      decoration: const InputDecoration(
+                        hintText: '010-1234-5678',
+                      ),
+                      validator: (v) => (v == null || !isValidKoreanPhone(v))
+                          ? '전화번호 형식이 올바르지 않아요'
+                          : null,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              _FieldGroup(
+                title: '추가 정보 (선택)',
+                children: [
+                  ProfileExtraFields(address: _address, birthDate: _birthDate),
+                ],
+              ),
+              const SizedBox(height: 16),
+              ConsentCheckbox(
+                value: _consent,
+                onChanged: (v) => setState(() => _consent = v),
+              ),
+              if (vm.error != null) ...[
+                const SizedBox(height: 12),
+                Text(
+                  vm.error!,
+                  style: TextStyle(color: theme.colorScheme.error),
+                ),
+              ],
+              const SizedBox(height: 20),
+              FilledButton(
+                onPressed: (vm.busy || !_consent) ? null : () => _submit(vm),
+                child: const Text('가입하기'),
+              ),
+              const SizedBox(height: 8),
+              TextButton(
+                onPressed: vm.busy
+                    ? null
+                    : () => context.canPop()
+                          ? context.pop()
+                          : context.go(Routes.login),
+                child: const Text('로그인'),
+              ),
+            ],
           ),
         ),
       ),
@@ -228,47 +193,34 @@ class _SignUpPageState extends State<SignUpPage> {
   }
 }
 
-/// 가입 화면의 입력란 묶음: 제목 줄(오른쪽에 짧은 안내) 아래에 밑줄형 입력란을 쌓는다.
+/// 가입 화면의 입력란 묶음: 제목 아래에 입력란을 쌓은 카드 한 장.
 class _FieldGroup extends StatelessWidget {
-  const _FieldGroup({
-    required this.title,
-    required this.children,
-    this.description,
-  });
+  const _FieldGroup({required this.title, required this.children});
 
   final String title;
-  final String? description;
   final List<Widget> children;
 
   @override
   Widget build(BuildContext context) {
-    final palette = context.palette;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.baseline,
-          textBaseline: TextBaseline.alphabetic,
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(title, style: Theme.of(context).textTheme.titleSmall),
-            if (description != null) ...[
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  description!,
-                  textAlign: TextAlign.end,
-                  style: TextStyle(color: palette.muted, fontSize: 12),
-                ),
-              ),
+            Text(
+              title,
+              style: Theme.of(context).textTheme.titleSmall
+                  ?.copyWith(fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 16),
+            for (var i = 0; i < children.length; i++) ...[
+              if (i > 0) AppField.spacer,
+              children[i],
             ],
           ],
         ),
-        const SizedBox(height: 4),
-        for (var i = 0; i < children.length; i++) ...[
-          if (i > 0) const SizedBox(height: 8),
-          children[i],
-        ],
-      ],
+      ),
     );
   }
 }

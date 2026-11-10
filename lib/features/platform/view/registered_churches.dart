@@ -7,9 +7,8 @@ import '../../../core/layout/manage_list_row.dart';
 import '../../../core/theme.dart';
 import '../../../data/models/church.dart';
 import '../view_model/church_registry_view_model.dart';
-import '../../../core/layout/app_dialog.dart';
 import 'admin_section_header.dart';
-import 'church_detail_dialog.dart';
+import 'church_detail_page.dart';
 import '../../../core/widgets/app_inputs.dart';
 
 /// 등록된 교회 목록. 각 교회의 "관리"를 누르면 교회 상세 관리 화면이 열린다.
@@ -79,13 +78,11 @@ class RegisteredChurches extends StatelessWidget {
                         _ChurchRow(
                           church: churches[i],
                           onManage: () => onManage(churches[i]),
-                          onDetail: () => showAppDialog<void>(
+                          onDetail: () => showChurchDetailPage(
                             context,
-                            child: ChurchDetailDialog(
-                              vm: vm,
-                              church: churches[i],
-                              onOpen: () => onManage(churches[i]),
-                            ),
+                            vm: vm,
+                            church: churches[i],
+                            onOpen: () => onManage(churches[i]),
                           ),
                         ),
                       ],

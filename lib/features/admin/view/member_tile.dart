@@ -75,6 +75,8 @@ class MemberTile extends StatelessWidget {
       // 교회 회원은 직급만 보인다 (소속 · 수락일은 상세 페이지에서).
       line1: pending ? '요청일 ${fmtDate(member.createdAt)}' : '',
       affiliations: pending ? affiliationNames : const [],
+      // 입장 요청은 줄을 누르면 그 사람의 상세 정보 페이지가 열린다 (승인 · 거절 버튼은 줄에 그대로 있다).
+      onTap: pending ? () => _view(context) : null,
       trailing: [
         // 신규 입장 요청은 승인 · 거절 두 버튼뿐이다. 승인하면 역할과 소속을 고르는 창이 뜬다.
         if (pending) ...[
@@ -176,6 +178,15 @@ class MemberTile extends StatelessWidget {
     await vm.block(member);
     return vm.error == null;
   }
+
+  /// 입장 요청한 사람의 상세 정보를 보기만 한다 (고치는 칸이 없다).
+  void _view(BuildContext context) => showMemberInfoPage(
+    context,
+    member: member,
+    positionName: _positionName,
+    position: position,
+    affiliationNames: affiliationNames,
+  );
 
   void _edit(BuildContext context) {
     showMemberInfoPage(

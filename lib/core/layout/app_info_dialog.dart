@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
-import '../icons.dart';
 import '../theme.dart';
+import '../widgets/brand_mark.dart';
 import 'app_dialog.dart';
 
 /// 앱 정보 창: 앱 이름, 버전, 개발자, 문의. 오른쪽 계정 띠 맨 아래의 정보 버튼이 연다.
@@ -41,17 +41,7 @@ class _AppInfo extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Center(
-          child: Container(
-            width: 64,
-            height: 64,
-            decoration: BoxDecoration(
-              gradient: AppDepth.brand(context),
-              borderRadius: BorderRadius.circular(AppRadius.card),
-            ),
-            child: Icon(AppIcons.handHeart, size: 32, color: palette.onBrand),
-          ),
-        ),
+        const Center(child: BrandLogo(size: 64)),
         const SizedBox(height: 14),
         Text(
           '같이',

@@ -1,3 +1,5 @@
+import 'package:god_ch/core/icons.dart';
+import 'package:god_ch/features/auth/view/sign_up_page.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show RenderParagraph;
@@ -133,9 +135,6 @@ class _Bible extends Fake implements BibleRepository {}
 
 class _Positions extends Fake implements PositionRepository {
   @override
-  Stream<List<String>> order(String churchId) => Stream.value(const []);
-
-  @override
   Stream<List<Position>> positions(String churchId) => Stream.value(const [
     Position(id: 'p1', name: '찬양팀', permissions: {'prayer.write'}),
   ]);
@@ -146,8 +145,8 @@ class _Members extends Fake implements MemberRepository {
   Future<void> syncAdminAffiliations(String churchId) async {}
 
   @override
-  Stream<List<Member>> members(String churchId) => Stream.value(const [
-    Member(
+  Stream<List<Member>> members(String churchId) => Stream.value([
+    const Member(
       id: 'm1',
       churchId: 'c',
       churchName: '교회',
@@ -158,13 +157,25 @@ class _Members extends Fake implements MemberRepository {
       affiliationIds: ['a1', 'a2'],
       positionId: 'p1',
     ),
-    Member(
+    const Member(
       id: 'm2',
       churchId: 'c',
       churchName: '교회',
       name: '홍길동',
       role: Role.member,
       status: MemberStatus.approved,
+    ),
+    Member(
+      id: 'm3',
+      churchId: 'c',
+      churchName: '교회',
+      name: '입장신청자',
+      role: Role.member,
+      status: MemberStatus.pending,
+      loginId: 'newcomer',
+      phone: '010-1234-5678',
+      affiliationIds: const ['a1'],
+      createdAt: DateTime(2026, 11, 9, 14, 30),
     ),
   ]);
 }
@@ -245,6 +256,57 @@ void main() {
 
       testWidgets('회원 관리 목록 줄이 넘치지 않는다', (tester) async {
         await _pump(tester, const ChurchMembersTab(me: _me), width, scale);
+        expect(tester.takeException(), isNull);
+      });
+
+      testWidgets('입장 요청 줄을 누르면 그 사람의 상세 정보가 열린다', (tester) async {
+        await _pump(tester, const ChurchMembersTab(me: _me), width, scale);
+        await tester.tap(find.textContaining('입장신청자'));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 500));
+        expect(tester.takeException(), isNull);
+        expect(find.text('010-1234-5678'), findsOneWidget);
+        expect(find.text('newcomer'), findsOneWidget);
+        expect(find.text('승인 대기'), findsOneWidget);
+        expect(find.text('요청일'), findsOneWidget);
+        // 상세 페이지는 보기만 한다: 역할 · 상태를 고치는 칸이 없다.
+        expect(find.text('저장'), findsNothing);
+      });
+
+      testWidgets('회원가입 화면이 넘치지 않고 입력 묶음이 모두 보인다', (tester) async {
+        await _pump(tester, const SignUpPage(), width, scale);
+        expect(tester.takeException(), isNull);
+        expect(find.text('회원가입'), findsOneWidget);
+        expect(find.text('로그인 정보'), findsOneWidget);
+        expect(find.text('기본 정보'), findsOneWidget);
+        expect(find.text('추가 정보 (선택)'), findsOneWidget);
+      });
+
+      testWidgets('개인정보 동의: 줄을 누르면 체크되고 내용 보기에서 바로 동의한다', (tester) async {
+        await _pump(tester, const SignUpPage(), width, scale);
+        bool checked() =>
+            find.byIcon(AppIcons.checkCircleFill).evaluate().isNotEmpty;
+        await tester.ensureVisible(find.text('전체 내용 보기'));
+        await tester.pump();
+        await tester.tap(
+          find.textContaining('개인정보 제3자 제공 동의', findRichText: true),
+        );
+        await tester.pump();
+        expect(checked(), isTrue);
+        await tester.tap(
+          find.textContaining('개인정보 제3자 제공 동의', findRichText: true),
+        );
+        await tester.pump();
+        expect(checked(), isFalse);
+        await tester.tap(find.text('전체 내용 보기'));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 400));
+        expect(tester.takeException(), isNull);
+        expect(find.text('제공받는 자'), findsOneWidget);
+        await tester.tap(find.text('동의'));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 400));
+        expect(checked(), isTrue);
         expect(tester.takeException(), isNull);
       });
 
@@ -454,6 +516,46 @@ void main() {
         expect(find.text('신규 표시'), findsNothing);
         expect(find.text('글꼴'), findsNothing);
         expect(find.text('본문 글꼴'), findsNothing);
+      });
+
+      testWidgets('개인 설정: 글씨 크기 카드는 크기가 같고 2 · 3개 라디오와 같은 열에 놓인다', (
+        tester,
+      ) async {
+        SharedPreferences.setMockInitialValues({});
+        final prefs = PreferencesController(
+          await SharedPreferences.getInstance(),
+        );
+        await _pump(
+          tester,
+          const SingleChildScrollView(child: PreferencesPage()),
+          width,
+          scale,
+          prefs,
+        );
+        expect(tester.takeException(), isNull);
+
+        // 카드(테두리 상자): 글자 '가' 바로 바깥의 DecoratedBox.
+        Finder tile(int i) => find
+            .ancestor(
+              of: find.text('가').at(i),
+              matching: find.byType(DecoratedBox),
+            )
+            .first;
+        final sizes = [for (var i = 0; i < 3; i++) tester.getSize(tile(i))];
+        expect(sizes[0].height, lessThan(160), reason: '카드 하나의 높이여야 한다');
+        for (final s in sizes) {
+          expect(s.width, sizes[0].width, reason: '글씨 크기 카드 폭이 같다');
+          expect(s.height, sizes[0].height, reason: '글씨 크기 카드 높이가 같다');
+        }
+
+        // 같은 열: 2개 줄(책 이름) · 3개 줄(디자인) · 글씨 크기 카드의 두 번째 칸이 같은 x에서 시작한다.
+        final second2 = tester.getTopLeft(find.byType(Radio<bool>).at(1)).dx;
+        final second3 = tester
+            .getTopLeft(find.byType(Radio<DevotionDesign>).at(1))
+            .dx;
+        final secondTile = tester.getTopLeft(tile(1)).dx;
+        expect(second2, closeTo(second3, 0.5), reason: '2개 줄과 3개 줄이 어긋남');
+        expect(secondTile, closeTo(second3, 0.5), reason: '글씨 크기 카드가 라디오와 어긋남');
       });
 
       testWidgets('절 번호 · 말씀 디자인 설정이 말씀 본문 카드에 반영된다', (tester) async {

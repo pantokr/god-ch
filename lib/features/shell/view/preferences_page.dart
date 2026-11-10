@@ -5,6 +5,7 @@ import '../../../app/preferences_controller.dart';
 import '../../../core/layout/page_frame.dart';
 import '../../../core/theme.dart';
 import '../../../core/widgets/choice_row.dart';
+import '../../../core/widgets/labeled_field.dart';
 
 /// 개인 설정: 이 기기에서만 쓰는 보기 취향. 왼쪽 서랍의 "개인 설정"으로 들어온다.
 /// 앱 안의 다른 곳(화면 모드 버튼, 목록 모양 · 보기 · 정렬 버튼)에서 이미 고르는 것은 두지 않는다.
@@ -122,6 +123,8 @@ class _ScreenGroup extends StatelessWidget {
         ),
         _Palette(
           label: '글씨 크기',
+          // 아래 라디오 줄(2 · 3개)과 같은 칸에 놓이고 크기도 모두 같다.
+          cells: true,
           children: [
             for (final s in TextSize.values)
               _Choice(
@@ -145,15 +148,48 @@ class _ScreenGroup extends StatelessWidget {
 }
 
 /// 팔레트 한 줄: 이름표(왼쪽 칸)와 선택지들이 한 줄에 놓인다 (좁으면 이름표가 위로 올라간다).
+/// [cells]면 선택지가 라디오 줄([ChoiceRadios])과 같은 칸 너비로 놓여, 줄이 달라도 같은 열에 맞는다.
 class _Palette extends StatelessWidget {
-  const _Palette({required this.label, required this.children});
+  const _Palette({
+    required this.label,
+    required this.children,
+    this.cells = false,
+  });
 
   final String label;
   final List<Widget> children;
+  final bool cells;
+
+  static const _gap = 10.0;
+
+  Widget _cellRow() => LayoutBuilder(
+    builder: (context, box) {
+      final cell = (box.maxWidth / ChoiceRadios.cellCount(children.length))
+          .clamp(0.0, ChoiceRadios.cellWidth);
+      return Align(
+        alignment: Alignment.centerLeft,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (final c in children)
+              SizedBox(
+                width: cell,
+                child: Padding(
+                  padding: const EdgeInsets.only(right: _gap),
+                  child: c,
+                ),
+              ),
+          ],
+        ),
+      );
+    },
+  );
 
   @override
   Widget build(BuildContext context) {
-    final items = Wrap(spacing: 10, runSpacing: 10, children: children);
+    final items = cells
+        ? _cellRow()
+        : Wrap(spacing: _gap, runSpacing: _gap, children: children);
     return LayoutBuilder(
       builder: (context, box) {
         final text = Text(
@@ -164,19 +200,22 @@ class _Palette extends StatelessWidget {
             fontWeight: FontWeight.w600,
           ),
         );
-        if (box.maxWidth < 420) {
+        // 다른 선택 줄(ChoiceRow)과 같은 기준으로 이름표를 위로 올린다.
+        if (box.maxWidth < LabeledField.narrow) {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [text, const SizedBox(height: 8), items],
           );
         }
         return Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: cells
+              ? CrossAxisAlignment.center
+              : CrossAxisAlignment.start,
           children: [
             SizedBox(
-              width: 112,
+              width: LabeledField.labelWidth,
               child: Padding(
-                padding: const EdgeInsets.only(top: 12),
+                padding: EdgeInsets.only(right: 12, top: cells ? 0 : 12),
                 child: text,
               ),
             ),
@@ -250,10 +289,10 @@ class _Choice extends StatelessWidget {
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
       child: Container(
-        width: 84,
-        // 글씨가 커져도 넘치지 않게 높이는 최소값만 정한다.
-        constraints: const BoxConstraints(minHeight: 64),
-        padding: const EdgeInsets.symmetric(vertical: 6),
+        // 폭은 놓이는 칸을 가득 채우고, 높이는 글자 크기와 상관없이 모두 같다.
+        // 고른 카드는 테두리가 두꺼워 그만큼 안쪽이 줄므로, 안 고른 카드에 같은 만큼 여백을 더해 크기를 맞춘다.
+        padding: EdgeInsets.all(selected ? 0 : 1.4)
+            .add(const EdgeInsets.symmetric(vertical: 8)),
         alignment: Alignment.center,
         decoration: BoxDecoration(
           color: palette.surface,
@@ -266,7 +305,11 @@ class _Choice extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            child,
+            // 가장 큰 글자(크게)가 들어가는 높이로 고정해, 작게 · 보통 · 크게 카드가 같은 높이가 된다.
+            SizedBox(
+              height: MediaQuery.textScalerOf(context).scale(30),
+              child: Center(child: child),
+            ),
             const SizedBox(height: 2),
             Text(
               label,

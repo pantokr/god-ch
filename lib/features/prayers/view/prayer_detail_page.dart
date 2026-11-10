@@ -91,8 +91,11 @@ class PrayerDetailPage extends StatelessWidget {
               title: '중보기도',
               fallbackLocation: back,
               actions: _actions(context, vm, p!),
-              child: squareCards(
-                child: _Body(vm: vm, prayer: p),
+              // 글자를 끌어 선택해 복사할 수 있다 (본문 · 작성자 · 댓글 모두).
+              child: SelectionArea(
+                child: squareCards(
+                  child: _Body(vm: vm, prayer: p),
+                ),
               ),
             );
           },
@@ -182,7 +185,7 @@ class _Body extends StatelessWidget {
                 ],
                 const SizedBox(height: 20),
                 // 중보기도 본문은 책처럼 읽히도록 명조로 보여준다.
-                SelectableText(p.content, style: readingStyle(context)),
+                Text(p.content, style: readingStyle(context)),
               ],
             ),
           ),

@@ -6,6 +6,7 @@ import '../../../app/app_scope.dart';
 import '../../../core/format.dart';
 import '../../../core/icons.dart';
 import '../../../core/layout/confirm_dialog.dart';
+import '../../../core/layout/sub_page.dart';
 import '../../../core/mvvm/view_model_builder.dart';
 import '../../../core/theme.dart';
 import '../../../core/widgets/thumbnail_avatar.dart';
@@ -16,9 +17,27 @@ import '../../church/view/church_info_fields.dart';
 import '../view_model/church_registry_view_model.dart';
 import '../view_model/church_summary_view_model.dart';
 
-/// 앱 운영자 > 교회 관리 > 교회 한 곳의 패널: 현황을 간략히 보고, 정보를 고치고, 조치(노출 · 폐쇄 · 이동)를 한다.
-class ChurchDetailDialog extends StatefulWidget {
-  const ChurchDetailDialog({
+/// 교회 관리 페이지로 이동한다 (앱 운영자 > 교회 관리의 교회 줄). 돌아가면 교회 목록이다.
+Future<void> showChurchDetailPage(
+  BuildContext context, {
+  required ChurchRegistryViewModel vm,
+  required Church church,
+  required VoidCallback onOpen,
+}) => Navigator.of(context, rootNavigator: true).push<void>(
+  MaterialPageRoute(
+    builder: (context) => SubPage(
+      title: '',
+      barTitle: '교회 관리',
+      fallbackLocation: '',
+      onBack: () => Navigator.of(context).maybePop(),
+      child: ChurchDetailPage(vm: vm, church: church, onOpen: onOpen),
+    ),
+  ),
+);
+
+/// 앱 운영자 > 교회 관리 > 교회 한 곳의 페이지: 현황을 간략히 보고, 정보를 고치고, 조치(노출 · 폐쇄 · 이동)를 한다.
+class ChurchDetailPage extends StatefulWidget {
+  const ChurchDetailPage({
     super.key,
     required this.vm,
     required this.church,
@@ -32,10 +51,10 @@ class ChurchDetailDialog extends StatefulWidget {
   final VoidCallback onOpen;
 
   @override
-  State<ChurchDetailDialog> createState() => _ChurchDetailDialogState();
+  State<ChurchDetailPage> createState() => _ChurchDetailPageState();
 }
 
-class _ChurchDetailDialogState extends State<ChurchDetailDialog> {
+class _ChurchDetailPageState extends State<ChurchDetailPage> {
   final _form = GlobalKey<FormState>();
   late final _name = TextEditingController(text: widget.church.name);
   late final _phone = TextEditingController(text: widget.church.phone);
@@ -101,7 +120,6 @@ class _ChurchDetailDialogState extends State<ChurchDetailDialog> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final muted = TextStyle(color: context.palette.muted);
     return StreamBuilder<Church?>(
       stream: _live,
       initialData: widget.church,
@@ -112,54 +130,61 @@ class _ChurchDetailDialogState extends State<ChurchDetailDialog> {
           builder: (context, _) => Form(
             key: _form,
             child: Column(
-              mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 // 머리: 썸네일 · 이름 · 상태 표시
-                Row(
-                  children: [
-                    ThumbnailAvatar(
-                      name: church.name,
-                      url: church.thumbnailUrl,
-                      radius: 24,
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(church.name, style: theme.textTheme.titleLarge),
-                          const SizedBox(height: 4),
-                          Wrap(
-                            spacing: 6,
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: Row(
+                      children: [
+                        ThumbnailAvatar(
+                          name: church.name,
+                          url: church.thumbnailUrl,
+                          radius: 28,
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              _Tag(
-                                church.closed ? '폐쇄' : '운영 중',
-                                warn: church.closed,
+                              Text(
+                                church.name,
+                                style: theme.textTheme.titleLarge,
                               ),
-                              _Tag(church.listed ? '공개' : '비공개'),
+                              const SizedBox(height: 4),
+                              Wrap(
+                                spacing: 6,
+                                children: [
+                                  _Tag(
+                                    church.closed ? '폐쇄' : '운영 중',
+                                    warn: church.closed,
+                                  ),
+                                  _Tag(church.listed ? '공개' : '비공개'),
+                                ],
+                              ),
                             ],
                           ),
-                        ],
-                      ),
+                        ),
+                        // 교회 이동은 작은 버튼으로 둔다.
+                        IconButton(
+                          tooltip: '교회로 이동',
+                          onPressed: () {
+                            Navigator.pop(context);
+                            widget.onOpen();
+                          },
+                          icon: const Icon(AppIcons.arrowRight, size: 20),
+                        ),
+                      ],
                     ),
-                    // 교회 이동은 작은 버튼으로 둔다.
-                    IconButton(
-                      tooltip: '교회로 이동',
-                      onPressed: () {
-                        Navigator.pop(context);
-                        widget.onOpen();
-                      },
-                      icon: const Icon(AppIcons.arrowRight, size: 20),
-                    ),
-                  ],
+                  ),
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 12),
                 _Section(
                   title: '현황',
                   child: _Summary(church: church),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
                 _Section(
                   title: '교회 정보',
                   child: Column(
@@ -182,10 +207,18 @@ class _ChurchDetailDialogState extends State<ChurchDetailDialog> {
                         address: _address,
                         autofocus: false,
                       ),
+                      const SizedBox(height: 16),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: FilledButton(
+                          onPressed: widget.vm.busy ? null : _save,
+                          child: const Text('저장'),
+                        ),
+                      ),
                     ],
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
                 _Section(
                   title: '조치',
                   child: Column(
@@ -230,21 +263,7 @@ class _ChurchDetailDialogState extends State<ChurchDetailDialog> {
                     style: TextStyle(color: theme.colorScheme.error),
                   ),
                 ],
-                const SizedBox(height: 20),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: Text('닫기', style: muted),
-                    ),
-                    const SizedBox(width: 8),
-                    FilledButton(
-                      onPressed: widget.vm.busy ? null : _save,
-                      child: const Text('저장'),
-                    ),
-                  ],
-                ),
+                const SizedBox(height: 32),
               ],
             ),
           ),
@@ -347,7 +366,7 @@ class _Tag extends StatelessWidget {
   }
 }
 
-/// 패널의 한 구역: 옅은 면 위에 제목과 내용.
+/// 페이지의 한 구역: 카드 위에 제목과 내용.
 class _Section extends StatelessWidget {
   const _Section({required this.title, required this.child});
 
@@ -356,25 +375,18 @@ class _Section extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final palette = context.palette;
-    return Container(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-      decoration: BoxDecoration(
-        color: palette.brand.withValues(alpha: 0.04),
-        borderRadius: BorderRadius.circular(AppRadius.card),
-        border: Border.all(color: palette.border),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text(
-            title,
-            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
-          ),
-          const SizedBox(height: 12),
-          // 색이 깔린 구역 안의 목록 칸(ListTile) 오류를 막으려고 투명한 Material로 감싼다.
-          Material(type: MaterialType.transparency, child: child),
-        ],
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(title, style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 12),
+            // 목록 칸(ListTile)이 카드 바탕 위에서 그려지도록 투명한 Material로 감싼다.
+            Material(type: MaterialType.transparency, child: child),
+          ],
+        ),
       ),
     );
   }

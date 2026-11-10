@@ -43,17 +43,7 @@ class SplashPage extends StatelessWidget {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Container(
-                      width: 96,
-                      height: 96,
-                      decoration: BoxDecoration(
-                        gradient: AppDepth.brand(context),
-                        borderRadius: BorderRadius.circular(AppRadius.panel),
-                        boxShadow: AppDepth.glow(context),
-                      ),
-                      alignment: Alignment.center,
-                      child: BrandMark(size: 60, color: palette.onBrand),
-                    ),
+                    const BrandLogo(size: 96, glow: true),
                     const SizedBox(height: 22),
                     Text(
                       '같이',

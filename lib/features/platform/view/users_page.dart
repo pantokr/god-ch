@@ -3,7 +3,6 @@ import '../../../core/widgets/app_loader.dart';
 import 'package:flutter/material.dart';
 
 import '../../../app/app_scope.dart';
-import '../../../core/layout/app_dialog.dart';
 import '../../../core/layout/confirm_dialog.dart';
 import '../../../core/layout/manage_list_row.dart';
 import '../../../core/layout/page_frame.dart';
@@ -13,6 +12,7 @@ import '../../../data/models/affiliation.dart';
 import '../../../data/models/member.dart';
 import '../../../data/models/user_profile.dart';
 import '../../admin/view/member_detail_dialog.dart';
+import '../../admin/view/member_info_page.dart';
 import '../view_model/users_view_model.dart';
 import 'admin_section_header.dart';
 import '../../../core/widgets/app_inputs.dart';
@@ -152,10 +152,15 @@ class _UserRow extends StatelessWidget {
       if (a.churchId == churchId) a,
   ];
 
+  /// 교회 안의 회원 관리와 같은 상세 페이지: 위에 회원 정보 카드, 아래에 고치는 카드.
   void _edit(BuildContext context) {
-    showAppDialog(
+    showUserInfoPage(
       context,
-      child: MemberDetailDialog(
+      user: user,
+      churchNames: [for (final m in memberships) m.churchName],
+      affiliationNames: _affiliationNames,
+      editor: MemberDetailDialog(
+        showHeader: false,
         vm: vm,
         title: user.name,
         name: user.name,

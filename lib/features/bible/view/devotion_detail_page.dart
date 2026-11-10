@@ -99,32 +99,35 @@ class DevotionDetailPage extends StatelessWidget {
                     onPressed: () => _delete(context, vm, c, back),
                   ),
               ],
-              child: squareCards(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    _Passages(content: c),
-                    const SizedBox(height: 12),
-                    // 작성 정보는 본문과 묵상 다음에 둔다. 좋아요 · 조회수도 같은 카드 안에 있다.
-                    _AuthorInfoCard(
-                      content: c,
-                      churchId: me.churchId,
-                      me: me,
-                      vm: vm,
-                      settings: vm.settings,
-                    ),
-                    const SizedBox(height: 12),
-                    if (vm.settings.allowReflections ||
-                        vm.settings.reflectionsPublic)
-                      ReflectionsCard(
-                        devotionId: c.id,
+              // 글자를 끌어 선택해 복사할 수 있다 (말씀 · 묵상 · 나눔 모두).
+              child: SelectionArea(
+                child: squareCards(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _Passages(content: c),
+                      const SizedBox(height: 12),
+                      // 작성 정보는 본문과 묵상 다음에 둔다. 좋아요 · 조회수도 같은 카드 안에 있다.
+                      _AuthorInfoCard(
+                        content: c,
+                        churchId: me.churchId,
                         me: me,
-                        publicList: vm.settings.reflectionsPublic,
-                        canWrite:
-                            vm.settings.allowReflections &&
-                            me.can(Permission.devotionEngage),
+                        vm: vm,
+                        settings: vm.settings,
                       ),
-                  ],
+                      const SizedBox(height: 12),
+                      if (vm.settings.allowReflections ||
+                          vm.settings.reflectionsPublic)
+                        ReflectionsCard(
+                          devotionId: c.id,
+                          me: me,
+                          publicList: vm.settings.reflectionsPublic,
+                          canWrite:
+                              vm.settings.allowReflections &&
+                              me.can(Permission.devotionEngage),
+                        ),
+                    ],
+                  ),
                 ),
               ),
             );
@@ -305,7 +308,7 @@ class _MeditationCard extends StatelessWidget {
     child: meditation.isEmpty
         ? Text('묵상 없음', style: TextStyle(color: context.palette.muted))
         // 묵상은 줄이지 않고 전부 보인다 (더보기는 말씀에만 있다).
-        : SelectableText(meditation, style: readingStyle(context)),
+        : Text(meditation, style: readingStyle(context)),
   );
 }
 

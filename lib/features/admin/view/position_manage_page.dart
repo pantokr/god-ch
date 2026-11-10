@@ -70,48 +70,28 @@ class PositionManagePage extends StatelessWidget {
                     for (final m in members)
                       if (test(m)) m,
                   ].length;
-                  return StreamBuilder<List<String>>(
-                    stream: vm.order,
-                    builder: (context, orderSnap) =>
-                        StreamBuilder<List<Position>>(
-                          stream: vm.positions,
-                          builder: (context, snap) {
-                            if (snap.hasError) {
-                              return Text('불러오지 못했습니다\n${snap.error}');
-                            }
-                            final items = snap.data;
-                            if (items == null) {
-                              return const Center(child: AppLoader());
-                            }
-                            final byId = {for (final p in items) p.id: p};
-                            // 정한 순서대로, 순서에 없는 직급(새로 만든 것)은 뒤에 붙는다.
-                            final ids = _orderedIds(
-                              orderSnap.data ?? const [],
-                              items,
-                            );
-                            return ColumnWrap(
-                              wide: 2,
-                              narrow: 2,
-                              children: [
-                                for (var i = 0; i < ids.length; i++)
-                                  _tile(
-                                    context,
-                                    vm,
-                                    ids[i],
-                                    byId[ids[i]],
-                                    members,
-                                    countOf,
-                                    onUp: i == 0
-                                        ? null
-                                        : () => vm.move(ids, i, -1),
-                                    onDown: i == ids.length - 1
-                                        ? null
-                                        : () => vm.move(ids, i, 1),
-                                  ),
-                              ],
-                            );
-                          },
-                        ),
+                  return StreamBuilder<List<Position>>(
+                    stream: vm.positions,
+                    builder: (context, snap) {
+                      if (snap.hasError) {
+                        return Text('불러오지 못했습니다\n${snap.error}');
+                      }
+                      final items = snap.data;
+                      if (items == null) {
+                        return const Center(child: AppLoader());
+                      }
+                      // 교회 관리자 · 교역자 · 회원, 이어서 직접 만든 직급(이름순).
+                      return ColumnWrap(
+                        wide: 2,
+                        narrow: 2,
+                        children: [
+                          for (final b in BuiltInPosition.values)
+                            _tile(context, vm, b.id, null, members, countOf),
+                          for (final p in items)
+                            _tile(context, vm, p.id, p, members, countOf),
+                        ],
+                      );
+                    },
                   );
                 },
               ),
@@ -276,30 +256,14 @@ class PositionManagePage extends StatelessWidget {
         child: _AdminMembersDialog(vm: vm, meId: me.id),
       );
 
-  /// 카드 순서: 저장된 순서를 따르고, 없는 직급은 기본 순서(교회 관리자 · 교역자 · 회원 · 직접 만든 직급 이름순)로 뒤에 붙는다.
-  static List<String> _orderedIds(List<String> saved, List<Position> items) {
-    final all = [
-      for (final b in BuiltInPosition.values) b.id,
-      for (final p in items) p.id,
-    ];
-    return [
-      for (final id in saved)
-        if (all.contains(id)) id,
-      for (final id in all)
-        if (!saved.contains(id)) id,
-    ];
-  }
-
   Widget _tile(
     BuildContext context,
     _PositionsViewModel vm,
     String id,
     Position? p,
     List<Member> members,
-    int Function(bool Function(Member)) countOf, {
-    VoidCallback? onUp,
-    VoidCallback? onDown,
-  }) {
+    int Function(bool Function(Member)) countOf,
+  ) {
     if (p == null) {
       // 기본 직급: 교회 관리자 · 교역자 · 회원. 지울 수 없다 (교회 관리자는 모든 권한이라 고치지 않는다).
       final b = BuiltInPosition.values.firstWhere((b) => b.id == id);
@@ -322,8 +286,6 @@ class PositionManagePage extends StatelessWidget {
         onMembers: b == BuiltInPosition.admin
             ? () => _roleMembers(context, vm)
             : null,
-        onUp: onUp,
-        onDown: onDown,
       );
     }
     return _PositionTile(
@@ -334,8 +296,6 @@ class PositionManagePage extends StatelessWidget {
       count: countOf((m) => m.positionId == p.id),
       onEdit: () => _edit(context, vm, position: p),
       onMembers: () => _members(context, vm, p, members),
-      onUp: onUp,
-      onDown: onDown,
     );
   }
 
@@ -358,8 +318,6 @@ class PositionManagePage extends StatelessWidget {
 class _PositionTile extends StatelessWidget {
   const _PositionTile({
     super.key,
-    this.onUp,
-    this.onDown,
     required this.icon,
     required this.color,
     required this.name,
@@ -380,10 +338,6 @@ class _PositionTile extends StatelessWidget {
 
   /// 이 직급을 가진 교인을 고르는 창을 연다 (직접 만든 직급만).
   final VoidCallback? onMembers;
-
-  /// 순서를 한 칸 앞 · 뒤로 옮긴다. 맨 앞(뒤)이면 null이라 눌리지 않는다.
-  final VoidCallback? onUp;
-  final VoidCallback? onDown;
 
   @override
   Widget build(BuildContext context) {
@@ -425,51 +379,28 @@ class _PositionTile extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 2),
-                  // 오른쪽 아래의 순서 버튼과 겹치지 않게 비워 두고, 좁으면 표시를 말줄임으로 줄인다.
-                  Padding(
-                    padding: const EdgeInsets.only(right: 58),
-                    child: Row(
-                      children: [
-                        Text(
-                          '$count명',
-                          style: TextStyle(color: palette.muted, fontSize: 13),
-                        ),
-                        if (caption != null) ...[
-                          const SizedBox(width: 8),
-                          Flexible(
-                            child: Text(
-                              caption!,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                color: palette.muted,
-                                fontSize: 12.5,
-                              ),
+                  // 좁으면 표시를 말줄임으로 줄인다.
+                  Row(
+                    children: [
+                      Text(
+                        '$count명',
+                        style: TextStyle(color: palette.muted, fontSize: 13),
+                      ),
+                      if (caption != null) ...[
+                        const SizedBox(width: 8),
+                        Flexible(
+                          child: Text(
+                            caption!,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: palette.muted,
+                              fontSize: 12.5,
                             ),
                           ),
-                        ],
+                        ),
                       ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            // 순서: 카드 오른쪽 아래의 작은 앞 · 뒤 버튼.
-            Positioned(
-              bottom: 4,
-              right: 4,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _OrderButton(
-                    tooltip: '앞으로',
-                    icon: AppIcons.caretUp,
-                    onPressed: onUp,
-                  ),
-                  _OrderButton(
-                    tooltip: '뒤로',
-                    icon: AppIcons.caretDown,
-                    onPressed: onDown,
+                    ],
                   ),
                 ],
               ),
@@ -500,29 +431,6 @@ class _PositionTile extends StatelessWidget {
       ),
     );
   }
-}
-
-/// 카드 순서를 바꾸는 작은 버튼.
-class _OrderButton extends StatelessWidget {
-  const _OrderButton({
-    required this.tooltip,
-    required this.icon,
-    required this.onPressed,
-  });
-
-  final String tooltip;
-  final IconData icon;
-  final VoidCallback? onPressed;
-
-  @override
-  Widget build(BuildContext context) => IconButton(
-    tooltip: tooltip,
-    onPressed: onPressed,
-    icon: Icon(icon, size: 18),
-    visualDensity: VisualDensity.compact,
-    constraints: const BoxConstraints.tightFor(width: 28, height: 28),
-    padding: EdgeInsets.zero,
-  );
 }
 
 /// 직급 만들기 · 수정에서 입력한 값.
@@ -1166,8 +1074,7 @@ class _PositionsViewModel extends ViewModel {
   _PositionsViewModel(this._repo, MemberRepository members, this.churchId)
     : _memberRepo = members,
       // 정렬 맞추기와 화면이 함께 읽으므로 여러 번 구독할 수 있게 한다.
-      positions = _repo.positions(churchId).asBroadcastStream(),
-      order = _repo.order(churchId).asBroadcastStream() {
+      positions = _repo.positions(churchId).asBroadcastStream() {
     // 교인 목록은 한 번만 구독해 두고 화면 · 대화상자가 함께 읽는다 (교인 스트림은 한 번만 구독할 수 있다).
     _membersSub = members.members(churchId).listen((v) {
       latestMembers = v;
@@ -1211,19 +1118,6 @@ class _PositionsViewModel extends ViewModel {
   final MemberRepository _memberRepo;
   final String churchId;
   final Stream<List<Position>> positions;
-
-  /// 저장된 카드 순서 (직급 ID들).
-  final Stream<List<String>> order;
-
-  /// [ids]의 [index]번째 카드를 [delta]칸(-1 앞 · 1 뒤) 옮기고 순서를 저장한다.
-  Future<bool> move(List<String> ids, int index, int delta) {
-    final to = index + delta;
-    if (to < 0 || to >= ids.length) return Future.value(true);
-    final next = [...ids];
-    final item = next.removeAt(index);
-    next.insert(to, item);
-    return run(() => _repo.saveOrder(churchId, next));
-  }
 
   Future<bool> create(
     String name,

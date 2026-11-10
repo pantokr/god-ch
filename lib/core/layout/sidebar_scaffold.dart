@@ -6,6 +6,7 @@ import 'app_info_dialog.dart';
 
 import '../../app/app_scope.dart';
 import '../theme.dart';
+import '../widgets/brand_mark.dart';
 import '../widgets/thumbnail_avatar.dart';
 import 'responsive.dart';
 
@@ -324,26 +325,7 @@ class _SidebarPanel extends StatelessWidget {
             ),
             child: Row(
               children: [
-                Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    gradient: AppDepth.brand(context),
-                    borderRadius: BorderRadius.circular(AppRadius.card),
-                    boxShadow: [
-                      BoxShadow(
-                        color: palette.brand.withValues(alpha: 0.4),
-                        blurRadius: 14,
-                        offset: const Offset(0, 6),
-                      ),
-                    ],
-                  ),
-                  child: Icon(
-                    AppIcons.handHeart,
-                    size: 24,
-                    color: palette.onBrand,
-                  ),
-                ),
+                const BrandLogo(size: 44),
                 const SizedBox(width: 14),
                 Expanded(
                   child: Text(

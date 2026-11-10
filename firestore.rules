@@ -649,15 +649,6 @@ service cloud.firestore {
         allow delete: if false;
       }
 
-      // ---- 직급 카드 순서: 교인이 읽고 교회 관리자가 정한다 ----
-      match /settings/positionOrder {
-        allow get: if isActive(churchId) || isPlatformAdmin();
-        allow create, update: if isOwner(churchId)
-          && request.resource.data.keys().hasOnly(['order'])
-          && request.resource.data.order is list
-          && request.resource.data.order.size() <= 60;
-      }
-
       // ---- 입장 시 필수 정보: 입장을 신청하는 사람도 읽어야 하므로 로그인한 누구나 읽고, 교회 관리자가 정한다 ----
       match /settings/join {
         allow get: if signedIn();

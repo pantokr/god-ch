@@ -1,80 +1,10 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/format.dart';
 import '../../../core/icons.dart';
 import '../../../core/theme.dart';
 import '../../../core/widgets/app_inputs.dart';
 import '../../../data/models/affiliation.dart';
 import '../../../data/models/member.dart';
-
-/// 입장 요청한 사람의 정보를 보기만 하는 창 (고치는 칸이 없다).
-class PendingMemberInfoDialog extends StatelessWidget {
-  const PendingMemberInfoDialog({
-    super.key,
-    required this.member,
-    this.dateLabel = '요청일',
-  });
-
-  final Member member;
-
-  /// 날짜 줄의 이름: 입장 요청은 "요청일", 등록된 인원은 "등록일".
-  final String dateLabel;
-
-  @override
-  Widget build(BuildContext context) {
-    final palette = context.palette;
-    final account = member.loginId.isNotEmpty
-        ? member.loginId
-        : (member.email.isNotEmpty ? member.email : '');
-    // [required]이면 값이 없어도 줄을 보이고 "미제공"이라고 쓴다.
-    Widget row(String label, String value, {bool required = false}) =>
-        value.isEmpty && !required
-        ? const SizedBox.shrink()
-        : Padding(
-            padding: const EdgeInsets.only(top: 12),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                SizedBox(
-                  width: 84,
-                  child: Text(label, style: TextStyle(color: palette.muted)),
-                ),
-                Expanded(
-                  child: SelectableText(
-                    value.isEmpty ? '미제공' : value,
-                    style: value.isEmpty
-                        ? TextStyle(color: palette.muted)
-                        : null,
-                  ),
-                ),
-              ],
-            ),
-          );
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Text(member.name, style: Theme.of(context).textTheme.titleLarge),
-        row('아이디', account),
-        row('전화번호', member.phone, required: true),
-        row('주소', member.address, required: true),
-        row('생년월일', member.birthDate),
-        row(
-          dateLabel,
-          member.createdAt == null ? '' : fmtDateTime(member.createdAt),
-        ),
-        const SizedBox(height: 20),
-        Align(
-          alignment: Alignment.centerRight,
-          child: TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('닫기'),
-          ),
-        ),
-      ],
-    );
-  }
-}
 
 /// 승인할 때 고른 역할과 소속.
 class ApproveChoice {

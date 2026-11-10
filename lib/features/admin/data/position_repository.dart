@@ -34,19 +34,6 @@ class PositionRepository {
         ]..sort((a, b) => a.name.compareTo(b.name)),
       );
 
-  DocumentReference<Map<String, dynamic>> _orderDoc(String churchId) =>
-      _paths.church(churchId).collection('settings').doc('positionOrder');
-
-  /// 직급 카드의 순서 (직급 ID들: `admin` · `staff` · `member`와 직접 만든 직급의 ID). 정한 적이 없으면 빈 목록이다.
-  Stream<List<String>> order(String churchId) =>
-      _orderDoc(churchId)
-          .snapshots()
-          .map((d) => [...?(d.data()?['order'] as List?)?.whereType<String>()]);
-
-  /// 직급 카드의 순서를 저장한다.
-  Future<void> saveOrder(String churchId, List<String> ids) =>
-      _orderDoc(churchId).set({'order': ids});
-
   String _checkName(String name) {
     final n = name.trim();
     if (n.isEmpty) throw const AppException('직급 이름을 입력해 주세요.');

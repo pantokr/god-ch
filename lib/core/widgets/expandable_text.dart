@@ -35,6 +35,11 @@ class _ExpandableTextState extends State<ExpandableText> {
     if (old.text != widget.text) _open = false;
   }
 
+  Widget _full(BuildContext context, TextStyle style) =>
+      SelectionContainer.maybeOf(context) != null
+      ? Text(widget.text, style: style)
+      : SelectableText(widget.text, style: style);
+
   @override
   Widget build(BuildContext context) {
     final style = widget.style ?? DefaultTextStyle.of(context).style;
@@ -59,7 +64,8 @@ class _ExpandableTextState extends State<ExpandableText> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             if (_open || !overflows)
-              SelectableText(widget.text, style: style)
+              // 글자를 끌어 선택할 수 있는 화면(SelectionArea) 안에서는 그 선택을 따르고, 아니면 스스로 선택된다.
+              _full(context, style)
             else
               Text(
                 widget.text,

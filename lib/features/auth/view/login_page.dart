@@ -10,6 +10,7 @@ import '../../../app/app_scope.dart';
 import '../../../app/routes.dart';
 import '../../../core/mvvm/view_model_builder.dart';
 import '../../../core/theme.dart';
+import '../../../core/widgets/brand_mark.dart';
 import '../view_model/login_view_model.dart';
 
 /// ID + 비밀번호로 로그인하거나, Google로 계속한다.
@@ -74,13 +75,6 @@ class _LoginPageState extends State<LoginPage> {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      Text(
-                        '로그인',
-                        style: theme.textTheme.headlineSmall?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(height: 24),
                       LabeledField(
                         label: '아이디',
                         child: TextFormField(
@@ -151,8 +145,8 @@ class _Brand extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        Icon(AppIcons.handHeart, color: context.palette.brand, size: 40),
-        SizedBox(height: 12),
+        const BrandLogo(size: 72, glow: true),
+        const SizedBox(height: 14),
         Text('같이', style: TextStyle(fontSize: 26, fontWeight: FontWeight.w600)),
         SizedBox(height: 6),
         Text(

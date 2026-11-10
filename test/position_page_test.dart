@@ -55,9 +55,6 @@ class _Bible extends Fake implements BibleRepository {}
 
 class _Positions extends Fake implements PositionRepository {
   @override
-  Stream<List<String>> order(String churchId) => Stream.value(const []);
-
-  @override
   Stream<List<Position>> positions(String churchId) => Stream.value(const [
     Position(id: 'p1', name: '찬양팀', permissions: {'prayer.write'}),
   ]);

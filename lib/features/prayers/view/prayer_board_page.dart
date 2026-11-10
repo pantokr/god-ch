@@ -218,153 +218,156 @@ class _PrayerSimpleListState extends State<PrayerSimpleList> {
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      // 오른쪽 아래의 기도 요청 버튼에 마지막 줄이 가리지 않게 아래를 비운다.
-      padding: const EdgeInsets.only(bottom: 88),
-      child: PageFrame(
-        header: widget.header,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // 검색 필드는 탭 설명 위에 있다 (내 활동에는 없다).
-            if (widget.header == null) ...[
-              PadSearchField(
-                child: TextField(
-                  controller: _search,
-                  onChanged: (v) =>
-                      setState(() => _query = v.trim().toLowerCase()),
-                  textInputAction: TextInputAction.search,
-                  decoration: InputDecoration(
-                    hintText: '중보기도 제목을 입력하세요',
-                    isDense: true,
-                    suffixIcon: _query.isEmpty
-                        ? const Icon(AppIcons.magnifyingGlass, size: 18)
-                        : IconButton(
-                            icon: const Icon(AppIcons.x, size: 18),
-                            onPressed: () {
-                              _search.clear();
-                              setState(() => _query = '');
-                            },
-                          ),
+    return SelectionArea(
+      child: SingleChildScrollView(
+        // 오른쪽 아래의 기도 요청 버튼에 마지막 줄이 가리지 않게 아래를 비운다.
+        padding: const EdgeInsets.only(bottom: 88),
+        child: PageFrame(
+          header: widget.header,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // 검색 필드는 탭 설명 위에 있다 (내 활동에는 없다).
+              if (widget.header == null) ...[
+                PadSearchField(
+                  child: TextField(
+                    controller: _search,
+                    onChanged: (v) =>
+                        setState(() => _query = v.trim().toLowerCase()),
+                    textInputAction: TextInputAction.search,
+                    decoration: InputDecoration(
+                      hintText: '중보기도 제목을 입력하세요',
+                      isDense: true,
+                      suffixIcon: _query.isEmpty
+                          ? const Icon(AppIcons.magnifyingGlass, size: 18)
+                          : IconButton(
+                              icon: const Icon(AppIcons.x, size: 18),
+                              onPressed: () {
+                                _search.clear();
+                                setState(() => _query = '');
+                              },
+                            ),
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 16),
-            ],
-            if (widget.header == null)
-              PageTitle(
-                gap: 32,
-                title: '',
-                description: '서로를 위한 중보기도를 올려 보세요. 함께 중보기도하며 응원을 나눠 보세요.',
-              ),
-            // 패널 영역과 목록 영역을 가르는 선, 그 아래 목록 윗부분 오른쪽에 새로고침 (말씀묵상과 같다).
-            Divider(height: 1, color: context.palette.border),
-            // 읽음 제외는 정렬 줄 위에 둔다.
-            BleedBox(
-              padding: const EdgeInsets.only(top: 8),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // 정렬 순서는 패널 밖, 목록 바로 위에 붙고 오른쪽에 새로고침 (일정과 같다).
-                  SortStrip(
-                    viewToggle: ViewModeToggle(
-                      grid: _grid,
-                      onChanged: (g) => setState(() => _grid = g),
-                    ),
-                    leading: kHideReadEnabled && widget.header == null
-                        ? ToggleChip(
-                            label: '읽음 제외',
-                            on: _hideRead,
-                            onTap: () => setState(() => _hideRead = !_hideRead),
-                          )
-                        : null,
+                const SizedBox(height: 16),
+              ],
+              if (widget.header == null)
+                PageTitle(
+                  gap: 32,
+                  title: '',
+                  description: '서로를 위한 중보기도를 올려 보세요. 함께 중보기도하며 응원을 나눠 보세요.',
+                ),
+              // 패널 영역과 목록 영역을 가르는 선, 그 아래 목록 윗부분 오른쪽에 새로고침 (말씀묵상과 같다).
+              Divider(height: 1, color: context.palette.border),
+              // 읽음 제외는 정렬 줄 위에 둔다.
+              BleedBox(
+                padding: const EdgeInsets.only(top: 8),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // 정렬 순서는 패널 밖, 목록 바로 위에 붙고 오른쪽에 새로고침 (일정과 같다).
+                    SortStrip(
+                      viewToggle: ViewModeToggle(
+                        grid: _grid,
+                        onChanged: (g) => setState(() => _grid = g),
+                      ),
+                      leading: kHideReadEnabled && widget.header == null
+                          ? ToggleChip(
+                              label: '읽음 제외',
+                              on: _hideRead,
+                              onTap: () =>
+                                  setState(() => _hideRead = !_hideRead),
+                            )
+                          : null,
 
-                    options: [
-                      for (final o in PrayerSort.values)
-                        PadOption(
-                          o.label,
-                          selected: _sort == o,
-                          onTap: () => setState(() => _sort = o),
-                        ),
-                    ],
-                  ),
-                  SortBody(
-                    child: StreamBuilder<List<Prayer>>(
-                      stream: widget.prayers,
-                      builder: (context, snap) {
-                        if (snap.hasError) {
-                          return EmptyHint('불러오지 못했습니다\n${snap.error}');
-                        }
-                        final all = snap.data;
-                        if (all == null) {
-                          return const Padding(
-                            padding: EdgeInsets.all(48),
-                            child: Center(child: AppLoader()),
-                          );
-                        }
-                        if (_sort == PrayerSort.likes) {
-                          WidgetsBinding.instance.addPostFrameCallback(
-                            (_) => _ensureLikes(all),
-                          );
-                        }
-                        final items = _apply(all);
-                        if (items.isEmpty) {
-                          return EmptyHint(
-                            all.isEmpty ? widget.emptyText : '검색 결과 없음',
-                          );
-                        }
-                        return StreamBuilder<List<Affiliation>>(
-                          stream: _affiliations,
-                          builder: (context, affs) {
-                            final names = {
-                              for (final a
-                                  in affs.data ?? const <Affiliation>[])
-                                a.id: a.name,
-                            };
-                            return StreamBuilder<PrayerSettings>(
-                              stream: _settings,
-                              initialData: PrayerSettings.standard,
-                              builder: (context, set) => _grid
-                                  ? TwoColumn(
-                                      children: [
-                                        for (final p in items)
-                                          PrayerTile(
-                                            prayer: p,
-                                            me: widget.me,
-                                            affiliationNames: names,
-                                            settings:
-                                                set.data ??
-                                                PrayerSettings.standard,
-                                            gutter: 0,
-                                            grid: true,
-                                          ),
-                                      ],
-                                    )
-                                  : Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.stretch,
-                                      children: [
-                                        for (final p in items)
-                                          PrayerTile(
-                                            prayer: p,
-                                            me: widget.me,
-                                            affiliationNames: names,
-                                            settings:
-                                                set.data ??
-                                                PrayerSettings.standard,
-                                          ),
-                                      ],
-                                    ),
-                            );
-                          },
-                        );
-                      },
+                      options: [
+                        for (final o in PrayerSort.values)
+                          PadOption(
+                            o.label,
+                            selected: _sort == o,
+                            onTap: () => setState(() => _sort = o),
+                          ),
+                      ],
                     ),
-                  ),
-                ],
+                    SortBody(
+                      child: StreamBuilder<List<Prayer>>(
+                        stream: widget.prayers,
+                        builder: (context, snap) {
+                          if (snap.hasError) {
+                            return EmptyHint('불러오지 못했습니다\n${snap.error}');
+                          }
+                          final all = snap.data;
+                          if (all == null) {
+                            return const Padding(
+                              padding: EdgeInsets.all(48),
+                              child: Center(child: AppLoader()),
+                            );
+                          }
+                          if (_sort == PrayerSort.likes) {
+                            WidgetsBinding.instance.addPostFrameCallback(
+                              (_) => _ensureLikes(all),
+                            );
+                          }
+                          final items = _apply(all);
+                          if (items.isEmpty) {
+                            return EmptyHint(
+                              all.isEmpty ? widget.emptyText : '검색 결과 없음',
+                            );
+                          }
+                          return StreamBuilder<List<Affiliation>>(
+                            stream: _affiliations,
+                            builder: (context, affs) {
+                              final names = {
+                                for (final a
+                                    in affs.data ?? const <Affiliation>[])
+                                  a.id: a.name,
+                              };
+                              return StreamBuilder<PrayerSettings>(
+                                stream: _settings,
+                                initialData: PrayerSettings.standard,
+                                builder: (context, set) => _grid
+                                    ? TwoColumn(
+                                        children: [
+                                          for (final p in items)
+                                            PrayerTile(
+                                              prayer: p,
+                                              me: widget.me,
+                                              affiliationNames: names,
+                                              settings:
+                                                  set.data ??
+                                                  PrayerSettings.standard,
+                                              gutter: 0,
+                                              grid: true,
+                                            ),
+                                        ],
+                                      )
+                                    : Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.stretch,
+                                        children: [
+                                          for (final p in items)
+                                            PrayerTile(
+                                              prayer: p,
+                                              me: widget.me,
+                                              affiliationNames: names,
+                                              settings:
+                                                  set.data ??
+                                                  PrayerSettings.standard,
+                                            ),
+                                        ],
+                                      ),
+                              );
+                            },
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

@@ -8,6 +8,7 @@ import '../../../core/widgets/role_chips.dart';
 import '../../../core/widgets/thumbnail_avatar.dart';
 import '../../../data/models/member.dart';
 import '../../../data/models/position.dart';
+import '../../../data/models/user_profile.dart';
 
 /// 회원 상세 페이지로 이동한다 (목록의 "관리"). 가운데에 회원의 모든 정보를 보이고,
 /// [editor]가 있으면 그 아래 카드에 역할 · 소속 · 상태를 고치는 칸을 둔다.
@@ -41,7 +42,8 @@ Future<void> showMemberInfoPage(
         false,
       ),
       (
-        '가입일',
+        // 입장 요청은 아직 가입 전이라 요청한 날이다.
+        member.status == MemberStatus.pending ? '요청일' : '가입일',
         member.createdAt == null ? '' : fmtDateTime(member.createdAt),
         false,
       ),
@@ -49,6 +51,35 @@ Future<void> showMemberInfoPage(
   ),
   editor: editor,
   footer: footer,
+);
+
+/// 앱 운영자의 회원 상세 페이지 (회원 관리의 "관리"): 교회 안의 [showMemberInfoPage]와 같은 모양이다.
+/// 한 회원이 여러 교회에 속할 수 있어, 역할 · 직급 대신 소속 교회와 소속을 보인다.
+Future<void> showUserInfoPage(
+  BuildContext context, {
+  required UserProfile user,
+  List<String> churchNames = const [],
+  List<String> affiliationNames = const [],
+  Widget? editor,
+}) => _push(
+  context,
+  name: user.name,
+  card: _InfoCard(
+    name: user.name,
+    photoUrl: user.photoUrl,
+    positionName: '',
+    role: Role.member,
+    affiliationNames: affiliationNames,
+    rows: [
+      ('아이디', user.loginId ?? user.email, false),
+      ('전화번호', user.phone, true),
+      ('주소', user.address, true),
+      ('생년월일', user.birthDate, false),
+      ('소속 교회', churchNames.join(', '), false),
+      ('가입일', user.createdAt == null ? '' : fmtDateTime(user.createdAt), false),
+    ],
+  ),
+  editor: editor,
 );
 
 Future<void> _push(

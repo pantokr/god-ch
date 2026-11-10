@@ -2,6 +2,8 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../theme.dart';
+
 /// God-Ch 마크 (God's Church): G 글자의 가로획이 십자가가 된다.
 /// 도형은 `tool/make_icons.py`의 앱 아이콘과 같은 좌표(0~100)를 쓴다.
 class BrandMark extends StatelessWidget {
@@ -13,6 +15,31 @@ class BrandMark extends StatelessWidget {
   @override
   Widget build(BuildContext context) =>
       CustomPaint(size: Size.square(size), painter: _MarkPainter(color));
+}
+
+/// 앱 로고: 강조색 바탕의 둥근 타일 위에 [BrandMark]. 앱 아이콘 · 스플래시 · 로그인 · 왼쪽 메뉴 · 앱 정보가 모두 이것을 쓴다.
+/// 타일의 모서리와 마크 크기는 [size]에 비례한다. [glow]면 타일 아래에 은은한 빛이 번진다.
+class BrandLogo extends StatelessWidget {
+  const BrandLogo({super.key, this.size = 64, this.glow = false});
+
+  final double size;
+  final bool glow;
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = context.palette;
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        gradient: AppDepth.brand(context),
+        borderRadius: BorderRadius.circular(size * 0.25),
+        boxShadow: glow ? AppDepth.glow(context) : null,
+      ),
+      alignment: Alignment.center,
+      child: BrandMark(size: size * 0.625, color: palette.onBrand),
+    );
+  }
 }
 
 class _MarkPainter extends CustomPainter {

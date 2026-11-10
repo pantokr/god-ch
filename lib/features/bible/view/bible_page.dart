@@ -75,151 +75,158 @@ class BiblePage extends StatelessWidget {
           builder: (context, vm) => Stack(
             fit: StackFit.expand,
             children: [
-              SingleChildScrollView(
-                // 오른쪽 아래 버튼에 마지막 줄이 가리지 않게 아래를 비운다.
-                padding: const EdgeInsets.only(bottom: CreateFab.clearance),
-                child: PageFrame(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      // 검색 필드는 탭 설명 위에 있다.
-                      _SearchField(vm: vm),
-                      const SizedBox(height: 16),
-                      PageTitle(
-                        gap: 32,
-                        title: '',
-                        description: '오늘의 말씀 구절을 읽어 보세요. 묵상을 읽고 나의 묵상도 남겨 보세요.',
-                      ),
-                      StreamBuilder<List<Affiliation>>(
-                        stream: vm.affiliations,
-                        builder: (context, affSnap) =>
-                            StreamBuilder<List<ChurchContent>>(
-                              stream: vm.items,
-                              builder: (context, snap) {
-                                if (snap.hasError) {
-                                  return EmptyHint('불러오지 못했습니다\n${snap.error}');
-                                }
-                                final all = snap.data;
-                                final affiliations = affSnap.data;
-                                if (all == null ||
-                                    (affiliations == null &&
-                                        !affSnap.hasError)) {
-                                  return const Padding(
-                                    padding: EdgeInsets.all(48),
-                                    child: Center(child: AppLoader()),
+              SelectionArea(
+                child: SingleChildScrollView(
+                  // 오른쪽 아래 버튼에 마지막 줄이 가리지 않게 아래를 비운다.
+                  padding: const EdgeInsets.only(bottom: CreateFab.clearance),
+                  child: PageFrame(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        // 검색 필드는 탭 설명 위에 있다.
+                        _SearchField(vm: vm),
+                        const SizedBox(height: 16),
+                        PageTitle(
+                          gap: 32,
+                          title: '',
+                          description:
+                              '오늘의 말씀 구절을 읽어 보세요. 묵상을 읽고 나의 묵상도 남겨 보세요.',
+                        ),
+                        StreamBuilder<List<Affiliation>>(
+                          stream: vm.affiliations,
+                          builder: (context, affSnap) =>
+                              StreamBuilder<List<ChurchContent>>(
+                                stream: vm.items,
+                                builder: (context, snap) {
+                                  if (snap.hasError) {
+                                    return EmptyHint(
+                                      '불러오지 못했습니다\n${snap.error}',
+                                    );
+                                  }
+                                  final all = snap.data;
+                                  final affiliations = affSnap.data;
+                                  if (all == null ||
+                                      (affiliations == null &&
+                                          !affSnap.hasError)) {
+                                    return const Padding(
+                                      padding: EdgeInsets.all(48),
+                                      child: Center(child: AppLoader()),
+                                    );
+                                  }
+                                  final items = vm.apply(
+                                    all,
+                                    affiliationId: affiliation?.id,
                                   );
-                                }
-                                final items = vm.apply(
-                                  all,
-                                  affiliationId: affiliation?.id,
-                                );
-                                return Column(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.stretch,
-                                  children: [
-                                    // 최근 글쓴이는 구분선 위에 있다.
-                                    _RecentAuthors(
-                                      visible: vm.settings.showAuthor,
-                                      authors: DevotionsViewModel.recentAuthors(
-                                        all,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 8),
-                                    // 위 영역과 목록 영역을 가르는 선.
-                                    Divider(
-                                      height: 1,
-                                      color: context.palette.border,
-                                    ),
-                                    // 읽음 제외는 정렬 줄 위에 둔다.
-                                    BleedBox(
-                                      padding: const EdgeInsets.only(top: 8),
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.stretch,
-                                        children: [
-                                          // 정렬 순서는 패널 밖, 목록 바로 위에 붙는다 (일정과 같다).
-                                          SortStrip(
-                                            viewToggle: ViewModeToggle(
-                                              grid: vm.grid,
-                                              onChanged: vm.setGrid,
+                                  return Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.stretch,
+                                    children: [
+                                      // 최근 글쓴이는 구분선 위에 있다.
+                                      _RecentAuthors(
+                                        visible: vm.settings.showAuthor,
+                                        authors:
+                                            DevotionsViewModel.recentAuthors(
+                                              all,
                                             ),
-                                            leading: kHideReadEnabled
-                                                ? ToggleChip(
-                                                    label: '읽음 제외',
-                                                    on: vm.hideRead,
-                                                    onTap: vm.toggleHideRead,
-                                                  )
-                                                : null,
+                                      ),
+                                      const SizedBox(height: 8),
+                                      // 위 영역과 목록 영역을 가르는 선.
+                                      Divider(
+                                        height: 1,
+                                        color: context.palette.border,
+                                      ),
+                                      // 읽음 제외는 정렬 줄 위에 둔다.
+                                      BleedBox(
+                                        padding: const EdgeInsets.only(top: 8),
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.stretch,
+                                          children: [
+                                            // 정렬 순서는 패널 밖, 목록 바로 위에 붙는다 (일정과 같다).
+                                            SortStrip(
+                                              viewToggle: ViewModeToggle(
+                                                grid: vm.grid,
+                                                onChanged: vm.setGrid,
+                                              ),
+                                              leading: kHideReadEnabled
+                                                  ? ToggleChip(
+                                                      label: '읽음 제외',
+                                                      on: vm.hideRead,
+                                                      onTap: vm.toggleHideRead,
+                                                    )
+                                                  : null,
 
-                                            options: [
-                                              for (final s
-                                                  in DevotionSort.values)
-                                                PadOption(
-                                                  s.label,
-                                                  selected: vm.sort == s,
-                                                  onTap: () => vm.setSort(s),
-                                                ),
-                                            ],
-                                          ),
-                                          SortBody(
-                                            child: Column(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.stretch,
-                                              children: [
-                                                if (items.isEmpty)
-                                                  EmptyHint(
-                                                    all.isEmpty
-                                                        ? '말씀 없음'
-                                                        : '검색 결과 없음',
-                                                  )
-                                                else if (vm.grid)
-                                                  TwoColumn(
-                                                    children: [
-                                                      for (final c in items)
-                                                        DevotionCard(
-                                                          content: c,
-                                                          me: me,
-                                                          settings: vm.settings,
-                                                          affiliationNames: {
-                                                            for (final a
-                                                                in affiliations ??
-                                                                    const <
-                                                                      Affiliation
-                                                                    >[])
-                                                              a.id: a.name,
-                                                          },
-                                                          gutter: 0,
-                                                          grid: true,
-                                                        ),
-                                                    ],
-                                                  )
-                                                else
-                                                  for (final c in items)
-                                                    DevotionCard(
-                                                      content: c,
-                                                      me: me,
-                                                      settings: vm.settings,
-                                                      affiliationNames: {
-                                                        for (final a
-                                                            in affiliations ??
-                                                                const <
-                                                                  Affiliation
-                                                                >[])
-                                                          a.id: a.name,
-                                                      },
-                                                    ),
+                                              options: [
+                                                for (final s
+                                                    in DevotionSort.values)
+                                                  PadOption(
+                                                    s.label,
+                                                    selected: vm.sort == s,
+                                                    onTap: () => vm.setSort(s),
+                                                  ),
                                               ],
                                             ),
-                                          ),
-                                        ],
+                                            SortBody(
+                                              child: Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.stretch,
+                                                children: [
+                                                  if (items.isEmpty)
+                                                    EmptyHint(
+                                                      all.isEmpty
+                                                          ? '말씀 없음'
+                                                          : '검색 결과 없음',
+                                                    )
+                                                  else if (vm.grid)
+                                                    TwoColumn(
+                                                      children: [
+                                                        for (final c in items)
+                                                          DevotionCard(
+                                                            content: c,
+                                                            me: me,
+                                                            settings:
+                                                                vm.settings,
+                                                            affiliationNames: {
+                                                              for (final a
+                                                                  in affiliations ??
+                                                                      const <
+                                                                        Affiliation
+                                                                      >[])
+                                                                a.id: a.name,
+                                                            },
+                                                            gutter: 0,
+                                                            grid: true,
+                                                          ),
+                                                      ],
+                                                    )
+                                                  else
+                                                    for (final c in items)
+                                                      DevotionCard(
+                                                        content: c,
+                                                        me: me,
+                                                        settings: vm.settings,
+                                                        affiliationNames: {
+                                                          for (final a
+                                                              in affiliations ??
+                                                                  const <
+                                                                    Affiliation
+                                                                  >[])
+                                                            a.id: a.name,
+                                                        },
+                                                      ),
+                                                ],
+                                              ),
+                                            ),
+                                          ],
+                                        ),
                                       ),
-                                    ),
-                                  ],
-                                );
-                              },
-                            ),
-                      ),
-                    ],
+                                    ],
+                                  );
+                                },
+                              ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),

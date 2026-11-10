@@ -54,18 +54,19 @@ class ChurchRegistryRepository {
         .toList(),
   );
 
-  /// 모든 교회의 소속 (앱 운영자 전용).
+  /// 모든 교회의 소속 (앱 운영자 전용). 지운 표시가 있는 소속은 교회 안의 목록처럼 뺀다.
   Stream<List<Affiliation>> allAffiliations() => _db
       .collectionGroup('affiliations')
       .snapshots()
       .map(
         (s) => [
           for (final d in s.docs)
-            Affiliation(
-              d.id,
-              d.data()['name'] as String? ?? '',
-              churchId: d.reference.parent.parent!.id,
-            ),
+            if (d.data()['deleted'] != true)
+              Affiliation(
+                d.id,
+                d.data()['name'] as String? ?? '',
+                churchId: d.reference.parent.parent!.id,
+              ),
         ],
       );
 

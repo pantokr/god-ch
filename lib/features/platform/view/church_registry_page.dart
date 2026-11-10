@@ -6,13 +6,12 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/app_scope.dart';
 import '../../../app/routes.dart';
-import '../../../core/layout/app_dialog.dart';
 import '../../../core/layout/page_frame.dart';
 import '../../../core/mvvm/view_model_builder.dart';
 import '../../../data/models/church.dart';
 import '../../church/view/church_requests_admin_card.dart';
 import '../view_model/church_registry_view_model.dart';
-import 'register_church_dialog.dart';
+import 'register_church_page.dart';
 import 'registered_churches.dart';
 
 /// 앱 운영자 > 교회 관리: 교회 생성 요청 처리와 등록된 교회 목록을 한 화면에 나열한다.
@@ -39,10 +38,7 @@ class ChurchRegistryPage extends StatelessWidget {
                 title: '',
                 gap: 16,
                 action: FilledButton.icon(
-                  onPressed: () => showAppDialog<void>(
-                    context,
-                    child: RegisterChurchDialog(vm: vm),
-                  ),
+                  onPressed: () => showRegisterChurchPage(context, vm: vm),
                   icon: const Icon(AppIcons.plus, size: 18),
                   label: const Text('교회 생성'),
                   style: FilledButton.styleFrom(

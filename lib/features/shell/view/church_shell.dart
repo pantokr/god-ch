@@ -82,26 +82,38 @@ class ChurchShell extends StatelessWidget {
 
   static const _icons = {
     ChurchSection.prayer: (AppIcons.handHeart, AppIcons.handHeartFill),
-    ChurchSection.meetings: (AppIcons.usersThree, AppIcons.usersThreeFill),
+    ChurchSection.meetings: (AppIcons.usersRound, AppIcons.usersRoundFill),
     ChurchSection.bible: (AppIcons.bookOpen, AppIcons.bookOpenFill),
     ChurchSection.mine: (AppIcons.user, AppIcons.userFill),
-    ChurchSection.people: (AppIcons.users, AppIcons.usersFill),
+    ChurchSection.people: (AppIcons.network, AppIcons.networkFill),
     ChurchSection.calendar: (AppIcons.calendar, AppIcons.calendar),
     ChurchSection.preferences: (AppIcons.sliders, AppIcons.sliders),
-    ChurchSection.myMeetings: (AppIcons.usersThree, AppIcons.usersThreeFill),
-    ChurchSection.allMeetings: (AppIcons.usersThree, AppIcons.usersThreeFill),
-    ChurchSection.prayerSettings: (AppIcons.handHeart, AppIcons.handHeartFill),
-    ChurchSection.devotionSettings: (AppIcons.bookOpen, AppIcons.bookOpenFill),
+    ChurchSection.myMeetings: (
+      AppIcons.calendarCheck,
+      AppIcons.calendarCheckFill,
+    ),
+    ChurchSection.allMeetings: (
+      AppIcons.calendarSearch,
+      AppIcons.calendarSearchFill,
+    ),
+    ChurchSection.prayerSettings: (
+      AppIcons.handHelping,
+      AppIcons.handHelpingFill,
+    ),
+    ChurchSection.devotionSettings: (
+      AppIcons.bookMarked,
+      AppIcons.bookMarkedFill,
+    ),
     ChurchSection.meetingSettings: (
-      AppIcons.usersThree,
-      AppIcons.usersThreeFill,
+      AppIcons.calendarCog,
+      AppIcons.calendarCogFill,
     ),
     ChurchSection.positions: (AppIcons.shieldCheck, AppIcons.shieldCheckFill),
     ChurchSection.members: (AppIcons.users, AppIcons.usersFill),
     ChurchSection.join: (AppIcons.key, AppIcons.keyFill),
-    ChurchSection.info: (AppIcons.church, AppIcons.churchFill),
+    ChurchSection.info: (AppIcons.building, AppIcons.buildingFill),
     ChurchSection.memberLog: (AppIcons.history, AppIcons.history),
-    ChurchSection.affiliations: (AppIcons.usersThree, AppIcons.usersThreeFill),
+    ChurchSection.affiliations: (AppIcons.layers, AppIcons.layersFill),
   };
 
   /// 모든 교인에게 보이는 메뉴(서랍에서만 들어간다): 우리 소속 · 달력.
@@ -290,8 +302,8 @@ class ChurchShell extends StatelessWidget {
                 items: [
                   SidebarItem(
                     label: '앱 개발자 화면',
-                    icon: AppIcons.shieldCheck,
-                    selectedIcon: AppIcons.shieldCheckFill,
+                    icon: AppIcons.crown,
+                    selectedIcon: AppIcons.crown,
                     selected: false,
                     onTap: () => context.go(Routes.admin),
                   ),

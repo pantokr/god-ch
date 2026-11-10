@@ -90,11 +90,11 @@ class ChoiceRadios<T> extends StatelessWidget {
   Widget build(BuildContext context) {
     final palette = context.palette;
     // 선택지가 2개든 3개든 칸 너비가 같아서(줄마다 같은 자리에 놓인다) 여러 줄을 나란히 놓아도 라디오가 어질러지지 않는다.
-    // 자리가 좁으면 칸이 같은 비율로 줄어든다.
+    // 자리가 좁으면 줄이는 비율도 같다: 3칸이 들어갈 자리를 기준으로 하므로 2개 줄과 3개 줄이 끝까지 같은 열에 놓인다.
     return LayoutBuilder(
       builder: (context, box) {
         final cell = box.maxWidth.isFinite
-            ? (box.maxWidth / options.length).clamp(0.0, cellWidth)
+            ? (box.maxWidth / cellCount(options.length)).clamp(0.0, cellWidth)
             : cellWidth;
         return Align(
           alignment: Alignment.centerLeft,
@@ -109,6 +109,9 @@ class ChoiceRadios<T> extends StatelessWidget {
 
   /// 선택지 한 칸의 너비.
   static const cellWidth = 104.0;
+
+  /// 좁을 때 칸 너비를 정하는 기준 칸 수: 선택지가 둘이어도 셋으로 나눠, 줄마다 칸이 같은 자리에 놓인다.
+  static int cellCount(int options) => options < 3 ? 3 : options;
 
   Widget _radios(BuildContext context, AppPalette palette) {
     return RadioGroup<T>(
