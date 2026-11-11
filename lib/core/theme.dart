@@ -303,6 +303,28 @@ class _FadeTransitions extends PageTransitionsBuilder {
   ) => FadeTransition(opacity: animation, child: child);
 }
 
+/// 앱은 어디서도 글씨를 굵게 쓰지 않는다: 모든 글자 모양의 굵기를 보통(w400)으로 맞춘다.
+TextTheme _regular(TextTheme t) {
+  TextStyle? r(TextStyle? s) => s?.copyWith(fontWeight: FontWeight.w400);
+  return t.copyWith(
+    displayLarge: r(t.displayLarge),
+    displayMedium: r(t.displayMedium),
+    displaySmall: r(t.displaySmall),
+    headlineLarge: r(t.headlineLarge),
+    headlineMedium: r(t.headlineMedium),
+    headlineSmall: r(t.headlineSmall),
+    titleLarge: r(t.titleLarge),
+    titleMedium: r(t.titleMedium),
+    titleSmall: r(t.titleSmall),
+    bodyLarge: r(t.bodyLarge),
+    bodyMedium: r(t.bodyMedium),
+    bodySmall: r(t.bodySmall),
+    labelLarge: r(t.labelLarge),
+    labelMedium: r(t.labelMedium),
+    labelSmall: r(t.labelSmall),
+  );
+}
+
 ThemeData buildTheme(Brightness brightness) {
   final p = brightness == Brightness.dark ? AppPalette.dark : AppPalette.light;
   final scheme =
@@ -321,26 +343,28 @@ ThemeData buildTheme(Brightness brightness) {
   final base = ThemeData(brightness: brightness).textTheme
       .apply(bodyColor: p.ink, displayColor: p.ink);
   TextStyle? serif(TextStyle? style) =>
-      style?.copyWith(fontWeight: FontWeight.w600, letterSpacing: -0.4);
-  final textTheme = base.copyWith(
-    displayLarge: serif(base.displayLarge),
-    displayMedium: serif(base.displayMedium),
-    displaySmall: serif(base.displaySmall),
-    headlineLarge: serif(base.headlineLarge),
-    headlineMedium: serif(base.headlineMedium),
-    headlineSmall: serif(base.headlineSmall),
-    titleLarge: serif(base.titleLarge),
-    titleMedium: base.titleMedium?.copyWith(
-      fontWeight: FontWeight.w600,
-      height: 1.5,
+      style?.copyWith(fontWeight: FontWeight.w400, letterSpacing: -0.4);
+  final textTheme = _regular(
+    base.copyWith(
+      displayLarge: serif(base.displayLarge),
+      displayMedium: serif(base.displayMedium),
+      displaySmall: serif(base.displaySmall),
+      headlineLarge: serif(base.headlineLarge),
+      headlineMedium: serif(base.headlineMedium),
+      headlineSmall: serif(base.headlineSmall),
+      titleLarge: serif(base.titleLarge),
+      titleMedium: base.titleMedium?.copyWith(
+        fontWeight: FontWeight.w400,
+        height: 1.5,
+      ),
+      titleSmall: base.titleSmall?.copyWith(height: 1.5),
+      // 본문 · 라벨 글자의 행간을 기본보다 넉넉히 둔다.
+      bodyLarge: base.bodyLarge?.copyWith(height: 1.6),
+      bodyMedium: base.bodyMedium?.copyWith(height: 1.6),
+      bodySmall: base.bodySmall?.copyWith(height: 1.55),
+      labelLarge: base.labelLarge?.copyWith(height: 1.5),
+      labelMedium: base.labelMedium?.copyWith(height: 1.5),
     ),
-    titleSmall: base.titleSmall?.copyWith(height: 1.5),
-    // 본문 · 라벨 글자의 행간을 기본보다 넉넉히 둔다.
-    bodyLarge: base.bodyLarge?.copyWith(height: 1.6),
-    bodyMedium: base.bodyMedium?.copyWith(height: 1.6),
-    bodySmall: base.bodySmall?.copyWith(height: 1.55),
-    labelLarge: base.labelLarge?.copyWith(height: 1.5),
-    labelMedium: base.labelMedium?.copyWith(height: 1.5),
   );
 
   return ThemeData(
@@ -425,7 +449,7 @@ ThemeData buildTheme(Brightness brightness) {
         shape: shape,
         minimumSize: const Size(0, 48),
         padding: const EdgeInsets.symmetric(horizontal: 22),
-        textStyle: const TextStyle(fontWeight: FontWeight.w600),
+        textStyle: const TextStyle(fontWeight: FontWeight.w400),
         elevation: 0,
         foregroundColor: p.onBrand,
         // 눌리지 않는 버튼은 회색으로 둔다 (보조 글자색이 검정이 되었어도).
@@ -454,7 +478,7 @@ ThemeData buildTheme(Brightness brightness) {
         shape: shape,
         minimumSize: const Size(0, 48),
         padding: const EdgeInsets.symmetric(horizontal: 22),
-        textStyle: const TextStyle(fontWeight: FontWeight.w600),
+        textStyle: const TextStyle(fontWeight: FontWeight.w400),
         side: BorderSide(color: p.border, width: 1.5),
         foregroundColor: p.ink,
       ),
@@ -463,7 +487,7 @@ ThemeData buildTheme(Brightness brightness) {
       style: TextButton.styleFrom(
         shape: shape,
         minimumSize: const Size(0, 40),
-        textStyle: const TextStyle(fontWeight: FontWeight.w600),
+        textStyle: const TextStyle(fontWeight: FontWeight.w400),
         // 글자 버튼은 보라색이 아니라 본문 글자색(검은색)이다.
         foregroundColor: p.ink,
       ),
@@ -485,7 +509,7 @@ ThemeData buildTheme(Brightness brightness) {
       backgroundColor: p.surface,
       selectedColor: p.brand.withValues(alpha: 0.16),
       checkmarkColor: p.brand,
-      labelStyle: TextStyle(color: p.ink, fontWeight: FontWeight.w600),
+      labelStyle: TextStyle(color: p.ink, fontWeight: FontWeight.w400),
     ),
     // 드롭다운 목록도 입력칸과 같은 모서리·테두리.
     dropdownMenuTheme: DropdownMenuThemeData(
@@ -561,9 +585,6 @@ ThemeData buildTheme(Brightness brightness) {
       labelTextStyle: WidgetStateProperty.resolveWith(
         (states) => TextStyle(
           fontSize: 12,
-          fontWeight: states.contains(WidgetState.selected)
-              ? FontWeight.w600
-              : FontWeight.w500,
           color: states.contains(WidgetState.selected) ? p.brand : p.muted,
         ),
       ),
@@ -670,7 +691,7 @@ ThemeData buildTheme(Brightness brightness) {
       titleTextStyle: TextStyle(
         color: p.ink,
         fontSize: 17,
-        fontWeight: FontWeight.w600,
+        fontWeight: FontWeight.w400,
       ),
     ),
     floatingActionButtonTheme: FloatingActionButtonThemeData(

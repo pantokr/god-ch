@@ -198,9 +198,7 @@ class _NoChurchNotice extends StatelessWidget {
             Text(
               '소속 교회 없음',
               textAlign: TextAlign.center,
-              style: theme.textTheme.displaySmall?.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
+              style: theme.textTheme.displaySmall?.copyWith(),
             ),
           ],
         ),

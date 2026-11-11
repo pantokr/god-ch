@@ -295,11 +295,7 @@ class PostItNote extends StatelessWidget {
                       if (badges.isNotEmpty) ...[
                         Text(
                           badges.join(' · '),
-                          style: const TextStyle(
-                            color: _soft,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                          ),
+                          style: const TextStyle(color: _soft, fontSize: 11),
                         ),
                         const SizedBox(height: 3),
                       ],
@@ -310,7 +306,6 @@ class PostItNote extends StatelessWidget {
                         style: const TextStyle(
                           color: _ink,
                           fontSize: 15,
-                          fontWeight: FontWeight.w600,
                           height: 1.3,
                         ),
                       ),

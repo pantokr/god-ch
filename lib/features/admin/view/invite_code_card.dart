@@ -338,14 +338,10 @@ class _CodeRow extends StatelessWidget {
         children: [
           SelectableText(
             code.code,
-            style: const TextStyle(
-              fontSize: 22,
-              letterSpacing: 3,
-              fontWeight: FontWeight.w600,
-            ),
+            style: const TextStyle(fontSize: 22, letterSpacing: 3),
           ),
           const SizedBox(height: 6),
-          Text(_target, style: const TextStyle(fontWeight: FontWeight.w500)),
+          Text(_target, style: const TextStyle()),
           Text(
             _remaining(),
             style: TextStyle(color: palette.muted, fontSize: 13),

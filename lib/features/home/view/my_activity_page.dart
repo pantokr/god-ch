@@ -220,10 +220,7 @@ class _SlideCard extends StatelessWidget {
                       m.title,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 15,
-                      ),
+                      style: const TextStyle(fontSize: 15),
                     ),
                     const SizedBox(height: 4),
                     MeetingInfoLine(
@@ -522,7 +519,6 @@ class _CommentList extends StatelessWidget {
                             style: TextStyle(
                               color: palette.ink,
                               fontSize: 12.5,
-                              fontWeight: FontWeight.w600,
                             ),
                           ),
                         ),
@@ -554,7 +550,6 @@ class _CommentList extends StatelessWidget {
                                               style: TextStyle(
                                                 color: palette.ink,
                                                 fontSize: 12.5,
-                                                fontWeight: FontWeight.w600,
                                               ),
                                             ),
                                           ),

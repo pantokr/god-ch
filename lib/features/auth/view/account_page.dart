@@ -79,10 +79,7 @@ class AccountPage extends StatelessWidget {
                             Icon(AppIcons.lock, color: palette.muted),
                             const SizedBox(width: 14),
                             const Expanded(
-                              child: Text(
-                                '비밀번호',
-                                style: TextStyle(fontWeight: FontWeight.w600),
-                              ),
+                              child: Text('비밀번호', style: TextStyle()),
                             ),
                             OutlinedButton(
                               onPressed: () => _changePassword(context),
@@ -103,10 +100,7 @@ class AccountPage extends StatelessWidget {
                             Icon(AppIcons.signOut, color: palette.muted),
                             const SizedBox(width: 14),
                             const Expanded(
-                              child: Text(
-                                '앱 탈퇴',
-                                style: TextStyle(fontWeight: FontWeight.w600),
-                              ),
+                              child: Text('앱 탈퇴', style: TextStyle()),
                             ),
                             OutlinedButton(
                               onPressed: () => _deleteAccount(context),

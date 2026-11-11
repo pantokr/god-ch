@@ -122,7 +122,7 @@ class _EventRow extends StatelessWidget {
                   who,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontWeight: FontWeight.w600),
+                  style: const TextStyle(),
                 ),
                 const SizedBox(height: 2),
                 Text(
@@ -132,14 +132,7 @@ class _EventRow extends StatelessWidget {
               ],
             ),
           ),
-          Text(
-            event.kind.label,
-            style: TextStyle(
-              color: color,
-              fontWeight: FontWeight.w600,
-              fontSize: 13,
-            ),
-          ),
+          Text(event.kind.label, style: TextStyle(color: color, fontSize: 13)),
         ],
       ),
     );

@@ -120,9 +120,6 @@ class ShadowSwitch<T> extends StatelessWidget {
                               labelOf(values[i]),
                               style: TextStyle(
                                 fontSize: 14,
-                                fontWeight: values[i] == selected
-                                    ? FontWeight.w600
-                                    : FontWeight.w500,
                                 color: values[i] == selected
                                     ? palette.ink
                                     : palette.muted,

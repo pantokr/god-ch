@@ -210,8 +210,7 @@ class _FieldGroup extends StatelessWidget {
           children: [
             Text(
               title,
-              style: Theme.of(context).textTheme.titleSmall
-                  ?.copyWith(fontWeight: FontWeight.w600),
+              style: Theme.of(context).textTheme.titleSmall?.copyWith(),
             ),
             const SizedBox(height: 16),
             for (var i = 0; i < children.length; i++) ...[

@@ -1,3 +1,6 @@
+import '../../../data/models/activity_log.dart';
+import '../../activity/data/activity_log_repository.dart';
+
 import 'dart:async';
 
 import 'dart:typed_data';
@@ -20,8 +23,12 @@ import '../../auth/data/auth_repository.dart';
 /// 말씀묵상 글을 읽고 쓴다. 이미지 올리기(교회 · 회원 사진)도 여기서 한다.
 /// 읽기는 승인된 교인, 글쓰기는 교역자 · 교회 운영자만 가능하다 (`firestore.rules`가 강제한다).
 class ContentRepository {
-  ContentRepository(FirebaseFirestore db, this._storage, this._auth)
-    : _paths = FirestorePaths(db);
+  ContentRepository(
+    FirebaseFirestore db,
+    this._storage,
+    this._auth, {
+    this.activity,
+  }) : _paths = FirestorePaths(db);
 
   /// 이미지 한 장의 최대 크기. `storage.rules`의 제한과 같아야 한다.
   static const maxImageBytes = 10 * 1024 * 1024;
@@ -29,6 +36,9 @@ class ContentRepository {
   final FirestorePaths _paths;
   final FirebaseStorage _storage;
   final AuthRepository _auth;
+
+  /// 활동 기록 (없으면 남기지 않는다).
+  final ActivityLogRepository? activity;
 
   CollectionReference<Json> _col(String churchId) => _paths.devotions(churchId);
 
@@ -232,19 +242,35 @@ class ContentRepository {
       'visibility': isPrivate ? 'private' : 'public',
     };
     if (id == null) {
-      return _col(churchId).add({
-        ...data,
-        'views': 0,
-        'likedBy': <String>[],
-        'createdBy': _auth.uid,
-        'authorName': authorName,
-        'authorPhotoUrl': authorPhotoUrl,
-        'createdAt': FieldValue.serverTimestamp(),
-      });
+      return _col(churchId)
+          .add({
+            ...data,
+            'views': 0,
+            'likedBy': <String>[],
+            'createdBy': _auth.uid,
+            'authorName': authorName,
+            'authorPhotoUrl': authorPhotoUrl,
+            'createdAt': FieldValue.serverTimestamp(),
+          })
+          .then((ref) {
+            activity?.log(
+              ActivityType.devotionCreate,
+              churchId: churchId,
+              targetId: ref.id,
+              summary: t,
+            );
+          });
     }
     return _col(churchId)
         .doc(id)
-        .update({...data, 'updatedAt': FieldValue.serverTimestamp()});
+        .update({...data, 'updatedAt': FieldValue.serverTimestamp()})
+        .logged(
+          activity,
+          ActivityType.devotionEdit,
+          churchId: churchId,
+          targetId: id,
+          summary: t,
+        );
   }
 
   /// 글을 지운 것으로 표시한다 (기록 보관).
@@ -254,7 +280,13 @@ class ContentRepository {
         'deleted': true,
         'deletedAt': FieldValue.serverTimestamp(),
         'deletedBy': _auth.uid,
-      });
+      })
+      .logged(
+        activity,
+        ActivityType.devotionDelete,
+        churchId: churchId,
+        targetId: id,
+      );
 
   /// Storage 파일의 내려받기 주소. 파일이 없거나 읽을 수 없으면 null.
   Future<String?> downloadUrl(String path) async {

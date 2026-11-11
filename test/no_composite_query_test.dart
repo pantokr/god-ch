@@ -22,6 +22,22 @@ void main() {
     expect(bad, isEmpty, reason: '복합 색인이 필요한 조회: $bad');
   });
 
+  test('활동 기록 저장소도 where와 orderBy를 한 조회에 함께 쓰지 않는다', () {
+    final source = File(
+      'lib/features/activity/data/activity_log_repository.dart',
+    ).readAsStringSync();
+    final code = source
+        .split('\n')
+        .where((l) => !l.trimLeft().startsWith('//'))
+        .join('\n');
+    final bad = [
+      for (final statement in code.split(';'))
+        if (statement.contains('.where(') && statement.contains('.orderBy('))
+          statement.trim().split('\n').first,
+    ];
+    expect(bad, isEmpty, reason: '복합 색인이 필요한 조회: $bad');
+  });
+
   test('색인 설정 파일에 복합 색인이 없다', () {
     final text = File('firestore.indexes.json').readAsStringSync();
     expect(RegExp(r'"indexes"\s*:\s*\[\s*\]').hasMatch(text), isTrue);

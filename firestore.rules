@@ -328,6 +328,23 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // ---- 활동 기록: 로그인한 회원이 자기 활동만 남기고(수정·삭제 불가), 앱 운영자만 읽는다 ----
+    // type 목록은 lib/data/models/activity_log.dart의 ActivityType.id와 일치해야 한다.
+    match /activityLogs/{logId} {
+      allow create: if signedIn()
+        && request.resource.data.keys().hasAll(['uid', 'type', 'createdAt'])
+        && request.resource.data.keys().hasOnly(['uid', 'userName', 'type', 'churchId', 'targetId', 'summary', 'createdAt'])
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.type in ['access', 'login', 'logout', 'signUp', 'passwordChange', 'accountDelete', 'profileEdit', 'joinRequest', 'memberLeave', 'prayerCreate', 'prayerEdit', 'prayerDelete', 'prayerRestore', 'prayerComment', 'privatePrayerView', 'devotionCreate', 'devotionEdit', 'devotionDelete', 'devotionReflection', 'meetingCreate', 'meetingEdit', 'meetingDelete', 'meetingJoin', 'meetingLeave', 'meetingComment', 'memberApprove', 'memberReject', 'memberRemove', 'memberRole', 'memberBlock', 'positionChange', 'affiliationChange']
+        && request.resource.data.get('userName', '') is string && request.resource.data.get('userName', '').size() <= 60
+        && request.resource.data.get('churchId', '') is string && request.resource.data.get('churchId', '').size() <= 64
+        && request.resource.data.get('targetId', '') is string && request.resource.data.get('targetId', '').size() <= 64
+        && request.resource.data.get('summary', '') is string && request.resource.data.get('summary', '').size() <= 100;
+      allow read: if isPlatformAdmin();
+      allow update, delete: if false;
+    }
+
     match /admins/{adminId} {
       // 자신이 운영자인지 확인할 수 있을 뿐, 클라이언트에서는 만들거나 바꿀 수 없다.
       allow get: if signedIn() && request.auth.uid == adminId;

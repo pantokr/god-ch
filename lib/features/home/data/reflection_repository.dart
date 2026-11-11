@@ -1,3 +1,6 @@
+import '../../../data/models/activity_log.dart';
+import '../../activity/data/activity_log_repository.dart';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../../../data/shared_stream.dart';
@@ -13,13 +16,16 @@ import '../../notifications/data/activity_notice.dart';
 /// 말씀묵상 글의 댓글을 읽고 쓴다. 읽기는 승인된 교인 모두, 쓰기는 댓글 권한이 있는 교인이고
 /// 지우기는 본인 댓글 또는 타인 댓글 삭제 권한이 있는 사람이다 (`firestore.rules`가 강제한다).
 class ReflectionRepository {
-  ReflectionRepository(FirebaseFirestore db, this._auth)
+  ReflectionRepository(FirebaseFirestore db, this._auth, {this.activity})
     : _db = db,
       _paths = FirestorePaths(db);
 
   final FirebaseFirestore _db;
   final FirestorePaths _paths;
   final AuthRepository _auth;
+
+  /// 활동 기록 (없으면 남기지 않는다).
+  final ActivityLogRepository? activity;
 
   CollectionReference<Json> _col(String churchId, String devotionId) =>
       _paths.devotions(churchId).doc(devotionId).collection('reflections');
@@ -136,6 +142,11 @@ class ReflectionRepository {
       comment: true,
     );
     await batch.commit();
+    activity?.log(
+      ActivityType.devotionReflection,
+      churchId: churchId,
+      targetId: devotionId,
+    );
   }
 
   /// 내 댓글의 내용을 고친다 (고친 시각이 남는다).

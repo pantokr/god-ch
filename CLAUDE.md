@@ -28,6 +28,7 @@ Flutter(웹 우선) + Firebase 앱. 개요와 환경 설정은 [README.md](READM
 - 화면에는 "기도" 대신 **중보기도**라고 쓴다.
 - 로그인하면 승인된 교회가 있을 때 `/churches`가 마지막 교회의 메인으로 바로 넘어간다. 목록을 보려면 `Routes.churchList`.
 - 새 필드를 추가하면 모델·저장소·`firestore.rules`의 `hasOnly([...])` 목록을 **같이** 고친다. 이모티콘 종류도 `lib/data/models/reaction.dart`와 규칙이 일치해야 한다.
+- 회원별 접속 · 활동 기록은 최상위 `activityLogs`에 쌓인다 (쓰기는 본인 것만, 수정·삭제 불가, 읽기는 앱 운영자만; 앱 운영자 > 활동 기록에서 조회). 저장소는 `ActivityLogRepository`이고 각 저장소가 쓰기 뒤에 `activity?.log(...)`/`.logged(...)`로 남긴다. 종류는 `ActivityType`이며 `firestore.rules`의 `type in [...]` 목록과 일치해야 한다 (`test/activity_log_test.dart`가 확인). 글 내용은 담지 않고 제목 정도만 `summary`에 둔다. 문서 ID는 시간 역순(복합 색인 없이 최신순).
 
 ## 자주 쓰는 명령
 

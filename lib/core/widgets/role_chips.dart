@@ -36,7 +36,6 @@ class AffiliationChip extends StatelessWidget {
                 style: TextStyle(
                   color: palette.brand,
                   fontSize: compact ? 11 : 12.5,
-                  fontWeight: FontWeight.w600,
                 ),
               ),
             ),
@@ -138,7 +137,6 @@ class AffiliationChoiceChip extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     color: selected ? palette.brand : palette.ink,
-                    fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
                     fontSize: 14,
                   ),
                 ),

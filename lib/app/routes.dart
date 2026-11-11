@@ -71,7 +71,8 @@ enum ChurchSection {
 enum PlatformSection {
   dashboard(Routes.admin),
   churches(Routes.adminChurches),
-  users(Routes.adminUsers);
+  users(Routes.adminUsers),
+  activity(Routes.adminActivity);
 
   const PlatformSection(this.location);
 
@@ -81,6 +82,7 @@ enum PlatformSection {
   static PlatformSection fromPath(String path) {
     if (path.startsWith(Routes.adminChurches)) return churches;
     if (path.startsWith(Routes.adminUsers)) return users;
+    if (path.startsWith(Routes.adminActivity)) return activity;
     return dashboard;
   }
 }
@@ -152,6 +154,7 @@ class Routes {
   static const admin = '/admin';
   static const adminChurches = '/admin/churches';
   static const adminUsers = '/admin/users';
+  static const adminActivity = '/admin/activity';
 
   /// 로그인 전 화면 주소들.
   static const publicPaths = {login, signUp};

@@ -18,7 +18,7 @@ class PostAuthor extends StatelessWidget {
 
   /// 이름 글자 모양.
   static TextStyle nameStyle(BuildContext context) =>
-      TextStyle(color: context.palette.ink, fontWeight: FontWeight.w600);
+      TextStyle(color: context.palette.ink);
 
   /// 아바타 크기.
   static const avatarRadius = 12.0;

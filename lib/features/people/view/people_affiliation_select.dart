@@ -48,11 +48,7 @@ class _PeopleAffiliationSelectState extends State<PeopleAffiliationSelect> {
   @override
   Widget build(BuildContext context) {
     final palette = context.palette;
-    final style = TextStyle(
-      color: palette.ink,
-      fontSize: 15,
-      fontWeight: FontWeight.w600,
-    );
+    final style = TextStyle(color: palette.ink, fontSize: 15);
     return StreamBuilder<List<Affiliation>>(
       stream: _affiliations,
       builder: (context, snap) => ListenableBuilder(

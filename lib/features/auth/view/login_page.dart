@@ -147,7 +147,7 @@ class _Brand extends StatelessWidget {
       children: [
         const BrandLogo(size: 72, glow: true),
         const SizedBox(height: 14),
-        Text('같이', style: TextStyle(fontSize: 26, fontWeight: FontWeight.w600)),
+        Text('같이', style: TextStyle(fontSize: 26)),
         SizedBox(height: 6),
         Text(
           '교회가 함께 말씀을 나누는 공간',

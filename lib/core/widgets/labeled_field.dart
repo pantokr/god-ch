@@ -36,7 +36,6 @@ class LabeledField extends StatelessWidget {
     final style = TextStyle(
       color: context.palette.ink,
       fontSize: 14,
-      fontWeight: FontWeight.w600,
       height: 1.3,
     );
     final text = DefaultTextStyle.merge(

@@ -37,11 +37,7 @@ class ThumbnailAvatar extends StatelessWidget {
     final initial = Center(
       child: Text(
         name.isEmpty ? '?' : name.characters.first,
-        style: TextStyle(
-          color: palette.brand,
-          fontSize: radius * 0.8,
-          fontWeight: FontWeight.w600,
-        ),
+        style: TextStyle(color: palette.brand, fontSize: radius * 0.8),
       ),
     );
     return Container(

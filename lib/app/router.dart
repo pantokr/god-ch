@@ -17,6 +17,7 @@ import '../features/meetings/view/meeting_detail_page.dart';
 import '../features/notifications/view/notifications_page.dart';
 import '../features/meetings/view/meeting_participants_page.dart';
 import '../features/church/view/my_churches_route.dart';
+import '../features/platform/view/activity_log_page.dart';
 import '../features/platform/view/church_registry_page.dart';
 import '../features/platform/view/dashboard_page.dart';
 import '../features/platform/view/platform_shell_route.dart';
@@ -275,6 +276,7 @@ GoRouter buildRouter(SessionNotifier session) {
           _platformRoute(Routes.admin, const DashboardPage()),
           _platformRoute(Routes.adminChurches, const ChurchRegistryPage()),
           _platformRoute(Routes.adminUsers, const UsersPage()),
+          _platformRoute(Routes.adminActivity, const ActivityLogPage()),
         ],
       ),
     ],

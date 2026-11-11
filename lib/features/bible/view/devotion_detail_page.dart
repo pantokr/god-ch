@@ -418,19 +418,11 @@ class _PagerBar extends StatelessWidget {
                       children: [
                         TextSpan(
                           text: '${index + 1} / $count',
-                          style: TextStyle(
-                            color: palette.muted,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 13,
-                          ),
+                          style: TextStyle(color: palette.muted, fontSize: 13),
                         ),
                         TextSpan(
                           text: '   $title',
-                          style: TextStyle(
-                            color: palette.ink,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 16,
-                          ),
+                          style: TextStyle(color: palette.ink, fontSize: 16),
                         ),
                       ],
                     ),

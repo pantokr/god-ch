@@ -111,8 +111,7 @@ class PageTitle extends StatelessWidget {
 
   /// 제목 글자 모양 (높이 계산과 그리기가 같은 것을 쓴다).
   static TextStyle? _titleStyle(BuildContext context) =>
-      Theme.of(context).textTheme.headlineSmall
-          ?.copyWith(fontWeight: FontWeight.w600);
+      Theme.of(context).textTheme.headlineSmall?.copyWith();
 
   /// 설명 글자 모양.
   static TextStyle? _descriptionStyle(BuildContext context) =>
@@ -168,9 +167,7 @@ class PageTitle extends StatelessWidget {
                   if (title.isNotEmpty)
                     Text(
                       title,
-                      style: theme.textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
+                      style: theme.textTheme.headlineSmall?.copyWith(),
                     ),
                   if (description != null) ...[
                     if (title.isNotEmpty) const SizedBox(height: 8),

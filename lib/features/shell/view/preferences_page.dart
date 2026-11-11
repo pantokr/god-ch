@@ -194,11 +194,7 @@ class _Palette extends StatelessWidget {
       builder: (context, box) {
         final text = Text(
           label,
-          style: TextStyle(
-            color: context.palette.ink,
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-          ),
+          style: TextStyle(color: context.palette.ink, fontSize: 14),
         );
         // 다른 선택 줄(ChoiceRow)과 같은 기준으로 이름표를 위로 올린다.
         if (box.maxWidth < LabeledField.narrow) {

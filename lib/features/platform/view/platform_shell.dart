@@ -29,12 +29,14 @@ class PlatformShell extends StatelessWidget {
     PlatformSection.dashboard: '대시보드',
     PlatformSection.churches: '교회 관리',
     PlatformSection.users: '회원 관리',
+    PlatformSection.activity: '활동 기록',
   };
 
   static const _icons = {
     PlatformSection.dashboard: (AppIcons.squaresFour, AppIcons.squaresFourFill),
     PlatformSection.churches: (AppIcons.church, AppIcons.churchFill),
     PlatformSection.users: (AppIcons.users, AppIcons.usersFill),
+    PlatformSection.activity: (AppIcons.history, AppIcons.history),
   };
 
   @override

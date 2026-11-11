@@ -9,6 +9,7 @@ import 'package:god_ch/app/theme_mode_controller.dart';
 import 'package:god_ch/core/theme.dart';
 import 'package:god_ch/data/models/app_notification.dart';
 import 'package:god_ch/data/models/meeting.dart';
+import 'package:god_ch/features/activity/data/activity_log_repository.dart';
 import 'package:god_ch/features/admin/data/position_repository.dart';
 import 'package:god_ch/features/auth/data/auth_repository.dart';
 import 'package:god_ch/features/auth/data/profile_repository.dart';
@@ -53,6 +54,8 @@ class _People extends Fake implements PeopleRepository {}
 class _Prayers extends Fake implements PrayerRepository {}
 
 class _Bible extends Fake implements BibleRepository {}
+
+class _Activity extends Fake implements ActivityLogRepository {}
 
 class _Positions extends Fake implements PositionRepository {}
 
@@ -171,11 +174,12 @@ Widget _app(NotificationRepository notifications, Widget home) => AppScope(
   prayers: _Prayers(),
   notifications: notifications,
   bible: _Bible(),
+  activityLogs: _Activity(),
   child: MaterialApp(theme: buildTheme(Brightness.light), home: home),
 );
 
-FontWeight? _weightOf(WidgetTester tester, String text) =>
-    tester.widget<Text>(find.text(text)).style?.fontWeight;
+Color? _colorOf(WidgetTester tester, String text) =>
+    tester.widget<Text>(find.text(text)).style?.color;
 
 void main() {
   group('알림 배지 글자', () {
@@ -307,14 +311,14 @@ void main() {
       await tester.pump();
     }
 
-    testWidgets('열어도 자동으로 읽음 처리되지 않고, 안 읽은 알림은 굵게 보인다', (tester) async {
+    testWidgets('열어도 자동으로 읽음 처리되지 않고, 안 읽은 알림은 흐려지지 않는다', (tester) async {
       final repo = _FakeNotifications([_joinRequest('a')]);
       await pumpPage(tester, repo);
 
       expect(repo.markedRead, isEmpty);
       expect(repo.unread, 1);
       expect(find.text('참여 신청 · 성경 공부'), findsOneWidget);
-      expect(_weightOf(tester, '참여 신청 · 성경 공부'), FontWeight.w600);
+      expect(_colorOf(tester, '참여 신청 · 성경 공부'), isNull);
     });
 
     testWidgets('알림을 누르면 읽음 처리되어 글씨가 흐려진다', (tester) async {
@@ -326,7 +330,7 @@ void main() {
       await tester.pump();
 
       expect(repo.markedRead, ['a']);
-      expect(_weightOf(tester, '참여 신청 · 성경 공부'), FontWeight.w500);
+      expect(_colorOf(tester, '참여 신청 · 성경 공부'), isNotNull);
     });
 
     testWidgets('모두 읽음을 누르면 읽지 않은 알림이 모두 읽음이 된다', (tester) async {

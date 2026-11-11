@@ -3,7 +3,9 @@ import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 
+import '../data/models/activity_log.dart';
 import '../data/models/user_profile.dart';
+import '../features/activity/data/activity_log_repository.dart';
 import '../features/auth/data/auth_repository.dart';
 import '../features/auth/data/profile_repository.dart';
 import '../features/church/data/church_request_repository.dart';
@@ -29,13 +31,16 @@ enum SessionStatus {
 /// 로그인 상태를 지켜보다가 [status]가 바뀌면 알려 준다. 라우터가 이 값으로 화면을 나눈다.
 /// 앱 운영자는 가입 정보 입력을 거치지 않는다.
 class SessionNotifier extends ChangeNotifier {
-  SessionNotifier(this._auth, this._profiles, this._requests) {
+  SessionNotifier(this._auth, this._profiles, this._requests, {this.activity}) {
     _userSub = _auth.userChanges().listen(_onUser);
   }
 
   final AuthRepository _auth;
   final ProfileRepository _profiles;
   final ChurchRequestRepository _requests;
+
+  /// 활동 기록. 회원이 앱에 들어올 때마다(앱을 켜거나 계정이 바뀔 때) 접속 한 줄을 남긴다.
+  final ActivityLogRepository? activity;
 
   late final StreamSubscription<User?> _userSub;
   StreamSubscription<UserProfile?>? _profileSub;
@@ -72,7 +77,8 @@ class SessionNotifier extends ChangeNotifier {
     if (generation != _generation) return;
     if (operator) return _set(SessionStatus.operator);
 
-    // 가입 정보가 생기면 자동으로 member가 된다.
+    // 가입 정보가 생기면 자동으로 member가 된다. 접속 기록은 계정마다 한 번만 남긴다.
+    var accessLogged = false;
     _profileSub = _profiles
         .profile(user.uid)
         .listen(
@@ -82,6 +88,10 @@ class SessionNotifier extends ChangeNotifier {
             if (profile != null && profile.withdrawn) {
               _auth.signOut();
               return;
+            }
+            if (profile != null && !accessLogged) {
+              accessLogged = true;
+              activity?.log(ActivityType.access);
             }
             _set(
               profile == null

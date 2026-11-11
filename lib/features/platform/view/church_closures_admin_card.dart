@@ -111,8 +111,7 @@ class _Row extends StatelessWidget {
       children: [
         Text(
           r.churchName,
-          style: Theme.of(context).textTheme.titleSmall
-              ?.copyWith(fontWeight: FontWeight.w600),
+          style: Theme.of(context).textTheme.titleSmall?.copyWith(),
         ),
         const SizedBox(height: 4),
         Text('사유  ${r.reason}', style: muted),

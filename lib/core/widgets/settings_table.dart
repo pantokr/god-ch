@@ -29,11 +29,7 @@ class SettingsTable extends StatelessWidget {
       child: Text(
         text,
         textAlign: TextAlign.center,
-        style: TextStyle(
-          color: palette.muted,
-          fontSize: 12.5,
-          fontWeight: FontWeight.w600,
-        ),
+        style: TextStyle(color: palette.muted, fontSize: 12.5),
       ),
     );
     return Padding(
@@ -54,13 +50,7 @@ class SettingsTable extends StatelessWidget {
                 child: Row(
                   children: [
                     Expanded(
-                      child: Text(
-                        title,
-                        style: const TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
+                      child: Text(title, style: const TextStyle(fontSize: 15)),
                     ),
                     for (final c in columns) head(c),
                   ],

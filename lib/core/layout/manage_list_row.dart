@@ -89,10 +89,7 @@ class ManageListRow extends StatelessWidget {
                             title,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                            ),
+                            style: const TextStyle(fontSize: 16),
                           ),
                         ),
                         if (badge != null) ...[
@@ -113,7 +110,6 @@ class ManageListRow extends StatelessWidget {
                               style: TextStyle(
                                 color: palette.accent,
                                 fontSize: 11,
-                                fontWeight: FontWeight.w600,
                               ),
                             ),
                           ),

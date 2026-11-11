@@ -1,3 +1,4 @@
+import '../features/activity/data/activity_log_repository.dart';
 import '../features/bible/data/bible_repository.dart';
 import '../features/people/data/people_repository.dart';
 import '../features/notifications/data/notification_repository.dart';
@@ -57,15 +58,22 @@ class _AppState extends State<App> {
   // 저장소는 앱이 살아있는 동안 한 번만 만든다.
   late final _db = FirebaseFirestore.instance;
   late final AuthRepository _auth = AuthRepository(FirebaseAuth.instance, _db);
+  // 접속 · 활동 기록: 아래 저장소들이 일이 끝난 뒤 한 줄씩 남긴다.
+  late final ActivityLogRepository _activity = ActivityLogRepository(
+    _db,
+    _auth,
+  );
   late final ProfileRepository _profiles = ProfileRepository(
     _db,
     _auth,
     _contents,
+    activity: _activity,
   );
   late final ChurchRepository _churches = ChurchRepository(
     _db,
     _auth,
     _profiles,
+    activity: _activity,
   );
   late final ChurchRequestRepository _churchRequests = ChurchRequestRepository(
     _db,
@@ -82,25 +90,41 @@ class _AppState extends State<App> {
   late final AffiliationRepository _affiliations = AffiliationRepository(
     _db,
     _auth,
+    activity: _activity,
   );
   late final ContentRepository _contents = ContentRepository(
     _db,
     FirebaseStorage.instance,
     _auth,
+    activity: _activity,
   );
   late final ReflectionRepository _reflections = ReflectionRepository(
     _db,
     _auth,
+    activity: _activity,
   );
   late final MeetingRepository _meetings = MeetingRepository(
     _db,
     _auth,
     _contents,
+    activity: _activity,
   );
-  late final PositionRepository _positions = PositionRepository(_db, _auth);
-  late final MemberRepository _members = MemberRepository(_db, _auth);
+  late final PositionRepository _positions = PositionRepository(
+    _db,
+    _auth,
+    activity: _activity,
+  );
+  late final MemberRepository _members = MemberRepository(
+    _db,
+    _auth,
+    activity: _activity,
+  );
   late final PeopleRepository _people = PeopleRepository(_db);
-  late final PrayerRepository _prayers = PrayerRepository(_db, _auth);
+  late final PrayerRepository _prayers = PrayerRepository(
+    _db,
+    _auth,
+    activity: _activity,
+  );
   late final BibleRepository _bible = BibleRepository(FirebaseStorage.instance);
   late final NotificationRepository _notifications = NotificationRepository(
     _db,
@@ -116,11 +140,19 @@ class _AppState extends State<App> {
     _auth,
     _profiles,
     _churchRequests,
+    activity: _activity,
   );
   late final _router = buildRouter(_session);
 
   // 인터넷 연결 여부: 끊기면 모든 페이지 맨 위에 "인터넷 연결 없음" 띠가 붙는다.
   late final ConnectivityController _connectivity = ConnectivityController();
+
+  @override
+  void initState() {
+    super.initState();
+    // 로그인 · 로그아웃 기록을 인증 저장소가 직접 남긴다 (두 저장소가 서로를 쓰므로 만든 뒤에 잇는다).
+    _auth.activity = _activity;
+  }
 
   @override
   void dispose() {
@@ -152,6 +184,7 @@ class _AppState extends State<App> {
       prayers: _prayers,
       notifications: _notifications,
       bible: _bible,
+      activityLogs: _activity,
       // 화면 모드가 바뀌면 앱 전체가 새 테마로 다시 그려진다.
       child: ListenableBuilder(
         listenable: widget.themeMode,

@@ -2,6 +2,7 @@ import 'package:flutter/widgets.dart';
 
 import '../features/people/data/people_repository.dart';
 
+import '../features/activity/data/activity_log_repository.dart';
 import '../features/admin/data/position_repository.dart';
 import '../features/auth/data/auth_repository.dart';
 import '../features/bible/data/bible_repository.dart';
@@ -44,6 +45,7 @@ class AppScope extends InheritedWidget {
     required this.prayers,
     required this.notifications,
     required this.bible,
+    required this.activityLogs,
     required super.child,
   });
 
@@ -71,6 +73,9 @@ class AppScope extends InheritedWidget {
   final PrayerRepository prayers;
   final NotificationRepository notifications;
   final BibleRepository bible;
+
+  /// 회원별 접속 · 활동 기록 (앱 운영자가 조회한다).
+  final ActivityLogRepository activityLogs;
 
   /// 위젯 상태를 만들 때(initState 등)도 쓸 수 있도록 의존성 등록 없이 읽는다.
   static AppScope read(BuildContext context) {

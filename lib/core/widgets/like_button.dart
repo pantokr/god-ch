@@ -60,11 +60,7 @@ class LikeButton extends StatelessWidget {
                   const SizedBox(width: 8),
                   Text(
                     showCount ? '좋아요 ${StatIcons.compact(count)}' : '좋아요',
-                    style: TextStyle(
-                      color: palette.ink,
-                      fontSize: 14,
-                      fontWeight: liked ? FontWeight.w600 : FontWeight.w600,
-                    ),
+                    style: TextStyle(color: palette.ink, fontSize: 14),
                   ),
                 ],
               ),

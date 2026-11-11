@@ -57,11 +57,7 @@ class AffiliationSelect extends StatelessWidget {
           final withAll = me.isStaff;
           final currentName = current?.name ?? '전체';
           final palette = context.palette;
-          final style = TextStyle(
-            color: palette.ink,
-            fontSize: 15,
-            fontWeight: FontWeight.w600,
-          );
+          final style = TextStyle(color: palette.ink, fontSize: 15);
           if (access.options.length + (withAll ? 1 : 0) == 1) {
             return Padding(
               padding: const EdgeInsets.only(right: 16),

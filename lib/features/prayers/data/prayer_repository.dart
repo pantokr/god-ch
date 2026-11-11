@@ -1,3 +1,6 @@
+import '../../../data/models/activity_log.dart';
+import '../../activity/data/activity_log_repository.dart';
+
 import 'dart:math';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -18,13 +21,16 @@ import '../../notifications/data/activity_notice.dart';
 /// 기도제목과 그 하위 데이터(응원, 교역자 댓글, 비공개 글 답변, 열람 기록).
 /// 접근 권한은 firestore.rules가 강제한다.
 class PrayerRepository {
-  PrayerRepository(FirebaseFirestore db, this._auth)
+  PrayerRepository(FirebaseFirestore db, this._auth, {this.activity})
     : _db = db,
       _paths = FirestorePaths(db);
 
   final FirebaseFirestore _db;
   final FirestorePaths _paths;
   final AuthRepository _auth;
+
+  /// 활동 기록 (없으면 남기지 않는다).
+  final ActivityLogRepository? activity;
 
   /// 같은 조회(운영 설정 · 글마다의 반응 · 댓글 수)를 카드마다 · 화면마다 따로 듣지 않고 하나를 나눠 쓴다.
   final _shared = SharedStreams();
@@ -116,28 +122,49 @@ class PrayerRepository {
     required String content,
     required PrayerVisibility visibility,
     String? affiliationId,
-  }) => _paths.prayers(churchId).doc(newId()).set({
-    'authorId': _auth.uid,
-    'authorName': authorName,
-    'affiliationId': affiliationId,
-    'content': content,
-    'visibility': visibility.name,
-    'deleted': false,
-    'views': 0,
-    'createdAt': FieldValue.serverTimestamp(),
-    'updatedAt': FieldValue.serverTimestamp(),
-  });
+  }) {
+    final id = newId();
+    return _paths
+        .prayers(churchId)
+        .doc(id)
+        .set({
+          'authorId': _auth.uid,
+          'authorName': authorName,
+          'affiliationId': affiliationId,
+          'content': content,
+          'visibility': visibility.name,
+          'deleted': false,
+          'views': 0,
+          'createdAt': FieldValue.serverTimestamp(),
+          'updatedAt': FieldValue.serverTimestamp(),
+        })
+        .logged(
+          activity,
+          ActivityType.prayerCreate,
+          churchId: churchId,
+          targetId: id,
+        );
+  }
 
   Future<void> update(
     String churchId,
     String id, {
     required String content,
     required PrayerVisibility visibility,
-  }) => _paths.prayers(churchId).doc(id).update({
-    'content': content,
-    'visibility': visibility.name,
-    'updatedAt': FieldValue.serverTimestamp(),
-  });
+  }) => _paths
+      .prayers(churchId)
+      .doc(id)
+      .update({
+        'content': content,
+        'visibility': visibility.name,
+        'updatedAt': FieldValue.serverTimestamp(),
+      })
+      .logged(
+        activity,
+        ActivityType.prayerEdit,
+        churchId: churchId,
+        targetId: id,
+      );
 
   Future<void> deleteOwn(String churchId, String id) =>
       _softDelete(churchId, id, '본인 삭제');
@@ -145,21 +172,38 @@ class PrayerRepository {
   Future<void> deleteByStaff(String churchId, String id, String reason) =>
       _softDelete(churchId, id, reason);
 
-  Future<void> _softDelete(String churchId, String id, String reason) =>
-      _paths.prayers(churchId).doc(id).update({
+  Future<void> _softDelete(String churchId, String id, String reason) => _paths
+      .prayers(churchId)
+      .doc(id)
+      .update({
         'deleted': true,
         'deletedAt': FieldValue.serverTimestamp(),
         'deletedBy': _auth.uid,
         'deleteReason': reason,
-      });
+      })
+      .logged(
+        activity,
+        ActivityType.prayerDelete,
+        churchId: churchId,
+        targetId: id,
+        summary: reason,
+      );
 
-  Future<void> restore(String churchId, String id) =>
-      _paths.prayers(churchId).doc(id).update({
+  Future<void> restore(String churchId, String id) => _paths
+      .prayers(churchId)
+      .doc(id)
+      .update({
         'deleted': false,
         'deletedAt': FieldValue.delete(),
         'deletedBy': FieldValue.delete(),
         'deleteReason': FieldValue.delete(),
-      });
+      })
+      .logged(
+        activity,
+        ActivityType.prayerRestore,
+        churchId: churchId,
+        targetId: id,
+      );
 
   /// 기도제목을 열 때 조회수를 하나 올린다. 규칙이 +1만 허용한다.
   Future<void> addView(String churchId, String id) => _paths
@@ -329,6 +373,11 @@ class PrayerRepository {
       comment: true,
     );
     await batch.commit();
+    activity?.log(
+      ActivityType.prayerComment,
+      churchId: churchId,
+      targetId: prayerId,
+    );
   }
 
   /// 내 댓글의 내용을 고친다 (고친 시각이 남는다).
@@ -382,10 +431,18 @@ class PrayerRepository {
   }
 
   /// 교역자가 타인의 비공개 글을 열람할 때 남기는 기록.
-  Future<void> logPrivateAccess(String churchId, String prayerId) =>
-      _paths.accessLogs(churchId).add({
+  Future<void> logPrivateAccess(String churchId, String prayerId) => _paths
+      .accessLogs(churchId)
+      .add({
         'staffId': _auth.uid,
         'prayerId': prayerId,
         'at': FieldValue.serverTimestamp(),
-      });
+      })
+      .logged(
+        activity,
+        ActivityType.privatePrayerView,
+        churchId: churchId,
+        targetId: prayerId,
+      )
+      .then((_) {});
 }

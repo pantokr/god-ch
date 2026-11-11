@@ -56,11 +56,7 @@ class StatIcons extends StatelessWidget {
           const SizedBox(width: 4),
           Text(
             compact(n),
-            style: TextStyle(
-              color: tint ?? muted,
-              fontSize: 12.5,
-              fontWeight: FontWeight.w600,
-            ),
+            style: TextStyle(color: tint ?? muted, fontSize: 12.5),
           ),
         ],
       ],

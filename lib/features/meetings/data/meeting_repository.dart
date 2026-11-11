@@ -1,3 +1,6 @@
+import '../../../data/models/activity_log.dart';
+import '../../activity/data/activity_log_repository.dart';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../../../data/shared_stream.dart';
@@ -18,11 +21,18 @@ import '../../notifications/data/activity_notice.dart';
 /// 교회 모임을 읽고 쓴다 (`churches/{id}/meetings`). 교인이 모임을 만들면 모임장이 되고,
 /// 다른 교인은 참여를 신청한다. 권한과 정원은 `firestore.rules`가 강제한다.
 class MeetingRepository {
-  MeetingRepository(FirebaseFirestore db, this._auth, this._contents)
-    : _paths = FirestorePaths(db);
+  MeetingRepository(
+    FirebaseFirestore db,
+    this._auth,
+    this._contents, {
+    this.activity,
+  }) : _paths = FirestorePaths(db);
 
   final FirestorePaths _paths;
   final AuthRepository _auth;
+
+  /// 활동 기록 (없으면 남기지 않는다).
+  final ActivityLogRepository? activity;
   final ContentRepository _contents;
 
   /// 앱 운영자가 Storage `examples/example_image1.jpg` ~ `example_image7.jpg`에 올려 둔 임시 이미지 수.
@@ -135,27 +145,36 @@ class MeetingRepository {
     List<String> affiliationIds = const [],
   }) {
     final t = _check(title, description, place, capacity, fee);
-    return _col(churchId).add({
-      'imageUrl': imageUrl,
-      'title': t,
-      'description': description.trim(),
-      'place': place.trim(),
-      'date': Timestamp.fromDate(date),
-      'capacity': capacity,
-      'leaderId': _auth.uid,
-      'leaderName': leaderName,
-      'participantIds': <String>[],
-      'pendingIds': <String>[],
-      'fee': fee,
-      'needsApproval': needsApproval,
-      'likedBy': <String>[],
-      'views': 0,
-      'deleted': false,
-      'createdAt': FieldValue.serverTimestamp(),
-      'affiliationIds': affiliationIds,
-      // 예전 일정의 소속 하나 표시는 비운다 (여러 소속은 affiliationIds에 있다).
-      'affiliationId': null,
-    });
+    return _col(churchId)
+        .add({
+          'imageUrl': imageUrl,
+          'title': t,
+          'description': description.trim(),
+          'place': place.trim(),
+          'date': Timestamp.fromDate(date),
+          'capacity': capacity,
+          'leaderId': _auth.uid,
+          'leaderName': leaderName,
+          'participantIds': <String>[],
+          'pendingIds': <String>[],
+          'fee': fee,
+          'needsApproval': needsApproval,
+          'likedBy': <String>[],
+          'views': 0,
+          'deleted': false,
+          'createdAt': FieldValue.serverTimestamp(),
+          'affiliationIds': affiliationIds,
+          // 예전 일정의 소속 하나 표시는 비운다 (여러 소속은 affiliationIds에 있다).
+          'affiliationId': null,
+        })
+        .then((ref) {
+          activity?.log(
+            ActivityType.meetingCreate,
+            churchId: churchId,
+            targetId: ref.id,
+            summary: t,
+          );
+        });
   }
 
   /// 모임 내용을 고친다 (모임장 · 교역자). 정원은 이미 참여한 사람보다 적게 줄일 수 없다.
@@ -176,20 +195,29 @@ class MeetingRepository {
     if (capacity < m.joined) {
       throw AppException('이미 ${m.joined}명이 참여해서 정원을 그보다 줄일 수 없어요.');
     }
-    return _col(churchId).doc(m.id).update({
-      'imageUrl': imageUrl,
-      'title': t,
-      'description': description.trim(),
-      'place': place.trim(),
-      'date': Timestamp.fromDate(date),
-      'capacity': capacity,
-      'fee': fee,
-      'needsApproval': needsApproval,
-      'affiliationIds': affiliationIds,
-      // 예전 일정의 소속 하나 표시는 비운다 (여러 소속은 affiliationIds에 있다).
-      'affiliationId': null,
-      'updatedAt': FieldValue.serverTimestamp(),
-    });
+    return _col(churchId)
+        .doc(m.id)
+        .update({
+          'imageUrl': imageUrl,
+          'title': t,
+          'description': description.trim(),
+          'place': place.trim(),
+          'date': Timestamp.fromDate(date),
+          'capacity': capacity,
+          'fee': fee,
+          'needsApproval': needsApproval,
+          'affiliationIds': affiliationIds,
+          // 예전 일정의 소속 하나 표시는 비운다 (여러 소속은 affiliationIds에 있다).
+          'affiliationId': null,
+          'updatedAt': FieldValue.serverTimestamp(),
+        })
+        .logged(
+          activity,
+          ActivityType.meetingEdit,
+          churchId: churchId,
+          targetId: m.id,
+          summary: t,
+        );
   }
 
   CollectionReference<Map<String, dynamic>> _comments(
@@ -259,6 +287,11 @@ class MeetingRepository {
       comment: true,
     );
     await batch.commit();
+    activity?.log(
+      ActivityType.meetingComment,
+      churchId: churchId,
+      targetId: meetingId,
+    );
   }
 
   /// 내 댓글의 내용을 고친다 (고친 시각이 남는다).
@@ -297,7 +330,13 @@ class MeetingRepository {
         'deleted': true,
         'deletedAt': FieldValue.serverTimestamp(),
         'deletedBy': _auth.uid,
-      });
+      })
+      .logged(
+        activity,
+        ActivityType.meetingDelete,
+        churchId: churchId,
+        targetId: id,
+      );
 
   /// 참여를 신청하거나 취소한다. 정원을 넘으면 규칙이 거부한다.
   /// 입장 조건이 모임장 승인이면 신청은 승인 대기([Meeting.pendingIds])에 들어가고, 모임장이 승인해야 참여자가 된다.
@@ -319,7 +358,19 @@ class MeetingRepository {
           : FieldValue.arrayRemove([_auth.uid]),
     };
     final doc = _col(churchId).doc(m.id);
-    if (!needsApproval) return doc.update(change);
+    final type = joined ? ActivityType.meetingJoin : ActivityType.meetingLeave;
+    final summary = needsApproval ? '${m.title} (승인 대기)' : m.title;
+    if (!needsApproval) {
+      return doc
+          .update(change)
+          .logged(
+            activity,
+            type,
+            churchId: churchId,
+            targetId: m.id,
+            summary: summary,
+          );
+    }
     final batch = _paths.db.batch()..update(doc, change);
     batch.set(
       _paths.db
@@ -333,7 +384,13 @@ class MeetingRepository {
         applicantName: applicantName,
       ),
     );
-    return batch.commit();
+    return batch.commit().logged(
+      activity,
+      type,
+      churchId: churchId,
+      targetId: m.id,
+      summary: summary,
+    );
   }
 
   /// 모임장에게 보낼 "참여 신청" 알림 문서. 모임장이 알림에서 눌러 그 모임을 열 수 있다.

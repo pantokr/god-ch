@@ -43,10 +43,7 @@ class MyAffiliationsCard extends StatelessWidget {
                       children: [
                         Icon(AppIcons.church, color: context.palette.muted),
                         const SizedBox(width: 14),
-                        const Text(
-                          '내가 속한 교회',
-                          style: TextStyle(fontWeight: FontWeight.w600),
-                        ),
+                        const Text('내가 속한 교회', style: TextStyle()),
                       ],
                     ),
                     for (final m in mine) ...[
@@ -93,10 +90,7 @@ class _Church extends StatelessWidget {
                 member.churchName,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                ),
+                style: const TextStyle(fontSize: 16),
               ),
             ),
             const SizedBox(width: 8),

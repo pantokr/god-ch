@@ -373,10 +373,7 @@ class _PositionTile extends StatelessWidget {
                     name,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 16,
-                    ),
+                    style: const TextStyle(fontSize: 16),
                   ),
                   const SizedBox(height: 2),
                   // 좁으면 표시를 말줄임으로 줄인다.

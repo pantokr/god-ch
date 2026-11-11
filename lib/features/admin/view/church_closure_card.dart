@@ -78,7 +78,7 @@ class ChurchClosureCard extends StatelessWidget {
                     const SizedBox(height: 12),
                     Text(
                       '폐쇄 요청 처리를 기다리고 있어요 · ${fmtDate(r!.createdAt)}',
-                      style: const TextStyle(fontWeight: FontWeight.w600),
+                      style: const TextStyle(),
                     ),
                     const SizedBox(height: 4),
                     Text(

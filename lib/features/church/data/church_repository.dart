@@ -1,3 +1,6 @@
+import '../../../data/models/activity_log.dart';
+import '../../activity/data/activity_log_repository.dart';
+
 import 'dart:async';
 import 'dart:math';
 
@@ -21,14 +24,21 @@ const blockedChurchMessage = '이 교회에 접근할 수 없어요.';
 /// 초대 코드 발급·사용(입장 신청)과 내 소속 교회 목록.
 /// 교회 생성은 [ChurchRequestRepository]가 맡는다.
 class ChurchRepository {
-  ChurchRepository(FirebaseFirestore db, this._auth, this._profiles)
-    : _paths = FirestorePaths(db);
+  ChurchRepository(
+    FirebaseFirestore db,
+    this._auth,
+    this._profiles, {
+    this.activity,
+  }) : _paths = FirestorePaths(db);
 
   /// 초대 코드가 유효한 기간. 규칙은 최대 31일까지 허용한다.
   static const inviteValidity = Duration(days: 7);
 
   final FirestorePaths _paths;
   final AuthRepository _auth;
+
+  /// 활동 기록 (없으면 남기지 않는다).
+  final ActivityLogRepository? activity;
   final ProfileRepository _profiles;
 
   /// 내가 속하거나 신청한 모든 교회에서의 내 교인 정보.
@@ -392,6 +402,11 @@ class ChurchRepository {
       }
       tx.set(ref, member);
     });
+    activity?.log(
+      ActivityType.joinRequest,
+      churchId: churchId,
+      summary: code == null ? '공개 탐색' : '초대 코드',
+    );
   }
 
   Json _inviteData(

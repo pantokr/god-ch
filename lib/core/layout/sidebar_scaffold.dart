@@ -380,7 +380,6 @@ class _SidebarPanel extends StatelessWidget {
                           color: palette.muted,
                           fontSize: 12,
                           letterSpacing: 0.6,
-                          fontWeight: FontWeight.w600,
                         ),
                       ),
                     ),
@@ -420,14 +419,7 @@ class _PanelHeading extends StatelessWidget {
       padding: EdgeInsets.fromLTRB(20, first ? 4 : (compact ? 20 : 28), 4, 4),
       child: Row(
         children: [
-          Text(
-            title,
-            style: TextStyle(
-              color: palette.ink,
-              fontSize: 14,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
+          Text(title, style: TextStyle(color: palette.ink, fontSize: 14)),
           const SizedBox(width: 10),
           Expanded(child: Divider(height: 1, color: palette.border)),
         ],
@@ -505,7 +497,6 @@ class _SidebarTile extends StatelessWidget {
                   style: TextStyle(
                     color: selected ? palette.ink : palette.muted,
                     fontSize: 15,
-                    fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
                   ),
                 ),
               ),
@@ -524,11 +515,7 @@ class _SidebarTile extends StatelessWidget {
                       ),
                       child: Text(
                         item.badge > 99 ? '99+' : '${item.badge}',
-                        style: TextStyle(
-                          color: palette.onBrand,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                        ),
+                        style: TextStyle(color: palette.onBrand, fontSize: 12),
                       ),
                     ),
                   ),
@@ -613,11 +600,7 @@ class _SideTab extends StatelessWidget {
               item.label,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: color,
-                fontSize: 12,
-                fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
-              ),
+              style: TextStyle(color: color, fontSize: 12),
             ),
           ],
         ),
@@ -691,10 +674,7 @@ class _TopBar extends StatelessWidget {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: Theme.of(context).textTheme.titleLarge
-                              ?.copyWith(
-                                fontWeight: FontWeight.w600,
-                                fontSize: 17,
-                              ),
+                              ?.copyWith(fontSize: 17),
                         ),
                       ),
               ),

@@ -54,12 +54,7 @@ class _ExpandableTextState extends State<ExpandableText> {
         final overflows = painter.didExceedMaxLines;
         painter.dispose();
         final ink = style.color ?? context.palette.ink;
-        final more = TextStyle(
-          color: ink,
-          fontWeight: FontWeight.w600,
-          fontSize: 13.5,
-          height: 1.2,
-        );
+        final more = TextStyle(color: ink, fontSize: 13.5, height: 1.2);
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

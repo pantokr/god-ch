@@ -169,9 +169,6 @@ class _CalendarPageState extends State<CalendarPage> {
                     '$day',
                     style: TextStyle(
                       fontSize: 15,
-                      fontWeight: isSelected || isToday
-                          ? FontWeight.w600
-                          : FontWeight.w500,
                       color: isSelected ? palette.surface : palette.ink,
                     ),
                   ),
@@ -225,22 +222,14 @@ class _CalendarPageState extends State<CalendarPage> {
           children: [
             Text(
               '${_month.month}월',
-              style: const TextStyle(
-                fontSize: 30,
-                fontWeight: FontWeight.w600,
-                height: 1.1,
-              ),
+              style: const TextStyle(fontSize: 30, height: 1.1),
             ),
             const SizedBox(width: 8),
             Padding(
               padding: const EdgeInsets.only(bottom: 4),
               child: Text(
                 '${_month.year}',
-                style: TextStyle(
-                  color: palette.muted,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                ),
+                style: TextStyle(color: palette.muted, fontSize: 14),
               ),
             ),
             const Spacer(),
@@ -266,11 +255,7 @@ class _CalendarPageState extends State<CalendarPage> {
                 child: Center(
                   child: Text(
                     _weekdays[i],
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: palette.muted,
-                    ),
+                    style: TextStyle(fontSize: 12, color: palette.muted),
                   ),
                 ),
               ),
@@ -320,7 +305,7 @@ class _CalendarPageState extends State<CalendarPage> {
         Gutter(
           child: Text(
             '${_selected.month}월 ${_selected.day}일 ${_weekdays[_selected.weekday % 7]}요일',
-            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
+            style: const TextStyle(fontSize: 15),
           ),
         ),
         const SizedBox(height: 8),
@@ -435,20 +420,13 @@ class _Bubble extends StatelessWidget {
                       label,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: palette.muted,
-                        fontSize: 11.5,
-                        fontWeight: FontWeight.w600,
-                      ),
+                      style: TextStyle(color: palette.muted, fontSize: 11.5),
                     ),
                     Text(
                       title,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 14.5,
-                      ),
+                      style: const TextStyle(fontSize: 14.5),
                     ),
                     if (sub.isNotEmpty)
                       Text(

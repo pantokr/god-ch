@@ -90,11 +90,7 @@ class CommentByline extends StatelessWidget {
               const SizedBox(width: 6),
               Text(
                 name.isEmpty ? '이름 없음' : name,
-                style: TextStyle(
-                  color: palette.ink,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 13,
-                ),
+                style: TextStyle(color: palette.ink, fontSize: 13),
               ),
             ],
           ),

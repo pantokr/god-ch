@@ -450,11 +450,7 @@ class _ColorfulCard extends StatelessWidget {
                       m.title,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 15,
-                        height: 1.3,
-                      ),
+                      style: const TextStyle(fontSize: 15, height: 1.3),
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -522,11 +518,7 @@ class DDayBadge extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
         child: Text(
           label,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-          ),
+          style: const TextStyle(color: Colors.white, fontSize: 12),
         ),
       ),
     );
@@ -558,11 +550,7 @@ class SeatBadge extends StatelessWidget {
             ],
             Text(
               seatStatus(meeting) ?? '${meeting.joined}/${meeting.capacity}',
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-              ),
+              style: const TextStyle(color: Colors.white, fontSize: 12),
             ),
           ],
         ),
@@ -645,28 +633,32 @@ class _MinimalRow extends StatelessWidget {
                     height: 148 / meetingThumbRatio,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
+                      // 제목은 위, 일자 · 장소 · 회비 세 줄은 타일 아래에 붙는다.
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
                           m.title,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 16,
-                          ),
+                          style: const TextStyle(fontSize: 16),
                         ),
-                        const SizedBox(height: 4),
                         // 일자 · 시각, 장소, 회비는 아이콘으로 구별한다.
-                        MeetingInfoLine(
-                          AppIcons.calendarDays,
-                          meetingDayTime(m.date),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            MeetingInfoLine(
+                              AppIcons.calendarDays,
+                              meetingDayTime(m.date),
+                            ),
+                            if (m.place.isNotEmpty) ...[
+                              const SizedBox(height: 2),
+                              MeetingInfoLine(AppIcons.mapPin, m.place),
+                            ],
+                            const SizedBox(height: 2),
+                            MeetingInfoLine(AppIcons.wallet, meetingFee(m)),
+                          ],
                         ),
-                        if (m.place.isNotEmpty) ...[
-                          const SizedBox(height: 2),
-                          MeetingInfoLine(AppIcons.mapPin, m.place),
-                        ],
-                        const SizedBox(height: 2),
-                        MeetingInfoLine(AppIcons.wallet, meetingFee(m)),
                       ],
                     ),
                   ),

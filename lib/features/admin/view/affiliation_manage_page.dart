@@ -221,10 +221,7 @@ class _AffiliationCard extends StatelessWidget {
                     affiliation.name,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 16,
-                    ),
+                    style: const TextStyle(fontSize: 16),
                   ),
                   const SizedBox(height: 2),
                   Text(
@@ -301,10 +298,7 @@ class _UnassignedCard extends StatelessWidget {
                 const Spacer(),
                 Text(
                   Affiliation.unassignedName,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 16,
-                  ),
+                  style: const TextStyle(fontSize: 16),
                 ),
                 const SizedBox(height: 2),
                 Text(

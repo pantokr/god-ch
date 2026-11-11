@@ -45,10 +45,7 @@ class EdgeBibleAd extends StatelessWidget {
                             '엣지바이블',
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontWeight: FontWeight.w600,
-                              fontSize: 16,
-                            ),
+                            style: TextStyle(fontSize: 16),
                           ),
                         ),
                         const SizedBox(width: 6),

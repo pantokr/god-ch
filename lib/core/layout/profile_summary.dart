@@ -38,12 +38,7 @@ class ProfileSummary extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    name,
-                    style: theme.textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
+                  Text(name, style: theme.textTheme.titleLarge?.copyWith()),
                 ],
               ),
             ),

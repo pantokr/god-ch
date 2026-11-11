@@ -68,9 +68,7 @@ class _ProfileCompletionPageState extends State<ProfileCompletionPage> {
                         children: [
                           Text(
                             '가입 정보를 입력해 주세요',
-                            style: theme.textTheme.titleLarge?.copyWith(
-                              fontWeight: FontWeight.w600,
-                            ),
+                            style: theme.textTheme.titleLarge?.copyWith(),
                           ),
                           const SizedBox(height: 4),
                           Text(

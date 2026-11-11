@@ -96,15 +96,13 @@ class _DatePickerBodyState extends State<_DatePickerBody> {
             style: TextStyle(
               color: palette.muted,
               fontSize: 12.5,
-              fontWeight: FontWeight.w600,
               letterSpacing: 0.4,
             ),
           ),
           const SizedBox(height: 6),
           Text(
             _headline(_selected),
-            style: Theme.of(context).textTheme.titleLarge
-                ?.copyWith(fontWeight: FontWeight.w600),
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(),
           ),
           const SizedBox(height: 14),
           Divider(height: 1, color: palette.border),
@@ -172,10 +170,7 @@ class _DatePickerBodyState extends State<_DatePickerBody> {
                 children: [
                   Text(
                     '${_month.year % 100}년 ${_month.month}월',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 15,
-                    ),
+                    style: const TextStyle(fontSize: 15),
                   ),
                   const SizedBox(width: 4),
                   Icon(AppIcons.caretDown, size: 14, color: palette.muted),
@@ -220,11 +215,7 @@ class _DatePickerBodyState extends State<_DatePickerBody> {
                 child: Center(
                   child: Text(
                     _weekdays[i],
-                    style: TextStyle(
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w600,
-                      color: palette.muted,
-                    ),
+                    style: TextStyle(fontSize: 12.5, color: palette.muted),
                   ),
                 ),
               ),
@@ -284,15 +275,7 @@ class _DatePickerBodyState extends State<_DatePickerBody> {
                 ? Border.all(color: palette.ink, width: 1.2)
                 : null,
           ),
-          child: Text(
-            '$day',
-            style: TextStyle(
-              color: color,
-              fontWeight: selected || isToday
-                  ? FontWeight.w600
-                  : FontWeight.w500,
-            ),
-          ),
+          child: Text('$day', style: TextStyle(color: color)),
         ),
       ),
     );
@@ -316,13 +299,7 @@ class _DatePickerBodyState extends State<_DatePickerBody> {
             ),
             Expanded(
               child: Center(
-                child: Text(
-                  '$_year년',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 15,
-                  ),
-                ),
+                child: Text('$_year년', style: const TextStyle(fontSize: 15)),
               ),
             ),
             IconButton(
@@ -369,7 +346,6 @@ class _DatePickerBodyState extends State<_DatePickerBody> {
                   child: Text(
                     '$m월',
                     style: TextStyle(
-                      fontWeight: FontWeight.w600,
                       color: !_monthEnabled(_year, m)
                           ? palette.muted.withValues(alpha: 0.35)
                           : (_month.year == _year && _month.month == m
@@ -449,7 +425,6 @@ class _TimePickerBodyState extends State<_TimePickerBody> {
           text,
           style: TextStyle(
             fontSize: 32,
-            fontWeight: FontWeight.w600,
             color: selected ? palette.surface : palette.ink,
           ),
         ),
@@ -475,7 +450,6 @@ class _TimePickerBodyState extends State<_TimePickerBody> {
           label,
           style: TextStyle(
             fontSize: 13,
-            fontWeight: FontWeight.w600,
             color: selected ? palette.surface : palette.muted,
           ),
         ),
@@ -498,7 +472,6 @@ class _TimePickerBodyState extends State<_TimePickerBody> {
             style: TextStyle(
               color: palette.muted,
               fontSize: 12.5,
-              fontWeight: FontWeight.w600,
               letterSpacing: 0.4,
             ),
           ),
@@ -516,11 +489,7 @@ class _TimePickerBodyState extends State<_TimePickerBody> {
                 padding: const EdgeInsets.symmetric(horizontal: 6),
                 child: Text(
                   ':',
-                  style: TextStyle(
-                    fontSize: 32,
-                    fontWeight: FontWeight.w600,
-                    color: palette.ink,
-                  ),
+                  style: TextStyle(fontSize: 32, color: palette.ink),
                 ),
               ),
               _digit(
@@ -729,12 +698,12 @@ class _ClockPainter extends CustomPainter {
         '$shown',
         _at(c, i * math.pi / 6, labelRadius),
         selected ? onInk : ink,
-        selected ? FontWeight.w600 : FontWeight.w500,
+        FontWeight.w400,
       );
     }
     // 5분 눈금 사이를 고른 분은 표식 안에 숫자로 보인다.
     if (minuteMode && !onLabel) {
-      _text(canvas, '$value', tip, onInk, FontWeight.w600);
+      _text(canvas, '$value', tip, onInk, FontWeight.w400);
     }
   }
 

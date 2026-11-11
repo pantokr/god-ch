@@ -68,7 +68,6 @@ class ToggleChip extends StatelessWidget {
                 style: TextStyle(
                   color: on ? palette.ink : palette.muted,
                   fontSize: 13,
-                  fontWeight: on ? FontWeight.w600 : FontWeight.w600,
                 ),
               ),
             ],

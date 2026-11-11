@@ -119,10 +119,8 @@ class SubPage extends StatelessWidget {
                         bar,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 17,
-                        ),
+                        style: Theme.of(context).textTheme.titleLarge
+                            ?.copyWith(fontSize: 17),
                       ),
                     ),
                     ...actions,

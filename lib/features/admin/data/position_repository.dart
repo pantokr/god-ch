@@ -1,3 +1,6 @@
+import '../../../data/models/activity_log.dart';
+import '../../activity/data/activity_log_repository.dart';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../../../core/app_exception.dart';
@@ -10,13 +13,16 @@ import '../../auth/data/auth_repository.dart';
 /// 직급을 읽고 쓰고, 교인에게 직급을 준다 (`churches/{id}/positions`). 교회 관리자만 쓴다.
 /// 직급의 권한은 교인 문서의 `permissions`에 복사되어 있어서, 직급을 고치거나 지우면 그 직급의 교인 문서도 함께 고친다.
 class PositionRepository {
-  PositionRepository(FirebaseFirestore db, this._auth)
+  PositionRepository(FirebaseFirestore db, this._auth, {this.activity})
     : _db = db,
       _paths = FirestorePaths(db);
 
   final FirebaseFirestore _db;
   final FirestorePaths _paths;
   final AuthRepository _auth;
+
+  /// 활동 기록 (없으면 남기지 않는다).
+  final ActivityLogRepository? activity;
 
   CollectionReference<Map<String, dynamic>> _col(String churchId) =>
       _paths.church(churchId).collection('positions');
@@ -71,16 +77,25 @@ class PositionRepository {
     int color = 0xFF6C63FF,
   }) {
     final n = _checkName(name);
-    return _col(churchId).add({
-      'name': n,
-      'icon': icon,
-      'color': color,
-      'permissions': _clean(permissions),
-      'scopes': _cleanScopes(_clean(permissions), scopes),
-      'deleted': false,
-      'createdBy': _auth.uid,
-      'createdAt': FieldValue.serverTimestamp(),
-    });
+    return _col(churchId)
+        .add({
+          'name': n,
+          'icon': icon,
+          'color': color,
+          'permissions': _clean(permissions),
+          'scopes': _cleanScopes(_clean(permissions), scopes),
+          'deleted': false,
+          'createdBy': _auth.uid,
+          'createdAt': FieldValue.serverTimestamp(),
+        })
+        .then((ref) {
+          activity?.log(
+            ActivityType.positionChange,
+            churchId: churchId,
+            targetId: ref.id,
+            summary: '직급 생성 · $n',
+          );
+        });
   }
 
   /// 이름과 권한을 고치고, 이 직급을 가진 교인들의 권한도 같게 맞춘다.
@@ -119,6 +134,12 @@ class PositionRepository {
     for (final d in holders.docs) {
       await mirrorPersonCard(_paths, churchId, d.id);
     }
+    activity?.log(
+      ActivityType.positionChange,
+      churchId: churchId,
+      targetId: p.id,
+      summary: '직급 수정 · $n',
+    );
   }
 
   /// 직급을 지운 것으로 표시하고, 이 직급을 가진 교인에게서 직급과 권한을 뺀다.
@@ -144,6 +165,12 @@ class PositionRepository {
     for (final d in holders.docs) {
       await mirrorPersonCard(_paths, churchId, d.id);
     }
+    activity?.log(
+      ActivityType.positionChange,
+      churchId: churchId,
+      targetId: p.id,
+      summary: '직급 삭제 · ${p.name}',
+    );
   }
 
   /// 기본 직급(교역자 · 회원)의 권한을 정한다. 기본 직급은 지울 수 없고, 교회 관리자는 모든 권한이라 정하지 않는다.
@@ -159,15 +186,24 @@ class PositionRepository {
     if (position == BuiltInPosition.admin) {
       throw const AppException('교회 관리자는 모든 권한을 가져요.');
     }
-    return _col(churchId).doc(position.id).set({
-      'name': _checkName(name ?? position.name),
-      'permissions': _clean(permissions),
-      'scopes': _cleanScopes(_clean(permissions), scopes),
-      'icon': ?icon,
-      'color': ?color,
-      'builtIn': true,
-      'updatedAt': FieldValue.serverTimestamp(),
-    });
+    return _col(churchId)
+        .doc(position.id)
+        .set({
+          'name': _checkName(name ?? position.name),
+          'permissions': _clean(permissions),
+          'scopes': _cleanScopes(_clean(permissions), scopes),
+          'icon': ?icon,
+          'color': ?color,
+          'builtIn': true,
+          'updatedAt': FieldValue.serverTimestamp(),
+        })
+        .logged(
+          activity,
+          ActivityType.positionChange,
+          churchId: churchId,
+          targetId: position.id,
+          summary: '기본 직급 수정 · ${position.name}',
+        );
   }
 
   /// 교인에게 직급을 준다. [position]이 null이면 직급을 뺀다.
@@ -186,6 +222,12 @@ class PositionRepository {
           : _cleanScopes(_clean(position.permissions), position.scopes),
     });
     await mirrorPersonCard(_paths, churchId, memberId);
+    activity?.log(
+      ActivityType.positionChange,
+      churchId: churchId,
+      targetId: memberId,
+      summary: position == null ? '직급 해제' : '직급 부여 · ${position.name}',
+    );
   }
 
   /// 기본 직급(교역자 · 회원) 문서를 지운다: 이름 · 모양 · 권한이 기본값으로 돌아간다.
@@ -194,6 +236,15 @@ class PositionRepository {
     if (position == BuiltInPosition.admin) {
       throw const AppException('교회 관리자는 지울 수 없어요.');
     }
-    return _col(churchId).doc(position.id).delete();
+    return _col(churchId)
+        .doc(position.id)
+        .delete()
+        .logged(
+          activity,
+          ActivityType.positionChange,
+          churchId: churchId,
+          targetId: position.id,
+          summary: '기본 직급 초기화 · ${position.name}',
+        );
   }
 }

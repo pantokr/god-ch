@@ -537,11 +537,7 @@ class _Section extends StatelessWidget {
               Expanded(
                 child: Text(
                   title,
-                  style: TextStyle(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 15,
-                    color: danger ? error : null,
-                  ),
+                  style: TextStyle(fontSize: 15, color: danger ? error : null),
                 ),
               ),
               ?trailing,

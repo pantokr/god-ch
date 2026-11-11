@@ -1,3 +1,6 @@
+import '../../../data/models/activity_log.dart';
+import '../../activity/data/activity_log_repository.dart';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../../../data/firestore_paths.dart';
@@ -47,6 +50,9 @@ class AuthRepository {
   final FirebaseAuth _auth;
   final FirebaseFirestore _db;
 
+  /// 활동 기록. 앱이 시작될 때 이어 준다 (활동 기록 저장소가 이 저장소를 쓰기 때문).
+  ActivityLogRepository? activity;
+
   /// 로그인·로그아웃뿐 아니라 표시 이름 변경(reload) 같은 계정 변경에도 값이 나온다.
   Stream<User?> userChanges() => _auth.userChanges();
 
@@ -85,6 +91,7 @@ class AuthRepository {
         email = snap.data()!['email'] as String? ?? email;
       }
       await _auth.signInWithEmailAndPassword(email: email, password: password);
+      activity?.log(ActivityType.login);
     },
   );
 
@@ -95,9 +102,14 @@ class AuthRepository {
     } else {
       await _auth.signInWithProvider(provider);
     }
+    activity?.log(ActivityType.login, summary: 'Google');
   });
 
-  Future<void> signOut() => _auth.signOut();
+  /// 로그아웃. 로그아웃하면 기록을 쓸 수 없으므로 기록을 먼저 남긴다 (오래 기다리지는 않는다).
+  Future<void> signOut() async {
+    await activity?.record(ActivityType.logout);
+    await _auth.signOut();
+  }
 
   /// 아이디/비밀번호로 만든 계정인가 (구글 등 소셜 로그인 계정은 비밀번호가 없다).
   bool get hasPassword =>
@@ -115,6 +127,7 @@ class AuthRepository {
         EmailAuthProvider.credential(email: user.email!, password: current),
       );
       await user.updatePassword(next);
+      activity?.log(ActivityType.passwordChange);
     } on FirebaseAuthException catch (e) {
       throw switch (e.code) {
         'invalid-credential' ||
@@ -167,6 +180,7 @@ class AuthRepository {
       'withdrawn': true,
       'withdrawnAt': FieldValue.serverTimestamp(),
     });
+    await activity?.record(ActivityType.accountDelete);
     await user.delete();
   }
 
@@ -219,6 +233,7 @@ class AuthRepository {
         'createdAt': FieldValue.serverTimestamp(),
       });
       await batch.commit();
+      activity?.log(ActivityType.signUp);
     } on FirebaseException catch (e) {
       // 동시에 같은 ID로 가입했거나 저장에 실패했다. 만든 계정을 되돌린다.
       await user.delete().catchError((_) {});

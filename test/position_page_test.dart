@@ -7,6 +7,7 @@ import 'package:god_ch/app/theme_mode_controller.dart';
 import 'package:god_ch/core/theme.dart';
 import 'package:god_ch/data/models/member.dart';
 import 'package:god_ch/data/models/position.dart';
+import 'package:god_ch/features/activity/data/activity_log_repository.dart';
 import 'package:god_ch/features/admin/data/position_repository.dart';
 import 'package:god_ch/features/admin/view/position_manage_page.dart';
 import 'package:god_ch/features/auth/data/auth_repository.dart';
@@ -52,6 +53,8 @@ class _Prayers extends Fake implements PrayerRepository {}
 class _Notifications extends Fake implements NotificationRepository {}
 
 class _Bible extends Fake implements BibleRepository {}
+
+class _Activity extends Fake implements ActivityLogRepository {}
 
 class _Positions extends Fake implements PositionRepository {
   @override
@@ -99,6 +102,7 @@ void main() {
         prayers: _Prayers(),
         notifications: _Notifications(),
         bible: _Bible(),
+        activityLogs: _Activity(),
         child: MaterialApp(
           theme: buildTheme(Brightness.light),
           home: const Scaffold(body: PositionManagePage(me: me)),

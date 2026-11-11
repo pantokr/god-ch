@@ -94,7 +94,6 @@ class SortPad extends StatelessWidget {
                               style: TextStyle(
                                 color: palette.ink,
                                 fontSize: 13,
-                                fontWeight: FontWeight.w600,
                               ),
                             ),
                           ),
@@ -163,7 +162,6 @@ class _PadButton extends StatelessWidget {
       child: Text(
         option.label,
         style: TextStyle(
-          fontWeight: on ? FontWeight.w600 : FontWeight.w500,
           decoration: on ? TextDecoration.underline : TextDecoration.none,
         ),
       ),
@@ -380,14 +378,7 @@ class _SortSelect extends StatelessWidget {
         for (var i = 0; i < options.length; i++)
           PopupMenuItem<int>(
             value: i,
-            child: Text(
-              options[i].label,
-              style: TextStyle(
-                fontWeight: options[i].selected
-                    ? FontWeight.w600
-                    : FontWeight.w500,
-              ),
-            ),
+            child: Text(options[i].label, style: TextStyle()),
           ),
       ],
       child: DecoratedBox(
@@ -402,10 +393,7 @@ class _SortSelect extends StatelessWidget {
             children: [
               Text(
                 current?.label ?? '정렬',
-                style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                ),
+                style: const TextStyle(fontSize: 13),
               ),
               const SizedBox(width: 6),
               Icon(AppIcons.caretDown, size: 16, color: palette.muted),

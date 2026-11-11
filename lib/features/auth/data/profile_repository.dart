@@ -1,3 +1,6 @@
+import '../../../data/models/activity_log.dart';
+import '../../activity/data/activity_log_repository.dart';
+
 import 'dart:typed_data';
 
 import '../../../data/firestore_paths.dart';
@@ -13,13 +16,20 @@ import 'auth_repository.dart';
 /// 회원 프로필(users/{uid}): 이름·전화번호·개인정보 제3자 제공 동의.
 /// ID로 가입한 회원은 가입할 때 함께 만들어지고, Google로 가입한 회원은 첫 로그인 뒤에 만든다.
 class ProfileRepository {
-  ProfileRepository(FirebaseFirestore db, this._auth, this._contents)
-    : _db = db,
-      _users = db.collection('users');
+  ProfileRepository(
+    FirebaseFirestore db,
+    this._auth,
+    this._contents, {
+    this.activity,
+  }) : _db = db,
+       _users = db.collection('users');
 
   final FirebaseFirestore _db;
   final CollectionReference<Map<String, dynamic>> _users;
   final AuthRepository _auth;
+
+  /// 활동 기록 (없으면 남기지 않는다).
+  final ActivityLogRepository? activity;
   final ContentRepository _contents;
 
   Stream<UserProfile?> profile(String uid) => _users
@@ -49,14 +59,17 @@ class ProfileRepository {
       throw const AppException('개인정보 제3자 제공에 동의해야 가입할 수 있어요.');
     }
     final email = _auth.email;
-    return _users.doc(_auth.uid).set({
-      'name': name.trim(),
-      'phone': phone.trim(),
-      if (email != null && email.isNotEmpty) 'email': email,
-      'consentThirdParty': true,
-      'consentAt': FieldValue.serverTimestamp(),
-      'createdAt': FieldValue.serverTimestamp(),
-    });
+    return _users
+        .doc(_auth.uid)
+        .set({
+          'name': name.trim(),
+          'phone': phone.trim(),
+          if (email != null && email.isNotEmpty) 'email': email,
+          'consentThirdParty': true,
+          'consentAt': FieldValue.serverTimestamp(),
+          'createdAt': FieldValue.serverTimestamp(),
+        })
+        .then((_) => activity?.log(ActivityType.signUp, summary: 'Google'));
   }
 
   /// 주소·생년월일(선택 정보)을 저장한다. 교회가 입장 때 필수로 요청한 정보를 채울 때 쓴다.
@@ -125,5 +138,6 @@ class ProfileRepository {
       }
     }
     await _auth.updateDisplayName(n);
+    if (hasProfile) activity?.log(ActivityType.profileEdit);
   }
 }

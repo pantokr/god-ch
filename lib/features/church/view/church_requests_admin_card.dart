@@ -98,11 +98,7 @@ class _RequestRow extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          r.name,
-          style: Theme.of(context).textTheme.titleSmall
-              ?.copyWith(fontWeight: FontWeight.w600),
-        ),
+        Text(r.name, style: Theme.of(context).textTheme.titleSmall?.copyWith()),
         const SizedBox(height: 4),
         Text('전화  ${r.phone}', style: muted),
         Text('주소  ${r.address}', style: muted),

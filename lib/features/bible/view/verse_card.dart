@@ -43,12 +43,8 @@ Widget _body(BuildContext context, String text, Color color, {double? size}) =>
       text,
       maxLines: 12,
       onDark: true,
-      style: verseTextStyle(context).copyWith(
-        color: color,
-        fontSize: size ?? 19,
-        height: 1.9,
-        fontWeight: FontWeight.w500,
-      ),
+      style: verseTextStyle(context)
+          .copyWith(color: color, fontSize: size ?? 19, height: 1.9),
     );
 
 class _PaperVerse extends StatelessWidget {
@@ -96,7 +92,6 @@ class _PaperVerse extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 160,
                   height: 1,
-                  fontWeight: FontWeight.w600,
                   color: onColor.withValues(alpha: 0.13),
                 ),
               ),
@@ -127,11 +122,7 @@ class _PaperVerse extends StatelessWidget {
                           Flexible(
                             child: Text(
                               title,
-                              style: TextStyle(
-                                color: onColor,
-                                fontWeight: FontWeight.w600,
-                                fontSize: 15,
-                              ),
+                              style: TextStyle(color: onColor, fontSize: 15),
                             ),
                           ),
                         ],
@@ -176,11 +167,7 @@ class _SimpleVerse extends StatelessWidget {
                 Flexible(
                   child: Text(
                     title,
-                    style: TextStyle(
-                      color: palette.accent,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 15,
-                    ),
+                    style: TextStyle(color: palette.accent, fontSize: 15),
                   ),
                 ),
               ],
@@ -219,11 +206,7 @@ class _QuoteVerse extends StatelessWidget {
             Text(
               '— $title',
               textAlign: TextAlign.right,
-              style: TextStyle(
-                color: palette.muted,
-                fontWeight: FontWeight.w600,
-                fontSize: 14,
-              ),
+              style: TextStyle(color: palette.muted, fontSize: 14),
             ),
           ],
         ),

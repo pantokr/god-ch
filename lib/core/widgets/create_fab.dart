@@ -45,11 +45,7 @@ class CreateFab extends StatelessWidget {
                 const SizedBox(width: 8),
                 Text(
                   label,
-                  style: TextStyle(
-                    color: palette.onBrand,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                  ),
+                  style: TextStyle(color: palette.onBrand, fontSize: 15),
                 ),
               ],
             ),

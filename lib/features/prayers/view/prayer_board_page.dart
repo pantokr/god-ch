@@ -468,22 +468,27 @@ class PrayerTile extends StatelessWidget {
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // 신규 글은 제목(첫 줄) 왼쪽에 붉은 점 하나가 붙는다.
-                      if (showBar) ...[
-                        const Padding(
-                          padding: EdgeInsets.only(top: 7),
-                          child: ReadStatusBar.fresh(),
-                        ),
-                        const SizedBox(width: 8),
-                      ],
                       // 내용은 앞부분만 발췌해 두 줄 자리를 늘 잡는다.
                       Expanded(
                         child: SizedBox(
                           height: grid
                               ? null
                               : scaler.scale(14 * 1.45 * excerptLines) + 4,
-                          child: Text(
-                            p.content,
+                          // 신규 글은 본문 맨 앞에 붉은 "신규" 글자가 한 줄 안에서 이어진다.
+                          child: Text.rich(
+                            TextSpan(
+                              children: [
+                                if (showBar)
+                                  const TextSpan(
+                                    text: '신규  ',
+                                    style: TextStyle(
+                                      color: AppColors.like,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                TextSpan(text: p.content),
+                              ],
+                            ),
                             maxLines: excerptLines,
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(fontSize: 14, height: 1.45),
@@ -533,10 +538,7 @@ class PrayerTile extends StatelessWidget {
                               p.authorName.isEmpty ? '이름 없음' : p.authorName,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w600,
-                                fontSize: 13,
-                              ),
+                              style: const TextStyle(fontSize: 13),
                             ),
                           ),
                         ],
@@ -603,10 +605,7 @@ class PrayerTile extends StatelessWidget {
                                   p.authorName.isEmpty ? '이름 없음' : p.authorName,
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 13,
-                                  ),
+                                  style: const TextStyle(fontSize: 13),
                                 ),
                               ),
                             ),

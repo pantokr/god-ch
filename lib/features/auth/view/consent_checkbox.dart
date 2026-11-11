@@ -80,10 +80,7 @@ class ConsentCheckbox extends StatelessWidget {
                             const TextSpan(text: '개인정보 제3자 제공 동의'),
                           ],
                         ),
-                        style: const TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                        ),
+                        style: const TextStyle(fontSize: 15),
                       ),
                     ),
                   ],

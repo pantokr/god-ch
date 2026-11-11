@@ -272,7 +272,6 @@ class ChurchShell extends StatelessWidget {
                     style: TextStyle(
                       color: context.palette.muted,
                       fontSize: 12,
-                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ),
@@ -423,7 +422,7 @@ class _ChurchCard extends StatelessWidget {
                     name,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontWeight: FontWeight.w600),
+                    style: const TextStyle(),
                   ),
                 ),
                 const SizedBox(width: 8),

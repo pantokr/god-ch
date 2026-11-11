@@ -1,4 +1,8 @@
+import 'package:god_ch/data/models/church.dart';
+import 'package:god_ch/data/models/activity_log.dart';
+import 'package:god_ch/features/platform/view/activity_log_page.dart';
 import 'package:god_ch/core/icons.dart';
+import 'package:god_ch/features/activity/data/activity_log_repository.dart';
 import 'package:god_ch/features/auth/view/sign_up_page.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -60,7 +64,12 @@ class _Churches extends Fake implements ChurchRepository {}
 
 class _Requests extends Fake implements ChurchRequestRepository {}
 
-class _Registry extends Fake implements ChurchRegistryRepository {}
+class _Registry extends Fake implements ChurchRegistryRepository {
+  @override
+  Stream<List<Church>> churches() => Stream.value([
+    const Church(id: 'c1', name: '은혜교회', phone: '', address: ''),
+  ]);
+}
 
 class _Closures extends Fake implements ChurchClosureRepository {}
 
@@ -132,6 +141,43 @@ class _Prayers extends Fake implements PrayerRepository {
 class _Notifications extends Fake implements NotificationRepository {}
 
 class _Bible extends Fake implements BibleRepository {}
+
+class _Activity extends Fake implements ActivityLogRepository {
+  static final items = [
+    ActivityLog(
+      id: '1',
+      uid: 'u1',
+      userName: '김성도',
+      type: ActivityType.login,
+      at: DateTime(2026, 11, 11, 9, 30),
+    ),
+    ActivityLog(
+      id: '2',
+      uid: 'u2',
+      userName: '이집사',
+      type: ActivityType.meetingCreate,
+      churchId: 'c1',
+      summary: '성경 공부 모임을 아주 길게 이어서 쓴 제목',
+      at: DateTime(2026, 11, 11, 9, 31),
+    ),
+  ];
+  final requested = <String>[];
+
+  @override
+  Stream<List<ActivityLog>> recent({int limit = 200}) {
+    requested.add('recent/$limit');
+    return Stream.value(items);
+  }
+
+  @override
+  Stream<List<ActivityLog>> byUser(String uid, {int limit = 200}) {
+    requested.add('byUser/$uid/$limit');
+    return Stream.value([
+      for (final l in items)
+        if (l.uid == uid) l,
+    ]);
+  }
+}
 
 class _Positions extends Fake implements PositionRepository {
   @override
@@ -218,6 +264,7 @@ Widget _scoped(Widget child, double scale, [PreferencesController? prefs]) =>
       prayers: _Prayers(),
       notifications: _Notifications(),
       bible: _Bible(),
+      activityLogs: _Activity(),
       child: MaterialApp(
         theme: buildTheme(Brightness.light),
         builder: (context, child) => MediaQuery(
@@ -308,6 +355,19 @@ void main() {
         await tester.pump(const Duration(milliseconds: 400));
         expect(checked(), isTrue);
         expect(tester.takeException(), isNull);
+      });
+
+      testWidgets('활동 기록 화면이 넘치지 않고, 줄을 누르면 그 회원만 본다', (tester) async {
+        await _pump(tester, const ActivityLogPage(), width, scale);
+        expect(tester.takeException(), isNull);
+        expect(find.text('김성도 · 로그인'), findsOneWidget);
+        expect(find.text('이집사 · 모임 만들기'), findsOneWidget);
+        expect(find.textContaining('은혜교회 · 성경 공부'), findsOneWidget);
+        await tester.tap(find.text('김성도 · 로그인'));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 300));
+        expect(tester.takeException(), isNull);
+        expect(find.text('이집사 · 모임 만들기'), findsNothing);
       });
 
       testWidgets('직급 관리가 넘치지 않는다', (tester) async {

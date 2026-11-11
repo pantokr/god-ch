@@ -127,10 +127,7 @@ class _AffiliationPeoplePageState extends State<AffiliationPeoplePage> {
           ),
           child: Text(
             '${current.name} ${members.length}명',
-            style: TextStyle(
-              color: context.palette.muted,
-              fontWeight: FontWeight.w600,
-            ),
+            style: TextStyle(color: context.palette.muted),
           ),
         ),
         if (members.isEmpty)

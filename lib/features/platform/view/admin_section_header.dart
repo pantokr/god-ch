@@ -44,11 +44,7 @@ class AdminSectionHeader extends StatelessWidget {
                 ),
                 child: Text(
                   '$count',
-                  style: TextStyle(
-                    color: color,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                  ),
+                  style: TextStyle(color: color, fontSize: 13),
                 ),
               ),
             ],

@@ -225,7 +225,11 @@ class _InfoCard extends StatelessWidget {
               child: AspectRatio(aspectRatio: 1.3, child: MeetingThumb(m)),
             ),
             const SizedBox(height: 16),
-            Text(m.title, style: Theme.of(context).textTheme.titleLarge),
+            Text(
+              m.title,
+              style: Theme.of(context).textTheme.titleLarge
+                  ?.copyWith(fontWeight: FontWeight.w400),
+            ),
             if (m.description.isNotEmpty) ...[
               const SizedBox(height: 28),
               SelectableText(
@@ -383,7 +387,6 @@ class _StatusBubble extends StatelessWidget {
         style: TextStyle(
           color: active ? palette.accent : palette.muted,
           fontSize: 12.5,
-          fontWeight: FontWeight.w600,
         ),
       ),
     );
@@ -482,10 +485,7 @@ class _PendingRequests extends StatelessWidget {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(
-              '승인 대기 ${m.pendingIds.length}명',
-              style: const TextStyle(fontWeight: FontWeight.w600),
-            ),
+            Text('승인 대기 ${m.pendingIds.length}명', style: const TextStyle()),
             const SizedBox(height: 8),
             // 대기자가 많아져도 화면이 끝없이 늘어나지 않게 앞의 몇 명만 보인다.
             for (final uid in m.pendingIds.take(_pendingPreview))

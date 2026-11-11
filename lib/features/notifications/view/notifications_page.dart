@@ -99,7 +99,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.titleLarge
-                        ?.copyWith(fontWeight: FontWeight.w600, fontSize: 17),
+                        ?.copyWith(fontSize: 17),
                   ),
                 ),
               ),
@@ -186,9 +186,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
                                         Flexible(
                                           child: Text(
                                             '신규 입장 요청 $pendingRequests건',
-                                            style: const TextStyle(
-                                              fontWeight: FontWeight.w600,
-                                            ),
+                                            style: const TextStyle(),
                                           ),
                                         ),
                                         const SizedBox(width: 8),
@@ -208,7 +206,6 @@ class _NotificationsPageState extends State<NotificationsPage> {
                                             style: TextStyle(
                                               color: Colors.white,
                                               fontSize: 11,
-                                              fontWeight: FontWeight.w600,
                                             ),
                                           ),
                                         ),
@@ -332,11 +329,14 @@ class _Row extends StatelessWidget {
             else ...[
               Padding(
                 padding: const EdgeInsets.only(top: 6),
-                child: Icon(
-                  AppIcons.circleFill,
-                  size: 8,
-                  // 읽지 않은 알림만 점이 보인다.
-                  color: isNew ? palette.brand : Colors.transparent,
+                // 읽지 않은 알림만 점이 보인다.
+                child: Container(
+                  width: 8,
+                  height: 8,
+                  decoration: BoxDecoration(
+                    color: isNew ? palette.brand : Colors.transparent,
+                    shape: BoxShape.circle,
+                  ),
                 ),
               ),
               const SizedBox(width: 12),
@@ -348,7 +348,6 @@ class _Row extends StatelessWidget {
                   Text(
                     item.title,
                     style: TextStyle(
-                      fontWeight: isNew ? FontWeight.w600 : FontWeight.w500,
                       // 읽은 알림은 흐리게.
                       color: isNew ? null : gray,
                     ),

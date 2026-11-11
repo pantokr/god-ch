@@ -416,13 +416,7 @@ class VersePreview extends StatelessWidget {
             Row(
               children: [
                 Expanded(
-                  child: Text(
-                    title,
-                    style: TextStyle(
-                      color: palette.ink,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
+                  child: Text(title, style: TextStyle(color: palette.ink)),
                 ),
                 ?trailing,
               ],
@@ -468,11 +462,7 @@ List<TextSpan> verseSpans(
       return [
         TextSpan(
           text: '${m.group(1)} ',
-          style: TextStyle(
-            color: numberColor,
-            fontWeight: FontWeight.w600,
-            fontSize: numberSize,
-          ),
+          style: TextStyle(color: numberColor, fontSize: numberSize),
         ),
         TextSpan(text: '${m.group(2)}\n'),
       ];
@@ -523,11 +513,7 @@ class VerseReader extends StatelessWidget {
                         Flexible(
                           child: Text(
                             title,
-                            style: TextStyle(
-                              color: ink,
-                              fontWeight: FontWeight.w600,
-                              fontSize: 15,
-                            ),
+                            style: TextStyle(color: ink, fontSize: 15),
                           ),
                         ),
                       ],
@@ -566,12 +552,8 @@ class VerseReader extends StatelessWidget {
                         .showVerseNumbers,
                   ),
                 ),
-                style: readingStyle(context).copyWith(
-                  color: ink,
-                  fontSize: 18,
-                  height: 1.9,
-                  fontWeight: FontWeight.w500,
-                ),
+                style: readingStyle(context)
+                    .copyWith(color: ink, fontSize: 18, height: 1.9),
               ),
             ),
           ),
@@ -636,7 +618,6 @@ class _BookGrid extends StatelessWidget {
                       bibleBooks[i],
                       style: TextStyle(
                         color: i == selected ? palette.surface : palette.ink,
-                        fontWeight: FontWeight.w600,
                         fontSize: 14,
                       ),
                     ),

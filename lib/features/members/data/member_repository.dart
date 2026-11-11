@@ -1,3 +1,6 @@
+import '../../../data/models/activity_log.dart';
+import '../../activity/data/activity_log_repository.dart';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../../../data/shared_stream.dart';
@@ -15,11 +18,14 @@ import '../../auth/data/auth_repository.dart';
 
 /// 교회별 교인 목록과 승인·역할 변경.
 class MemberRepository {
-  MemberRepository(FirebaseFirestore db, this._auth)
+  MemberRepository(FirebaseFirestore db, this._auth, {this.activity})
     : _paths = FirestorePaths(db);
 
   final FirestorePaths _paths;
   final AuthRepository _auth;
+
+  /// 활동 기록 (없으면 남기지 않는다).
+  final ActivityLogRepository? activity;
 
   /// 이 교회의 교인들. 추방된 사람과 앱 운영자(admin 계정)는 교인이 아니므로 뺀다.
   Stream<List<Member>> members(String churchId) =>
@@ -123,6 +129,7 @@ class MemberRepository {
     userId,
     '$churchName 입장 요청이 거절되었어요',
     '초대 코드로 다시 신청할 수 있어요.',
+    type: ActivityType.memberReject,
   );
 
   /// 내가 이 교회에서 탈퇴한다. 교인 문서는 지우지 않고 removed 표시만 남긴다 (규칙이 강제한다).
@@ -133,6 +140,7 @@ class MemberRepository {
       'removedBy': _auth.uid,
     });
     await _mirror(churchId, _auth.uid);
+    activity?.log(ActivityType.memberLeave, churchId: churchId);
   }
 
   /// 사람 목록용 복사본을 교인 문서에 맞춘다.
@@ -145,6 +153,7 @@ class MemberRepository {
     String title,
     String body, {
     Map<String, dynamic>? block,
+    ActivityType type = ActivityType.memberRemove,
   }) async {
     final batch = _paths.db.batch();
     batch.set(
@@ -170,6 +179,7 @@ class MemberRepository {
       'removedBy': _auth.uid,
     });
     await batch.commit();
+    activity?.log(type, churchId: churchId, targetId: userId);
     await _mirror(churchId, userId);
   }
 
@@ -191,6 +201,7 @@ class MemberRepository {
         '$churchName에서 나오게 되었어요',
         '다시 들어오려면 초대 코드로 새로 신청해야 해요.',
         block: _blockData(m.loginId, m.name),
+        type: ActivityType.memberBlock,
       );
 
   /// 아이디를 직접 입력해 차단한다. 이미 교인이면 내보내고 알린다.
@@ -221,9 +232,15 @@ class MemberRepository {
         '$churchName에서 나오게 되었어요',
         '다시 들어오려면 초대 코드로 새로 신청해야 해요.',
         block: _blockData(id, name),
+        type: ActivityType.memberBlock,
       );
     } else {
       await _paths.blocked(churchId).doc(uid).set(_blockData(id, name));
+      activity?.log(
+        ActivityType.memberBlock,
+        churchId: churchId,
+        targetId: uid,
+      );
     }
   }
 
@@ -252,11 +269,24 @@ class MemberRepository {
       if (status == MemberStatus.approved)
         'approvedAt': FieldValue.serverTimestamp(),
     });
+    if (status == MemberStatus.approved) {
+      activity?.log(
+        ActivityType.memberApprove,
+        churchId: churchId,
+        targetId: userId,
+      );
+    }
     await _mirror(churchId, userId);
   }
 
   Future<void> setRole(String churchId, String userId, Role role) async {
     await _paths.members(churchId).doc(userId).update({'role': role.name});
+    activity?.log(
+      ActivityType.memberRole,
+      churchId: churchId,
+      targetId: userId,
+      summary: role.name,
+    );
     await _mirror(churchId, userId);
   }
 
@@ -305,6 +335,12 @@ class MemberRepository {
     if (info.isNotEmpty) await doc.update(info);
     if (role != null) {
       await doc.update({'role': role.name});
+      activity?.log(
+        ActivityType.memberRole,
+        churchId: m.churchId,
+        targetId: m.id,
+        summary: role.name,
+      );
       // 교회 운영자가 되면 모든 소속에 자동으로 속한다.
       if (role == Role.admin) {
         await admin_affs.syncAdminAffiliations(_paths, m.churchId);
@@ -316,6 +352,13 @@ class MemberRepository {
         if (status == MemberStatus.approved)
           'approvedAt': FieldValue.serverTimestamp(),
       });
+      if (status == MemberStatus.approved) {
+        activity?.log(
+          ActivityType.memberApprove,
+          churchId: m.churchId,
+          targetId: m.id,
+        );
+      }
     }
     await _mirror(m.churchId, m.id);
   }
@@ -333,6 +376,12 @@ class MemberRepository {
     await _paths.members(churchId).doc(userId).update({
       'affiliationIds': FieldValue.arrayUnion([affId]),
     });
+    activity?.log(
+      ActivityType.affiliationChange,
+      churchId: churchId,
+      targetId: userId,
+      summary: '소속 배정',
+    );
     await _mirror(churchId, userId);
   }
 
@@ -345,6 +394,12 @@ class MemberRepository {
     await _paths.members(churchId).doc(userId).update({
       'affiliationIds': FieldValue.arrayRemove([affId]),
     });
+    activity?.log(
+      ActivityType.affiliationChange,
+      churchId: churchId,
+      targetId: userId,
+      summary: '소속 제외',
+    );
     await _mirror(churchId, userId);
   }
 }
