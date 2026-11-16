@@ -27,8 +27,15 @@ Flutter(웹 우선) + Firebase 앱. 개요와 환경 설정은 [README.md](READM
 - 권한은 역할 기본값 + **직급**(`positions`, 교회 운영자가 만들고 교인에게 준다)이다. 목록은 `lib/data/models/permission.dart`이고, 규칙은 `can(교회, 권한)`으로 막는다. 중보기도 설정 · 말씀묵상 설정 · 직급 권한 관리 · 교회 정보는 교회 운영자(`admin`)만 한다.
 - 화면에는 "기도" 대신 **중보기도**라고 쓴다.
 - 로그인하면 승인된 교회가 있을 때 `/churches`가 마지막 교회의 메인으로 바로 넘어간다. 목록을 보려면 `Routes.churchList`.
+- 주소 · 생년월일은 교회별로 입장할 때 한 번 제출한다 (`users`에는 없고 교인 문서에만 있다). 입장 신청(`joinOk`)에서 필수 항목을 받고, 입장한 뒤 새로 필수가 되면 `RequiredInfoGate`가 제출을 받으며, 규칙은 비어 있는 항목을 채우는 쓰기만 허용한다 (낸 뒤에는 본인 · 앱 운영자 모두 못 고친다). 내 정보는 이름 · 전화번호 · 사진만 고치고 교회별 제출 정보는 보기만 한다.
+- 입장 요청 거절은 인원 관리 권한(`member.manage`)이고(`canReject`, 규칙의 첫 update 분기와 `removalNoticeOk`), 추방 · 차단 · 역할 변경은 교회 운영자만 한다. 교역자와 교회 운영자의 차이는 `docs/DEVELOPMENT.md` 권한 표에 있다.
+- 저장 버튼이 있는 페이지는 뒤로 갈 때 저장하지 않고 나갈지 묻는다: 위로 쌓이는 페이지는 `DiscardGuard`(`SubPage`의 뒤로가기는 `maybePop`), 교회 틀 안의 메뉴 페이지(설정 · 교회 정보)는 `UnsavedGuard`(`ExitGuard`에 등록, 위쪽 바 · 기기 뒤로 가기). 새 저장 페이지를 만들면 둘 중 하나를 건다. (웹 브라우저의 뒤로 가기는 막지 못한다.)
+- 작성자 비공개: 중보기도 · 말씀묵상 설정의 `allowAnonymous`(기본 끔)를 켜면 글쓴이가 글마다 `authorHidden`을 고른다 (규칙은 새로 켤 때만 허용을 확인). 가림은 화면에서 한다: 다른 교인에게는 "익명", 본인과 교역자 이상에게는 "이름 (비공개)" (`hidesAuthorFrom`/`authorLabel`). 글 문서에는 글쓴이(`authorId`)가 그대로 있어 데이터 수준의 익명은 아니다. 글쓴이 이름이 나오는 새 화면은 반드시 이 도우미를 거치고, 이름으로 찾는 검색에도 같은 기준을 건다.
+- 글 · 댓글의 작성 시각은 `fmtPosted`(개인 설정의 일시 표기: 상대 "몇 분 전" / 날짜)로 보이고, 가입일 · 활동 기록처럼 정확한 시각이 필요한 기록만 `fmtDateTime`을 쓴다.
+- 규칙 점검 때 막아 둔 것 (`test/rules_review_test.dart`가 확인): 좋아요 · 참여자 · 읽음 목록은 중복 uid를 넣지 못한다(`onlyMeDiff` · `readByOk`), 일회용 초대 코드는 입장 신청과 같은 묶음에서 `usedBy`를 써야 한다(`inviteConsumed`), 교역자는 승인 대기(`pending`)만 승인하고 `removed`는 되살리지 못한다, 앱 운영자는 기도 응답도 못 읽는다, 사람 목록 카드의 이름은 교인 문서와 같고 직급 이름은 본인이 못 쓴다, 댓글 · 좋아요 알림 문구는 `ActivityNotice`의 틀만 된다. 직급을 고치거나 지울 때 보유자 문서는 `removed`를 빼고 쓴다(규칙이 막아 묶음 전체가 거부된다).
 - 새 필드를 추가하면 모델·저장소·`firestore.rules`의 `hasOnly([...])` 목록을 **같이** 고친다. 이모티콘 종류도 `lib/data/models/reaction.dart`와 규칙이 일치해야 한다.
 - 회원별 접속 · 활동 기록은 최상위 `activityLogs`에 쌓인다 (쓰기는 본인 것만, 수정·삭제 불가, 읽기는 앱 운영자만; 앱 운영자 > 활동 기록에서 조회). 저장소는 `ActivityLogRepository`이고 각 저장소가 쓰기 뒤에 `activity?.log(...)`/`.logged(...)`로 남긴다. 종류는 `ActivityType`이며 `firestore.rules`의 `type in [...]` 목록과 일치해야 한다 (`test/activity_log_test.dart`가 확인). 글 내용은 담지 않고 제목 정도만 `summary`에 둔다. 문서 ID는 시간 역순(복합 색인 없이 최신순).
+- 문의는 최상위 `inquiries`에 쌓인다 (오른쪽 계정 띠 맨 아래 앱 정보 창의 문의하기 버튼 → `/inquiry`). 보낸 사람과 앱 운영자만 읽고, 답변은 앱 운영자만 단다(앱 운영자 > 문의, 답변하면 보낸 사람에게 알림). 저장소는 `InquiryRepository`, 길이 제한은 `Inquiry.maxTitle`/`maxMessage`/`maxAnswer`와 `firestore.rules`가 일치해야 한다 (`test/inquiry_test.dart`가 확인). 앱 운영자 화면은 문의를 받는 쪽이라 앱 정보 창에 문의하기 버튼이 없다.
 
 ## 자주 쓰는 명령
 

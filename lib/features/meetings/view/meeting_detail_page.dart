@@ -252,6 +252,22 @@ class _JoinCard extends StatelessWidget {
   final Member me;
   final MeetingDetailViewModel vm;
 
+  /// 참여 · 신청 · 취소를 처리하고 결과를 토스트로 알린다 (실패 문구는 카드 안에 보인다).
+  Future<void> _toggle(BuildContext context, {required bool join}) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final m = meeting;
+    final wasPending = m.pendingBy(me.id);
+    final asksApproval = join && m.needsApproval && m.leaderId != me.id;
+    final ok = await vm.setJoined(m, join, applicantName: me.name);
+    if (!ok) return;
+    showToastOn(
+      messenger,
+      join
+          ? (asksApproval ? '참여를 신청했어요' : '모임에 참여했어요')
+          : (wasPending ? '신청을 취소했어요' : '참여를 취소했어요'),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final m = meeting;
@@ -266,7 +282,9 @@ class _JoinCard extends StatelessWidget {
     } else if (joined) {
       button = OutlinedButton(
         // 이미 지난(종료된) 모임은 참여를 취소할 수 없다.
-        onPressed: vm.busy || m.ended ? null : () => vm.setJoined(m, false),
+        onPressed: vm.busy || m.ended
+            ? null
+            : () => _toggle(context, join: false),
         style: OutlinedButton.styleFrom(
           foregroundColor: Theme.of(context).colorScheme.error,
         ),
@@ -275,7 +293,9 @@ class _JoinCard extends StatelessWidget {
     } else if (pending) {
       // 모임장 승인 대기 중: 신청을 취소할 수 있다.
       button = OutlinedButton(
-        onPressed: vm.busy || m.ended ? null : () => vm.setJoined(m, false),
+        onPressed: vm.busy || m.ended
+            ? null
+            : () => _toggle(context, join: false),
         style: OutlinedButton.styleFrom(
           foregroundColor: Theme.of(context).colorScheme.error,
         ),
@@ -291,7 +311,7 @@ class _JoinCard extends StatelessWidget {
       button = FilledButton(
         onPressed: vm.busy || m.isFull || m.ended
             ? null
-            : () => vm.setJoined(m, true, applicantName: me.name),
+            : () => _toggle(context, join: true),
         child: Text(
           m.ended
               ? '종료'
@@ -312,26 +332,51 @@ class _JoinCard extends StatelessWidget {
               ['참여 ${m.joined}/${m.capacity}명', ?seatStatus(m)].join(' · '),
               style: Theme.of(context).textTheme.titleMedium,
             ),
-            const Spacer(),
-            if (!me.isOperatorView)
-              _StatusBubble(
-                label: joined
-                    ? (m.ended ? '참여 완료' : '참여 예정')
-                    : pending
-                    ? '승인 대기'
-                    : '미참여',
-                active: joined || pending,
-              ),
           ],
         ),
         const SizedBox(height: 12),
         ClipRRect(
           borderRadius: BorderRadius.circular(999),
-          child: LinearProgressIndicator(
-            value: m.capacity == 0 ? 0 : m.joined / m.capacity,
-            minHeight: 8,
+          child: TweenAnimationBuilder<double>(
+            tween: Tween(end: m.capacity == 0 ? 0 : m.joined / m.capacity),
+            duration: const Duration(milliseconds: 400),
+            curve: Curves.easeOutCubic,
+            builder: (context, value, _) =>
+                LinearProgressIndicator(value: value, minHeight: 8),
           ),
         ),
+        // 내 참여 상태: 참여하거나 신청하면 카드 안에 면이 나타나고, 취소하면 사라진다.
+        if (!me.isOperatorView)
+          AnimatedSize(
+            duration: const Duration(milliseconds: 250),
+            curve: Curves.easeOut,
+            alignment: Alignment.topCenter,
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 300),
+              transitionBuilder: (child, animation) => FadeTransition(
+                opacity: animation,
+                child: ScaleTransition(
+                  scale: Tween(begin: 0.94, end: 1.0).animate(animation),
+                  child: child,
+                ),
+              ),
+              child: joined
+                  ? _MyStatus(
+                      key: ValueKey(m.ended ? 'done' : 'joined'),
+                      label: m.ended ? '참여 완료' : '참여 예정',
+                      icon: AppIcons.checkCircleFill,
+                      color: context.palette.accent,
+                    )
+                  : pending
+                  ? const _MyStatus(
+                      key: ValueKey('pending'),
+                      label: '승인 대기',
+                      icon: AppIcons.hourglassHigh,
+                      color: AppColors.crown,
+                    )
+                  : const SizedBox.shrink(key: ValueKey('none')),
+            ),
+          ),
         if (vm.error != null) ...[
           const SizedBox(height: 8),
           Text(
@@ -365,28 +410,35 @@ class _JoinCard extends StatelessWidget {
   }
 }
 
-/// 내 참여 상태를 보여주는 작은 말풍선 (미참여 · 승인 대기 · 참여 예정 · 참여 완료).
-class _StatusBubble extends StatelessWidget {
-  const _StatusBubble({required this.label, required this.active});
+/// 내 참여 상태 면 (승인 대기 · 참여 예정 · 참여 완료): 색 있는 면에 아이콘과 상태.
+class _MyStatus extends StatelessWidget {
+  const _MyStatus({
+    super.key,
+    required this.label,
+    required this.icon,
+    required this.color,
+  });
 
   final String label;
-  final bool active;
+  final IconData icon;
+  final Color color;
 
   @override
   Widget build(BuildContext context) {
-    final palette = context.palette;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: active ? palette.accent.withValues(alpha: 0.12) : null,
-        border: active ? null : Border.all(color: palette.border),
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          color: active ? palette.accent : palette.muted,
-          fontSize: 12.5,
+    return Padding(
+      padding: const EdgeInsets.only(top: 14),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(AppRadius.card),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, size: 20, color: color),
+            const SizedBox(width: 10),
+            Text(label, style: TextStyle(color: color, fontSize: 15)),
+          ],
         ),
       ),
     );
@@ -438,7 +490,7 @@ class _LeaderCard extends StatelessWidget {
             ),
           ),
         ),
-        date: fmtDateTime(m.createdAt),
+        date: fmtPosted(m.createdAt),
         views: vm.settings.showViews ? m.views : null,
         isPrivate: false,
         // 공개 여부(공개 · 교역자 전용)는 없고, 공개 범위(소속)만 보인다.
@@ -495,13 +547,15 @@ class _PendingRequests extends StatelessWidget {
                 card: cards[uid],
                 trailing: [
                   TextButton(
-                    onPressed: vm.busy ? null : () => vm.reject(m, uid),
+                    onPressed: vm.busy || m.ended
+                        ? null
+                        : () => vm.reject(m, uid),
                     style: TextButton.styleFrom(foregroundColor: palette.muted),
                     child: const Text('거절'),
                   ),
                   FilledButton(
-                    // 정원이 찼으면 승인할 수 없다.
-                    onPressed: vm.busy || m.isFull
+                    // 정원이 찼거나 종료된 모임은 승인할 수 없다.
+                    onPressed: vm.busy || m.isFull || m.ended
                         ? null
                         : () => vm.approve(m, uid),
                     child: const Text('승인'),

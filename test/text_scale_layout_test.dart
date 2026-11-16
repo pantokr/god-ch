@@ -48,6 +48,7 @@ import 'package:god_ch/features/church/data/church_closure_repository.dart';
 import 'package:god_ch/features/church/data/church_repository.dart';
 import 'package:god_ch/features/church/data/church_request_repository.dart';
 import 'package:god_ch/features/home/data/content_repository.dart';
+import 'package:god_ch/features/inquiry/data/inquiry_repository.dart';
 import 'package:god_ch/features/home/data/reflection_repository.dart';
 import 'package:god_ch/features/meetings/data/meeting_repository.dart';
 import 'package:god_ch/features/members/data/member_repository.dart';
@@ -141,6 +142,8 @@ class _Prayers extends Fake implements PrayerRepository {
 class _Notifications extends Fake implements NotificationRepository {}
 
 class _Bible extends Fake implements BibleRepository {}
+
+class _Inquiries extends Fake implements InquiryRepository {}
 
 class _Activity extends Fake implements ActivityLogRepository {
   static final items = [
@@ -265,6 +268,7 @@ Widget _scoped(Widget child, double scale, [PreferencesController? prefs]) =>
       notifications: _Notifications(),
       bible: _Bible(),
       activityLogs: _Activity(),
+      inquiries: _Inquiries(),
       child: MaterialApp(
         theme: buildTheme(Brightness.light),
         builder: (context, child) => MediaQuery(
@@ -326,7 +330,8 @@ void main() {
         expect(find.text('회원가입'), findsOneWidget);
         expect(find.text('로그인 정보'), findsOneWidget);
         expect(find.text('기본 정보'), findsOneWidget);
-        expect(find.text('추가 정보 (선택)'), findsOneWidget);
+        // 주소 · 생년월일은 가입 때 받지 않는다 (교회에 입장할 때 한 번 제출한다).
+        expect(find.text('추가 정보 (선택)'), findsNothing);
       });
 
       testWidgets('개인정보 동의: 줄을 누르면 체크되고 내용 보기에서 바로 동의한다', (tester) async {

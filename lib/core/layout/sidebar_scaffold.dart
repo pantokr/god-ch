@@ -1,10 +1,12 @@
 import '../icons.dart';
 
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import 'app_info_dialog.dart';
 
 import '../../app/app_scope.dart';
+import '../../app/routes.dart';
 import '../theme.dart';
 import '../widgets/brand_mark.dart';
 import '../widgets/thumbnail_avatar.dart';
@@ -77,7 +79,11 @@ class SidebarScaffold extends StatelessWidget {
     this.onBack,
     this.title,
     this.footer,
+    this.showInquiry = true,
   });
+
+  /// 앱 정보 창에 문의 버튼을 둔다 (앱 운영자 화면은 문의를 받는 쪽이라 두지 않는다).
+  final bool showInquiry;
 
   /// 왼쪽 메뉴 맨 아래에 놓는 위젯 (예: 앱 광고).
   final Widget? footer;
@@ -136,6 +142,7 @@ class SidebarScaffold extends StatelessWidget {
       onProfile: onProfile,
       onSignOut: onSignOut,
       actions: railActions,
+      showInquiry: showInquiry,
     );
 
     // 넓은 화면도 폰과 같은 서랍 방식이다: 버튼 하나로 왼쪽 메뉴와 오른쪽 계정 띠가 함께 열리고 닫힌다.
@@ -173,7 +180,11 @@ class AccountRail extends StatelessWidget {
     required this.onSignOut,
     this.actions = const [],
     this.userPhotoUrl = '',
+    this.showInquiry = true,
   });
+
+  /// 앱 정보 창에 문의 버튼을 둔다.
+  final bool showInquiry;
 
   final String userName;
 
@@ -216,7 +227,16 @@ class AccountRail extends StatelessWidget {
                     IconButton(
                       tooltip: '앱 정보',
                       icon: const Icon(AppIcons.info),
-                      onPressed: () => showAppInfo(context),
+                      onPressed: () => showAppInfo(
+                        context,
+                        // 문의는 앱 정보 창 안의 버튼으로 들어간다 (좁은 화면의 서랍은 닫고 문의 화면으로 간다).
+                        onInquiry: showInquiry
+                            ? () {
+                                PanelCloser.of(context)?.call();
+                                context.push(Routes.inquiry);
+                              }
+                            : null,
+                      ),
                     ),
                     const SizedBox(height: 8),
                   ],

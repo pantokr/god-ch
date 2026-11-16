@@ -40,6 +40,22 @@ class PositionRepository {
         ]..sort((a, b) => a.name.compareTo(b.name)),
       );
 
+  /// 이 직급을 가진 교인 문서들. 나가거나 추방된 사람(removed)은 규칙이 고치지 못하게 막고 이미 교인이 아니므로 뺀다
+  /// (넣으면 묶음 쓰기 전체가 거부되어, 지금 교인인 사람의 권한이 맞춰지지 않거나 회수되지 않는다).
+  Future<List<QueryDocumentSnapshot<Map<String, dynamic>>>> _holders(
+    String churchId,
+    String positionId,
+  ) async {
+    final snap = await _paths
+        .members(churchId)
+        .where('positionId', isEqualTo: positionId)
+        .get();
+    return [
+      for (final d in snap.docs)
+        if (d.data()['status'] != 'removed') d,
+    ];
+  }
+
   String _checkName(String name) {
     final n = name.trim();
     if (n.isEmpty) throw const AppException('직급 이름을 입력해 주세요.');
@@ -119,19 +135,16 @@ class PositionRepository {
       'scopes': scopeMap,
       'updatedAt': FieldValue.serverTimestamp(),
     });
-    final holders = await _paths
-        .members(churchId)
-        .where('positionId', isEqualTo: p.id)
-        .get();
+    final holders = await _holders(churchId, p.id);
     final batch = _db.batch();
-    for (final d in holders.docs) {
+    for (final d in holders) {
       batch.update(d.reference, {
         'permissions': keys,
         'permissionScopes': scopeMap,
       });
     }
-    if (holders.docs.isNotEmpty) await batch.commit();
-    for (final d in holders.docs) {
+    if (holders.isNotEmpty) await batch.commit();
+    for (final d in holders) {
       await mirrorPersonCard(_paths, churchId, d.id);
     }
     activity?.log(
@@ -149,20 +162,17 @@ class PositionRepository {
       'deletedAt': FieldValue.serverTimestamp(),
       'deletedBy': _auth.uid,
     });
-    final holders = await _paths
-        .members(churchId)
-        .where('positionId', isEqualTo: p.id)
-        .get();
+    final holders = await _holders(churchId, p.id);
     final batch = _db.batch();
-    for (final d in holders.docs) {
+    for (final d in holders) {
       batch.update(d.reference, {
         'positionId': null,
         'permissions': <String>[],
         'permissionScopes': <String, List<String>>{},
       });
     }
-    if (holders.docs.isNotEmpty) await batch.commit();
-    for (final d in holders.docs) {
+    if (holders.isNotEmpty) await batch.commit();
+    for (final d in holders) {
       await mirrorPersonCard(_paths, churchId, d.id);
     }
     activity?.log(

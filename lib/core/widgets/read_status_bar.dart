@@ -6,7 +6,7 @@ import '../theme.dart';
 /// 다시 켜려면 true로 바꾼다.
 const kReadBarEnabled = true;
 
-/// 신규 글 표시: 제목 왼쪽의 작은 붉은 점 하나.
+/// 신규 글 표시: 제목(또는 본문) 앞의 작은 붉은 점.
 /// 7일 안에 올라온 안 읽은 글에만 붙고, 글을 한 번 열면 그 사용자에게서 사라진다.
 class ReadStatusBar extends StatelessWidget {
   const ReadStatusBar.fresh({super.key});
@@ -20,6 +20,15 @@ class ReadStatusBar extends StatelessWidget {
   /// [createdAt]이 신규 기간 안인가. 올린 시각을 모르면 신규로 보지 않는다.
   static bool isFresh(DateTime? createdAt) =>
       createdAt != null && DateTime.now().difference(createdAt) < freshWithin;
+
+  /// 글줄 안에 글자처럼 끼워 넣는 모양 (본문 앞): 표시 오른쪽에 글자 간격을 둔다.
+  static InlineSpan inline() => const WidgetSpan(
+    alignment: PlaceholderAlignment.middle,
+    child: Padding(
+      padding: EdgeInsets.only(right: 6),
+      child: ReadStatusBar.fresh(),
+    ),
+  );
 
   @override
   Widget build(BuildContext context) {

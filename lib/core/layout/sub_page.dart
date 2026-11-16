@@ -39,9 +39,12 @@ class SubPage extends StatelessWidget {
   /// 있으면 화면 맨 위에 상단 탭(뒤로가기 + 이 제목)을 두고, 내용 위의 뒤로가기 줄은 두지 않는다.
   final String? barTitle;
 
+  /// 뒤로 간다. 쌓인 화면이면 `maybePop`이라 저장 확인([DiscardGuard])이 있는 화면은 먼저 묻는다.
   void _back(BuildContext context) {
     if (onBack != null) return onBack!();
-    context.canPop() ? context.pop() : context.go(fallbackLocation);
+    context.canPop()
+        ? Navigator.of(context).maybePop()
+        : context.go(fallbackLocation);
   }
 
   @override
@@ -69,11 +72,7 @@ class SubPage extends StatelessWidget {
                     children: [
                       IconButton(
                         tooltip: '돌아가기',
-                        onPressed:
-                            onBack ??
-                            () => context.canPop()
-                                ? context.pop()
-                                : context.go(fallbackLocation),
+                        onPressed: () => _back(context),
                         icon: const Icon(AppIcons.arrowLeft),
                       ),
                       const Spacer(),

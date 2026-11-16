@@ -1,3 +1,4 @@
+import '../../../core/widgets/anonymous_author.dart';
 import '../../../core/widgets/toast.dart';
 import '../../../core/layout/responsive.dart';
 import '../../../core/widgets/toggle_chip.dart';
@@ -68,6 +69,7 @@ class BiblePage extends StatelessWidget {
                 // 교역자 이상이 아니면 자기가 속한 소속의 글만 읽는다 (미배정이면 아무것도 없다).
                 affiliationIds: me.isStaff ? null : me.affiliationIds,
                 readerId: me.id,
+                readerIsStaff: me.isStaff,
               )..initDefaults(
                 grid: AppScope.read(context).preferences.gridOf('bible'),
                 sort: AppScope.read(context).preferences.sortOf('bible'),
@@ -124,6 +126,8 @@ class BiblePage extends StatelessWidget {
                                       // 최근 글쓴이는 구분선 위에 있다.
                                       _RecentAuthors(
                                         visible: vm.settings.showAuthor,
+                                        viewerId: me.id,
+                                        staff: me.isStaff,
                                         authors:
                                             DevotionsViewModel.recentAuthors(
                                               all,
@@ -235,7 +239,7 @@ class BiblePage extends StatelessWidget {
                   right: 16,
                   bottom: 16 + MediaQuery.paddingOf(context).bottom,
                   child: CreateFab(
-                    label: '말씀 추가',
+                    label: '말씀묵상 작성',
                     onTap: vm.busy ? null : () => _add(context, vm),
                   ),
                 ),
@@ -263,6 +267,7 @@ class BiblePage extends StatelessWidget {
       date: result.date,
       affiliationId: result.affiliationId,
       isPrivate: result.isPrivate,
+      authorHidden: result.authorHidden,
     );
     if (ok) {
       showToastOn(messenger, '추가되었습니다', bottom: inset);
@@ -275,7 +280,16 @@ class BiblePage extends StatelessWidget {
 /// 최근 글을 쓴 사람들: "7일간 [프로필 사진들] 의 사람들이 묵상했습니다" 한 줄.
 /// 사진은 작게 겹쳐 놓고 5명을 넘으면 "+N"으로 줄인다.
 class _RecentAuthors extends StatelessWidget {
-  const _RecentAuthors({required this.authors, this.visible = true});
+  const _RecentAuthors({
+    required this.authors,
+    required this.viewerId,
+    required this.staff,
+    this.visible = true,
+  });
+
+  /// 글쓴이가 가려진 글(작성자 비공개)을 사진 대신 익명으로 보이기 위한 보는 사람.
+  final String viewerId;
+  final bool staff;
 
   /// 최근 7일 안에 글을 쓴 사람들 (최신 글 순서, 중복 없음).
   final List<ChurchContent> authors;
@@ -335,13 +349,18 @@ class _RecentAuthors extends StatelessWidget {
                         Positioned(
                           left: i * _step,
                           child: Tooltip(
-                            message: shown[i].authorName,
+                            message:
+                                shown[i].hidesAuthorFrom(viewerId, staff: staff)
+                                ? anonymousName
+                                : shown[i].authorName,
                             child: ring(
-                              ThumbnailAvatar(
-                                name: shown[i].authorName,
-                                url: shown[i].authorPhotoUrl,
-                                radius: _radius,
-                              ),
+                              shown[i].hidesAuthorFrom(viewerId, staff: staff)
+                                  ? const AnonymousAvatar(radius: _radius)
+                                  : ThumbnailAvatar(
+                                      name: shown[i].authorName,
+                                      url: shown[i].authorPhotoUrl,
+                                      radius: _radius,
+                                    ),
                             ),
                           ),
                         ),
@@ -573,21 +592,23 @@ class DevotionCard extends StatelessWidget {
                     if (c.authorName.isNotEmpty && settings.showAuthor)
                       Row(
                         children: [
-                          PersonTap(
-                            churchId: me.churchId,
-                            uid: c.authorId,
-                            name: c.authorName,
-                            photoUrl: c.authorPhotoUrl,
-                            child: ThumbnailAvatar(
-                              name: c.authorName,
-                              url: c.authorPhotoUrl,
-                              radius: 10,
-                            ),
-                          ),
+                          c.hidesAuthorFrom(me.id, staff: me.isStaff)
+                              ? const AnonymousAvatar(radius: 10)
+                              : PersonTap(
+                                  churchId: me.churchId,
+                                  uid: c.authorId,
+                                  name: c.authorName,
+                                  photoUrl: c.authorPhotoUrl,
+                                  child: ThumbnailAvatar(
+                                    name: c.authorName,
+                                    url: c.authorPhotoUrl,
+                                    radius: 10,
+                                  ),
+                                ),
                           const SizedBox(width: 6),
                           Expanded(
                             child: Text(
-                              c.authorName,
+                              c.authorLabel(me.id, staff: me.isStaff),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: const TextStyle(fontSize: 13),
@@ -674,33 +695,46 @@ class DevotionCard extends StatelessWidget {
                         children: [
                           if (c.authorName.isNotEmpty &&
                               settings.showAuthor) ...[
-                            PersonTap(
-                              churchId: me.churchId,
-                              uid: c.authorId,
-                              name: c.authorName,
-                              photoUrl: c.authorPhotoUrl,
-                              child: ThumbnailAvatar(
-                                name: c.authorName,
-                                url: c.authorPhotoUrl,
-                                radius: 10,
-                              ),
-                            ),
+                            c.hidesAuthorFrom(me.id, staff: me.isStaff)
+                                ? const AnonymousAvatar(radius: 10)
+                                : PersonTap(
+                                    churchId: me.churchId,
+                                    uid: c.authorId,
+                                    name: c.authorName,
+                                    photoUrl: c.authorPhotoUrl,
+                                    child: ThumbnailAvatar(
+                                      name: c.authorName,
+                                      url: c.authorPhotoUrl,
+                                      radius: 10,
+                                    ),
+                                  ),
                             const SizedBox(width: 6),
                             Expanded(
                               child: Align(
                                 alignment: Alignment.centerLeft,
-                                child: PersonTap(
-                                  churchId: me.churchId,
-                                  uid: c.authorId,
-                                  name: c.authorName,
-                                  photoUrl: c.authorPhotoUrl,
-                                  child: Text(
-                                    c.authorName,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(fontSize: 13),
-                                  ),
-                                ),
+                                child:
+                                    c.hidesAuthorFrom(me.id, staff: me.isStaff)
+                                    ? Text(
+                                        anonymousName,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(fontSize: 13),
+                                      )
+                                    : PersonTap(
+                                        churchId: me.churchId,
+                                        uid: c.authorId,
+                                        name: c.authorName,
+                                        photoUrl: c.authorPhotoUrl,
+                                        child: Text(
+                                          c.authorLabel(
+                                            me.id,
+                                            staff: me.isStaff,
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: const TextStyle(fontSize: 13),
+                                        ),
+                                      ),
                               ),
                             ),
                           ] else

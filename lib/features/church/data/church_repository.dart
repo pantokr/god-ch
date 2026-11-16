@@ -217,8 +217,8 @@ class ChurchRepository {
 
   /// 초대 코드로 입장을 신청한다. 만료되었거나 없는 코드는 같은 메시지로 거부한다.
   ///
-  /// 교회가 입장 시 주소·생년월일을 필수로 요청하는데 회원 정보에 없으면 [MissingProfileFields]를 던진다.
-  /// 그때 [address]·[birthDate]를 채워서 다시 부르면 회원 정보에 저장하고 신청한다.
+  /// 교회가 입장 시 주소·생년월일을 필수로 요청하는데 [address]·[birthDate]가 비어 있으면 [MissingProfileFields]를 던진다.
+  /// 그때 채워서 다시 부르면 이 교회의 교인 정보에만 저장하고 신청한다 (내 프로필이나 다른 교회에는 저장하지 않는다).
   Future<void> requestJoinByCode(
     String input, {
     String address = '',
@@ -355,12 +355,10 @@ class ChurchRepository {
     final required = ProfileField.fromNames(
       settings.data()?['requiredFields'] as List? ?? const [],
     );
-    final nextAddress = address.trim().isNotEmpty
-        ? address.trim()
-        : profile.address;
-    final nextBirthDate = birthDate.trim().isNotEmpty
-        ? birthDate.trim()
-        : profile.birthDate;
+    // 주소 · 생년월일은 교회마다 다를 수 있어 내 프로필에서 가져오지 않는다: 이 교회가 요청하면 이번에 직접 낸다.
+    // 입장할 때 한 번 제출하면 이 교회의 교인 정보에만 저장된다.
+    final nextAddress = address.trim();
+    final nextBirthDate = birthDate.trim();
     final missing = {
       if (required.contains(ProfileField.address) && nextAddress.isEmpty)
         ProfileField.address,
@@ -368,10 +366,6 @@ class ChurchRepository {
         ProfileField.birthDate,
     };
     if (missing.isNotEmpty) throw MissingProfileFields(churchName, missing);
-    // 새로 입력한 정보는 회원 정보에도 저장해 다른 교회에서 다시 묻지 않게 한다.
-    if (nextAddress != profile.address || nextBirthDate != profile.birthDate) {
-      await _profiles.saveExtra(address: nextAddress, birthDate: nextBirthDate);
-    }
     final member = _memberData(
       churchId: churchId,
       churchName: churchName,

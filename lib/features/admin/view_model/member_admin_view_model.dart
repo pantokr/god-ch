@@ -64,6 +64,13 @@ class MemberAdminViewModel extends ViewModel {
 
   bool canChangeRole(Member m) => m.id != me.id && me.isAdmin;
 
+  /// 입장 요청 거절: 인원 관리 권한이 있으면 일반 교인의 요청을 거절한다 (교역자 요청은 교회 운영자만).
+  bool canReject(Member m) =>
+      m.id != me.id &&
+      m.status == MemberStatus.pending &&
+      me.can(Permission.memberManage) &&
+      (me.isAdmin || m.role == Role.member);
+
   /// 교인 삭제는 교회 운영자만, 본인 계정은 제외.
   bool canDelete(Member m) => m.id != me.id && me.isAdmin;
 
@@ -166,7 +173,7 @@ class MemberAdminViewModel extends ViewModel {
   bool canAssignAffiliation(Member m) =>
       m.id != me.id && me.can(Permission.memberManage);
 
-  /// 입장 요청 거절 · 차단은 추방과 같이 교회 운영자만 한다.
+  /// 입장 요청 거절은 승인과 같은 인원 관리 권한이고, 추방 · 차단은 교회 운영자만 한다.
   Future<void> reject(Member m) =>
       run(() => _members.rejectRequest(me.churchId, me.churchName, m.id));
 
@@ -189,10 +196,6 @@ class MemberAdminViewModel extends ViewModel {
         m,
         name: profile && r.name.trim() != m.name ? r.name : null,
         phone: profile && r.phone.trim() != m.phone ? r.phone : null,
-        address: profile && r.address.trim() != m.address ? r.address : null,
-        birthDate: profile && r.birthDate.trim() != m.birthDate
-            ? r.birthDate
-            : null,
         affiliationIds: change?.affiliationIds,
         role: change?.role,
         status: change?.status,

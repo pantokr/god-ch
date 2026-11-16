@@ -72,7 +72,8 @@ enum PlatformSection {
   dashboard(Routes.admin),
   churches(Routes.adminChurches),
   users(Routes.adminUsers),
-  activity(Routes.adminActivity);
+  activity(Routes.adminActivity),
+  inquiries(Routes.adminInquiries);
 
   const PlatformSection(this.location);
 
@@ -83,6 +84,7 @@ enum PlatformSection {
     if (path.startsWith(Routes.adminChurches)) return churches;
     if (path.startsWith(Routes.adminUsers)) return users;
     if (path.startsWith(Routes.adminActivity)) return activity;
+    if (path.startsWith(Routes.adminInquiries)) return inquiries;
     return dashboard;
   }
 }
@@ -112,6 +114,9 @@ class Routes {
 
   /// 내 정보 페이지 (프로필 사진을 누르면 열린다).
   static const account = '/account';
+
+  /// 문의 (앱 정보 창의 문의하기 버튼).
+  static const inquiry = '/inquiry';
 
   static String church(String churchId) => '/churches/$churchId';
 
@@ -155,6 +160,7 @@ class Routes {
   static const adminChurches = '/admin/churches';
   static const adminUsers = '/admin/users';
   static const adminActivity = '/admin/activity';
+  static const adminInquiries = '/admin/inquiries';
 
   /// 로그인 전 화면 주소들.
   static const publicPaths = {login, signUp};

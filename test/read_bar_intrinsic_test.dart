@@ -39,4 +39,45 @@ void main() {
     expect(tester.takeException(), isNull);
     expect(find.byType(ReadStatusBar), findsOneWidget);
   });
+
+  testWidgets('본문 앞에 끼워 넣은 신규 표시도 IntrinsicHeight 안에서 오류 없이 그려진다', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: buildTheme(Brightness.light),
+        home: Scaffold(
+          body: SizedBox(
+            width: 300,
+            child: IntrinsicHeight(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text.rich(
+                    TextSpan(
+                      children: [
+                        ReadStatusBar.inline(),
+                        TextSpan(
+                          text: List.filled(
+                            3,
+                            '기도 내용이 길어서 두 줄이 되어도 표시가 글줄 안에 머문다 ',
+                          ).join(),
+                        ),
+                      ],
+                    ),
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const Spacer(),
+                  const Text('아래'),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    expect(tester.takeException(), isNull);
+    expect(find.byType(ReadStatusBar), findsOneWidget);
+  });
 }

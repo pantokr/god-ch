@@ -57,24 +57,32 @@ class ChurchCard extends StatelessWidget {
                       ],
                     ),
                   ),
-                  Icon(AppIcons.arrowRight, color: context.palette.muted),
                 ],
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
-              child: Wrap(
-                children: [
-                  // 교회 관리자는 탈퇴할 수 없다 (맡을 사람이 없어지므로).
-                  if (member.role != Role.admin)
-                    TextButton.icon(
-                      onPressed: () => leaveChurch(context, member),
-                      icon: const Icon(AppIcons.signOut, size: 18),
-                      label: const Text('교회 탈퇴'),
-                    ),
-                ],
+            // 교회 관리자는 탈퇴할 수 없다 (맡을 사람이 없어지므로).
+            // 탈퇴는 줄 전체가 누르는 곳이다 (카드를 누르는 것과 따로 눌린다).
+            if (member.role != Role.admin)
+              InkWell(
+                onTap: () => leaveChurch(context, member),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 14),
+                  child: Row(
+                    children: [
+                      Icon(
+                        AppIcons.signOut,
+                        size: 18,
+                        color: theme.colorScheme.primary,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        '교회 탈퇴',
+                        style: TextStyle(color: theme.colorScheme.primary),
+                      ),
+                    ],
+                  ),
+                ),
               ),
-            ),
           ],
         ),
       ),

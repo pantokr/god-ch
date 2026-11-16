@@ -1,3 +1,4 @@
+import '../../../core/widgets/anonymous_author.dart';
 import '../../../core/widgets/app_loader.dart';
 import '../../people/view/person_avatar.dart';
 import '../../../core/widgets/trash_icon.dart';
@@ -172,7 +173,8 @@ class _Body extends StatelessWidget {
               .tintOf('prayer')
               .colorFor(Theme.of(context).brightness),
           child: Padding(
-            padding: const EdgeInsets.all(28),
+            // 말씀묵상 상세의 카드와 같은 안쪽 여백.
+            padding: const EdgeInsets.all(20),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -196,31 +198,39 @@ class _Body extends StatelessWidget {
           meta: PostMeta(
             churchId: vm.me.churchId,
             author: PostAuthor(
-              avatar: PersonTap(
-                churchId: vm.me.churchId,
-                uid: p.authorId,
-                name: p.authorName,
-                photoUrl: '',
-                child: PersonAvatar(
-                  churchId: vm.me.churchId,
-                  uid: p.authorId,
-                  name: p.authorName.isEmpty ? '?' : p.authorName,
-                  radius: PostAuthor.avatarRadius,
-                ),
-              ),
-              name: PersonTap(
-                churchId: vm.me.churchId,
-                uid: p.authorId,
-                name: p.authorName,
-                photoUrl: '',
-                child: Text(
-                  p.authorName.isEmpty ? '이름 없음' : p.authorName,
-                  style: PostAuthor.nameStyle(context),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
+              avatar: p.hidesAuthorFrom(vm.me.id, staff: vm.me.isStaff)
+                  ? const AnonymousAvatar(radius: PostAuthor.avatarRadius)
+                  : PersonTap(
+                      churchId: vm.me.churchId,
+                      uid: p.authorId,
+                      name: p.authorName,
+                      photoUrl: '',
+                      child: PersonAvatar(
+                        churchId: vm.me.churchId,
+                        uid: p.authorId,
+                        name: p.authorName.isEmpty ? '?' : p.authorName,
+                        radius: PostAuthor.avatarRadius,
+                      ),
+                    ),
+              name: p.hidesAuthorFrom(vm.me.id, staff: vm.me.isStaff)
+                  ? Text(
+                      anonymousName,
+                      style: PostAuthor.nameStyle(context),
+                      overflow: TextOverflow.ellipsis,
+                    )
+                  : PersonTap(
+                      churchId: vm.me.churchId,
+                      uid: p.authorId,
+                      name: p.authorName,
+                      photoUrl: '',
+                      child: Text(
+                        p.authorLabel(vm.me.id, staff: vm.me.isStaff),
+                        style: PostAuthor.nameStyle(context),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
             ),
-            date: fmtDateTime(p.createdAt),
+            date: fmtPosted(p.createdAt),
             views: vm.settings.showViews ? p.views : null,
             isPrivate: !p.isPublic,
             affiliationId: p.affiliationId,

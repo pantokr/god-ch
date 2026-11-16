@@ -62,8 +62,9 @@ class PrayerCard extends StatelessWidget {
             ],
             Text(
               [
-                if (prayer.authorName.isNotEmpty) prayer.authorName,
-                fmtDateTime(prayer.createdAt),
+                if (prayer.authorName.isNotEmpty)
+                  prayer.authorLabel(me.id, staff: me.isStaff),
+                fmtPosted(prayer.createdAt),
                 ?subtitle,
               ].join(' · '),
               style: TextStyle(color: context.palette.muted, fontSize: 13),

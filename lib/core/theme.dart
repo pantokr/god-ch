@@ -67,17 +67,19 @@ class AppField {
 class AppShadow {
   AppShadow._();
 
+  /// 다크 모드에서는 그림자가 없다: 어두운 배경 위의 검은 그림자는 면 둘레에 얼룩처럼 번져 보인다.
+  /// 그 대신 면의 테두리가 경계를 만든다.
   static List<BoxShadow> soft(BuildContext context) {
-    final dark = Theme.of(context).brightness == Brightness.dark;
-    final c = dark ? Colors.black : const Color(0xFF2A2F6B);
+    if (Theme.of(context).brightness == Brightness.dark) return const [];
+    const c = Color(0xFF2A2F6B);
     return [
       BoxShadow(
-        color: c.withValues(alpha: dark ? 0.35 : 0.07),
+        color: c.withValues(alpha: 0.07),
         blurRadius: 24,
         offset: const Offset(0, 8),
       ),
       BoxShadow(
-        color: c.withValues(alpha: dark ? 0.25 : 0.05),
+        color: c.withValues(alpha: 0.05),
         blurRadius: 4,
         offset: const Offset(0, 1),
       ),
@@ -393,7 +395,8 @@ ThemeData buildTheme(Brightness brightness) {
     ),
     dividerTheme: DividerThemeData(color: p.border, space: 1, thickness: 1),
     cardTheme: CardThemeData(
-      elevation: 3,
+      // 다크 모드에서는 카드 둘레에 그림자를 두지 않는다 (테두리가 경계를 만든다).
+      elevation: brightness == Brightness.dark ? 0 : 3,
       shadowColor:
           (brightness == Brightness.dark
                   ? Colors.black

@@ -85,8 +85,8 @@ class MemberTile extends StatelessWidget {
               onPressed: () => _approve(context),
               child: const Text('승인'),
             ),
-          // 거절은 교회 운영자만 (추방과 같다).
-          if (vm.canDelete(member))
+          // 거절은 승인과 같은 인원 관리 권한이다 (추방 · 차단은 교회 운영자만).
+          if (vm.canReject(member))
             TextButton(
               style: TextButton.styleFrom(
                 foregroundColor: Theme.of(context).colorScheme.error,
@@ -201,8 +201,6 @@ class MemberTile extends StatelessWidget {
         title: member.name,
         name: member.name,
         phone: member.phone,
-        address: member.address,
-        birthDate: member.birthDate,
         canEditProfile: vm.canEditProfile(member),
         memberships: [
           MembershipEditor(

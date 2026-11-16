@@ -118,7 +118,7 @@ class MemberRepository {
         '다시 들어오려면 초대 코드로 새로 신청해야 해요.',
       );
 
-  /// 입장 요청을 거절한다 (교회 운영자만). 기록은 남기고, 당사자에게 알린다.
+  /// 입장 요청을 거절한다 (인원 관리 권한, 규칙이 강제한다). 기록은 남기고, 당사자에게 알린다.
   /// 차단과 달리 초대 코드로 다시 신청할 수 있다.
   Future<void> rejectRequest(
     String churchId,
@@ -290,14 +290,34 @@ class MemberRepository {
     await _mirror(churchId, userId);
   }
 
+  /// 입장한 교회가 필수로 요청한 주소 · 생년월일을 한 번 제출한다 (비어 있는 항목만 채울 수 있다: 규칙이 강제한다).
+  /// 주소와 생년월일은 교회마다 따로 내므로 내 프로필이나 다른 교회에는 저장하지 않는다.
+  Future<void> submitJoinInfo(
+    String churchId, {
+    String address = '',
+    String birthDate = '',
+  }) async {
+    final a = address.trim();
+    final b = birthDate.trim();
+    if (a.length > 200) throw const AppException('주소는 200자까지 쓸 수 있어요.');
+    if (b.isNotEmpty && DateTime.tryParse(b) == null) {
+      throw const AppException('생년월일 형식이 올바르지 않아요.');
+    }
+    final info = {
+      if (a.isNotEmpty) 'address': a,
+      if (b.isNotEmpty) 'birthDate': b,
+    };
+    if (info.isEmpty) return;
+    await _paths.members(churchId).doc(_auth.uid).update(info);
+    await _mirror(churchId, _auth.uid);
+  }
+
   /// 인원 상세 관리: 넘긴 항목만 저장한다. 이름·전화번호는 한 번에 쓰고,
   /// 역할·상태는 규칙이 따로 허용하므로 따로 쓴다.
   Future<void> saveMember(
     Member m, {
     String? name,
     String? phone,
-    String? address,
-    String? birthDate,
     List<String>? affiliationIds,
     Role? role,
     MemberStatus? status,
@@ -316,19 +336,6 @@ class MemberRepository {
         throw const AppException('전화번호를 8~20자로 입력해 주세요.');
       }
       info['phone'] = p;
-    }
-    if (address != null) {
-      if (address.trim().length > 200) {
-        throw const AppException('주소는 200자까지 쓸 수 있어요.');
-      }
-      info['address'] = address.trim();
-    }
-    if (birthDate != null) {
-      final b = birthDate.trim();
-      if (b.isNotEmpty && DateTime.tryParse(b) == null) {
-        throw const AppException('생년월일 형식이 올바르지 않아요.');
-      }
-      info['birthDate'] = b;
     }
     if (affiliationIds != null) info['affiliationIds'] = affiliationIds;
     final doc = _paths.members(m.churchId).doc(m.id);

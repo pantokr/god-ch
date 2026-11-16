@@ -126,7 +126,7 @@ class _MySchedule extends StatelessWidget {
                 );
               }
               // 기본 보기가 참여 예정이라, 참여 신청했거나 이끄는 앞으로의 모임이 나온다.
-              final items = vm.apply(snap.data!);
+              final items = vm.apply(snap.data!, me);
               if (items.isEmpty) return const EmptyHint('참여 신청한 일정 없음');
               return SizedBox(
                 height: heightOf(context),
@@ -576,7 +576,7 @@ class _CommentList extends StatelessWidget {
                           const Spacer(),
                         const SizedBox(width: 8),
                         Text(
-                          fmtDateTime(c.date),
+                          fmtPosted(c.date),
                           style: TextStyle(
                             color: palette.muted,
                             fontSize: 12.5,

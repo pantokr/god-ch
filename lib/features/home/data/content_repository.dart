@@ -198,6 +198,7 @@ class ContentRepository {
     String authorPhotoUrl = '',
     String? affiliationId,
     bool isPrivate = false,
+    bool authorHidden = false,
   }) {
     final t = title.trim();
     if (t.isEmpty) throw const AppException('제목을 입력해 주세요.');
@@ -240,6 +241,7 @@ class ContentRepository {
       'date': Timestamp.fromDate(date),
       'affiliationId': affiliationId,
       'visibility': isPrivate ? 'private' : 'public',
+      'authorHidden': authorHidden,
     };
     if (id == null) {
       return _col(churchId)

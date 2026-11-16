@@ -1,19 +1,27 @@
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
+import '../icons.dart';
 import '../theme.dart';
 import '../widgets/brand_mark.dart';
 import 'app_dialog.dart';
 
 /// 앱 정보 창: 앱 이름, 버전, 개발자, 문의. 오른쪽 계정 띠 맨 아래의 정보 버튼이 연다.
-Future<void> showAppInfo(BuildContext context) =>
-    showAppDialog<void>(context, maxWidth: 360, child: const _AppInfo());
+/// [onInquiry]가 있으면 창 안에 "문의하기" 버튼이 생긴다 (누르면 창을 닫고 이것을 부른다).
+Future<void> showAppInfo(BuildContext context, {VoidCallback? onInquiry}) =>
+    showAppDialog<void>(
+      context,
+      maxWidth: 360,
+      child: _AppInfo(onInquiry: onInquiry),
+    );
 
 /// 기기에서 버전을 읽지 못할 때 보이는 버전. pubspec.yaml의 version(빌드 번호 제외)과 같게 둔다.
 const _fallbackVersion = '1.0.0';
 
 class _AppInfo extends StatelessWidget {
-  const _AppInfo();
+  const _AppInfo({this.onInquiry});
+
+  final VoidCallback? onInquiry;
 
   @override
   Widget build(BuildContext context) {
@@ -67,12 +75,24 @@ class _AppInfo extends StatelessWidget {
         Divider(height: 1, color: palette.border),
         row('문의', 'pantokrator3841@gmail.com'),
         const SizedBox(height: 12),
-        Align(
-          alignment: Alignment.centerRight,
-          child: TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('닫기'),
-          ),
+        Row(
+          children: [
+            // 개발자에게 문의를 보내고 답변을 받는 페이지로 간다.
+            if (onInquiry != null)
+              FilledButton.icon(
+                onPressed: () {
+                  Navigator.pop(context);
+                  onInquiry!();
+                },
+                icon: const Icon(AppIcons.inquiry, size: 18),
+                label: const Text('문의하기'),
+              ),
+            const Spacer(),
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('닫기'),
+            ),
+          ],
         ),
       ],
     );

@@ -8,13 +8,13 @@ import '../../../core/widgets/toast.dart';
 
 import '../../../core/widgets/labeled_field.dart';
 
+import '../../../core/layout/discard_guard.dart';
 import '../../../core/mvvm/view_model.dart';
 import '../../../core/theme.dart';
 import '../../../data/models/affiliation.dart';
 import '../../../data/models/member.dart';
 import '../../../core/widgets/thumbnail_avatar.dart';
 import '../../../core/widgets/thumbnail_field.dart';
-import '../../auth/view/profile_extra_fields.dart';
 import '../../../core/widgets/app_inputs.dart';
 
 /// 한 교회 안에서의 소속 정보를 고치는 칸. 고칠 수 있는 항목은 권한에 따라 다르다.
@@ -59,16 +59,12 @@ class MemberDetailResult {
   const MemberDetailResult({
     required this.name,
     required this.phone,
-    required this.address,
-    required this.birthDate,
     this.photoUrl = '',
     required this.changes,
   });
 
   final String name;
   final String phone;
-  final String address;
-  final String birthDate;
   final String photoUrl;
   final List<MembershipChange> changes;
 }
@@ -83,8 +79,6 @@ class MemberDetailDialog extends StatefulWidget {
     this.subtitle = '',
     required this.name,
     required this.phone,
-    this.address = '',
-    this.birthDate = '',
     this.photoUrl = '',
     this.onUploadPhoto,
     required this.memberships,
@@ -109,8 +103,6 @@ class MemberDetailDialog extends StatefulWidget {
   final String subtitle;
   final String name;
   final String phone;
-  final String address;
-  final String birthDate;
   final String photoUrl;
 
   /// 썸네일을 올리는 함수. null이면 썸네일은 보여주기만 하고 바꾸지 못한다 (앱 운영자만 바꾼다).
@@ -156,8 +148,6 @@ class MemberDetailDialog extends StatefulWidget {
 class _MemberDetailDialogState extends State<MemberDetailDialog> {
   late final _name = TextEditingController(text: widget.name);
   late final _phone = TextEditingController(text: widget.phone);
-  late final _address = TextEditingController(text: widget.address);
-  late final _birthDate = TextEditingController(text: widget.birthDate);
   late final _photo = TextEditingController(text: widget.photoUrl);
   late final List<Set<String>> _affs = [
     for (final m in widget.memberships) {...m.member.affiliationIds},
@@ -179,8 +169,6 @@ class _MemberDetailDialogState extends State<MemberDetailDialog> {
   void dispose() {
     _name.dispose();
     _phone.dispose();
-    _address.dispose();
-    _birthDate.dispose();
     _photo.dispose();
     super.dispose();
   }
@@ -189,6 +177,25 @@ class _MemberDetailDialogState extends State<MemberDetailDialog> {
     final x = a.toSet();
     final y = b.toSet();
     return x.length == y.length && x.containsAll(y);
+  }
+
+  /// 고쳤지만 저장하지 않은 내용이 있는가 (이름 · 전화번호 · 사진 · 교회별 소속 · 역할 · 상태).
+  bool get _dirty {
+    if (_name.text.trim() != widget.name.trim() ||
+        _phone.text.trim() != widget.phone.trim() ||
+        _photo.text.trim() != widget.photoUrl.trim()) {
+      return true;
+    }
+    for (var i = 0; i < widget.memberships.length; i++) {
+      final e = widget.memberships[i];
+      final m = e.member;
+      if (!_sameIds(_affs[i], m.affiliationIds) ||
+          (e.canRole && _roles[i] != m.role) ||
+          (e.statusEditable && _statuses[i] != m.status)) {
+        return true;
+      }
+    }
+    return false;
   }
 
   Future<void> _save() async {
@@ -220,8 +227,6 @@ class _MemberDetailDialogState extends State<MemberDetailDialog> {
       MemberDetailResult(
         name: _name.text,
         phone: _phone.text,
-        address: _address.text,
-        birthDate: _birthDate.text,
         photoUrl: _photo.text,
         changes: changes,
       ),
@@ -252,7 +257,13 @@ class _MemberDetailDialogState extends State<MemberDetailDialog> {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => DiscardGuard(
+    isDirty: () => _dirty,
+    listenable: Listenable.merge([_name, _phone, _photo]),
+    child: _content(context),
+  );
+
+  Widget _content(BuildContext context) {
     final theme = Theme.of(context);
     final muted = TextStyle(color: context.palette.muted);
     return ListenableBuilder(
@@ -321,12 +332,6 @@ class _MemberDetailDialogState extends State<MemberDetailDialog> {
                         hintText: widget.canEditProfile ? null : '미제공',
                       ),
                     ),
-                  ),
-                  AppField.spacer,
-                  ProfileExtraFields(
-                    address: _address,
-                    birthDate: _birthDate,
-                    enabled: widget.canEditProfile,
                   ),
                 ],
               ),

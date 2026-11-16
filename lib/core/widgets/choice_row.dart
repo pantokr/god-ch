@@ -22,10 +22,14 @@ class ChoiceRow<T> extends StatelessWidget {
     required this.value,
     required this.onChanged,
     this.required = false,
+    this.roomy = false,
   });
 
   final String label;
   final bool required;
+
+  /// 선택지 글자가 긴 줄(예: "교역자 전용"): 칸을 넓게 잡고 글자가 "…"로 잘리지 않게 한다.
+  final bool roomy;
   final List<ChoiceOption<T>> options;
   final T value;
   final ValueChanged<T>? onChanged;
@@ -38,6 +42,7 @@ class ChoiceRow<T> extends StatelessWidget {
       options: options,
       value: value,
       onChanged: onChanged,
+      roomy: roomy,
     ),
   );
 }
@@ -80,11 +85,15 @@ class ChoiceRadios<T> extends StatelessWidget {
     required this.options,
     required this.value,
     required this.onChanged,
+    this.roomy = false,
   });
 
   final List<ChoiceOption<T>> options;
   final T value;
   final ValueChanged<T>? onChanged;
+
+  /// 글자가 긴 선택지용: 칸이 넓고(선택지 수로만 나눈다) 글자가 두 줄까지 보인다.
+  final bool roomy;
 
   @override
   Widget build(BuildContext context) {
@@ -93,9 +102,12 @@ class ChoiceRadios<T> extends StatelessWidget {
     // 자리가 좁으면 줄이는 비율도 같다: 3칸이 들어갈 자리를 기준으로 하므로 2개 줄과 3개 줄이 끝까지 같은 열에 놓인다.
     return LayoutBuilder(
       builder: (context, box) {
+        final base = roomy ? roomyCellWidth : cellWidth;
         final cell = box.maxWidth.isFinite
-            ? (box.maxWidth / cellCount(options.length)).clamp(0.0, cellWidth)
-            : cellWidth;
+            ? (box.maxWidth /
+                      (roomy ? options.length : cellCount(options.length)))
+                  .clamp(0.0, base)
+            : base;
         return Align(
           alignment: Alignment.centerLeft,
           child: SizedBox(
@@ -109,6 +121,9 @@ class ChoiceRadios<T> extends StatelessWidget {
 
   /// 선택지 한 칸의 너비.
   static const cellWidth = 104.0;
+
+  /// [roomy] 줄의 선택지 한 칸 너비 ("교역자 전용"이 잘리지 않는 폭).
+  static const roomyCellWidth = 152.0;
 
   /// 좁을 때 칸 너비를 정하는 기준 칸 수: 선택지가 둘이어도 셋으로 나눠, 줄마다 칸이 같은 자리에 놓인다.
   static int cellCount(int options) => options < 3 ? 3 : options;
@@ -147,7 +162,7 @@ class ChoiceRadios<T> extends StatelessWidget {
                       Flexible(
                         child: Text(
                           o.label,
-                          maxLines: 1,
+                          maxLines: roomy ? 2 : 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                             color: onChanged == null || !o.enabled

@@ -80,7 +80,7 @@ class PrayerDetailViewModel extends ViewModel {
         _prayers.markResponsesSeen(me.churchId, p.id).ignore();
       }
     } else if (me.isStaff && _settings.logPrivateAccess) {
-      _prayers.logPrivateAccess(me.churchId, p.id).ignore();
+      _prayers.logPrivateAccess(me.churchId, p.id);
     }
   }
 

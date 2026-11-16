@@ -30,6 +30,7 @@ class DevotionsViewModel extends ViewModel {
     this.affiliations = const Stream.empty(),
     bool includePrivate = false,
     this.readerId = '',
+    this.readerIsStaff = false,
     List<String>? affiliationIds,
   }) : items = _repo.latest(
          churchId,
@@ -63,6 +64,9 @@ class DevotionsViewModel extends ViewModel {
 
   /// 읽음 여부를 가릴 교인 (로그인한 교인).
   final String readerId;
+
+  /// 이 교인이 교역자 이상인가 (작성자 비공개 글의 글쓴이를 볼 수 있다).
+  final bool readerIsStaff;
   final Stream<List<ChurchContent>> items;
 
   /// 분류에 쓰는 교회의 소속들.
@@ -123,6 +127,8 @@ class DevotionsViewModel extends ViewModel {
         sort: _sort,
         affiliationId: affiliationId,
         hideReadBy: _hideRead ? readerId : null,
+        viewerId: readerId,
+        viewerIsStaff: readerIsStaff,
       );
 
   /// [apply]의 계산 부분 (내 활동 같은 다른 화면도 같은 검색 · 정렬을 쓴다). [query]는 소문자로 다듬은 검색어.
@@ -132,6 +138,10 @@ class DevotionsViewModel extends ViewModel {
     DevotionSort sort = DevotionSort.latest,
     String? affiliationId,
     String? hideReadBy,
+
+    /// 보는 사람. 작성자 비공개 글은 이 사람에게 글쓴이가 가려지면 글쓴이 이름으로 찾지 못한다.
+    String viewerId = '',
+    bool viewerIsStaff = false,
   }) {
     final list = [
       for (final c in all)
@@ -145,7 +155,8 @@ class DevotionsViewModel extends ViewModel {
                 c.title.toLowerCase().contains(query) ||
                 c.body.toLowerCase().contains(query) ||
                 c.meditation.toLowerCase().contains(query) ||
-                c.authorName.toLowerCase().contains(query)))
+                (!c.hidesAuthorFrom(viewerId, staff: viewerIsStaff) &&
+                    c.authorName.toLowerCase().contains(query))))
           c,
     ];
     switch (sort) {
@@ -189,6 +200,7 @@ class DevotionsViewModel extends ViewModel {
     required DateTime date,
     String? affiliationId,
     bool isPrivate = false,
+    bool authorHidden = false,
   }) => run(
     () => _repo.save(
       churchId,
@@ -202,6 +214,7 @@ class DevotionsViewModel extends ViewModel {
       authorPhotoUrl: authorPhotoUrl,
       affiliationId: affiliationId,
       isPrivate: isPrivate,
+      authorHidden: authorHidden,
     ),
   );
 

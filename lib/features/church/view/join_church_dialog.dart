@@ -79,7 +79,7 @@ class _JoinChurchDialogState extends State<JoinChurchDialog> {
             if (vm.missing.isNotEmpty) ...[
               const SizedBox(height: 16),
               Text(
-                '${vm.missingChurch}에서 ${vm.missing.map((f) => f.label).join('·')} 입력을 요청했어요. 입력하면 회원 정보에도 저장돼요.',
+                '${vm.missingChurch}에서 ${vm.missing.map((f) => f.label).join('·')} 제출을 요청했어요. 입장할 때 한 번만 낼 수 있어요.',
                 style: TextStyle(color: context.palette.muted),
               ),
               AppField.spacer,

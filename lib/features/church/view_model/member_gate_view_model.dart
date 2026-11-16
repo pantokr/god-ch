@@ -1,5 +1,6 @@
 import '../../../core/mvvm/view_model.dart';
 import '../../../data/models/member.dart';
+import '../../../data/models/profile_field.dart';
 import '../../platform/data/church_registry_repository.dart';
 import '../data/church_repository.dart';
 import '../data/church_request_repository.dart';
@@ -13,7 +14,8 @@ class MemberGateViewModel extends ViewModel {
     ChurchRegistryRepository registry,
     String churchId,
   ) : member = _member(churches, requests, registry, churchId),
-      closed = churches.isClosed(churchId) {
+      closed = churches.isClosed(churchId),
+      requirements = churches.joinRequirements(churchId) {
     // 다음에 로그인하면 이 교회로 바로 들어가도록 기억해 둔다.
     churches.rememberChurch(churchId);
   }
@@ -41,4 +43,7 @@ class MemberGateViewModel extends ViewModel {
 
   /// 폐쇄된 교회인가.
   final Stream<bool> closed;
+
+  /// 이 교회가 필수로 요청한 회원 정보 (입장 관리의 "입장 시 필수 정보").
+  final Stream<Set<ProfileField>> requirements;
 }

@@ -1,5 +1,6 @@
 import '../../../core/mvvm/view_model.dart';
 import '../../../data/models/meeting.dart';
+import '../../../data/models/member.dart';
 import '../data/meeting_repository.dart';
 import 'meetings_view_model.dart';
 
@@ -52,11 +53,13 @@ class MyMeetingsViewModel extends ViewModel {
     MyMeetingView.attended => _isMine(m) && m.ended,
   };
 
-  /// 고른 방식과 검색어에 맞는 모임을 일정 탭과 같은 정렬 기준대로 돌려준다.
-  List<Meeting> apply(List<Meeting> all) => MeetingsViewModel.sorted([
-    for (final m in all)
-      if (_inView(m)) m,
-  ], _sort);
+  /// 고른 방식에 맞는 모임을 일정 탭과 같은 정렬 기준대로 돌려준다.
+  /// 공개 범위 밖의 일정(내 소속이 아닌 소속 전용 모임)은 나오지 않는다.
+  List<Meeting> apply(List<Meeting> all, Member me) =>
+      MeetingsViewModel.sorted([
+        for (final m in all)
+          if (m.visibleTo(me) && _inView(m)) m,
+      ], _sort);
 
   /// 목록의 하트를 누르거나 취소한다 (일정 탭과 같다).
   Future<bool> setLike(String id, {required bool liked}) =>

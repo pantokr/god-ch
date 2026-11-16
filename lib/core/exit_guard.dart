@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 
 import 'back_navigation.dart';
 import 'layout/app_dialog.dart';
+import 'layout/discard_guard.dart';
 import 'widgets/exit_ad_slot.dart';
 
 /// 뒤로 가기 처리. 화면 위에 쌓인 화면에서는 평소처럼 이전 화면으로 돌아간다.
@@ -23,10 +24,24 @@ class ExitGuard extends StatefulWidget {
   final String? location;
 
   /// 직전에 보던 화면으로 돌아간다. 기록이 없으면 [fallback]으로 간다 (위쪽 바의 뒤로 버튼용).
-  static void back(BuildContext context, String fallback) {
+  /// 저장하지 않은 내용이 있는 화면([UnsavedGuard])이면 버리고 나갈지 먼저 묻는다.
+  static Future<void> back(BuildContext context, String fallback) async {
     final state = context.findAncestorStateOfType<_ExitGuardState>();
+    if (state != null && state._hasUnsaved && !await confirmDiscard(context)) {
+      return;
+    }
+    if (!context.mounted) return;
     if (state != null && state._goBack(context)) return;
     context.goBack(fallback);
+  }
+
+  /// 저장하지 않은 내용이 있는지 알려 주는 함수를 등록한다 ([UnsavedGuard]가 쓴다). 등록을 풀 함수를 돌려준다.
+  /// 등록된 화면이 바뀐 상태이면 뒤로 가기(위쪽 바 · 기기 뒤로 가기)가 먼저 확인을 받는다.
+  static VoidCallback? register(BuildContext context, bool Function() isDirty) {
+    final state = context.findAncestorStateOfType<_ExitGuardState>();
+    if (state == null) return null;
+    state._unsaved.add(isDirty);
+    return () => state._unsaved.remove(isDirty);
   }
 
   @override
@@ -36,6 +51,10 @@ class ExitGuard extends StatefulWidget {
 class _ExitGuardState extends State<ExitGuard> {
   /// 방문한 화면들 (맨 뒤가 지금 화면).
   final List<String> _history = [];
+
+  /// 저장하지 않은 내용이 있는지 알려 주는 함수들 ([ExitGuard.register]).
+  final List<bool Function()> _unsaved = [];
+  bool get _hasUnsaved => _unsaved.any((dirty) => dirty());
   static const _maxHistory = 30;
 
   @override
@@ -93,6 +112,9 @@ class _ExitGuardState extends State<ExitGuard> {
       canPop: !atRoot,
       onPopInvokedWithResult: (didPop, _) async {
         if (didPop) return;
+        // 저장하지 않은 내용이 있으면 버리고 나갈지 먼저 묻는다.
+        if (_hasUnsaved && !await confirmDiscard(context)) return;
+        if (!context.mounted) return;
         // 기본 페이지가 아니면 먼저 직전에 보던 화면으로 돌아간다.
         if (!_onBasePage && _goBack(context)) return;
         final exit = await showAppDialog<bool>(
@@ -135,4 +157,36 @@ class _ExitDialog extends StatelessWidget {
       ],
     );
   }
+}
+
+/// 교회 틀 안의 저장 화면 보호: 내용이 바뀐 상태([isDirty])에서 뒤로 가기(위쪽 바의 뒤로 버튼 · 기기 뒤로 가기)를 누르면
+/// 저장하지 않고 나갈지 묻는다. 메뉴 화면은 쌓이지 않고 바뀌기만 해서 [ExitGuard]에 등록하는 방식이다.
+/// (위로 쌓이는 화면은 [DiscardGuard]를 쓴다.)
+class UnsavedGuard extends StatefulWidget {
+  const UnsavedGuard({super.key, required this.isDirty, required this.child});
+
+  final bool Function() isDirty;
+  final Widget child;
+
+  @override
+  State<UnsavedGuard> createState() => _UnsavedGuardState();
+}
+
+class _UnsavedGuardState extends State<UnsavedGuard> {
+  VoidCallback? _unregister;
+
+  @override
+  void initState() {
+    super.initState();
+    _unregister = ExitGuard.register(context, () => widget.isDirty());
+  }
+
+  @override
+  void dispose() {
+    _unregister?.call();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
 }

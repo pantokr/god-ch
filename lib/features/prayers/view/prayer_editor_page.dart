@@ -159,9 +159,8 @@ class _PrayerEditorPageState extends State<PrayerEditorPage> {
                             children: [
                               // 게시 범위는 새 글을 쓸 때만 고를 수 있다.
                               if (!vm.isEditing) _ScopePicker(vm: vm),
-                              // 교회가 비공개를 허용하지 않으면 공개 범위를 고를 수 없다.
-                              if (vm.settings.allowPrivate)
-                                _VisibilityPicker(vm: vm),
+                              // 글 공개 여부(교회가 비공개를 허용할 때)와 작성자 공개 여부(교회가 허용할 때).
+                              _VisibilityPicker(vm: vm),
                               const SizedBox(height: 24),
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.end,
@@ -241,6 +240,8 @@ class _ScopePicker extends StatelessWidget {
   }
 }
 
+/// 글 공개 여부와 작성자 공개 여부. 교회가 허용한 것만 보인다 (둘 다 아니면 아무것도 없다).
+/// 수정할 때는 글에 저장된 값이 먼저 골라져 있다.
 class _VisibilityPicker extends StatelessWidget {
   const _VisibilityPicker({required this.vm});
 
@@ -251,15 +252,31 @@ class _VisibilityPicker extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        ChoiceRow<PrayerVisibility>(
-          label: '공개 여부',
-          options: const [
-            ChoiceOption(PrayerVisibility.public, '공개'),
-            ChoiceOption(PrayerVisibility.private, '교역자 전용'),
-          ],
-          value: vm.visibility,
-          onChanged: vm.setVisibility,
-        ),
+        if (vm.settings.allowPrivate)
+          ChoiceRow<PrayerVisibility>(
+            label: '글 공개 여부',
+            roomy: true,
+            options: const [
+              ChoiceOption(PrayerVisibility.public, '공개'),
+              ChoiceOption(PrayerVisibility.private, '교역자 전용'),
+            ],
+            value: vm.visibility,
+            onChanged: vm.setVisibility,
+          ),
+        if (vm.canHideAuthor)
+          Padding(
+            padding: EdgeInsets.only(top: vm.settings.allowPrivate ? 12 : 0),
+            child: ChoiceRow<bool>(
+              label: '작성자 공개 여부',
+              roomy: true,
+              options: const [
+                ChoiceOption(false, '공개'),
+                ChoiceOption(true, '비공개'),
+              ],
+              value: vm.authorHidden,
+              onChanged: vm.setAuthorHidden,
+            ),
+          ),
       ],
     );
   }

@@ -1,4 +1,4 @@
-/// 가입할 때는 선택이고, 교회가 입장 관리에서 입장 시 필수로 요청할 수 있는 회원 정보.
+/// 교회가 입장 관리에서 입장 시 필수로 요청할 수 있는 정보. 가입할 때는 받지 않고, 교회마다 입장할 때 그 교회에 한 번 제출한다.
 /// [name]은 교회 설정(`churches/{id}/settings/join`의 `requiredFields`)과 `firestore.rules`에 저장되는 값이다.
 enum ProfileField {
   address('주소'),

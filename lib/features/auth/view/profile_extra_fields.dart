@@ -7,7 +7,7 @@ import '../../../core/widgets/app_date_picker.dart';
 import '../../../core/widgets/labeled_field.dart';
 
 /// 생년월일(날짜 선택)과 주소(도로명 주소 검색) 입력란 (이 차례로 놓인다). 바깥 [Form] 안에 놓아야 한다.
-/// 기본은 선택 입력이고, [requireAddress]·[requireBirthDate]를 켜면 비워 둘 수 없다.
+/// 교회에 입장할 때 제출하는 화면(입장 신청 · 필수 정보 제출)에서 쓴다. [requireAddress]·[requireBirthDate]를 켜면 비워 둘 수 없다.
 class ProfileExtraFields extends StatefulWidget {
   const ProfileExtraFields({
     super.key,
@@ -77,7 +77,10 @@ class _ProfileExtraFieldsState extends State<ProfileExtraFields> {
               onTap: _pickBirthDate,
               decoration: InputDecoration(
                 hintText: widget.enabled ? '눌러서 날짜를 고르세요' : '미제공',
-                suffixIcon: widget.birthDate.text.isEmpty || !widget.enabled
+                suffixIcon:
+                    widget.birthDate.text.isEmpty ||
+                        !widget.enabled ||
+                        widget.requireBirthDate
                     ? const Icon(AppIcons.calendar, size: 18)
                     : IconButton(
                         tooltip: '지우기',

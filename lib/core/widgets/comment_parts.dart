@@ -96,7 +96,7 @@ class CommentByline extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 8),
-        Text(fmtDateTime(time), style: small),
+        Text(fmtPosted(time), style: small),
         if (edited) ...[const SizedBox(width: 6), Text('수정됨', style: small)],
       ],
     );

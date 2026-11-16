@@ -32,10 +32,10 @@ class MyAffiliationsCard extends StatelessWidget {
           ];
           if (mine.isEmpty) return const SizedBox.shrink();
           return Padding(
-            padding: const EdgeInsets.only(top: 20),
+            padding: const EdgeInsets.only(top: 12),
             child: Card(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(28, 20, 28, 20),
+                padding: const EdgeInsets.fromLTRB(16, 20, 16, 20),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -64,7 +64,7 @@ class MyAffiliationsCard extends StatelessWidget {
   }
 }
 
-/// 교회 하나: 이름과 역할, 그리고 내가 속한 소속들.
+/// 교회 하나: 이름과 역할, 내가 속한 소속들, 그리고 입장할 때 이 교회에 제출한 정보.
 class _Church extends StatelessWidget {
   const _Church({required this.member, required this.affiliations});
 
@@ -120,7 +120,45 @@ class _Church extends StatelessWidget {
             );
           },
         ),
+        // 입장할 때 이 교회에 제출한 주소 · 생년월일 (교회별로 한 번만 내는 정보라 보기만 한다).
+        if (member.address.isNotEmpty || member.birthDate.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          Divider(height: 1, color: palette.border),
+          const SizedBox(height: 4),
+          if (member.address.isNotEmpty) _Submitted('주소', member.address),
+          if (member.birthDate.isNotEmpty) _Submitted('생년월일', member.birthDate),
+        ],
       ],
+    );
+  }
+}
+
+/// 이 교회에 제출한 정보 한 줄 (이름표와 값).
+class _Submitted extends StatelessWidget {
+  const _Submitted(this.label, this.value);
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = context.palette;
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            // 글씨가 커져도 이름표가 값에 맞닿지 않게 칸 너비가 글씨 배율을 따른다.
+            width: MediaQuery.textScalerOf(context).scale(64),
+            child: Text(
+              label,
+              style: TextStyle(color: palette.muted, fontSize: 13),
+            ),
+          ),
+          Expanded(child: Text(value, style: const TextStyle(fontSize: 14))),
+        ],
+      ),
     );
   }
 }

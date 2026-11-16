@@ -2,12 +2,13 @@ import 'dart:typed_data';
 
 import '../../../core/mvvm/view_model.dart';
 import '../../../data/models/meeting.dart';
+import '../../../data/models/member.dart';
 import '../data/meeting_repository.dart';
 import '../view/meeting_form.dart';
 
-/// 모임 목록 보기: 전체 / 신청할 수 있는 모임 / 마감된 모임.
+/// 모임 목록 보기: 오는 일정(종료 전 전부) / 신청할 수 있는 모임 / 마감된 모임.
 enum MeetingFilter {
-  all('전체'),
+  upcoming('오는 일정'),
   open('신청 가능'),
   closed('마감');
 
@@ -68,15 +69,17 @@ class MeetingsViewModel extends ViewModel {
   /// 지금 보기에 맞는 모임인가.
   bool shows(Meeting m) => switch (_filter) {
     MeetingFilter.open => !(m.ended || m.isFull),
-    MeetingFilter.all => true,
-    // 마감은 정원이 찬 모임만이다: 종료된 모임은 마감 탭에 나오지 않고 전체 · 내 일정(완료)에서 본다.
+    // 오는 일정은 종료되지 않은 모임 전부다 (정원이 찼어도 나온다). 지난 모임은 내 일정(참여 완료)에서 본다.
+    MeetingFilter.upcoming => !m.ended,
+    // 마감은 정원이 찬 모임만이다: 종료된 모임은 마감 탭에 나오지 않는다.
     MeetingFilter.closed => !m.ended && m.isFull,
   };
 
-  /// 검색어(제목 · 장소 · 모임장 · 소개), 보기(전체 · 신청 가능 · 마감), 정렬을 적용한 목록.
-  List<Meeting> apply(List<Meeting> all) => sorted([
+  /// 검색어(제목 · 장소 · 모임장 · 소개), 보기(오는 일정 · 신청 가능 · 마감), 정렬을 적용한 목록.
+  /// 공개 범위 밖의 일정(내 소속이 아닌 소속 전용 모임)은 어느 보기에서도 나오지 않는다.
+  List<Meeting> apply(List<Meeting> all, Member me) => sorted([
     for (final m in all)
-      if (matches(m, _query) && shows(m)) m,
+      if (m.visibleTo(me) && matches(m, _query) && shows(m)) m,
   ], _sort);
 
   /// 검색어([query], 소문자로 다듬은 것)에 맞는 모임인가 (제목 · 장소 · 모임장 · 소개). 내 활동도 같은 검색을 쓴다.

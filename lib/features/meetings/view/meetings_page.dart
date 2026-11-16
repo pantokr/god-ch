@@ -75,6 +75,15 @@ class MeetingsPage extends StatelessWidget {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
+                              // 목록 맨 위 제목 (가는 글씨).
+                              Gutter(
+                                child: Text(
+                                  '다가오는 일정',
+                                  style: Theme.of(context).textTheme.titleMedium
+                                      ?.copyWith(fontWeight: FontWeight.w300),
+                                ),
+                              ),
+                              const SizedBox(height: 16),
                               Center(
                                 child: ShadowSwitch<MeetingFilter>(
                                   values: MeetingFilter.values,
@@ -112,7 +121,7 @@ class MeetingsPage extends StatelessWidget {
                                         child: Center(child: AppLoader()),
                                       );
                                     }
-                                    final items = vm.apply(all);
+                                    final items = vm.apply(all, me);
                                     if (items.isEmpty) {
                                       return EmptyHint(
                                         all.isEmpty ? '모임 없음' : '해당 모임 없음',
@@ -408,6 +417,12 @@ class _ColorfulCard extends StatelessWidget {
                       ],
                     ),
                   ),
+                  // 입장 조건(모임장 승인 · 자유 참여)은 이미지 왼쪽 아래.
+                  Positioned(
+                    left: 8,
+                    bottom: 8,
+                    child: JoinModeBadge(meeting: m),
+                  ),
                   if (settings.allowLikes)
                     Positioned(
                       right: 0,
@@ -525,6 +540,42 @@ class DDayBadge extends StatelessWidget {
   }
 }
 
+/// 입장 조건 배지: 썸네일 왼쪽 아래에 "모임장 승인" 또는 "자유 참여".
+class JoinModeBadge extends StatelessWidget {
+  const JoinModeBadge({super.key, required this.meeting});
+
+  final Meeting meeting;
+
+  @override
+  Widget build(BuildContext context) {
+    final approval = meeting.needsApproval;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.55),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              approval ? AppIcons.userCheck : AppIcons.user,
+              size: 13,
+              color: Colors.white,
+            ),
+            const SizedBox(width: 3),
+            Text(
+              approval ? '모임장 승인' : '자유 참여',
+              style: const TextStyle(color: Colors.white, fontSize: 12),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class SeatBadge extends StatelessWidget {
   const SeatBadge({super.key, required this.meeting});
 
@@ -619,6 +670,20 @@ class _MinimalRow extends StatelessWidget {
                                   ],
                                 ],
                               ),
+                            ),
+                          ),
+                        ),
+                        // 입장 조건은 썸네일 왼쪽 아래 (좁으면 줄어든다).
+                        Positioned(
+                          left: 4,
+                          bottom: 4,
+                          right: 4,
+                          child: Align(
+                            alignment: Alignment.bottomLeft,
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              alignment: Alignment.bottomLeft,
+                              child: JoinModeBadge(meeting: m),
                             ),
                           ),
                         ),

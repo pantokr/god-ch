@@ -14,7 +14,6 @@ class ProfileEditViewModel extends ViewModel {
 
   bool _loaded = false;
   UserProfile? _profile;
-
   bool get loaded => _loaded;
 
   /// 회원 프로필이 없는 계정(앱 운영자)은 null.
@@ -26,21 +25,8 @@ class ProfileEditViewModel extends ViewModel {
     notifyListeners();
   }
 
-  Future<bool> save(
-    String name,
-    String phone, {
-    String? address,
-    String? birthDate,
-    String? photoUrl,
-  }) => run(
-    () => _profiles.update(
-      name: name,
-      phone: phone,
-      address: address,
-      birthDate: birthDate,
-      photoUrl: photoUrl,
-    ),
-  );
+  Future<bool> save(String name, String phone, {String? photoUrl}) =>
+      run(() => _profiles.update(name: name, phone: phone, photoUrl: photoUrl));
 
   /// 프로필 사진을 올린다. 성공하면 주소, 실패하면 null ([error]에 이유).
   Future<String?> uploadPhoto(String fileName, Uint8List bytes) async {

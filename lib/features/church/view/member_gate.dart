@@ -9,6 +9,7 @@ import '../../../app/routes.dart';
 import '../../../core/mvvm/view_model_builder.dart';
 import '../../../data/models/member.dart';
 import '../view_model/member_gate_view_model.dart';
+import 'required_info_gate.dart';
 
 /// 주소의 교회에서 승인된 교인에게만 [builder]의 화면을 보여준다.
 /// 소속이 아니거나 승인이 취소되면 내 교회 목록으로 돌려보낸다.
@@ -52,7 +53,12 @@ class MemberGate extends StatelessWidget {
             builder: (context, closed) =>
                 closed.data == true && !me.isOperatorView
                 ? const _ClosedChurch()
-                : builder(context, me),
+                // 교회가 필수로 요청한 정보가 비어 있으면 채우기 전에는 들어갈 수 없다.
+                : RequiredInfoGate(
+                    me: me,
+                    requirements: vm.requirements,
+                    child: builder(context, me),
+                  ),
           );
         },
       ),

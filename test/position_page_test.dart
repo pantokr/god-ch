@@ -18,6 +18,7 @@ import 'package:god_ch/features/church/data/church_repository.dart';
 import 'package:god_ch/features/church/data/church_request_repository.dart';
 import 'package:god_ch/features/auth/data/profile_repository.dart';
 import 'package:god_ch/features/home/data/content_repository.dart';
+import 'package:god_ch/features/inquiry/data/inquiry_repository.dart';
 import 'package:god_ch/features/home/data/reflection_repository.dart';
 import 'package:god_ch/features/meetings/data/meeting_repository.dart';
 import 'package:god_ch/features/members/data/member_repository.dart';
@@ -53,6 +54,8 @@ class _Prayers extends Fake implements PrayerRepository {}
 class _Notifications extends Fake implements NotificationRepository {}
 
 class _Bible extends Fake implements BibleRepository {}
+
+class _Inquiries extends Fake implements InquiryRepository {}
 
 class _Activity extends Fake implements ActivityLogRepository {}
 
@@ -103,6 +106,7 @@ void main() {
         notifications: _Notifications(),
         bible: _Bible(),
         activityLogs: _Activity(),
+        inquiries: _Inquiries(),
         child: MaterialApp(
           theme: buildTheme(Brightness.light),
           home: const Scaffold(body: PositionManagePage(me: me)),

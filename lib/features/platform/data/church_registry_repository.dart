@@ -76,13 +76,11 @@ class ChurchRegistryRepository {
       .doc(uid)
       .update({'withdrawn': true, 'withdrawnAt': FieldValue.serverTimestamp()});
 
-  /// 회원의 이름·전화번호를 고친다. 소속된 모든 교회의 교인 정보에도 같이 반영한다.
+  /// 회원의 이름·전화번호·사진을 고친다. 소속된 모든 교회의 교인 정보에도 같이 반영한다.
   Future<void> updateUser(
     String uid, {
     required String name,
     required String phone,
-    String address = '',
-    String birthDate = '',
     String photoUrl = '',
   }) async {
     final n = name.trim();
@@ -93,20 +91,8 @@ class ChurchRegistryRepository {
     if (p.length < 8 || p.length > 20) {
       throw const AppException('전화번호를 8~20자로 입력해 주세요.');
     }
-    final b = birthDate.trim();
-    if (address.trim().length > 200) {
-      throw const AppException('주소는 200자까지 쓸 수 있어요.');
-    }
-    if (b.isNotEmpty && DateTime.tryParse(b) == null) {
-      throw const AppException('생년월일 형식이 올바르지 않아요.');
-    }
-    final data = {
-      'name': n,
-      'phone': p,
-      'address': address.trim(),
-      'birthDate': b,
-      'photoUrl': photoUrl.trim(),
-    };
+    // 주소 · 생년월일은 교회별로 입장할 때 제출한 것이라 여기서 고치지 않는다.
+    final data = {'name': n, 'phone': p, 'photoUrl': photoUrl.trim()};
     await _db.collection('users').doc(uid).update(data);
     final mine = await _paths.allMembers.where('uid', isEqualTo: uid).get();
     final batch = _db.batch();

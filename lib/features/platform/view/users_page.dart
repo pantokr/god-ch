@@ -165,8 +165,6 @@ class _UserRow extends StatelessWidget {
         title: user.name,
         name: user.name,
         phone: user.phone,
-        address: user.address,
-        birthDate: user.birthDate,
         photoUrl: user.photoUrl,
         onUploadPhoto: (fileName, bytes) =>
             vm.uploadPhoto(user.uid, fileName, bytes),

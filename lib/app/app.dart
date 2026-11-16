@@ -19,6 +19,7 @@ import '../features/church/data/church_closure_repository.dart';
 import '../features/church/data/church_repository.dart';
 import '../features/church/data/church_request_repository.dart';
 import '../features/home/data/content_repository.dart';
+import '../features/inquiry/data/inquiry_repository.dart';
 import '../features/meetings/data/meeting_repository.dart';
 import '../features/home/data/reflection_repository.dart';
 import '../features/members/data/member_repository.dart';
@@ -126,6 +127,7 @@ class _AppState extends State<App> {
     activity: _activity,
   );
   late final BibleRepository _bible = BibleRepository(FirebaseStorage.instance);
+  late final InquiryRepository _inquiries = InquiryRepository(_db, _auth);
   late final NotificationRepository _notifications = NotificationRepository(
     _db,
     _auth,
@@ -185,6 +187,7 @@ class _AppState extends State<App> {
       notifications: _notifications,
       bible: _bible,
       activityLogs: _activity,
+      inquiries: _inquiries,
       // 화면 모드가 바뀌면 앱 전체가 새 테마로 다시 그려진다.
       child: ListenableBuilder(
         listenable: widget.themeMode,

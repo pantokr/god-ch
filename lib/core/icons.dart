@@ -38,6 +38,7 @@ class AppIcons {
   static const IconData listView = LucideIcons300.list;
   static const IconData gridView = LucideIcons300.layoutGrid;
   static const IconData info = LucideIcons300.info;
+  static const IconData inquiry = LucideIcons300.circleQuestionMark;
   static const IconData wallet = LucideIcons300.wallet;
   static const IconData userCheck = LucideIcons300.userCheck;
   static const IconData history = LucideIcons300.history;

@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../core/format.dart' as format;
 import '../data/bible_reference.dart' as bible;
 
 /// 글씨 크기 단계. [factor]가 앱 기본 확대 배율(폰 · 와이드)에 곱해진다.
@@ -29,15 +30,16 @@ enum DevotionDesign {
   final String label;
 }
 
-/// 중보기도 · 말씀묵상 화면의 바탕 색조. [none]은 앱 기본 바탕이다.
+/// 중보기도 · 말씀묵상 카드의 색조. [none]은 앱 기본 바탕이다.
+/// 어두운 모드의 색은 앱의 남색 바탕(딥 인디고)에 은은하게 섞이도록 채도를 낮췄다.
 enum ScreenTint {
   none('기본', null, null),
-  sand('모래', Color(0xFFF1E8D6), Color(0xFF2A2520)),
-  mint('민트', Color(0xFFE3F1EA), Color(0xFF1F2A26)),
-  sky('하늘', Color(0xFFE2EEF8), Color(0xFF1E2630)),
-  rose('분홍', Color(0xFFF8E6E8), Color(0xFF2E2224)),
-  lavender('라벤더', Color(0xFFEBE6F6), Color(0xFF26222F)),
-  gray('회색', Color(0xFFE9E9EC), Color(0xFF222226));
+  sand('모래', Color(0xFFF1E8D6), Color(0xFF24222B)),
+  mint('민트', Color(0xFFE3F1EA), Color(0xFF182A30)),
+  sky('하늘', Color(0xFFE2EEF8), Color(0xFF1A2640)),
+  rose('분홍', Color(0xFFF8E6E8), Color(0xFF2A1C2E)),
+  lavender('라벤더', Color(0xFFEBE6F6), Color(0xFF221C3A)),
+  gray('회색', Color(0xFFE9E9EC), Color(0xFF1F2236));
 
   const ScreenTint(this.label, this._light, this._dark);
 
@@ -49,7 +51,7 @@ enum ScreenTint {
   Color? colorFor(Brightness b) => b == Brightness.dark ? _dark : _light;
 }
 
-/// 개인 설정: 이 기기에서만 쓰고 저장되는 보기 취향 (글씨 크기 · 본문 글꼴 · 중보기도 화면 색 · 책 이름 표기 · 절 번호 · 신규 표시).
+/// 개인 설정: 이 기기에서만 쓰고 저장되는 보기 취향 (글씨 크기 · 일시 표기 · 본문 글꼴 · 중보기도 화면 색 · 책 이름 표기 · 절 번호 · 신규 표시).
 /// 저장소를 쓸 수 없는 환경에서는 저장하지 않고 이번 실행 동안만 유지한다.
 class PreferencesController extends ChangeNotifier {
   PreferencesController(this._prefs) {
@@ -69,6 +71,7 @@ class PreferencesController extends ChangeNotifier {
   // 화면마다 따로 읽는 값(구절 표기)은 전역 값에 옮겨 둔다.
   void _syncGlobals() {
     bible.useBookAbbreviation = abbreviateBooks;
+    format.dateStyle = dateStyle;
   }
 
   void _save() {
@@ -90,10 +93,26 @@ class PreferencesController extends ChangeNotifier {
     _save();
   }
 
-  // ---- 화면별 보기 (중보기도 · 말씀묵상 각각) ----
-  /// 화면 이름: `prayer` · `bible`.
+  // ---- 일시 ----
+  /// 글 · 댓글 · 알림의 작성 시각 표기 (기본: 상대 = 몇 분 전).
+  format.DateStyle get dateStyle {
+    final saved = _prefs?.getString('date_style');
+    return format.DateStyle.values.firstWhere(
+      (d) => d.name == saved,
+      orElse: () => format.DateStyle.relative,
+    );
+  }
+
+  void setDateStyle(format.DateStyle v) {
+    _prefs?.setString('date_style', v.name);
+    _save();
+  }
+
+  // ---- 화면별 보기 (중보기도 · 말씀묵상) ----
+  /// 카드 색: 중보기도와 말씀묵상이 같은 색을 쓴다 (목록에서 두 화면의 타일 색이 달라 보이지 않게).
+  /// [screen]은 부르는 화면의 이름(`prayer` · `bible`)이지만 색은 하나로 저장한다.
   ScreenTint tintOf(String screen) {
-    final saved = _prefs?.getString('tint_$screen');
+    final saved = _prefs?.getString(_tintKey);
     return ScreenTint.values.firstWhere(
       (s) => s.name == saved,
       orElse: () => ScreenTint.none,
@@ -101,13 +120,17 @@ class PreferencesController extends ChangeNotifier {
   }
 
   void setTint(String screen, ScreenTint v) {
-    _prefs?.setString('tint_$screen', v.name);
+    _prefs?.setString(_tintKey, v.name);
     _save();
   }
 
-  /// 그 화면만의 글씨 크기 (전체 글씨 크기에 더해 곱해진다).
+  /// 카드 색을 저장하는 키. 예전에 말씀묵상에서 고른 색이 그대로 이어진다.
+  static const _tintKey = 'tint_bible';
+
+  /// 중보기도 · 말씀묵상 화면의 글씨 크기 (전체 글씨 크기에 더해 곱해진다). 두 화면이 같은 크기를 써서
+  /// 한쪽만 더 크게 보이지 않는다. [screen]은 부르는 화면의 이름이지만 크기는 하나로 저장한다.
   TextSize sizeOf(String screen) {
-    final saved = _prefs?.getString('size_$screen');
+    final saved = _prefs?.getString(_sizeKey);
     return TextSize.values.firstWhere(
       (s) => s.name == saved,
       orElse: () => TextSize.normal,
@@ -115,9 +138,12 @@ class PreferencesController extends ChangeNotifier {
   }
 
   void setSize(String screen, TextSize v) {
-    _prefs?.setString('size_$screen', v.name);
+    _prefs?.setString(_sizeKey, v.name);
     _save();
   }
+
+  /// 글씨 크기를 저장하는 키. 예전에 말씀묵상에서 고른 크기가 그대로 이어진다.
+  static const _sizeKey = 'size_bible';
 
   /// 그 화면의 글꼴.
 

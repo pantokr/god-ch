@@ -79,15 +79,11 @@ class UsersViewModel extends ViewModel {
   Future<bool> saveDetail(UserProfile u, MemberDetailResult r) => run(() async {
     if (r.name.trim() != u.name ||
         r.phone.trim() != u.phone ||
-        r.address.trim() != u.address ||
-        r.birthDate.trim() != u.birthDate ||
         r.photoUrl.trim() != u.photoUrl) {
       await _registry.updateUser(
         u.uid,
         name: r.name,
         phone: r.phone,
-        address: r.address,
-        birthDate: r.birthDate,
         photoUrl: r.photoUrl,
       );
     }

@@ -362,7 +362,7 @@ class _Row extends StatelessWidget {
                   ],
                   const SizedBox(height: 4),
                   Text(
-                    fmtDate(item.createdAt),
+                    fmtPosted(item.createdAt),
                     style: TextStyle(
                       color: isNew ? palette.muted : gray,
                       fontSize: 12,

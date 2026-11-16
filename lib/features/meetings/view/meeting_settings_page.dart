@@ -8,6 +8,7 @@ import '../../../core/widgets/settings_table.dart';
 
 import '../../../app/app_scope.dart';
 import '../../../core/layout/page_frame.dart';
+import '../../../core/exit_guard.dart';
 import '../../../core/layout/responsive.dart';
 import '../../../core/mvvm/view_model.dart';
 import '../../../core/mvvm/view_model_builder.dart';
@@ -28,69 +29,74 @@ class MeetingSettingsPage extends StatelessWidget {
       key: ValueKey('meeting-settings/${me.churchId}'),
       create: (context) =>
           _SettingsViewModel(AppScope.read(context).meetings, me.churchId),
-      builder: (context, vm) => SingleChildScrollView(
-        child: PageFrame(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              FutureBuilder<MeetingSettings>(
-                future: vm.loaded,
-                builder: (context, snap) {
-                  if (snap.hasError) {
-                    return Text(
-                      '불러오지 못했습니다${String.fromCharCode(10)}${snap.error}',
-                    );
-                  }
-                  if (!snap.hasData) {
-                    return const Padding(
-                      padding: EdgeInsets.all(48),
-                      child: Center(child: AppLoader()),
-                    );
-                  }
-                  final current = vm.edited ?? snap.data!;
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      _Panel(settings: current, onChanged: vm.edit),
-                      const SizedBox(height: 16),
-                      Gutter(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            if (vm.error != null)
-                              Padding(
-                                padding: const EdgeInsets.only(bottom: 8),
-                                child: Text(
-                                  vm.error!,
-                                  style: TextStyle(
-                                    color: Theme.of(context).colorScheme.error,
+      // 고쳤지만 저장하지 않은 설정이 있으면 뒤로 갈 때 묻는다.
+      builder: (context, vm) => UnsavedGuard(
+        isDirty: () => vm.edited != null,
+        child: SingleChildScrollView(
+          child: PageFrame(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                FutureBuilder<MeetingSettings>(
+                  future: vm.loaded,
+                  builder: (context, snap) {
+                    if (snap.hasError) {
+                      return Text(
+                        '불러오지 못했습니다${String.fromCharCode(10)}${snap.error}',
+                      );
+                    }
+                    if (!snap.hasData) {
+                      return const Padding(
+                        padding: EdgeInsets.all(48),
+                        child: Center(child: AppLoader()),
+                      );
+                    }
+                    final current = vm.edited ?? snap.data!;
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        _Panel(settings: current, onChanged: vm.edit),
+                        const SizedBox(height: 16),
+                        Gutter(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              if (vm.error != null)
+                                Padding(
+                                  padding: const EdgeInsets.only(bottom: 8),
+                                  child: Text(
+                                    vm.error!,
+                                    style: TextStyle(
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .error,
+                                    ),
                                   ),
                                 ),
+                              Align(
+                                alignment: Alignment.centerRight,
+                                child: FilledButton(
+                                  onPressed: vm.edited == null || vm.busy
+                                      ? null
+                                      : () async {
+                                          final messenger =
+                                              ScaffoldMessenger.of(context);
+                                          if (await vm.save()) {
+                                            showToastOn(messenger, '저장했어요.');
+                                          }
+                                        },
+                                  child: const Text('저장'),
+                                ),
                               ),
-                            Align(
-                              alignment: Alignment.centerRight,
-                              child: FilledButton(
-                                onPressed: vm.edited == null || vm.busy
-                                    ? null
-                                    : () async {
-                                        final messenger = ScaffoldMessenger.of(
-                                          context,
-                                        );
-                                        if (await vm.save()) {
-                                          showToastOn(messenger, '저장했어요.');
-                                        }
-                                      },
-                                child: const Text('저장'),
-                              ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
-                      ),
-                    ],
-                  );
-                },
-              ),
-            ],
+                      ],
+                    );
+                  },
+                ),
+              ],
+            ),
           ),
         ),
       ),

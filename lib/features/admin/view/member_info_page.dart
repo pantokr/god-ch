@@ -73,8 +73,6 @@ Future<void> showUserInfoPage(
     rows: [
       ('아이디', user.loginId ?? user.email, false),
       ('전화번호', user.phone, true),
-      ('주소', user.address, true),
-      ('생년월일', user.birthDate, false),
       ('소속 교회', churchNames.join(', '), false),
       ('가입일', user.createdAt == null ? '' : fmtDateTime(user.createdAt), false),
     ],

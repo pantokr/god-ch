@@ -72,40 +72,29 @@ class ProfileRepository {
         .then((_) => activity?.log(ActivityType.signUp, summary: 'Google'));
   }
 
-  /// 주소·생년월일(선택 정보)을 저장한다. 교회가 입장 때 필수로 요청한 정보를 채울 때 쓴다.
   /// 내 프로필 사진을 올리고 주소를 돌려준다. 저장(update)은 따로 한다.
   Future<String> uploadPhoto(String fileName, Uint8List bytes) =>
       _contents.uploadThumbnailTo('users/${_auth.uid}/avatar', bytes: bytes);
 
-  Future<void> saveExtra({String? address, String? birthDate}) {
-    final data = _extra(address, birthDate);
-    if (data.isEmpty) return Future.value();
-    return _users.doc(_auth.uid).update(data);
+  /// 내가 속했거나 입장을 신청한 교회들의 교인 문서 (나간 교회는 뺀다).
+  Future<List<QueryDocumentSnapshot<Map<String, dynamic>>>>
+  _myMemberships() async {
+    final snap = await _db
+        .collectionGroup('members')
+        .where('uid', isEqualTo: _auth.uid)
+        .get();
+    return [
+      for (final d in snap.docs)
+        if (d.data()['status'] != 'removed') d,
+    ];
   }
 
-  Map<String, Object> _extra(
-    String? address,
-    String? birthDate, [
-    String? photoUrl,
-  ]) {
-    final a = address?.trim();
-    final b = birthDate?.trim();
-    if (a != null && a.length > 200) {
-      throw const AppException('주소는 200자까지 쓸 수 있어요.');
-    }
-    if (b != null && b.isNotEmpty && DateTime.tryParse(b) == null) {
-      throw const AppException('생년월일 형식이 올바르지 않아요.');
-    }
-    return {'address': ?a, 'birthDate': ?b, 'photoUrl': ?photoUrl?.trim()};
-  }
-
-  /// 이름·전화번호(와 선택 정보)를 고친다. 소속 교회의 내 교인 정보에도 같이 반영한다.
+  /// 이름·전화번호(와 프로필 사진)를 고친다. 소속 교회의 내 교인 정보에도 같이 반영한다.
+  /// 주소 · 생년월일은 여기서 고치지 않는다 (교회에 입장할 때 한 번 제출한다).
   /// 회원 프로필이 없는 계정(앱 운영자)은 표시 이름만 바뀐다.
   Future<void> update({
     required String name,
     required String phone,
-    String? address,
-    String? birthDate,
     String? photoUrl,
   }) async {
     final n = name.trim();
@@ -118,19 +107,18 @@ class ProfileRepository {
       throw const AppException('전화번호를 8~20자로 입력해 주세요.');
     }
     if (hasProfile) {
-      final extra = _extra(address, birthDate, photoUrl);
-      await _users.doc(_auth.uid).update({'name': n, 'phone': p, ...extra});
-      final mine = await _db
-          .collectionGroup('members')
-          .where('uid', isEqualTo: _auth.uid)
-          .get();
+      final extra = {'photoUrl': ?photoUrl?.trim()};
+      // 나간 교회의 교인 문서는 건드리지 않는다.
+      final mine = await _myMemberships();
+      // 내 프로필과 교인 정보를 한 묶음으로 쓴다: 하나라도 거부되면 어느 쪽도 바뀌지 않는다.
       final batch = _db.batch();
-      for (final m in mine.docs) {
+      batch.update(_users.doc(_auth.uid), {'name': n, 'phone': p, ...extra});
+      for (final m in mine) {
         batch.update(m.reference, {'name': n, 'phone': p, ...extra});
       }
       await batch.commit();
-      // 사람 목록에 보이는 이름 · 사진 · 생일도 함께 맞춘다.
-      for (final m in mine.docs) {
+      // 사람 목록에 보이는 이름 · 사진도 함께 맞춘다.
+      for (final m in mine) {
         final churchId = m.reference.parent.parent?.id;
         if (churchId != null) {
           await mirrorPersonCard(FirestorePaths(_db), churchId, m.id);

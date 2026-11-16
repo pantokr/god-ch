@@ -338,13 +338,16 @@ class _PendingRow extends StatelessWidget {
       card: card,
       trailing: [
         TextButton(
-          onPressed: vm.busy ? null : () => vm.reject(meeting, uid),
+          // 종료된 모임은 규칙이 처리를 거부한다.
+          onPressed: vm.busy || meeting.ended
+              ? null
+              : () => vm.reject(meeting, uid),
           style: TextButton.styleFrom(foregroundColor: palette.muted),
           child: const Text('거절'),
         ),
         FilledButton(
-          // 정원이 찼으면 승인할 수 없다.
-          onPressed: vm.busy || meeting.isFull
+          // 정원이 찼거나 종료된 모임은 승인할 수 없다.
+          onPressed: vm.busy || meeting.isFull || meeting.ended
               ? null
               : () => vm.approve(meeting, uid),
           child: const Text('승인'),

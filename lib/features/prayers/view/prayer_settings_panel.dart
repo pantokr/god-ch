@@ -47,6 +47,15 @@ class PrayerSettingsPanel extends StatelessWidget {
               value: s.showAuthor,
               onChanged: (v) => onChanged(s.copyWith(showAuthor: v)),
             ),
+            // 글쓴이가 자기 글의 작성자를 비공개로 할 수 있다. 글쓴이를 보여 주는 교회에서만 뜻이 있다.
+            SettingRow(
+              label: '작성자 비공개 허용',
+              value: s.allowAnonymous,
+              indent: true,
+              onChanged: s.showAuthor
+                  ? (v) => onChanged(s.copyWith(allowAnonymous: v))
+                  : null,
+            ),
           ],
         ),
         SettingsTable(

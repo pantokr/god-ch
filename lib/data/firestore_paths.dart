@@ -48,9 +48,6 @@ class FirestorePaths {
   CollectionReference<Json> people(String churchId) =>
       church(churchId).collection('people');
 
-  CollectionReference<Json> accessLogs(String churchId) =>
-      church(churchId).collection('accessLogs');
-
   /// 모든 교회의 members 문서 (내 소속 교회 조회용 collection group).
   Query<Json> get allMembers => db.collectionGroup('members');
 }

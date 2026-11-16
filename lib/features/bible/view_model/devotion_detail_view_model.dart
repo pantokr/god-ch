@@ -46,6 +46,7 @@ class DevotionDetailViewModel extends ViewModel {
     required DateTime date,
     String? affiliationId,
     bool isPrivate = false,
+    bool authorHidden = false,
   }) => run(
     () => _repo.save(
       churchId,
@@ -57,6 +58,7 @@ class DevotionDetailViewModel extends ViewModel {
       date: date,
       affiliationId: affiliationId,
       isPrivate: isPrivate,
+      authorHidden: authorHidden,
     ),
   );
 

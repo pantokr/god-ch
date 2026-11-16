@@ -1,3 +1,4 @@
+import '../../../core/widgets/anonymous_author.dart';
 import '../../../core/widgets/app_loader.dart';
 import '../../../core/layout/responsive.dart';
 import '../../../core/widgets/toggle_chip.dart';
@@ -194,7 +195,8 @@ class _PrayerSimpleListState extends State<PrayerSimpleList> {
     final list = [
       for (final p in all)
         if (_query.isEmpty ||
-            p.authorName.toLowerCase().contains(_query) ||
+            (!p.hidesAuthorFrom(widget.me.id, staff: widget.me.isStaff) &&
+                p.authorName.toLowerCase().contains(_query)) ||
             p.content.toLowerCase().contains(_query))
           p,
     ];
@@ -473,25 +475,19 @@ class PrayerTile extends StatelessWidget {
                         child: SizedBox(
                           height: grid
                               ? null
-                              : scaler.scale(14 * 1.45 * excerptLines) + 4,
-                          // 신규 글은 본문 맨 앞에 붉은 "신규" 글자가 한 줄 안에서 이어진다.
+                              : scaler.scale(13.5 * 1.4 * excerptLines) + 4,
+                          // 신규 글은 본문 맨 앞에 붉은 "N" 동그라미가 글자처럼 한 줄 안에서 이어진다.
                           child: Text.rich(
                             TextSpan(
                               children: [
-                                if (showBar)
-                                  const TextSpan(
-                                    text: '신규  ',
-                                    style: TextStyle(
-                                      color: AppColors.like,
-                                      fontSize: 12,
-                                    ),
-                                  ),
+                                if (showBar) ReadStatusBar.inline(),
                                 TextSpan(text: p.content),
                               ],
                             ),
                             maxLines: excerptLines,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(fontSize: 14, height: 1.45),
+                            // 말씀묵상 카드의 묵상 글과 같은 글자 모양 (크기 13.5, 줄 간격 1.4).
+                            style: const TextStyle(fontSize: 13.5, height: 1.4),
                           ),
                         ),
                       ),
@@ -520,22 +516,26 @@ class PrayerTile extends StatelessWidget {
                     if (settings.showAuthor)
                       Row(
                         children: [
-                          PersonTap(
-                            churchId: me.churchId,
-                            uid: p.authorId,
-                            name: p.authorName,
-                            photoUrl: '',
-                            child: PersonAvatar(
-                              churchId: me.churchId,
-                              uid: p.authorId,
-                              name: p.authorName.isEmpty ? '?' : p.authorName,
-                              radius: 10,
-                            ),
-                          ),
+                          p.hidesAuthorFrom(me.id, staff: me.isStaff)
+                              ? const AnonymousAvatar(radius: 10)
+                              : PersonTap(
+                                  churchId: me.churchId,
+                                  uid: p.authorId,
+                                  name: p.authorName,
+                                  photoUrl: '',
+                                  child: PersonAvatar(
+                                    churchId: me.churchId,
+                                    uid: p.authorId,
+                                    name: p.authorName.isEmpty
+                                        ? '?'
+                                        : p.authorName,
+                                    radius: 10,
+                                  ),
+                                ),
                           const SizedBox(width: 6),
                           Expanded(
                             child: Text(
-                              p.authorName.isEmpty ? '이름 없음' : p.authorName,
+                              p.authorLabel(me.id, staff: me.isStaff),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: const TextStyle(fontSize: 13),
@@ -580,41 +580,52 @@ class PrayerTile extends StatelessWidget {
                     Row(
                       children: [
                         if (settings.showAuthor) ...[
-                          PersonTap(
-                            churchId: me.churchId,
-                            uid: p.authorId,
-                            name: p.authorName,
-                            photoUrl: '',
-                            child: PersonAvatar(
-                              churchId: me.churchId,
-                              uid: p.authorId,
-                              name: p.authorName.isEmpty ? '?' : p.authorName,
-                              radius: 10,
-                            ),
-                          ),
+                          p.hidesAuthorFrom(me.id, staff: me.isStaff)
+                              ? const AnonymousAvatar(radius: 10)
+                              : PersonTap(
+                                  churchId: me.churchId,
+                                  uid: p.authorId,
+                                  name: p.authorName,
+                                  photoUrl: '',
+                                  child: PersonAvatar(
+                                    churchId: me.churchId,
+                                    uid: p.authorId,
+                                    name: p.authorName.isEmpty
+                                        ? '?'
+                                        : p.authorName,
+                                    radius: 10,
+                                  ),
+                                ),
                           const SizedBox(width: 6),
                           Expanded(
                             child: Align(
                               alignment: Alignment.centerLeft,
-                              child: PersonTap(
-                                churchId: me.churchId,
-                                uid: p.authorId,
-                                name: p.authorName,
-                                photoUrl: '',
-                                child: Text(
-                                  p.authorName.isEmpty ? '이름 없음' : p.authorName,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(fontSize: 13),
-                                ),
-                              ),
+                              child: p.hidesAuthorFrom(me.id, staff: me.isStaff)
+                                  ? Text(
+                                      anonymousName,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(fontSize: 13),
+                                    )
+                                  : PersonTap(
+                                      churchId: me.churchId,
+                                      uid: p.authorId,
+                                      name: p.authorName,
+                                      photoUrl: '',
+                                      child: Text(
+                                        p.authorLabel(me.id, staff: me.isStaff),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(fontSize: 13),
+                                      ),
+                                    ),
                             ),
                           ),
                         ] else
                           const Spacer(),
                         const SizedBox(width: 8),
                         Text(
-                          fmtDateTime(p.createdAt),
+                          fmtPosted(p.createdAt),
                           style: TextStyle(color: palette.muted, fontSize: 12),
                         ),
                       ],

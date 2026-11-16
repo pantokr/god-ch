@@ -1,3 +1,4 @@
+import '../../../core/widgets/anonymous_author.dart';
 import '../../../core/widgets/app_loader.dart';
 
 import 'package:flutter/material.dart';
@@ -81,7 +82,10 @@ class DevotionDetailPage extends StatelessWidget {
               title: c.title,
               fallbackLocation: back,
               actions: [
-                if (me.can(Permission.devotionPost))
+                // 수정도 삭제와 같은 기준이다: 본인 글은 글을 쓸 수 있으면, 타인 글은 글 관리 범위가 전체여야 한다.
+                if (c.authorId == me.id
+                    ? me.can(Permission.devotionPost)
+                    : me.canAll(Permission.devotionPost))
                   TextButton.icon(
                     icon: const Icon(AppIcons.pencilSimple, size: 18),
                     label: const Text('수정'),
@@ -158,6 +162,7 @@ class DevotionDetailPage extends StatelessWidget {
       date: result.date,
       affiliationId: result.affiliationId,
       isPrivate: result.isPrivate,
+      authorHidden: result.authorHidden,
     );
     if (!ok && vm.error != null) {
       showToastOn(messenger, vm.error!);
@@ -247,30 +252,40 @@ class _AuthorInfoCard extends StatelessWidget {
     final date = fmtDateAt(content.date, content.createdAt);
     final showByline = content.authorName.isNotEmpty && settings.showAuthor;
     final liked = content.likedBy.contains(me.id);
+    // 작성자 비공개 글: 본인과 교역자 이상이 아니면 사진 · 이름 대신 "익명"이 보인다.
+    final hidden = content.hidesAuthorFrom(me.id, staff: me.isStaff);
     final author = showByline
         ? PostAuthor(
-            avatar: PersonTap(
-              churchId: churchId,
-              uid: content.authorId,
-              name: content.authorName,
-              photoUrl: content.authorPhotoUrl,
-              child: ThumbnailAvatar(
-                name: content.authorName,
-                url: content.authorPhotoUrl,
-                radius: PostAuthor.avatarRadius,
-              ),
-            ),
-            name: PersonTap(
-              churchId: churchId,
-              uid: content.authorId,
-              name: content.authorName,
-              photoUrl: content.authorPhotoUrl,
-              child: Text(
-                content.authorName,
-                style: PostAuthor.nameStyle(context),
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
+            avatar: hidden
+                ? const AnonymousAvatar(radius: PostAuthor.avatarRadius)
+                : PersonTap(
+                    churchId: churchId,
+                    uid: content.authorId,
+                    name: content.authorName,
+                    photoUrl: content.authorPhotoUrl,
+                    child: ThumbnailAvatar(
+                      name: content.authorName,
+                      url: content.authorPhotoUrl,
+                      radius: PostAuthor.avatarRadius,
+                    ),
+                  ),
+            name: hidden
+                ? Text(
+                    anonymousName,
+                    style: PostAuthor.nameStyle(context),
+                    overflow: TextOverflow.ellipsis,
+                  )
+                : PersonTap(
+                    churchId: churchId,
+                    uid: content.authorId,
+                    name: content.authorName,
+                    photoUrl: content.authorPhotoUrl,
+                    child: Text(
+                      content.authorLabel(me.id, staff: me.isStaff),
+                      style: PostAuthor.nameStyle(context),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
           )
         : null;
     return PostInfoCard(

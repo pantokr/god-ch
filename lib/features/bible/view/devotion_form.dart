@@ -12,11 +12,12 @@ import '../../../core/widgets/labeled_field.dart';
 
 import '../../../app/app_scope.dart';
 import '../../../core/layout/app_dialog.dart';
+import '../../../data/models/devotion_settings.dart';
 import '../../../data/models/affiliation.dart';
 import '../../../data/models/church_content.dart';
 import 'bible_picker_dialog.dart';
 
-/// 말씀 추가 · 수정에서 입력한 값. 첫 말씀 · 묵상은 [title] · [body] · [meditation]에, 둘째부터는 [extras]에 있다.
+/// 말씀묵상 작성 · 수정에서 입력한 값. 첫 말씀 · 묵상은 [title] · [body] · [meditation]에, 둘째부터는 [extras]에 있다.
 class DevotionFormResult {
   const DevotionFormResult(
     this.title,
@@ -26,6 +27,7 @@ class DevotionFormResult {
     this.extras = const [],
     this.affiliationId,
     this.isPrivate = false,
+    this.authorHidden = false,
   });
 
   final String title;
@@ -39,9 +41,12 @@ class DevotionFormResult {
 
   /// 비공개 (말씀묵상 비공개 조회 권한이 있는 사람만 볼 수 있다).
   final bool isPrivate;
+
+  /// 작성자 비공개: 본인과 교역자 이상만 글쓴이를 본다 (교회가 허용했을 때만).
+  final bool authorHidden;
 }
 
-/// 말씀 추가 · 수정 화면. 중보기도 쓰기와 같은 모양의 페이지(뒤로가기 + 카드 안의 폼)다. 취소하면 null.
+/// 말씀묵상 작성 · 수정 화면. 중보기도 쓰기와 같은 모양의 페이지(뒤로가기 + 카드 안의 폼)다. 취소하면 null.
 Future<DevotionFormResult?> showDevotionForm(
   BuildContext context, {
   required String churchId,
@@ -113,6 +118,7 @@ class _FormState extends State<_Form> {
   late final DateTime _date = widget.initial?.date ?? DateTime.now();
   late String? _affiliationId = widget.initial?.affiliationId;
   late bool _private = widget.initial?.isPrivate ?? false;
+  late bool _authorHidden = widget.initial?.authorHidden ?? false;
 
   @override
   void dispose() {
@@ -329,15 +335,41 @@ class _FormState extends State<_Form> {
                     );
                   },
                 ),
-                // 비공개: 말씀묵상 비공개 조회 권한이 있는 사람(교역자)만 볼 수 있다.
+                // 글 공개 여부: 비공개는 말씀묵상 비공개 조회 권한이 있는 사람(교역자)만 볼 수 있다.
                 ChoiceRow<bool>(
-                  label: '공개 여부',
+                  label: '글 공개 여부',
+                  roomy: true,
                   options: const [
                     ChoiceOption(false, '공개'),
                     ChoiceOption(true, '교역자 전용'),
                   ],
                   value: _private,
                   onChanged: (v) => setState(() => _private = v),
+                ),
+                // 작성자 공개 여부: 교회가 허용했을 때만 고른다. 비공개 글은 본인과 교역자 이상만 글쓴이를 본다.
+                StreamBuilder<DevotionSettings>(
+                  stream: AppScope.read(context).contents
+                      .settings(widget.churchId),
+                  initialData: DevotionSettings.standard,
+                  builder: (context, cfg) {
+                    final cs = cfg.data ?? DevotionSettings.standard;
+                    if (!cs.allowAnonymous || !cs.showAuthor) {
+                      return const SizedBox.shrink();
+                    }
+                    return Padding(
+                      padding: const EdgeInsets.only(top: 12),
+                      child: ChoiceRow<bool>(
+                        label: '작성자 공개 여부',
+                        roomy: true,
+                        options: const [
+                          ChoiceOption(false, '공개'),
+                          ChoiceOption(true, '비공개'),
+                        ],
+                        value: _authorHidden,
+                        onChanged: (v) => setState(() => _authorHidden = v),
+                      ),
+                    );
+                  },
                 ),
                 const SizedBox(height: 24),
                 Row(
@@ -369,6 +401,7 @@ class _FormState extends State<_Form> {
                                   ],
                                   affiliationId: _affiliationId,
                                   isPrivate: _private,
+                                  authorHidden: _authorHidden,
                                 ),
                               );
                             },

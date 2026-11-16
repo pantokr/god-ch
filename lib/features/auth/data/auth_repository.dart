@@ -20,20 +20,12 @@ class SignUpData {
     required this.name,
     required this.phone,
     required this.consentThirdParty,
-    this.address = '',
-    this.birthDate = '',
   });
 
   final String loginId;
   final String password;
   final String name;
   final String phone;
-
-  /// 선택 입력. 비워 두면 저장하지 않는다.
-  final String address;
-
-  /// YYYY-MM-DD. 선택 입력.
-  final String birthDate;
 
   /// 개인정보 제3자(소속 교회) 제공 동의.
   final bool consentThirdParty;
@@ -225,9 +217,6 @@ class AuthRepository {
         'loginId': id,
         'name': data.name.trim(),
         'phone': data.phone.trim(),
-        if (data.address.trim().isNotEmpty) 'address': data.address.trim(),
-        if (data.birthDate.trim().isNotEmpty)
-          'birthDate': data.birthDate.trim(),
         'consentThirdParty': true,
         'consentAt': FieldValue.serverTimestamp(),
         'createdAt': FieldValue.serverTimestamp(),

@@ -15,8 +15,11 @@ import '../../../core/layout/sidebar_scaffold.dart';
 import '../../../core/mvvm/view_model_builder.dart';
 import '../../../core/screen_style.dart';
 import '../../../core/theme.dart';
+import '../../../core/widgets/member_mark.dart';
+import '../../../data/models/affiliation.dart';
 import '../../../data/models/member.dart';
 import '../../../data/models/permission.dart';
+import '../../../data/models/position.dart';
 import '../../admin/view_model/pending_members_view_model.dart';
 import '../../prayers/view/postit_card.dart';
 import '../../../data/models/tab_access.dart';
@@ -276,7 +279,7 @@ class ChurchShell extends StatelessWidget {
                   ),
                 ),
                 _ChurchCard(
-                  name: me.churchName,
+                  me: me,
                   onSwitch: () => me.isOperatorView
                       ? context.go(Routes.adminChurches)
                       : context.push(Routes.churchList),
@@ -390,47 +393,196 @@ class ChurchShell extends StatelessWidget {
   }
 }
 
-/// 왼쪽 메뉴 위의 "지금 보는 교회" 카드와 교회 바꾸기 버튼.
-class _ChurchCard extends StatelessWidget {
-  const _ChurchCard({required this.name, required this.onSwitch});
+/// 왼쪽 메뉴 위의 "지금 보는 교회" 카드: 교회 이름과 교회 바꾸기 버튼, 그 아래에 내 직급과 소속.
+/// 카드 어디를 눌러도 내 교회 목록이 열린다.
+class _ChurchCard extends StatefulWidget {
+  const _ChurchCard({required this.me, required this.onSwitch});
 
-  final String name;
+  final Member me;
   final VoidCallback onSwitch;
 
   @override
+  State<_ChurchCard> createState() => _ChurchCardState();
+}
+
+class _ChurchCardState extends State<_ChurchCard> {
+  // 스트림은 한 번만 만든다 (build마다 새로 만들면 재구독으로 깜빡인다).
+  late final Stream<List<Position>> _positions = AppScope.read(context)
+      .positions
+      .positions(widget.me.churchId);
+  late final Stream<List<Affiliation>> _affiliations = AppScope.read(context)
+      .affiliations
+      .affiliations(widget.me.churchId);
+
+  /// 직급 자리에 보이는 이름: 직급이 있으면 그 이름, 없으면 역할.
+  String _roleLabel(Position? position) =>
+      position?.name ??
+      switch (widget.me.role) {
+        Role.admin => '교회 운영자',
+        Role.staff => '교역자',
+        Role.member => '교인',
+      };
+
+  @override
   Widget build(BuildContext context) {
+    final me = widget.me;
     final palette = context.palette;
     final radius = BorderRadius.circular(AppRadius.card);
-    // 아이콘 · 교회 이름 · 오른쪽 화살표 어디를 눌러도 내 교회 목록이 열린다.
+    // 어두운 모드에서는 보라색 면을 깔지 않는다: 서랍 바탕과 같은 결의 면에 얇은 테두리만 둬서 튀지 않게 한다.
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final accent = dark ? palette.ink : palette.brand;
     return Semantics(
       button: true,
       label: '내 교회 목록',
       child: Material(
-        color: palette.brand.withValues(alpha: 0.08),
-        borderRadius: radius,
+        color: dark
+            ? palette.ink.withValues(alpha: 0.05)
+            : palette.brand.withValues(alpha: 0.08),
+        shape: RoundedRectangleBorder(
+          borderRadius: radius,
+          side: dark ? BorderSide(color: palette.border) : BorderSide.none,
+        ),
         child: InkWell(
           borderRadius: radius,
-          onTap: onSwitch,
+          onTap: widget.onSwitch,
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
-            child: Row(
+            padding: const EdgeInsets.fromLTRB(16, 16, 12, 18),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Icon(AppIcons.church, size: 20, color: palette.brand),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(),
-                  ),
+                Row(
+                  children: [
+                    Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        color: dark
+                            ? palette.ink.withValues(alpha: 0.08)
+                            : palette.brand.withValues(alpha: 0.14),
+                        borderRadius: BorderRadius.circular(AppRadius.control),
+                      ),
+                      child: Icon(AppIcons.church, size: 20, color: accent),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        me.churchName,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontSize: 16, height: 1.3),
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Icon(AppIcons.caretUpDown, size: 20, color: palette.muted),
+                  ],
                 ),
-                const SizedBox(width: 8),
-                Icon(AppIcons.caretUpDown, size: 20, color: palette.muted),
+                // 앱 개발자는 교인이 아니라 직급 · 소속이 없다.
+                if (!me.isOperatorView) ...[
+                  const SizedBox(height: 14),
+                  Divider(
+                    height: 1,
+                    color: dark
+                        ? palette.border
+                        : palette.brand.withValues(alpha: 0.16),
+                  ),
+                  const SizedBox(height: 14),
+                  // 직급: 직급 모양(아이콘 · 색)과 이름.
+                  StreamBuilder<List<Position>>(
+                    stream: _positions,
+                    builder: (context, snap) {
+                      Position? position;
+                      for (final p in snap.data ?? const <Position>[]) {
+                        if (p.id == me.positionId) position = p;
+                      }
+                      return Row(
+                        children: [
+                          MemberMark(
+                            role: me.role,
+                            position: position,
+                            roles: me.rolePermissions,
+                            size: 18,
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              _roleLabel(position),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(fontSize: 14),
+                            ),
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  // 소속: 이름 알약들. 교회 운영자는 모든 소속에 속하고, 없으면 미배정이다.
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.only(top: 3),
+                        child: Icon(
+                          AppIcons.network,
+                          size: 18,
+                          color: palette.muted,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: StreamBuilder<List<Affiliation>>(
+                          stream: _affiliations,
+                          builder: (context, snap) {
+                            if (me.role == Role.admin) {
+                              return const _AffPill('모든 소속');
+                            }
+                            final names = [
+                              for (final a
+                                  in snap.data ?? const <Affiliation>[])
+                                if (me.affiliationIds.contains(a.id)) a.name,
+                            ];
+                            if (names.isEmpty) return const _AffPill('미배정');
+                            return Wrap(
+                              spacing: 6,
+                              runSpacing: 6,
+                              children: [for (final n in names) _AffPill(n)],
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ],
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// 소속 이름 알약.
+class _AffPill extends StatelessWidget {
+  const _AffPill(this.name);
+
+  final String name;
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = context.palette;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+      decoration: BoxDecoration(
+        color: palette.surface,
+        borderRadius: BorderRadius.circular(99),
+        border: Border.all(color: palette.border),
+      ),
+      child: Text(
+        name,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: TextStyle(color: palette.ink, fontSize: 12.5),
       ),
     );
   }

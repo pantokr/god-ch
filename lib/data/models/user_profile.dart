@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../firestore_codec.dart';
 
 /// 앱 가입 때 받은 회원 정보. 이름·전화번호와 개인정보 제3자 제공 동의 기록을 담는다.
+/// 주소 · 생년월일은 여기에 없다: 교회마다 다를 수 있어 입장할 때 교회에 한 번 제출한다 ([Member]).
 class UserProfile {
   const UserProfile({
     required this.uid,
@@ -11,8 +12,6 @@ class UserProfile {
     required this.consentThirdParty,
     this.loginId,
     this.email = '',
-    this.address = '',
-    this.birthDate = '',
     this.photoUrl = '',
     this.createdAt,
     this.withdrawn = false,
@@ -27,12 +26,6 @@ class UserProfile {
   final String email;
   final String name;
   final String phone;
-
-  /// 선택 입력. 교회가 초대 코드로 필수로 요청할 수 있다.
-  final String address;
-
-  /// YYYY-MM-DD 형식. 선택 입력.
-  final String birthDate;
 
   /// 썸네일(프로필 사진) 이미지 주소. 없으면 빈 문자열.
   final String photoUrl;
@@ -52,8 +45,6 @@ class UserProfile {
       email: d['email'] as String? ?? '',
       name: d['name'] as String? ?? '',
       phone: d['phone'] as String? ?? '',
-      address: d['address'] as String? ?? '',
-      birthDate: d['birthDate'] as String? ?? '',
       photoUrl: d['photoUrl'] as String? ?? '',
       consentThirdParty: d['consentThirdParty'] as bool? ?? false,
       createdAt: toDate(d['createdAt']),

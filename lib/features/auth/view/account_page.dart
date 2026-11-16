@@ -7,15 +7,15 @@ import '../../../core/widgets/labeled_field.dart';
 import '../../../app/app_scope.dart';
 import '../../../app/routes.dart';
 import '../../../core/app_exception.dart';
-import '../../../core/back_navigation.dart';
 import '../../../core/layout/app_dialog.dart';
 import '../../../core/layout/profile_summary.dart';
+import '../../../core/layout/sub_page.dart';
 import '../../../core/theme.dart';
 import 'change_password_form.dart';
 import 'my_affiliations_card.dart';
 import 'profile_edit_dialog.dart';
 
-/// 내 정보 페이지(프로필 사진을 누르면 열린다): 사진 · 이름 · 연락처 · 주소 · 생년월일을 고친다.
+/// 내 정보 페이지(프로필 사진을 누르면 열린다): 사진 · 이름 · 전화번호를 고치고, 속한 교회별 제출 정보를 본다.
 /// 비밀번호는 같은 화면의 "비밀번호 수정"을 눌렀을 때 팝업으로 바꾼다 (아이디로 가입한 계정만).
 /// 앱 자체에 관한 것(화면 모드 · 앱 정보)은 설정 창에 있다.
 class AccountPage extends StatelessWidget {
@@ -40,82 +40,64 @@ class AccountPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final auth = AppScope.read(context).auth;
     final palette = context.palette;
-    return Scaffold(
-      appBar: AppBar(
-        leading: IconButton(
-          tooltip: '뒤로',
-          icon: const Icon(AppIcons.arrowLeft),
-          onPressed: () => context.goBack(Routes.churches),
-        ),
-      ),
-      body: SingleChildScrollView(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 560),
+    // 다른 페이지처럼 상단 탭(뒤로가기 + 제목)과 너비를 꽉 채우는 카드들로 구성한다.
+    return SubPage(
+      title: '',
+      barTitle: '내 정보',
+      fallbackLocation: Routes.churches,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Card(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 28, 16, 48),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(28),
-                      child: ProfileEditDialog(
-                        name: auth.displayName,
-                        details: details,
-                        embedded: true,
-                      ),
-                    ),
-                  ),
-                  // 내가 속한 교회와 소속 (여러 개일 수 있고, 소속은 교역자가 정한다).
-                  const MyAffiliationsCard(),
-                  if (auth.hasPassword) ...[
-                    const SizedBox(height: 20),
-                    Card(
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(28, 20, 20, 20),
-                        child: Row(
-                          children: [
-                            Icon(AppIcons.lock, color: palette.muted),
-                            const SizedBox(width: 14),
-                            const Expanded(
-                              child: Text('비밀번호', style: TextStyle()),
-                            ),
-                            OutlinedButton(
-                              onPressed: () => _changePassword(context),
-                              child: const Text('비밀번호 수정'),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                  if (auth.hasPassword) ...[
-                    const SizedBox(height: 20),
-                    Card(
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(28, 20, 20, 20),
-                        child: Row(
-                          children: [
-                            Icon(AppIcons.signOut, color: palette.muted),
-                            const SizedBox(width: 14),
-                            const Expanded(
-                              child: Text('앱 탈퇴', style: TextStyle()),
-                            ),
-                            OutlinedButton(
-                              onPressed: () => _deleteAccount(context),
-                              child: const Text('앱 탈퇴'),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ],
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 24),
+              child: ProfileEditDialog(
+                name: auth.displayName,
+                details: details,
+                embedded: true,
               ),
             ),
           ),
-        ),
+          // 내가 속한 교회와 소속 (여러 개일 수 있고, 소속은 교역자가 정한다).
+          const MyAffiliationsCard(),
+          if (auth.hasPassword) ...[
+            const SizedBox(height: 12),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 12, 12),
+                child: Row(
+                  children: [
+                    Icon(AppIcons.lock, color: palette.muted),
+                    const SizedBox(width: 14),
+                    const Expanded(child: Text('비밀번호')),
+                    OutlinedButton(
+                      onPressed: () => _changePassword(context),
+                      child: const Text('비밀번호 수정'),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 12, 12),
+                child: Row(
+                  children: [
+                    Icon(AppIcons.signOut, color: palette.muted),
+                    const SizedBox(width: 14),
+                    const Expanded(child: Text('앱 탈퇴')),
+                    OutlinedButton(
+                      onPressed: () => _deleteAccount(context),
+                      child: const Text('앱 탈퇴'),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+          const SizedBox(height: 32),
+        ],
       ),
     );
   }

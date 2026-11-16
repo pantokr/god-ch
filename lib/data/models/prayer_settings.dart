@@ -18,6 +18,7 @@ class PrayerSettings {
     this.allowComments = true,
     this.showViews = true,
     this.showAuthor = true,
+    this.allowAnonymous = false,
   });
 
   static const standard = PrayerSettings();
@@ -49,6 +50,9 @@ class PrayerSettings {
   /// 글쓴이(이름)를 보여 주는가.
   final bool showAuthor;
 
+  /// 글쓴이가 자기 글의 작성자를 비공개(익명)로 할 수 있게 허용하는가. 비공개 글은 본인과 교역자 이상만 글쓴이를 본다. (규칙이 막는다)
+  final bool allowAnonymous;
+
   /// 응원 기능을 쓰는가.
   bool get reactionsOn => reactions.isNotEmpty;
 
@@ -68,6 +72,7 @@ class PrayerSettings {
     bool? allowComments,
     bool? showViews,
     bool? showAuthor,
+    bool? allowAnonymous,
   }) => PrayerSettings(
     allowPrivate: allowPrivate ?? this.allowPrivate,
     reactions: reactions ?? this.reactions,
@@ -78,6 +83,7 @@ class PrayerSettings {
     allowComments: allowComments ?? this.allowComments,
     showViews: showViews ?? this.showViews,
     showAuthor: showAuthor ?? this.showAuthor,
+    allowAnonymous: allowAnonymous ?? this.allowAnonymous,
   );
 
   factory PrayerSettings.fromDoc(DocumentSnapshot<Json> doc) {
@@ -96,6 +102,7 @@ class PrayerSettings {
       allowComments: flag('allowComments', true),
       showViews: flag('showViews', true),
       showAuthor: flag('showAuthor', true),
+      allowAnonymous: flag('allowAnonymous', false),
     );
   }
 
@@ -112,6 +119,7 @@ class PrayerSettings {
     'allowComments': allowComments,
     'showViews': showViews,
     'showAuthor': showAuthor,
+    'allowAnonymous': allowAnonymous,
   };
 
   @override

@@ -16,6 +16,7 @@ import '../../../core/icons.dart';
 import '../../../core/layout/app_dialog.dart';
 import '../../../core/layout/confirm_dialog.dart';
 import '../../../core/layout/page_frame.dart';
+import '../../../core/layout/discard_guard.dart';
 import '../../../core/layout/sub_page.dart';
 import '../../../core/mvvm/view_model.dart';
 import '../../../core/mvvm/view_model_builder.dart';
@@ -538,6 +539,29 @@ class _PositionFormViewState extends State<_PositionFormView> {
     if (on) set.add('*');
   });
 
+  // 처음 값: 이와 다르면 저장하지 않은 내용이 있는 것이다 (처음 그릴 때 잡는다).
+  late final String _name0 = _name.text;
+  late final String _icon0 = _icon;
+  late final int _color0 = _color;
+  late final Map<String, Set<String>> _scope0 = {
+    for (final e in _scope.entries) e.key: {...e.value},
+  };
+
+  bool get _dirty {
+    if (_name.text.trim() != _name0.trim() ||
+        _icon != _icon0 ||
+        _color != _color0) {
+      return true;
+    }
+    for (final e in _scope.entries) {
+      final before = _scope0[e.key] ?? const <String>{};
+      if (e.value.length != before.length || !e.value.containsAll(before)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   @override
   void dispose() {
     _name.dispose();
@@ -545,7 +569,13 @@ class _PositionFormViewState extends State<_PositionFormView> {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => DiscardGuard(
+    isDirty: () => _dirty,
+    listenable: _name,
+    child: _content(context),
+  );
+
+  Widget _content(BuildContext context) {
     // 표는 화면 너비를 채우고, 제목 · 입력칸 · 버튼은 글 여백 안에 놓인다 (기능 설정 화면과 같다).
     Widget gutter(Widget w) => Padding(
       padding: EdgeInsets.symmetric(horizontal: textGutter(context)),

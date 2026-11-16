@@ -122,6 +122,7 @@ class PrayerRepository {
     required String content,
     required PrayerVisibility visibility,
     String? affiliationId,
+    bool authorHidden = false,
   }) {
     final id = newId();
     return _paths
@@ -133,6 +134,7 @@ class PrayerRepository {
           'affiliationId': affiliationId,
           'content': content,
           'visibility': visibility.name,
+          'authorHidden': authorHidden,
           'deleted': false,
           'views': 0,
           'createdAt': FieldValue.serverTimestamp(),
@@ -151,12 +153,14 @@ class PrayerRepository {
     String id, {
     required String content,
     required PrayerVisibility visibility,
+    bool authorHidden = false,
   }) => _paths
       .prayers(churchId)
       .doc(id)
       .update({
         'content': content,
         'visibility': visibility.name,
+        'authorHidden': authorHidden,
         'updatedAt': FieldValue.serverTimestamp(),
       })
       .logged(
@@ -430,19 +434,10 @@ class PrayerRepository {
     await batch.commit();
   }
 
-  /// 교역자가 타인의 비공개 글을 열람할 때 남기는 기록.
-  Future<void> logPrivateAccess(String churchId, String prayerId) => _paths
-      .accessLogs(churchId)
-      .add({
-        'staffId': _auth.uid,
-        'prayerId': prayerId,
-        'at': FieldValue.serverTimestamp(),
-      })
-      .logged(
-        activity,
-        ActivityType.privatePrayerView,
-        churchId: churchId,
-        targetId: prayerId,
-      )
-      .then((_) {});
+  /// 교역자가 타인의 비공개 글을 열람할 때 남기는 기록 (최상위 `activityLogs`, 앱 운영자 > 활동 기록에서 본다).
+  void logPrivateAccess(String churchId, String prayerId) => activity?.log(
+    ActivityType.privatePrayerView,
+    churchId: churchId,
+    targetId: prayerId,
+  );
 }

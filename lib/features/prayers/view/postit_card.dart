@@ -300,7 +300,7 @@ class PostItNote extends StatelessWidget {
                         const SizedBox(height: 3),
                       ],
                       Text(
-                        prayer.authorName,
+                        prayer.authorLabel(me.id, staff: me.isStaff),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
@@ -340,7 +340,7 @@ class PostItNote extends StatelessWidget {
                           Expanded(
                             child: Text(
                               [
-                                fmtDateTime(prayer.createdAt),
+                                fmtPosted(prayer.createdAt),
                                 ?subtitle,
                               ].join(' · '),
                               maxLines: 1,

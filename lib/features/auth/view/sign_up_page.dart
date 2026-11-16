@@ -16,7 +16,6 @@ import '../data/login_id.dart';
 import '../data/password_rule.dart';
 import '../view_model/sign_up_view_model.dart';
 import 'consent_checkbox.dart';
-import 'profile_extra_fields.dart';
 
 /// 회원가입: ID, 비밀번호, 이름, 전화번호, (선택) 주소·생년월일, 개인정보 제3자 제공 동의.
 class SignUpPage extends StatefulWidget {
@@ -33,8 +32,6 @@ class _SignUpPageState extends State<SignUpPage> {
   final _passwordConfirm = TextEditingController();
   final _name = TextEditingController();
   final _phone = TextEditingController();
-  final _address = TextEditingController();
-  final _birthDate = TextEditingController();
   bool _consent = false;
 
   @override
@@ -44,8 +41,6 @@ class _SignUpPageState extends State<SignUpPage> {
     _passwordConfirm.dispose();
     _name.dispose();
     _phone.dispose();
-    _address.dispose();
-    _birthDate.dispose();
     super.dispose();
   }
 
@@ -57,8 +52,6 @@ class _SignUpPageState extends State<SignUpPage> {
         password: _password.text,
         name: _name.text,
         phone: _phone.text,
-        address: _address.text,
-        birthDate: _birthDate.text,
         consentThirdParty: _consent,
       ),
     );
@@ -150,13 +143,6 @@ class _SignUpPageState extends State<SignUpPage> {
                           : null,
                     ),
                   ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              _FieldGroup(
-                title: '추가 정보 (선택)',
-                children: [
-                  ProfileExtraFields(address: _address, birthDate: _birthDate),
                 ],
               ),
               const SizedBox(height: 16),

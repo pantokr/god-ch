@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../app/app_scope.dart';
 import '../../../app/preferences_controller.dart';
+import '../../../core/format.dart';
 import '../../../core/layout/page_frame.dart';
 import '../../../core/theme.dart';
 import '../../../core/widgets/choice_row.dart';
@@ -37,21 +38,55 @@ class PreferencesPage extends StatelessWidget {
                       value: prefs.textSize,
                       onChanged: prefs.setTextSize,
                     ),
+                    // 글 · 댓글 · 알림의 작성 시각: 몇 분 전 / 11.09 14:05
+                    ChoiceRow<DateStyle>(
+                      label: '일시 표기',
+                      options: [
+                        for (final d in DateStyle.values)
+                          ChoiceOption(d, d.label),
+                      ],
+                      value: prefs.dateStyle,
+                      onChanged: prefs.setDateStyle,
+                    ),
+                    // 중보기도와 말씀묵상의 카드 글씨가 같은 크기를 쓴다 (아래 라디오 줄과 같은 칸에 놓인다).
+                    _Palette(
+                      label: '카드 글씨 크기',
+                      cells: true,
+                      children: [
+                        for (final t in TextSize.values)
+                          _Choice(
+                            label: t.label,
+                            selected: t == prefs.sizeOf('bible'),
+                            onTap: () => prefs.setSize('bible', t),
+                            child: Text(
+                              '가',
+                              style: TextStyle(
+                                fontSize: 14 * t.factor * 1.25,
+                                color: context.palette.ink,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                    // 중보기도와 말씀묵상의 카드가 같은 색을 쓴다.
+                    _Palette(
+                      label: '카드 색상',
+                      single: true,
+                      children: [
+                        for (final t in ScreenTint.values)
+                          _Swatch(
+                            tint: t,
+                            selected: t == prefs.tintOf('bible'),
+                            onTap: () => prefs.setTint('bible', t),
+                          ),
+                      ],
+                    ),
                   ],
                 ),
                 const SizedBox(height: 16),
-                _ScreenGroup(
-                  prefs: prefs,
-                  title: '중보기도',
-                  screen: 'prayer',
-                  extras: [],
-                ),
-                const SizedBox(height: 16),
-                _ScreenGroup(
-                  prefs: prefs,
+                _Group(
                   title: '말씀묵상',
-                  screen: 'bible',
-                  extras: [
+                  children: [
                     ChoiceRow<DevotionDesign>(
                       label: '디자인',
                       options: [
@@ -87,66 +122,6 @@ class PreferencesPage extends StatelessWidget {
   }
 }
 
-/// 화면 하나의 묶음: 미리보기 하나와 그 아래 색상 · 글씨 크기 · 글꼴 팔레트, 그 화면만의 항목들.
-class _ScreenGroup extends StatelessWidget {
-  const _ScreenGroup({
-    required this.prefs,
-    required this.title,
-    required this.screen,
-    this.extras = const [],
-  });
-
-  final PreferencesController prefs;
-  final String title;
-  final String screen;
-  final List<Widget> extras;
-
-  @override
-  Widget build(BuildContext context) {
-    final tint = prefs.tintOf(screen);
-    final size = prefs.sizeOf(screen);
-    final dark = Theme.of(context).brightness == Brightness.dark;
-    return _Group(
-      title: title,
-      children: [
-        _Palette(
-          label: '색상',
-          children: [
-            for (final t in ScreenTint.values)
-              _Swatch(
-                tint: t,
-                dark: dark,
-                selected: t == tint,
-                onTap: () => prefs.setTint(screen, t),
-              ),
-          ],
-        ),
-        _Palette(
-          label: '글씨 크기',
-          // 아래 라디오 줄(2 · 3개)과 같은 칸에 놓이고 크기도 모두 같다.
-          cells: true,
-          children: [
-            for (final s in TextSize.values)
-              _Choice(
-                label: s.label,
-                selected: s == size,
-                onTap: () => prefs.setSize(screen, s),
-                child: Text(
-                  '가',
-                  style: TextStyle(
-                    fontSize: 14 * s.factor * 1.25,
-                    color: context.palette.ink,
-                  ),
-                ),
-              ),
-          ],
-        ),
-        ...extras,
-      ],
-    );
-  }
-}
-
 /// 팔레트 한 줄: 이름표(왼쪽 칸)와 선택지들이 한 줄에 놓인다 (좁으면 이름표가 위로 올라간다).
 /// [cells]면 선택지가 라디오 줄([ChoiceRadios])과 같은 칸 너비로 놓여, 줄이 달라도 같은 열에 맞는다.
 class _Palette extends StatelessWidget {
@@ -154,11 +129,15 @@ class _Palette extends StatelessWidget {
     required this.label,
     required this.children,
     this.cells = false,
+    this.single = false,
   });
 
   final String label;
   final List<Widget> children;
   final bool cells;
+
+  /// 선택지(동그라미)가 줄바꿈 없이 한 줄에 다 놓인다.
+  final bool single;
 
   static const _gap = 10.0;
 
@@ -185,10 +164,33 @@ class _Palette extends StatelessWidget {
     },
   );
 
+  /// 선택지가 늘 한 줄에 놓이게, 칸이 모자라면 동그라미 지름을 줄인다 (최대 [_Swatch.maxSize]).
+  Widget _singleRow() => LayoutBuilder(
+    builder: (context, box) {
+      final n = children.length;
+      final fit = (box.maxWidth - _gap * (n - 1)) / n;
+      final size = fit.clamp(0.0, _Swatch.maxSize);
+      return Align(
+        alignment: Alignment.centerLeft,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (var i = 0; i < n; i++) ...[
+              if (i > 0) const SizedBox(width: _gap),
+              SizedBox(width: size, height: size, child: children[i]),
+            ],
+          ],
+        ),
+      );
+    },
+  );
+
   @override
   Widget build(BuildContext context) {
     final items = cells
         ? _cellRow()
+        : single
+        ? _singleRow()
         : Wrap(spacing: _gap, runSpacing: _gap, children: children);
     return LayoutBuilder(
       builder: (context, box) {
@@ -227,29 +229,30 @@ class _Palette extends StatelessWidget {
 class _Swatch extends StatelessWidget {
   const _Swatch({
     required this.tint,
-    required this.dark,
     required this.selected,
     required this.onTap,
   });
 
   final ScreenTint tint;
-  final bool dark;
   final bool selected;
   final VoidCallback onTap;
+
+  /// 동그라미의 가장 큰 지름.
+  static const maxSize = 40.0;
 
   @override
   Widget build(BuildContext context) {
     final palette = context.palette;
-    final color =
-        tint.colorFor(dark ? Brightness.dark : Brightness.light) ?? palette.bg;
+    // 다크 모드에서도 라이트 모드와 같은 색 팔레트가 보인다 (기본은 라이트의 바탕색).
+    // 화면에 실제로 입히는 색은 어두운 쪽 짝이라 글자가 읽힌다.
+    final color = tint.colorFor(Brightness.light) ?? AppPalette.light.bg;
     return Tooltip(
       message: tint.label,
       child: GestureDetector(
         onTap: onTap,
         behavior: HitTestBehavior.opaque,
+        // 놓이는 칸(정사각형)을 가득 채운다: 칸 크기는 줄이 정한다 ([maxSize] 이하).
         child: Container(
-          width: 40,
-          height: 40,
           decoration: BoxDecoration(
             color: color,
             shape: BoxShape.circle,

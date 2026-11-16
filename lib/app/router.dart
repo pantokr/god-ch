@@ -19,7 +19,9 @@ import '../features/meetings/view/meeting_participants_page.dart';
 import '../features/church/view/my_churches_route.dart';
 import '../features/platform/view/activity_log_page.dart';
 import '../features/platform/view/church_registry_page.dart';
+import '../features/inquiry/view/inquiry_page.dart';
 import '../features/platform/view/dashboard_page.dart';
+import '../features/platform/view/inquiries_page.dart';
 import '../features/platform/view/platform_shell_route.dart';
 import '../features/platform/view/users_page.dart';
 import '../features/prayers/view/prayer_routes.dart';
@@ -68,6 +70,10 @@ GoRouter buildRouter(SessionNotifier session) {
             ),
           );
         },
+      ),
+      GoRoute(
+        path: Routes.inquiry,
+        builder: (context, state) => const InquiryPage(),
       ),
       GoRoute(
         path: Routes.explore,
@@ -277,6 +283,7 @@ GoRouter buildRouter(SessionNotifier session) {
           _platformRoute(Routes.adminChurches, const ChurchRegistryPage()),
           _platformRoute(Routes.adminUsers, const UsersPage()),
           _platformRoute(Routes.adminActivity, const ActivityLogPage()),
+          _platformRoute(Routes.adminInquiries, const InquiriesPage()),
         ],
       ),
     ],

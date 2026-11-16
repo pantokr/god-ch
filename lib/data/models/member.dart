@@ -49,7 +49,7 @@ class Member {
   /// Google 계정의 이메일 (ID로 가입한 교인은 없다).
   final String email;
 
-  /// 입장을 신청할 때 회원 프로필에서 가져온 정보 (선택 입력).
+  /// 입장할 때 이 교회에 한 번 제출한 정보 (교회가 요청하지 않았으면 비어 있다). 교회마다 따로 내고, 낸 뒤에는 교인이 고치지 못한다.
   final String address;
   final String birthDate;
 

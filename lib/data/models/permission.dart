@@ -131,7 +131,7 @@ enum Permission {
   ),
   prayerModerate(
     'prayer.moderate',
-    '중보기도 타인 글 수정 · 교역자 응답 (교역자 이상)',
+    '비공개 중보기도 교역자 응답 (교역자 이상)',
     PermissionGroup.fixed,
     grantable: false,
     staffDefault: true,

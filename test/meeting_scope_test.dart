@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:god_ch/data/models/meeting.dart';
+import 'package:god_ch/data/models/member.dart';
 import 'package:god_ch/features/meetings/data/meeting_repository.dart';
 import 'package:god_ch/features/meetings/view_model/meetings_view_model.dart';
 import 'package:god_ch/features/meetings/view_model/all_meetings_view_model.dart';
@@ -33,6 +34,16 @@ Meeting _meeting(
   likedBy: liked,
 );
 
+Member _me(List<String> affiliations, {Role role = Role.member}) => Member(
+  id: 'me',
+  churchId: 'c',
+  churchName: '교회',
+  name: '나',
+  role: role,
+  status: MemberStatus.approved,
+  affiliationIds: affiliations,
+);
+
 void main() {
   test('공개 범위가 비어 있으면 모두 참여할 수 있다', () {
     expect(
@@ -57,8 +68,47 @@ void main() {
     expect(vm.shows(ended), isFalse);
     expect(vm.shows(full), isTrue);
     expect(vm.shows(open), isFalse);
-    vm.setFilter(MeetingFilter.all);
-    expect(vm.shows(ended), isTrue);
+    // 오는 일정: 종료 전이면 정원이 차도 나오고, 종료된 모임은 나오지 않는다.
+    vm.setFilter(MeetingFilter.upcoming);
+    expect(vm.shows(ended), isFalse);
+    expect(vm.shows(full), isTrue);
+    expect(vm.shows(open), isTrue);
+    expect(MeetingFilter.upcoming.label, '오는 일정');
+  });
+
+  test('목록은 공개 범위 안의 일정만 보인다 (모든 보기)', () {
+    final vm = MeetingsViewModel(_Repo(), 'c', '이름');
+    final everyone = _meeting([]);
+    final mine = _meeting(['a', 'x']);
+    final others = _meeting(['b']);
+    final all = [everyone, mine, others];
+    final member = _me(['a']);
+    for (final f in MeetingFilter.values) {
+      vm.setFilter(f);
+      final shown = vm.apply(all, member);
+      expect(shown.contains(others), isFalse, reason: f.name);
+    }
+    vm.setFilter(MeetingFilter.upcoming);
+    expect(vm.apply(all, member).toSet(), {everyone, mine});
+    // 소속이 없는 교인은 교회 전체 일정만, 교역자 이상은 모두 본다.
+    expect(vm.apply(all, _me([])).toSet(), {everyone});
+    expect(vm.apply(all, _me([], role: Role.staff)).toSet(), {
+      everyone,
+      mine,
+      others,
+    });
+  });
+
+  test('내 일정 관리에도 내 소속이 아닌 일정은 나오지 않는다', () {
+    final vm = MyMeetingsViewModel(_Repo(), 'c', 'me');
+    final inScope = _meeting(['a'], joined: ['me']);
+    final outOfScope = _meeting(['b'], joined: ['me'], liked: ['me']);
+    final likedOut = _meeting(['b'], liked: ['me']);
+    final all = [inScope, outOfScope, likedOut];
+    final member = _me(['a']);
+    expect(vm.apply(all, member), [inScope]);
+    vm.setView(MyMeetingView.liked);
+    expect(vm.apply(all, member), isEmpty);
   });
 
   test('내 일정 관리: 참여 예정 · 관심 일정 · 참여 완료는 한 묶음', () {
@@ -78,11 +128,12 @@ void main() {
       other,
     ];
 
-    expect(vm.apply(all), [madeNext, joinedNext]);
+    final me = _me([]);
+    expect(vm.apply(all, me), [madeNext, joinedNext]);
     vm.setView(MyMeetingView.liked);
-    expect(vm.apply(all), [likedOnly]);
+    expect(vm.apply(all, me), [likedOnly]);
     vm.setView(MyMeetingView.attended);
-    expect(vm.apply(all), [madeEnded, joinedEnded]);
+    expect(vm.apply(all, me), [madeEnded, joinedEnded]);
   });
 
   test('전체 일정 조회: 범위로 거르고 제목 · 작성자로 검색한다', () {

@@ -30,6 +30,7 @@ class PlatformShell extends StatelessWidget {
     PlatformSection.churches: '교회 관리',
     PlatformSection.users: '회원 관리',
     PlatformSection.activity: '활동 기록',
+    PlatformSection.inquiries: '문의',
   };
 
   static const _icons = {
@@ -37,6 +38,7 @@ class PlatformShell extends StatelessWidget {
     PlatformSection.churches: (AppIcons.church, AppIcons.churchFill),
     PlatformSection.users: (AppIcons.users, AppIcons.usersFill),
     PlatformSection.activity: (AppIcons.history, AppIcons.history),
+    PlatformSection.inquiries: (AppIcons.inquiry, AppIcons.inquiry),
   };
 
   @override
@@ -47,6 +49,8 @@ class PlatformShell extends StatelessWidget {
       onProfile: () => context.push(Routes.account),
       onSignOut: onSignOut,
       railActions: const [NotificationsButton()],
+      // 앱 운영자는 문의를 받는 쪽이다.
+      showInquiry: false,
       groups: [
         SidebarGroup(
           title: '앱 운영',

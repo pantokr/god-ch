@@ -12,6 +12,7 @@ import '../features/church/data/church_closure_repository.dart';
 import '../features/church/data/church_repository.dart';
 import '../features/church/data/church_request_repository.dart';
 import '../features/home/data/content_repository.dart';
+import '../features/inquiry/data/inquiry_repository.dart';
 import '../features/meetings/data/meeting_repository.dart';
 import '../features/home/data/reflection_repository.dart';
 import '../features/members/data/member_repository.dart';
@@ -46,6 +47,7 @@ class AppScope extends InheritedWidget {
     required this.notifications,
     required this.bible,
     required this.activityLogs,
+    required this.inquiries,
     required super.child,
   });
 
@@ -76,6 +78,9 @@ class AppScope extends InheritedWidget {
 
   /// 회원별 접속 · 활동 기록 (앱 운영자가 조회한다).
   final ActivityLogRepository activityLogs;
+
+  /// 앱 운영자에게 보내는 문의와 답변.
+  final InquiryRepository inquiries;
 
   /// 위젯 상태를 만들 때(initState 등)도 쓸 수 있도록 의존성 등록 없이 읽는다.
   static AppScope read(BuildContext context) {

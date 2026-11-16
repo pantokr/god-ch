@@ -1,5 +1,3 @@
-import '../../../core/icons.dart';
-
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -43,7 +41,6 @@ class PrayerWriteFab extends StatelessWidget {
           }
           return CreateFab(
             label: '중보기도 요청',
-            icon: AppIcons.pencilSimple,
             onTap: () => context.push(
               Routes.newPrayer(me.churchId, aff: affiliation?.id),
             ),

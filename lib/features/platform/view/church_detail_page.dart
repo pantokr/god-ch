@@ -6,6 +6,7 @@ import '../../../app/app_scope.dart';
 import '../../../core/format.dart';
 import '../../../core/icons.dart';
 import '../../../core/layout/confirm_dialog.dart';
+import '../../../core/layout/discard_guard.dart';
 import '../../../core/layout/sub_page.dart';
 import '../../../core/mvvm/view_model_builder.dart';
 import '../../../core/theme.dart';
@@ -79,6 +80,13 @@ class _ChurchDetailPageState extends State<ChurchDetailPage> {
     super.dispose();
   }
 
+  /// 입력한 내용이 불러온 값과 다른가 (저장하지 않은 내용).
+  bool _dirty() =>
+      _name.text.trim() != widget.church.name.trim() ||
+      _phone.text.trim() != widget.church.phone.trim() ||
+      _address.text.trim() != widget.church.address.trim() ||
+      _thumbnail.text.trim() != widget.church.thumbnailUrl.trim();
+
   Future<void> _save() async {
     if (!_form.currentState!.validate()) return;
     final navigator = Navigator.of(context);
@@ -125,146 +133,151 @@ class _ChurchDetailPageState extends State<ChurchDetailPage> {
       initialData: widget.church,
       builder: (context, snap) {
         final church = snap.data ?? widget.church;
-        return ListenableBuilder(
-          listenable: widget.vm,
-          builder: (context, _) => Form(
-            key: _form,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // 머리: 썸네일 · 이름 · 상태 표시
-                Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(20),
-                    child: Row(
-                      children: [
-                        ThumbnailAvatar(
-                          name: church.name,
-                          url: church.thumbnailUrl,
-                          radius: 28,
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                church.name,
-                                style: theme.textTheme.titleLarge,
-                              ),
-                              const SizedBox(height: 4),
-                              Wrap(
-                                spacing: 6,
-                                children: [
-                                  _Tag(
-                                    church.closed ? '폐쇄' : '운영 중',
-                                    warn: church.closed,
-                                  ),
-                                  _Tag(church.listed ? '공개' : '비공개'),
-                                ],
-                              ),
-                            ],
+        return DiscardGuard(
+          isDirty: _dirty,
+          listenable: Listenable.merge([_name, _phone, _address, _thumbnail]),
+          child: ListenableBuilder(
+            listenable: widget.vm,
+            builder: (context, _) => Form(
+              key: _form,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // 머리: 썸네일 · 이름 · 상태 표시
+                  Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Row(
+                        children: [
+                          ThumbnailAvatar(
+                            name: church.name,
+                            url: church.thumbnailUrl,
+                            radius: 28,
                           ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  church.name,
+                                  style: theme.textTheme.titleLarge,
+                                ),
+                                const SizedBox(height: 4),
+                                Wrap(
+                                  spacing: 6,
+                                  children: [
+                                    _Tag(
+                                      church.closed ? '폐쇄' : '운영 중',
+                                      warn: church.closed,
+                                    ),
+                                    _Tag(church.listed ? '공개' : '비공개'),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                          // 교회 이동은 작은 버튼으로 둔다.
+                          IconButton(
+                            tooltip: '교회로 이동',
+                            onPressed: () {
+                              Navigator.pop(context);
+                              widget.onOpen();
+                            },
+                            icon: const Icon(AppIcons.arrowRight, size: 20),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  _Section(
+                    title: '현황',
+                    child: _Summary(church: church),
+                  ),
+                  const SizedBox(height: 12),
+                  _Section(
+                    title: '교회 정보',
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        ThumbnailField(
+                          controller: _thumbnail,
+                          name: widget.church.name,
+                          label: '썸네일 이미지',
+                          upload: (fileName, bytes) =>
+                              widget.vm.uploadThumbnail(
+                                widget.church.id,
+                                fileName,
+                                bytes,
+                              ),
                         ),
-                        // 교회 이동은 작은 버튼으로 둔다.
-                        IconButton(
-                          tooltip: '교회로 이동',
-                          onPressed: () {
-                            Navigator.pop(context);
-                            widget.onOpen();
-                          },
-                          icon: const Icon(AppIcons.arrowRight, size: 20),
+                        AppField.spacer,
+                        ChurchInfoFields(
+                          name: _name,
+                          phone: _phone,
+                          address: _address,
+                          autofocus: false,
+                        ),
+                        const SizedBox(height: 16),
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: FilledButton(
+                            onPressed: widget.vm.busy ? null : _save,
+                            child: const Text('저장'),
+                          ),
                         ),
                       ],
                     ),
                   ),
-                ),
-                const SizedBox(height: 12),
-                _Section(
-                  title: '현황',
-                  child: _Summary(church: church),
-                ),
-                const SizedBox(height: 12),
-                _Section(
-                  title: '교회 정보',
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      ThumbnailField(
-                        controller: _thumbnail,
-                        name: widget.church.name,
-                        label: '썸네일 이미지',
-                        upload: (fileName, bytes) => widget.vm.uploadThumbnail(
-                          widget.church.id,
-                          fileName,
-                          bytes,
-                        ),
-                      ),
-                      AppField.spacer,
-                      ChurchInfoFields(
-                        name: _name,
-                        phone: _phone,
-                        address: _address,
-                        autofocus: false,
-                      ),
-                      const SizedBox(height: 16),
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: FilledButton(
-                          onPressed: widget.vm.busy ? null : _save,
-                          child: const Text('저장'),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 12),
-                _Section(
-                  title: '조치',
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      OutlinedButton.icon(
-                        onPressed: widget.vm.busy
-                            ? null
-                            : () => _toggleListed(church),
-                        icon: Icon(
-                          church.listed ? AppIcons.prohibit : AppIcons.church,
-                          size: 18,
-                        ),
-                        label: Text(church.listed ? '비공개로 전환' : '공개 탐색에 노출'),
-                      ),
-                      const SizedBox(height: 8),
-                      OutlinedButton.icon(
-                        onPressed: widget.vm.busy
-                            ? null
-                            : () => _toggleClosed(church),
-                        style: church.closed
-                            ? null
-                            : OutlinedButton.styleFrom(
-                                foregroundColor: theme.colorScheme.error,
-                                side: BorderSide(
-                                  color: theme.colorScheme.error,
-                                ),
-                              ),
-                        icon: Icon(
-                          church.closed ? AppIcons.church : AppIcons.warning,
-                          size: 18,
-                        ),
-                        label: Text(church.closed ? '폐쇄 해제' : '교회 폐쇄'),
-                      ),
-                    ],
-                  ),
-                ),
-                if (widget.vm.error != null) ...[
                   const SizedBox(height: 12),
-                  Text(
-                    widget.vm.error!,
-                    style: TextStyle(color: theme.colorScheme.error),
+                  _Section(
+                    title: '조치',
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        OutlinedButton.icon(
+                          onPressed: widget.vm.busy
+                              ? null
+                              : () => _toggleListed(church),
+                          icon: Icon(
+                            church.listed ? AppIcons.prohibit : AppIcons.church,
+                            size: 18,
+                          ),
+                          label: Text(church.listed ? '비공개로 전환' : '공개 탐색에 노출'),
+                        ),
+                        const SizedBox(height: 8),
+                        OutlinedButton.icon(
+                          onPressed: widget.vm.busy
+                              ? null
+                              : () => _toggleClosed(church),
+                          style: church.closed
+                              ? null
+                              : OutlinedButton.styleFrom(
+                                  foregroundColor: theme.colorScheme.error,
+                                  side: BorderSide(
+                                    color: theme.colorScheme.error,
+                                  ),
+                                ),
+                          icon: Icon(
+                            church.closed ? AppIcons.church : AppIcons.warning,
+                            size: 18,
+                          ),
+                          label: Text(church.closed ? '폐쇄 해제' : '교회 폐쇄'),
+                        ),
+                      ],
+                    ),
                   ),
+                  if (widget.vm.error != null) ...[
+                    const SizedBox(height: 12),
+                    Text(
+                      widget.vm.error!,
+                      style: TextStyle(color: theme.colorScheme.error),
+                    ),
+                  ],
+                  const SizedBox(height: 32),
                 ],
-                const SizedBox(height: 32),
-              ],
+              ),
             ),
           ),
         );

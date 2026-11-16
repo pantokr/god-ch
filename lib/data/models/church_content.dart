@@ -2,6 +2,7 @@ import '../bible_reference.dart';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import '../../core/widgets/anonymous_author.dart' show anonymousName;
 import '../firestore_codec.dart';
 
 /// 교회가 올리는 글의 종류. [collection]이 `churches/{id}/` 아래 컬렉션 이름이다.
@@ -75,6 +76,7 @@ class ChurchContent {
     this.authorName = '',
     this.authorPhotoUrl = '',
     this.affiliationId,
+    this.authorHidden = false,
     this.createdAt,
     this.deleted = false,
   })
@@ -125,6 +127,22 @@ class ChurchContent {
 
   /// 글을 분류한 소속. 없으면 교회 전체다.
   final String? affiliationId;
+
+  /// 글쓴이가 작성자를 비공개(익명)로 한 글인가. 교회가 허용한 경우에만 쓸 수 있다.
+  final bool authorHidden;
+
+  /// 글쓴이가 [viewerId]에게 가려지는가: 작성자 비공개 글은 본인과 교역자 이상([staff])만 글쓴이를 본다.
+  /// 비공개는 글에 저장된 값을 따른다 (교회가 나중에 허용을 꺼도 이미 비공개로 한 글은 그대로 가려진다).
+  bool hidesAuthorFrom(String viewerId, {required bool staff}) =>
+      authorHidden && authorId != viewerId && !staff;
+
+  /// 글쓴이 줄에 보이는 이름: 가려지면 "익명", 본인과 교역자가 작성자 비공개 글을 보면 이름 뒤에 "(비공개)"가 붙는다.
+  String authorLabel(String viewerId, {required bool staff}) {
+    if (hidesAuthorFrom(viewerId, staff: staff)) return anonymousName;
+    final name = authorName.isEmpty ? '' : authorName;
+    return authorHidden ? '$name (비공개)' : name;
+  }
+
   final DateTime? createdAt;
 
   int get likes => likedBy.length;
@@ -154,6 +172,7 @@ class ChurchContent {
       authorName: d['authorName'] as String? ?? '',
       authorPhotoUrl: d['authorPhotoUrl'] as String? ?? '',
       affiliationId: d['affiliationId'] as String?,
+      authorHidden: d['authorHidden'] == true,
       createdAt: created,
       deleted: d['deleted'] == true,
     );

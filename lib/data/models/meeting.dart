@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../firestore_codec.dart';
+import 'member.dart';
 
 /// 교회 모임 한 건. 모임장이 만들고 교인이 참여를 신청한다.
 /// 참여자는 [participantIds](uid)에 담기고, [capacity]를 넘을 수 없다 (`firestore.rules`가 막는다).
@@ -87,6 +88,10 @@ class Meeting {
       this.affiliationIds.isEmpty ||
       isStaff ||
       this.affiliationIds.any(affiliationIds.contains);
+
+  /// [me]에게 보이는 일정인가: 공개 범위 안(교회 전체 · 내 소속 · 교역자 이상)의 일정만 목록에 나온다.
+  bool visibleTo(Member me) =>
+      openTo(isStaff: me.isStaff, affiliationIds: me.affiliationIds);
 
   bool joinedBy(String uid) => participantIds.contains(uid);
 

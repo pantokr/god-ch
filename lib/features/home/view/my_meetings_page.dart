@@ -122,7 +122,7 @@ class MyMeetingsPage extends StatelessWidget {
                               child: Center(child: AppLoader()),
                             );
                           }
-                          final items = vm.apply(snap.data!);
+                          final items = vm.apply(snap.data!, me);
                           if (items.isEmpty) return const EmptyHint('일정 없음');
                           return MeetingListView(
                             meetings: items,

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../core/widgets/toast.dart';
 
 import '../../../app/app_scope.dart';
+import '../../../core/exit_guard.dart';
 import '../../../core/format.dart';
 import '../../../core/layout/page_frame.dart';
 import '../../../core/mvvm/view_model_builder.dart';
@@ -44,6 +45,24 @@ class _ChurchInfoFormState extends State<ChurchInfoForm> {
     text: widget.church.thumbnailUrl,
   );
 
+  /// 마지막으로 저장한(또는 처음 불러온) 값. 이와 다르면 저장하지 않은 내용이 있는 것이다.
+  late List<String> _saved = _current();
+
+  List<String> _current() => [
+    _name.text.trim(),
+    _phone.text.trim(),
+    _address.text.trim(),
+    _thumbnail.text.trim(),
+  ];
+
+  bool _dirty() {
+    final now = _current();
+    for (var i = 0; i < now.length; i++) {
+      if (now[i] != _saved[i]) return true;
+    }
+    return false;
+  }
+
   @override
   void dispose() {
     _name.dispose();
@@ -64,6 +83,7 @@ class _ChurchInfoFormState extends State<ChurchInfoForm> {
       thumbnailUrl: _thumbnail.text,
     );
     if (ok) {
+      _saved = _current();
       showToastOn(messenger, '저장했어요.');
     }
   }
@@ -74,54 +94,57 @@ class _ChurchInfoFormState extends State<ChurchInfoForm> {
     return ViewModelBuilder<ChurchRegistryViewModel>(
       create: (context) =>
           ChurchRegistryViewModel(AppScope.read(context).churchRegistry),
-      builder: (context, vm) => SingleChildScrollView(
-        child: PageFrame(
-          inset: true,
-          child: Form(
-            key: _form,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                if (widget.title.isNotEmpty) PageTitle(title: widget.title),
-                ThumbnailField(
-                  controller: _thumbnail,
-                  name: widget.church.name,
-                  label: '썸네일 이미지',
-                  upload: (fileName, bytes) =>
-                      vm.uploadThumbnail(widget.church.id, fileName, bytes),
-                ),
-                AppField.spacer,
-                ChurchInfoFields(
-                  name: _name,
-                  phone: _phone,
-                  address: _address,
-                  autofocus: false,
-                ),
-                const SizedBox(height: 24),
-                _Summary(church: church),
-                if (vm.error != null) ...[
-                  const SizedBox(height: 12),
-                  Text(
-                    vm.error!,
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.error,
+      builder: (context, vm) => UnsavedGuard(
+        isDirty: _dirty,
+        child: SingleChildScrollView(
+          child: PageFrame(
+            inset: true,
+            child: Form(
+              key: _form,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (widget.title.isNotEmpty) PageTitle(title: widget.title),
+                  ThumbnailField(
+                    controller: _thumbnail,
+                    name: widget.church.name,
+                    label: '썸네일 이미지',
+                    upload: (fileName, bytes) =>
+                        vm.uploadThumbnail(widget.church.id, fileName, bytes),
+                  ),
+                  AppField.spacer,
+                  ChurchInfoFields(
+                    name: _name,
+                    phone: _phone,
+                    address: _address,
+                    autofocus: false,
+                  ),
+                  const SizedBox(height: 24),
+                  _Summary(church: church),
+                  if (vm.error != null) ...[
+                    const SizedBox(height: 12),
+                    Text(
+                      vm.error!,
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.error,
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 24),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: FilledButton(
+                      onPressed: vm.busy ? null : () => _save(vm),
+                      child: const Text('저장'),
                     ),
                   ),
-                ],
-                const SizedBox(height: 24),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: FilledButton(
-                    onPressed: vm.busy ? null : () => _save(vm),
-                    child: const Text('저장'),
-                  ),
-                ),
-                if (widget.footer != null) ...[
+                  if (widget.footer != null) ...[
+                    const SizedBox(height: 32),
+                    widget.footer!,
+                  ],
                   const SizedBox(height: 32),
-                  widget.footer!,
                 ],
-                const SizedBox(height: 32),
-              ],
+              ),
             ),
           ),
         ),

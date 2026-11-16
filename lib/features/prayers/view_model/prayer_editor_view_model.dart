@@ -15,6 +15,7 @@ class PrayerEditorViewModel extends ViewModel {
     this.existing,
     String? defaultAffiliationId,
   }) : _visibility = existing?.visibility ?? PrayerVisibility.public,
+       _authorHidden = existing?.authorHidden ?? false,
        _affiliationId = existing?.affiliationId ?? defaultAffiliationId {
     _settingsSub = _prayers.settings(me.churchId).listen((s) {
       _settings = s;
@@ -28,6 +29,7 @@ class PrayerEditorViewModel extends ViewModel {
   final Prayer? existing;
 
   PrayerVisibility _visibility;
+  bool _authorHidden;
   PrayerSettings _settings = PrayerSettings.standard;
   late final StreamSubscription<PrayerSettings> _settingsSub;
 
@@ -48,6 +50,19 @@ class PrayerEditorViewModel extends ViewModel {
   bool get isEditing => existing != null;
 
   PrayerVisibility get visibility => _visibility;
+
+  /// 작성자를 비공개로 하는가. 교회가 허용하지 않으면 새 글은 늘 공개이고, 이미 비공개인 글은 그대로다.
+  bool get authorHidden => _settings.allowAnonymous
+      ? _authorHidden
+      : (existing?.authorHidden ?? false);
+
+  /// 작성자 비공개를 고를 수 있는가: 교회가 허용했고, 글쓴이를 보여 주는 교회일 때.
+  bool get canHideAuthor => _settings.allowAnonymous && _settings.showAuthor;
+
+  void setAuthorHidden(bool value) {
+    _authorHidden = value;
+    notifyListeners();
+  }
 
   /// 게시 범위: null이면 교회 전체, 값이 있으면 그 소속 전용.
   String? get affiliationId => _affiliationId;
@@ -72,6 +87,7 @@ class PrayerEditorViewModel extends ViewModel {
         content: content,
         visibility: _visibility,
         affiliationId: _affiliationId,
+        authorHidden: authorHidden,
       );
     }
     return _prayers.update(
@@ -79,6 +95,7 @@ class PrayerEditorViewModel extends ViewModel {
       current.id,
       content: content,
       visibility: _visibility,
+      authorHidden: authorHidden,
     );
   });
 }
