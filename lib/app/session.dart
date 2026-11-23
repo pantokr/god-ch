@@ -86,7 +86,8 @@ class SessionNotifier extends ChangeNotifier {
             if (generation != _generation) return;
             // 앱 운영자가 강제 탈퇴시킨 계정은 로그인해도 바로 로그아웃한다.
             if (profile != null && profile.withdrawn) {
-              _auth.signOut();
+              // 내가 탈퇴하는 중이면 계정 삭제가 끝나며 저절로 로그아웃된다 (먼저 로그아웃하면 삭제가 실패할 수 있다).
+              if (!_auth.deleting) _auth.signOut();
               return;
             }
             if (profile != null && !accessLogged) {

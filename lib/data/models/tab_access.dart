@@ -26,13 +26,15 @@ class TabAccess {
   factory TabAccess.of(PageFeature? feature, Member me, List<Affiliation> all) {
     if (feature == null) return const TabAccess();
     final ids = me.affiliationIds;
-    if (!me.isStaff && ids.isEmpty) return const TabAccess(unassigned: true);
-    return TabAccess(
-      options: [
-        for (final d in all)
-          if (ids.contains(d.id)) d,
-      ].sortedByName(),
-    );
+    // [all]은 지운 소속을 뺀 목록이다: 속한 소속이 전부 지워졌으면 소속이 하나도 없는 것과 같다 (미배정).
+    final options = [
+      for (final d in all)
+        if (ids.contains(d.id)) d,
+    ].sortedByName();
+    if (!me.isStaff && options.isEmpty) {
+      return const TabAccess(unassigned: true);
+    }
+    return TabAccess(options: options);
   }
 
   /// 소속 어디에서도 허용되지 않았다.

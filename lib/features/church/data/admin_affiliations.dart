@@ -13,7 +13,12 @@ Future<void> syncAdminAffiliations(
 ) async {
   final affiliations = await paths.affiliations(churchId).get();
   if (affiliations.docs.isEmpty) return;
-  final ids = [for (final d in affiliations.docs) d.id];
+  // 지운 소속(문서만 남아 있다)에는 속하게 하지 않는다.
+  final ids = [
+    for (final d in affiliations.docs)
+      if (d.data()['deleted'] != true) d.id,
+  ];
+  if (ids.isEmpty) return;
   final admins = await paths
       .members(churchId)
       .where('role', isEqualTo: Role.admin.name)

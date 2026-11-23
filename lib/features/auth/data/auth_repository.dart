@@ -156,25 +156,37 @@ class AuthRepository {
     if (active.any((d) => d.data()['role'] == 'admin')) {
       throw const AppException('교회 관리자인 교회가 있어요. 관리자를 넘긴 뒤 탈퇴해 주세요.');
     }
-    for (final d in active) {
-      await d.reference.update({
-        'status': 'removed',
-        'removedAt': FieldValue.serverTimestamp(),
-        'removedBy': user.uid,
-      });
-      // 사람 목록에서도 빠지게 한다.
-      final churchId = d.reference.parent.parent?.id;
-      if (churchId != null) {
-        await mirrorPersonCard(FirestorePaths(_db), churchId, d.id);
+    // 탈퇴 표시를 쓰면 세션이 "탈퇴한 계정"으로 보고 바로 로그아웃하는데, 그러면 아래의 기록과 계정 삭제가
+    // 로그아웃된 뒤에 실행되어 실패할 수 있다. 우리가 지우는 중이면 세션이 로그아웃하지 않게 표시해 둔다.
+    _deleting = true;
+    try {
+      for (final d in active) {
+        await d.reference.update({
+          'status': 'removed',
+          'removedAt': FieldValue.serverTimestamp(),
+          'removedBy': user.uid,
+        });
+        // 사람 목록에서도 빠지게 한다.
+        final churchId = d.reference.parent.parent?.id;
+        if (churchId != null) {
+          await mirrorPersonCard(FirestorePaths(_db), churchId, d.id);
+        }
       }
+      await _db.collection('users').doc(user.uid).update({
+        'withdrawn': true,
+        'withdrawnAt': FieldValue.serverTimestamp(),
+      });
+      await activity?.record(ActivityType.accountDelete);
+      await user.delete();
+    } finally {
+      _deleting = false;
     }
-    await _db.collection('users').doc(user.uid).update({
-      'withdrawn': true,
-      'withdrawnAt': FieldValue.serverTimestamp(),
-    });
-    await activity?.record(ActivityType.accountDelete);
-    await user.delete();
   }
+
+  bool _deleting = false;
+
+  /// 내가 앱 탈퇴를 진행하는 중인가 (탈퇴 표시가 써지는 동안 세션이 먼저 로그아웃하지 않게 한다).
+  bool get deleting => _deleting;
 
   /// 표시 이름을 바꾼다.
   Future<void> updateDisplayName(String name) async {
