@@ -56,6 +56,17 @@ class AppNotification {
   final String postKind;
   final String postId;
 
+  /// 제목이 "유형 · 이름" 꼴이면 그 둘 (예: 댓글 · 새벽기도). 아니면 null.
+  (String, String)? get titleParts {
+    const sep = ' · ';
+    final i = title.indexOf(sep);
+    if (i <= 0) return null;
+    final label = title.substring(0, i).trim();
+    final name = title.substring(i + sep.length).trim();
+    if (label.isEmpty) return null;
+    return (label, name);
+  }
+
   /// 누르면 갈 곳이 있는가.
   bool get hasTarget => meetingId.isNotEmpty || postId.isNotEmpty;
 

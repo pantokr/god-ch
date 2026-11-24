@@ -78,21 +78,28 @@ class _PersonPopup extends StatelessWidget {
   final String name;
   final String photoUrl;
 
-  Future<(PersonCard?, List<Affiliation>)> _load(BuildContext context) async {
+  /// 사람 카드, 소속들, 그리고 보는 사람(나)의 카드 (비공개 생일을 보여도 되는지 가리려고).
+  Future<(PersonCard?, List<Affiliation>, PersonCard?)> _load(
+    BuildContext context,
+  ) async {
     final scope = AppScope.read(context);
     final person = await scope.people.person(churchId, uid);
     final affs = await scope.affiliations.affiliations(churchId).first;
-    return (person, affs);
+    final viewer = await scope.people.person(churchId, scope.auth.uid);
+    return (person, affs, viewer);
   }
 
   @override
   Widget build(BuildContext context) {
     final palette = context.palette;
-    return FutureBuilder<(PersonCard?, List<Affiliation>)>(
+    return FutureBuilder<(PersonCard?, List<Affiliation>, PersonCard?)>(
       future: _load(context),
       builder: (context, snap) {
         final person = snap.data?.$1;
         final all = snap.data?.$2 ?? const <Affiliation>[];
+        final viewer = snap.data?.$3;
+        // 카드가 없는 사람(앱 운영자)과 교역자 이상은 비공개 생일도 본다.
+        final privileged = viewer == null || viewer.role != Role.member;
         final names = [
           for (final id in person?.affiliationIds ?? const <String>[])
             ?all.where((a) => a.id == id).firstOrNull?.name,
@@ -103,8 +110,13 @@ class _PersonPopup extends StatelessWidget {
           _ => '교인',
         };
         final birth = person?.birthMonthDay ?? '';
-        final birthText = birth.length == 5
-            ? '${person!.birthMonth}월 ${int.tryParse(birth.substring(3))}일'
+        final birthText =
+            birth.length == 5 &&
+                person!.birthShownTo(
+                  AppScope.read(context).auth.uid,
+                  privileged: privileged,
+                )
+            ? '${person.birthMonth}월 ${int.tryParse(birth.substring(3))}일'
             : '';
         Widget info(String label, Widget value) => Padding(
           padding: const EdgeInsets.only(top: 14),

@@ -8,7 +8,7 @@ import '../../../data/models/member.dart';
 import '../../home/view_model/affiliation_choice.dart';
 
 /// 우리 소속의 위쪽 탭 오른쪽에 놓이는 소속 선택: 테두리 없이 이름과 ▾만 보이는 중보기도 탭의 소속 선택과 같은 모양.
-/// 고를 수 있는 소속은 [sees]로 정한다 (교회 관리자는 모든 소속, 그 밖은 자기 소속). 하나뿐이면 이름만 보인다.
+/// 고를 수 있는 소속은 [sees]로 정한다 (교회 관리자는 모든 소속, 그 밖은 자기 소속). 하나뿐이어도 선택 상자로 보인다.
 class PeopleAffiliationSelect extends StatefulWidget {
   const PeopleAffiliationSelect({
     super.key,
@@ -63,12 +63,7 @@ class _PeopleAffiliationSelectState extends State<PeopleAffiliationSelect> {
             widget.choice,
           );
           if (current == null) return const SizedBox.shrink();
-          if (options.length == 1) {
-            return Padding(
-              padding: const EdgeInsets.only(right: 16),
-              child: Text(current.name, style: style),
-            );
-          }
+          // 소속이 하나뿐이어도 선택 상자로 보인다.
           return Padding(
             padding: const EdgeInsets.only(right: 8),
             child: DropdownButtonHideUnderline(

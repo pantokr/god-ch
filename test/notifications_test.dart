@@ -148,7 +148,7 @@ AppNotification _copy(AppNotification n, {bool? read, bool? hidden}) =>
 
 AppNotification _joinRequest(String id, {bool read = false}) => AppNotification(
   id: id,
-  title: '참여 신청 · 성경 공부',
+  title: '성경 공부',
   body: '김철수님이 승인을 기다리고 있어요.',
   type: NotificationType.meetingJoinRequest,
   read: read,
@@ -321,20 +321,20 @@ void main() {
 
       expect(repo.markedRead, isEmpty);
       expect(repo.unread, 1);
-      expect(find.text('참여 신청 · 성경 공부'), findsOneWidget);
-      expect(_colorOf(tester, '참여 신청 · 성경 공부'), isNull);
+      expect(find.text('성경 공부'), findsOneWidget);
+      expect(_colorOf(tester, '성경 공부'), isNull);
     });
 
     testWidgets('알림을 누르면 읽음 처리되어 글씨가 흐려진다', (tester) async {
       final repo = _FakeNotifications([_joinRequest('a')]);
       await pumpPage(tester, repo);
 
-      await tester.tap(find.text('참여 신청 · 성경 공부'));
+      await tester.tap(find.text('성경 공부'));
       await tester.pump();
       await tester.pump();
 
       expect(repo.markedRead, ['a']);
-      expect(_colorOf(tester, '참여 신청 · 성경 공부'), isNotNull);
+      expect(_colorOf(tester, '성경 공부'), isNotNull);
     });
 
     testWidgets('모두 읽음을 누르면 읽지 않은 알림이 모두 읽음이 된다', (tester) async {
@@ -359,7 +359,7 @@ void main() {
       await tester.pump();
       await tester.pump();
 
-      expect(find.text('참여 신청 · 성경 공부'), findsOneWidget);
+      expect(find.text('성경 공부'), findsOneWidget);
     });
 
     testWidgets('모임 신청 알림을 누르면 그 모임으로 연결된다', (tester) async {
@@ -374,7 +374,7 @@ void main() {
           meeting = m;
         },
       );
-      await tester.tap(find.text('참여 신청 · 성경 공부'));
+      await tester.tap(find.text('성경 공부'));
       await tester.pumpAndSettle();
       expect(church, 'church1');
       expect(meeting, 'meeting1');
@@ -394,7 +394,7 @@ void main() {
       await tester.tap(find.text('삭제'));
       await tester.pump();
       await tester.pump();
-      expect(find.text('참여 신청 · 성경 공부'), findsNothing);
+      expect(find.text('성경 공부'), findsNothing);
       expect(find.byType(Checkbox), findsNothing);
     });
   });

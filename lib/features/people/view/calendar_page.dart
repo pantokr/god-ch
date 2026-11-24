@@ -48,12 +48,12 @@ class _CalendarPageState extends State<CalendarPage> {
   bool _sameDay(DateTime a, DateTime b) =>
       a.year == b.year && a.month == b.month && a.day == b.day;
 
-  /// 이 사람의 생일을 볼 수 있는가: 나, 같은 소속, 교역자 이상.
+  /// 이 사람의 생일을 볼 수 있는가: 나, 같은 소속, 교역자 이상. 본인이 생일을 비공개로 했으면 본인과 교역자 이상만.
   bool _canSeeBirthday(PersonCard p) {
     final me = widget.me;
-    if (p.id == me.id || me.isStaff || me.isAdmin || me.isOperatorView) {
-      return true;
-    }
+    final privileged = me.isStaff || me.isAdmin || me.isOperatorView;
+    if (!p.birthShownTo(me.id, privileged: privileged)) return false;
+    if (p.id == me.id || privileged) return true;
     return p.affiliationIds.any(me.affiliationIds.contains);
   }
 

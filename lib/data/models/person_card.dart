@@ -17,6 +17,7 @@ class PersonCard {
     this.affiliationIds = const [],
     this.birthMonthDay = '',
     this.positionName = '',
+    this.birthPublic = true,
   });
 
   final String id;
@@ -31,6 +32,14 @@ class PersonCard {
 
   /// 생일의 월-일 ("MM-DD"). 생년월일을 내지 않았으면 빈 문자열이다 (출생 연도는 저장하지 않는다).
   final String birthMonthDay;
+
+  /// 생일을 다른 교인에게 보이는가 (본인이 정한다, 기본은 공개).
+  /// 끄면 본인과 교역자 이상에게만 보인다. 가림은 화면에서 한다 ([birthShownTo]).
+  final bool birthPublic;
+
+  /// [viewerId]가 이 사람의 생일을 볼 수 있는가: 공개이거나, 본인이거나, 교역자 이상([privileged])이다.
+  bool birthShownTo(String viewerId, {required bool privileged}) =>
+      birthPublic || id == viewerId || privileged;
 
   bool get isApproved => status == MemberStatus.approved;
 
@@ -61,6 +70,7 @@ class PersonCard {
       ),
       birthMonthDay: d['birthMonthDay'] as String? ?? '',
       positionName: d['positionName'] as String? ?? '',
+      birthPublic: d['birthPublic'] as bool? ?? true,
     );
   }
 }

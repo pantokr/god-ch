@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart' show ValueListenable, ValueNotifier;
 
 import '../../../data/firestore_paths.dart';
 import '../../../data/models/person_card.dart';
+import '../../../data/person_card_sync.dart';
 
 /// 교회 사람 목록 (이름 · 사진 · 역할 · 소속 · 생일). 승인된 교인이면 누구나 읽는다.
 class PeopleRepository {
@@ -27,6 +28,22 @@ class PeopleRepository {
   Future<PersonCard?> person(String churchId, String uid) async {
     final d = await _paths.people(churchId).doc(uid).get();
     return d.exists ? PersonCard.fromDoc(d) : null;
+  }
+
+  /// 한 사람의 카드를 계속 지켜본다 (없으면 null).
+  Stream<PersonCard?> card(String churchId, String uid) => _paths
+      .people(churchId)
+      .doc(uid)
+      .snapshots()
+      .map((d) => d.exists ? PersonCard.fromDoc(d) : null);
+
+  /// 내 생일을 다른 교인에게 보일지 정한다. 카드가 아직 없으면 교인 문서에서 먼저 만든다.
+  Future<void> setBirthPublic(String churchId, String uid, bool value) async {
+    await mirrorPersonCard(_paths, churchId, uid);
+    await _paths.people(churchId).doc(uid).set({
+      'birthPublic': value,
+      'updatedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
   }
 
   /// 교회 교인들의 프로필 사진 주소 (uid → 주소). 교회마다 한 번만 구독해 두고 모든 아바타가 같이 쓴다.

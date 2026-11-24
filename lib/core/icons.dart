@@ -69,6 +69,7 @@ class AppIcons {
   static const IconData key = LucideIcons300.keyRound;
   static const IconData keyFill = LucideIcons.keyRound;
   static const IconData lock = LucideIcons300.lock;
+  static const IconData lockFill = LucideIcons.lock;
   static const IconData paperPlaneRight = LucideIcons300.send;
   static const IconData magnifyingGlass = LucideIcons300.search;
   static const IconData moon = LucideIcons300.moon;

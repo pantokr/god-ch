@@ -3,6 +3,7 @@ import '../icons.dart';
 import 'package:flutter/material.dart';
 
 import '../theme.dart';
+import 'private_mark.dart';
 
 /// 목록 줄 가장자리에 놓는 숫자 표시: 조회수 · 좋아요 · 댓글 수([comments]를 주면).
 /// [liked]이면 하트가 채워진다. 숫자는 천 단위로 줄여 보인다.
@@ -72,7 +73,7 @@ class StatIcons extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           if (locked) ...[
-            Icon(AppIcons.lock, size: 16, color: muted),
+            const PrivateMark(size: 20),
             const SizedBox(width: 12),
           ],
           heart,
@@ -91,10 +92,7 @@ class StatIcons extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
-        if (locked) ...[
-          Icon(AppIcons.lock, size: 16, color: muted),
-          const SizedBox(height: 8),
-        ],
+        if (locked) ...[const PrivateMark(size: 20), const SizedBox(height: 8)],
         if (showViews) ...[
           item(AppIcons.eyeCount, views),
           const SizedBox(height: 8),

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../app/app_scope.dart';
 import '../../../core/icons.dart';
 import '../../../core/theme.dart';
+import '../../../core/widgets/private_mark.dart';
 import '../../../core/widgets/role_chips.dart';
 import '../../../data/models/affiliation.dart';
 
@@ -139,7 +140,9 @@ class _PostMetaState extends State<PostMeta> {
               item(
                 widget.isPrivate ? AppIcons.lock : AppIcons.globe,
                 '공개 여부',
-                widget.isPrivate ? '교역자 전용' : '공개',
+                widget.isPrivate
+                    ? const PrivateMark(size: 18, label: '교역자 전용')
+                    : '공개',
               ),
             if (widget.showScope && widget.affiliationIds != null)
               // 모임 일정: 공개 범위를 소속 칩으로 보이고 차례로 떠오르게 한다.

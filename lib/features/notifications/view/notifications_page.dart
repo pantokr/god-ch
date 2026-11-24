@@ -289,6 +289,46 @@ class _NotificationsPageState extends State<NotificationsPage> {
   }
 }
 
+/// 알림 제목. "유형 · 이름" 꼴이면 유형을 말풍선(알약)으로 떼어 이름과 대비시킨다.
+class _Title extends StatelessWidget {
+  const _Title({required this.item, required this.isNew, required this.gray});
+
+  final AppNotification item;
+  final bool isNew;
+  final Color gray;
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = context.palette;
+    final parts = item.titleParts;
+    // 읽은 알림은 흐리게.
+    final textStyle = TextStyle(color: isNew ? null : gray);
+    if (parts == null) return Text(item.title, style: textStyle);
+    final (label, name) = parts;
+    final tone = isNew ? palette.brand : gray;
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+          decoration: BoxDecoration(
+            color: tone.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(99),
+          ),
+          child: Text(
+            label,
+            style: TextStyle(color: tone, fontSize: 12, height: 1.3),
+          ),
+        ),
+        if (name.isNotEmpty) ...[
+          const SizedBox(width: 8),
+          Flexible(child: Text(name, style: textStyle)),
+        ],
+      ],
+    );
+  }
+}
+
 class _Row extends StatelessWidget {
   const _Row({
     required this.item,
@@ -345,13 +385,7 @@ class _Row extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    item.title,
-                    style: TextStyle(
-                      // 읽은 알림은 흐리게.
-                      color: isNew ? null : gray,
-                    ),
-                  ),
+                  _Title(item: item, isNew: isNew, gray: gray),
                   if (item.body.isNotEmpty) ...[
                     const SizedBox(height: 2),
                     Text(

@@ -541,7 +541,9 @@ class _ChurchCardState extends State<_ChurchCard> {
                                   in snap.data ?? const <Affiliation>[])
                                 if (me.affiliationIds.contains(a.id)) a.name,
                             ];
-                            if (names.isEmpty) return const _AffPill('미배정');
+                            if (names.isEmpty) {
+                              return const _AffPill('미배정', empty: true);
+                            }
                             return Wrap(
                               spacing: 6,
                               runSpacing: 6,
@@ -562,27 +564,78 @@ class _ChurchCardState extends State<_ChurchCard> {
   }
 }
 
-/// 소속 이름 알약.
+/// 소속 이름 알약: 인디고→코랄 옅은 그라데이션 바탕에 같은 색 점과 이름.
+/// 소속이 없는 상태(미배정)는 색 없이 흐린 회색으로 구분한다.
 class _AffPill extends StatelessWidget {
-  const _AffPill(this.name);
+  const _AffPill(this.name, {this.empty = false});
 
   final String name;
+
+  /// 소속이 없는 상태 (미배정).
+  final bool empty;
 
   @override
   Widget build(BuildContext context) {
     final palette = context.palette;
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final fill = dark ? 0.22 : 0.12;
+    final textColor = empty
+        ? palette.muted
+        : dark
+        ? palette.ink
+        : palette.brand;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+      padding: const EdgeInsets.fromLTRB(8, 4, 12, 4),
       decoration: BoxDecoration(
-        color: palette.surface,
+        gradient: empty
+            ? null
+            : LinearGradient(
+                colors: [
+                  palette.brand.withValues(alpha: fill),
+                  palette.accent.withValues(alpha: fill * 0.8),
+                ],
+              ),
+        color: empty ? palette.ink.withValues(alpha: 0.06) : null,
         borderRadius: BorderRadius.circular(99),
-        border: Border.all(color: palette.border),
+        border: Border.all(
+          color: empty
+              ? palette.border
+              : palette.brand.withValues(alpha: dark ? 0.4 : 0.22),
+        ),
       ),
-      child: Text(
-        name,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: TextStyle(color: palette.ink, fontSize: 12.5),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 8,
+            height: 8,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: empty ? palette.muted.withValues(alpha: 0.5) : null,
+              gradient: empty
+                  ? null
+                  : LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [palette.brand, palette.accent],
+                    ),
+            ),
+          ),
+          const SizedBox(width: 6),
+          Flexible(
+            child: Text(
+              name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: textColor,
+                fontSize: 12.5,
+                fontWeight: FontWeight.w500,
+                height: 1.3,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

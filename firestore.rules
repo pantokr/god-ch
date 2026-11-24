@@ -823,7 +823,8 @@ service cloud.firestore {
       match /people/{personId} {
         allow read: if isActive(churchId) || isPlatformAdmin();
         allow create, update: if request.resource.data.keys().hasOnly(
-               ['uid', 'name', 'photoUrl', 'role', 'status', 'affiliationIds', 'birthMonthDay', 'positionName', 'updatedAt'])
+               ['uid', 'name', 'photoUrl', 'role', 'status', 'affiliationIds', 'birthMonthDay', 'positionName', 'birthPublic', 'updatedAt'])
+          && request.resource.data.get('birthPublic', true) is bool
           && request.resource.data.uid == personId
           && request.resource.data.name is string && request.resource.data.name.size() <= 30
           && request.resource.data.photoUrl is string && request.resource.data.photoUrl.size() <= 800

@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../../app/routes.dart';
 import '../../../core/format.dart';
 import '../../../core/theme.dart';
+import '../../../core/widgets/private_mark.dart';
 import '../../../data/models/member.dart';
 import '../../../data/models/prayer.dart';
 import 'reaction_bar.dart';
@@ -50,10 +51,8 @@ class PrayerCard extends StatelessWidget {
                 children: [
                   if (prayer.affiliationId != null)
                     const _Badge(icon: AppIcons.usersThree, label: '소속'),
-                  if (prayer.affiliationId != null)
-                    const _Badge(icon: AppIcons.usersThree, label: '소속'),
                   if (!prayer.isPublic)
-                    const _Badge(icon: AppIcons.lock, label: '교역자 전용'),
+                    const PrivateMark(size: 18, label: '교역자 전용'),
                   if (prayer.deleted)
                     const _Badge(icon: AppIcons.trash, label: '삭제됨'),
                 ],

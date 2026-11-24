@@ -32,6 +32,7 @@ import 'package:god_ch/data/models/user_profile.dart';
 import 'package:god_ch/features/auth/view/my_affiliations_card.dart';
 import 'package:god_ch/features/auth/view/profile_edit_dialog.dart';
 import 'package:god_ch/data/models/member.dart';
+import 'package:god_ch/data/models/person_card.dart';
 import 'package:god_ch/data/models/profile_field.dart';
 import 'package:god_ch/features/admin/view_model/member_admin_view_model.dart';
 import 'package:god_ch/features/church/data/affiliation_repository.dart';
@@ -104,7 +105,10 @@ class _Reflections extends Fake implements ReflectionRepository {}
 
 class _Meetings extends Fake implements MeetingRepository {}
 
-class _People extends Fake implements PeopleRepository {}
+class _People extends Fake implements PeopleRepository {
+  @override
+  Stream<PersonCard?> card(String churchId, String uid) => Stream.value(null);
+}
 
 class _Prayers extends Fake implements PrayerRepository {}
 
@@ -252,6 +256,11 @@ void main() {
     expect(find.text('평화교회'), findsOneWidget);
     expect(find.text('주소'), findsOneWidget);
     expect(find.text('생년월일'), findsOneWidget);
+    // 교회 · 직책 · 소속이 각각 이름표 있는 줄이고, 생년월일을 낸 교회에는 생일 공개 줄이 있다.
+    expect(find.text('교회'), findsNWidgets(2));
+    expect(find.text('직책'), findsNWidgets(2));
+    expect(find.text('소속'), findsNWidgets(2));
+    expect(find.text('생일 공개'), findsOneWidget);
   });
 
   testWidgets('내 정보 페이지를 열어 프로필을 불러와도 오류가 없고 전화번호가 채워진다', (tester) async {
