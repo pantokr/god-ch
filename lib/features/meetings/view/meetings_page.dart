@@ -20,7 +20,6 @@ import '../../../core/widgets/shadow_switch.dart';
 import '../../../core/widgets/like_heart.dart';
 import '../../../core/widgets/create_fab.dart';
 import '../../../core/widgets/refresh_scope.dart';
-import '../../../core/widgets/list_style_toggle.dart';
 import '../../../core/widgets/sort_pad.dart';
 import '../../../core/theme.dart';
 import '../../../core/widgets/stat_icons.dart';
@@ -64,7 +63,7 @@ class MeetingsPage extends StatelessWidget {
                       children: [
                         // 검색 필드는 탭 설명 위에 있다.
                         _SortPanel(vm: vm),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: PageTitle.searchGap),
                         PageTitle(
                           gap: 32,
                           title: '',
@@ -95,7 +94,6 @@ class MeetingsPage extends StatelessWidget {
                               const SizedBox(height: 16),
                               // 정렬 순서는 격자 바로 위에 붙는다.
                               SortStrip(
-                                viewToggle: const ListStyleToggle(),
                                 options: [
                                   for (final s in MeetingSort.values)
                                     PadOption(

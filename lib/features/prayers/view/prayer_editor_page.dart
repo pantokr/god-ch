@@ -41,10 +41,12 @@ class PrayerEditorPage extends StatefulWidget {
 
 class _PrayerEditorPageState extends State<PrayerEditorPage> {
   final _form = GlobalKey<FormState>();
+  late final _title = TextEditingController(text: widget.prayer?.title);
   late final _content = TextEditingController(text: widget.prayer?.content);
 
   @override
   void dispose() {
+    _title.dispose();
     _content.dispose();
     super.dispose();
   }
@@ -59,6 +61,7 @@ class _PrayerEditorPageState extends State<PrayerEditorPage> {
   }
 
   bool get _dirty =>
+      _title.text.trim() != (widget.prayer?.title ?? '').trim() ||
       _content.text.trim() != (widget.prayer?.content ?? '').trim();
 
   /// 뒤로 가기·취소: 쓰던 내용이 있으면 확인받고 나간다.
@@ -71,7 +74,10 @@ class _PrayerEditorPageState extends State<PrayerEditorPage> {
     if (!_form.currentState!.validate()) return;
     final router = GoRouter.of(context);
     final messenger = ScaffoldMessenger.of(context);
-    final ok = await vm.save(content: _content.text.trim());
+    final ok = await vm.save(
+      title: _title.text.trim(),
+      content: _content.text.trim(),
+    );
     if (ok) {
       _leave(router);
       // 새로 쓴 글만 "추가되었습니다" (고친 글은 알리지 않는다).
@@ -92,7 +98,7 @@ class _PrayerEditorPageState extends State<PrayerEditorPage> {
       ),
       builder: (context, vm) => DiscardGuard(
         isDirty: () => _dirty,
-        listenable: _content,
+        listenable: Listenable.merge([_title, _content]),
         onDiscard: () => _leave(GoRouter.of(context)),
         child: SubPage(
           onBack: _cancel,
@@ -124,6 +130,20 @@ class _PrayerEditorPageState extends State<PrayerEditorPage> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
+                              LabeledField(
+                                label: '제목',
+                                stacked: true,
+                                child: TextFormField(
+                                  controller: _title,
+                                  maxLength: Prayer.maxTitle,
+                                  buildCounter: charCounter,
+                                  validator: (v) =>
+                                      (v == null || v.trim().isEmpty)
+                                      ? '제목을 입력해 주세요'
+                                      : null,
+                                ),
+                              ),
+                              const SizedBox(height: 12),
                               LabeledField(
                                 label: '중보기도',
                                 stacked: true,

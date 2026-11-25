@@ -100,7 +100,7 @@ def soft_delete_fields(uid):
 def make_fixed(c):
     a = c.admin
     uid = c.uid[1]
-    r = create(a, 'prayers', {'authorId': uid, 'authorName': '권한테스트', 'content': '비공개 기도 ' + RUN,
+    r = create(a, 'prayers', {'authorId': uid, 'authorName': '권한테스트', 'title': '권한 테스트', 'content': '비공개 기도 ' + RUN,
                               'visibility': 'private', 'createdAt': now(), 'updatedAt': now(),
                               'deleted': False, 'affiliationId': A, 'views': 0})
     assert ok(r), r
@@ -119,7 +119,7 @@ def dev_data(uid, vis='public'):
 
 
 def prayer_fixture(c, public=True):
-    r = create(c.admin, 'prayers', {'authorId': c.uid[1], 'authorName': '권한테스트', 'content': '공개 기도 ' + RUN,
+    r = create(c.admin, 'prayers', {'authorId': c.uid[1], 'authorName': '권한테스트', 'title': '권한 테스트', 'content': '공개 기도 ' + RUN,
                                     'visibility': 'public' if public else 'private', 'createdAt': now(),
                                     'updatedAt': now(), 'deleted': False, 'affiliationId': A, 'views': 0})
     assert ok(r), r
@@ -156,7 +156,7 @@ def probe_user(c, n):
         res.setdefault(key, {}).update(kw)
 
     # 중보기도: 글
-    r = create(tok, 'prayers', {'authorId': uid, 'authorName': '권한테스트', 'content': '기도 ' + RUN,
+    r = create(tok, 'prayers', {'authorId': uid, 'authorName': '권한테스트', 'title': '권한 테스트', 'content': '기도 ' + RUN,
                                 'visibility': 'public', 'createdAt': now(), 'updatedAt': now(),
                                 'deleted': False, 'affiliationId': A, 'views': 0})
     if ok(r):

@@ -106,6 +106,9 @@ class PageTitle extends StatelessWidget {
 
   static const descriptionWidth = 440.0;
 
+  /// 검색 필드(패널)와 그 아래 탭 설명 사이의 간격. 설명은 고정 높이 칸의 아래에 붙으므로 실제 거리는 이보다 더 벌어진다.
+  static const searchGap = 48.0;
+
   /// 탭 제목 · 설명과 검색 조건 패널 사이의 간격.
   static const panelGap = 40.0;
 
@@ -163,6 +166,10 @@ class PageTitle extends StatelessWidget {
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
+                // 제목 없이 설명만 있는 탭은 설명이 고정 높이 칸의 왼쪽 아래에 붙는다 (위쪽 검색 필드와 멀어진다).
+                mainAxisAlignment: description != null && title.isEmpty
+                    ? MainAxisAlignment.end
+                    : MainAxisAlignment.start,
                 children: [
                   if (title.isNotEmpty)
                     Text(

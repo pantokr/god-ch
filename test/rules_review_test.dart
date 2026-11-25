@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:god_ch/data/models/prayer.dart';
 
 /// 규칙 점검에서 막은 구멍이 되살아나지 않게 `firestore.rules`의 핵심 조건을 확인한다.
 void main() {
@@ -31,6 +32,27 @@ void main() {
         ),
       ),
     );
+  });
+
+  test('중보기도 제목은 새 글에서 필수(1~30자)이고 고칠 때도 같은 길이를 지킨다', () {
+    expect(Prayer.maxTitle, 30);
+    final block = after('match /prayers/{prayerId}', length: 4500);
+    // 새 글: 허용 필드에 title이 있고 비어 있을 수 없다.
+    expect(block, contains("'authorName', 'title', 'content'"));
+    expect(
+      block,
+      contains(
+        'request.resource.data.title.size() > 0 && request.resource.data.title.size() <= 30',
+      ),
+    );
+    // 작성자 수정: title을 바꿀 수 있고, 바꾸면 길이를 확인한다.
+    expect(
+      block,
+      contains(
+        "changed().hasOnly(['title', 'content', 'visibility', 'authorHidden', 'updatedAt', 'responseSeenAt'])",
+      ),
+    );
+    expect(block, contains("!changed().hasAny(['title'])"));
   });
 
   test('기도 응답은 교인만 읽는다 (앱 운영자 제외)', () {

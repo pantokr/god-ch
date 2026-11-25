@@ -937,8 +937,10 @@ service cloud.firestore {
           && can(churchId, 'prayer.post')
           && (request.resource.data.visibility == 'public' || prayerOpt(churchId, 'allowPrivate', true))
           && request.resource.data.keys().hasOnly(
-               ['authorId', 'authorName', 'content', 'visibility', 'createdAt', 'updatedAt', 'deleted',
+               ['authorId', 'authorName', 'title', 'content', 'visibility', 'createdAt', 'updatedAt', 'deleted',
                 'affiliationId', 'views', 'authorHidden'])
+          && request.resource.data.title is string
+          && request.resource.data.title.size() > 0 && request.resource.data.title.size() <= 30
           // 작성자 비공개는 교회가 허용했을 때만 쓸 수 있다.
           && request.resource.data.get('authorHidden', false) is bool
           && (!request.resource.data.get('authorHidden', false) || prayerOpt(churchId, 'allowAnonymous', false))
@@ -959,7 +961,11 @@ service cloud.firestore {
         allow update: if isActive(churchId) && (
           // 작성자: 내용 수정 / 답변 확인 표시
           (resource.data.authorId == request.auth.uid && resource.data.deleted == false
-            && changed().hasOnly(['content', 'visibility', 'authorHidden', 'updatedAt', 'responseSeenAt'])
+            && changed().hasOnly(['title', 'content', 'visibility', 'authorHidden', 'updatedAt', 'responseSeenAt'])
+            // 제목을 고칠 때는 1~30자 (제목 없이 쓴 옛 글의 다른 수정은 막지 않는다).
+            && (!changed().hasAny(['title'])
+                || (request.resource.data.title is string
+                    && request.resource.data.title.size() > 0 && request.resource.data.title.size() <= 30))
             && request.resource.data.visibility in ['public', 'private']
             // 작성자 비공개는 새로 켤 때만 교회의 허용이 필요하다 (이미 비공개인 글을 고치는 것은 막지 않는다).
             && (!changed().hasAny(['authorHidden'])

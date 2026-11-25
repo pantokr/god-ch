@@ -13,6 +13,7 @@ class Prayer {
     required this.content,
     required this.visibility,
     required this.deleted,
+    this.title = '',
     this.affiliationId,
     this.authorHidden = false,
     this.views = 0,
@@ -29,6 +30,12 @@ class Prayer {
 
   /// 글쓴이 이름 (글을 쓸 때 함께 저장한다).
   final String authorName;
+
+  /// 제목 길이 제한 (`firestore.rules`와 일치).
+  static const maxTitle = 30;
+
+  /// 제목. 제목을 받기 전에 쓴 글은 비어 있다.
+  final String title;
   final String content;
   final PrayerVisibility visibility;
   final bool deleted;
@@ -75,6 +82,7 @@ class Prayer {
       id: doc.id,
       authorId: d['authorId'] as String? ?? '',
       authorName: d['authorName'] as String? ?? '',
+      title: d['title'] as String? ?? '',
       content: d['content'] as String? ?? '',
       visibility: enumByName(
         PrayerVisibility.values,

@@ -185,7 +185,17 @@ class _Body extends StatelessWidget {
                     style: TextStyle(color: theme.colorScheme.error),
                   ),
                 ],
-                const SizedBox(height: 20),
+                if (p.title.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  Text(
+                    p.title,
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                ] else
+                  const SizedBox(height: 20),
                 // 중보기도 본문은 책처럼 읽히도록 명조로 보여준다.
                 Text(p.content, style: readingStyle(context)),
               ],

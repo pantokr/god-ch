@@ -21,6 +21,18 @@ String normalizeVerseTitle(String raw) {
   return '$name ${m.group(2)}:$range';
 }
 
+/// 정리된 구절 제목("요한복음 3:16", "데살로니가후서 3:1-3")을 책 이름과 장 · 절로 나눈다: ("요한복음", "3장 16절"), ("데살로니가후서", "3장 1-3절").
+/// 읽을 수 없는 제목은 null이다.
+(String, String)? splitVerseTitle(String title) {
+  final m = RegExp(r'^(\S+)\s+(\d+):(\d+)(?:-(\d+))?$')
+      .firstMatch(normalizeVerseTitle(title).trim());
+  if (m == null) return null;
+  final verse = m.group(4) == null
+      ? m.group(3)!
+      : '${m.group(3)}-${m.group(4)}';
+  return (m.group(1)!, '${m.group(2)}장 $verse절');
+}
+
 final _pattern = RegExp(
   r'^([가-힣]+)\s*(\d+)\s*[:장]\s*(\d+)\s*절?(?:\s*[-~–—]\s*(\d+)\s*절?)?(?:\s*\(.*\))?$',
 );

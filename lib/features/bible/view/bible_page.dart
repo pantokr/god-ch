@@ -1,4 +1,6 @@
 import '../../../core/widgets/anonymous_author.dart';
+import '../../../core/widgets/casual_card.dart';
+import '../../../data/bible_reference.dart' show splitVerseTitle;
 import '../../../core/widgets/toast.dart';
 import '../../../core/layout/responsive.dart';
 import '../../../core/widgets/toggle_chip.dart';
@@ -7,8 +9,6 @@ import '../../../core/widgets/app_loader.dart';
 import 'package:flutter/material.dart';
 
 import '../../people/view/person_popup.dart';
-
-import '../../../core/widgets/view_mode_toggle.dart';
 
 import 'package:go_router/go_router.dart';
 
@@ -31,7 +31,6 @@ import '../../../data/models/church_content.dart';
 import '../../../data/models/tab_access.dart';
 import '../../../data/models/devotion_settings.dart';
 import '../../../data/models/member.dart';
-import '../../home/view/affiliation_tag.dart';
 import '../../home/view/content_widgets.dart';
 import '../../home/view/feature_gate.dart';
 import '../../home/view_model/affiliation_choice.dart';
@@ -71,7 +70,7 @@ class BiblePage extends StatelessWidget {
                 readerId: me.id,
                 readerIsStaff: me.isStaff,
               )..initDefaults(
-                grid: AppScope.read(context).preferences.gridOf('bible'),
+                grid: false,
                 sort: AppScope.read(context).preferences.sortOf('bible'),
               ),
           builder: (context, vm) => Stack(
@@ -87,7 +86,7 @@ class BiblePage extends StatelessWidget {
                       children: [
                         // 검색 필드는 탭 설명 위에 있다.
                         _SearchField(vm: vm),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: PageTitle.searchGap),
                         PageTitle(
                           gap: 32,
                           title: '',
@@ -148,10 +147,6 @@ class BiblePage extends StatelessWidget {
                                           children: [
                                             // 정렬 순서는 패널 밖, 목록 바로 위에 붙는다 (일정과 같다).
                                             SortStrip(
-                                              viewToggle: ViewModeToggle(
-                                                grid: vm.grid,
-                                                onChanged: vm.setGrid,
-                                              ),
                                               leading: kHideReadEnabled
                                                   ? ToggleChip(
                                                       label: '읽음 제외',
@@ -180,28 +175,6 @@ class BiblePage extends StatelessWidget {
                                                       all.isEmpty
                                                           ? '말씀 없음'
                                                           : '검색 결과 없음',
-                                                    )
-                                                  else if (vm.grid)
-                                                    TwoColumn(
-                                                      children: [
-                                                        for (final c in items)
-                                                          DevotionCard(
-                                                            content: c,
-                                                            me: me,
-                                                            settings:
-                                                                vm.settings,
-                                                            affiliationNames: {
-                                                              for (final a
-                                                                  in affiliations ??
-                                                                      const <
-                                                                        Affiliation
-                                                                      >[])
-                                                                a.id: a.name,
-                                                            },
-                                                            gutter: 0,
-                                                            grid: true,
-                                                          ),
-                                                      ],
                                                     )
                                                   else
                                                     for (final c in items)
@@ -406,7 +379,8 @@ class _RecentAuthors extends StatelessWidget {
   }
 }
 
-/// 각진 카드 한 장: 말씀 제목과 날짜, 글쓴이(프로필 · 이름), 묵상 미리보기, 가장자리의 조회수와 좋아요. 말씀 본문은 목록에 싣지 않는다.
+/// 말씀묵상 카드 하나 (캐주얼): 본문 · 묵상은 싣지 않고 권 · 장 · 절만 크게 보인다.
+/// 책 이름이 제목이고 아래에 "3장 16절" 알약이 붙는다. 글쓴이 · 날짜는 아래 왼쪽, 좋아요 · 댓글 · 조회수는 오른쪽이다.
 class DevotionCard extends StatelessWidget {
   const DevotionCard({
     super.key,
@@ -429,13 +403,13 @@ class DevotionCard extends StatelessWidget {
   final Member me;
   final DevotionSettings settings;
 
-  /// 소속 아이디 → 이름. 글의 소속을 이름 옆에 보여줄 때 쓴다.
+  /// 소속 아이디 → 이름. 글의 소속을 보여줄 때 쓴다.
   final Map<String, String> affiliationNames;
 
   /// 카드 좌우 바깥 여백. 없으면 글 여백(`textGutter`)이고, 격자에서는 0이다.
   final double? gutter;
 
-  /// 격자형 카드인가: 내용을 더 길게 보여 주고, 아래 정보 줄(소속 · 반응 · 프로필 · 날짜)은 카드 맨 아래에 붙인다.
+  /// 격자형 카드인가: 반 너비라서 위 아래로 쌓는다.
   final bool grid;
 
   @override
@@ -447,8 +421,6 @@ class DevotionCard extends StatelessWidget {
 
   Widget _card(BuildContext context) {
     final palette = context.palette;
-    // 격자는 묵상을 3줄까지만 보이고 말줄임표로 줄인다.
-    final excerptLines = grid ? 3 : 2;
     final c = content;
     // 앱 개발자는 교인이 아니라 읽음 표시가 없다.
     final read =
@@ -456,307 +428,109 @@ class DevotionCard extends StatelessWidget {
         (c.readBy.contains(me.id) ||
             AppScope.read(context).preferences
                 .seen('d/${me.churchId}/${c.id}'));
-    // 읽은 글은 "읽음", 7일 안에 올라온 안 읽은 글은 "신규", 오래된 안 읽은 글은 바가 없다.
+    // 7일 안에 올라온 안 읽은 글만 "신규". 내가 쓴 글은 표시가 필요 없다 (한 번 열어 읽으면 사라진다).
     final fresh =
         !me.isOperatorView && !read && ReadStatusBar.isFresh(c.createdAt);
-    // 내가 쓴 글은 읽음 · 신규 표시가 필요 없다.
-    // 신규 바만 쓴다: 한 번 열어 읽으면 사라지는 1회용이고, 읽음 바는 두지 않는다.
     final showBar =
         showFresh && kReadBarEnabled && c.authorId != me.id && fresh;
-    // 글이 짧든 길든 카드 높이가 같도록 글 영역은 늘 정해진 줄 수만큼 자리를 잡는다.
-    final scaler = MediaQuery.textScalerOf(context);
-    return Padding(
-      padding: EdgeInsets.fromLTRB(
-        gutter ?? textGutter(context),
-        0,
-        gutter ?? textGutter(context),
-        14,
-      ),
-      child: InkWell(
-        onTap: () => context.push(Routes.devotion(me.churchId, c.id)),
-        borderRadius: BorderRadius.circular(4),
-        child: Stack(
-          fit: StackFit.passthrough,
-          children: [
-            Ink(
-              // 읽음 · 신규 바는 카드 맨 위 가장자리에 붙으므로 위쪽 여백은 바 아래에서 시작한다.
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-              decoration: BoxDecoration(
-                // 개인 설정: 말씀묵상 카드 색.
-                color:
-                    AppScope.read(context).preferences
-                        .tintOf('bible')
-                        .colorFor(Theme.of(context).brightness) ??
-                    palette.surface,
-                border: Border.all(color: context.cardEdge),
-                borderRadius: BorderRadius.circular(4),
+    // 책 이름과 장 · 절. 읽을 수 없는 제목은 통째로 제목에 둔다. 말씀이 여러 벌이면 "외 N".
+    final split = splitVerseTitle(c.title);
+    // 말씀이 여러 벌이면 구절 아래 줄에 작게 "외 N".
+    final more = c.extras.isEmpty ? '' : '외 ${c.extras.length}';
+    final showAuthor = c.authorName.isNotEmpty && settings.showAuthor;
+    final hidden = c.hidesAuthorFrom(me.id, staff: me.isStaff);
+    final hasComments =
+        alwaysStats || settings.allowReflections || settings.reflectionsPublic;
+    Widget stats({int? comments}) => StatIcons(
+      locked: c.isPrivate,
+      horizontal: true,
+      showViews: alwaysStats || settings.showViews,
+      showLikeCount: alwaysStats || settings.showLikeCount,
+      views: c.views,
+      likes: c.likes,
+      liked: c.likedBy.contains(me.id),
+      comments: comments,
+    );
+    return CasualCard(
+      hueSeed: c.id,
+      grid: grid,
+      gutter: gutter,
+      fresh: showBar,
+      // 개인 설정: 말씀묵상 카드 색.
+      fill: AppScope.read(context).preferences
+          .tintOf('bible')
+          .colorFor(Theme.of(context).brightness),
+      onTap: () => context.push(Routes.devotion(me.churchId, c.id)),
+      // 글쓴이의 사진. 글쓴이를 보이지 않는 교회 설정이면 사람 아이콘이다.
+      leading: (d) => !showAuthor
+          ? ColoredBox(
+              color: palette.brand.withValues(alpha: 0.12),
+              child: SizedBox(
+                width: d,
+                height: d,
+                child: Icon(AppIcons.user, color: palette.brand),
               ),
-              // 위에서 아래로: 제목 → 묵상(카드 너비 전부) → 좋아요 · 조회수(오른쪽) → 글쓴이(왼쪽)와 날짜(맞은편 오른쪽).
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const SizedBox(height: 16),
-                  SizedBox(
-                    height: scaler.scale(16 * 1.3),
-                    child: Row(
-                      children: [
-                        // 신규 글은 제목 왼쪽에 붉은 점 하나가 붙는다.
-                        if (showBar) ...[
-                          const ReadStatusBar.fresh(),
-                          const SizedBox(width: 8),
-                        ],
-                        Flexible(
-                          child: Text(
-                            c.title,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(fontSize: 16, height: 1.3),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  // 묵상은 두 줄 자리를 늘 잡는다.
-                  SizedBox(
-                    height: grid
-                        ? null
-                        : scaler.scale(13.5 * 1.4 * excerptLines) + 4,
-                    child: Text(
-                      c.meditation,
-                      maxLines: excerptLines,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: palette.muted,
-                        fontSize: 13.5,
-                        height: 1.4,
-                      ),
-                    ),
-                  ),
-                  if (grid) ...[
-                    // 격자: 본문과 아래 정보 사이를 넉넉히 띄우고, 정보는 줄마다 나눠 답답하지 않게 놓는다.
-                    const SizedBox(height: 16),
-                    const Spacer(),
-                    Divider(height: 1, color: context.cardEdge),
-                    const SizedBox(height: 12),
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: FittedBox(
-                        fit: BoxFit.scaleDown,
-                        alignment: Alignment.centerLeft,
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            // 댓글 수: 댓글이 꺼져 있거나, 비공개이고 교역자가 아니면 읽을 수 없어 뺀다.
-                            if (alwaysStats ||
-                                settings.allowReflections ||
-                                settings.reflectionsPublic)
-                              StreamBuilder<int>(
-                                stream: settings.reflectionsPublic || me.isStaff
-                                    ? AppScope.read(context).reflections
-                                          .count(me.churchId, c.id)
-                                    : Stream<int>.value(0),
-                                builder: (context, n) => StatIcons(
-                                  locked: c.isPrivate,
-                                  horizontal: true,
-                                  showViews: alwaysStats || settings.showViews,
-                                  showLikeCount:
-                                      alwaysStats || settings.showLikeCount,
-                                  views: c.views,
-                                  likes: c.likes,
-                                  liked: c.likedBy.contains(me.id),
-                                  comments:
-                                      alwaysStats ||
-                                          settings.reflectionsPublic ||
-                                          me.isStaff
-                                      ? (n.data ?? 0)
-                                      : null,
-                                ),
-                              )
-                            else
-                              StatIcons(
-                                locked: c.isPrivate,
-                                horizontal: true,
-                                showViews: alwaysStats || settings.showViews,
-                                showLikeCount:
-                                    alwaysStats || settings.showLikeCount,
-                                views: c.views,
-                                likes: c.likes,
-                                liked: c.likedBy.contains(me.id),
-                              ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    if (c.authorName.isNotEmpty && settings.showAuthor)
-                      Row(
-                        children: [
-                          c.hidesAuthorFrom(me.id, staff: me.isStaff)
-                              ? const AnonymousAvatar(radius: 10)
-                              : PersonTap(
-                                  churchId: me.churchId,
-                                  uid: c.authorId,
-                                  name: c.authorName,
-                                  photoUrl: c.authorPhotoUrl,
-                                  child: ThumbnailAvatar(
-                                    name: c.authorName,
-                                    url: c.authorPhotoUrl,
-                                    radius: 10,
-                                  ),
-                                ),
-                          const SizedBox(width: 6),
-                          Expanded(
-                            child: Text(
-                              c.authorLabel(me.id, staff: me.isStaff),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(fontSize: 13),
-                            ),
-                          ),
-                        ],
-                      ),
-                  ] else ...[
-                    const SizedBox(height: 12),
-                    // 좋아요 · 조회수는 오른쪽에, 이 글의 소속은 그 맞은편 왼쪽에 둔다.
-                    SizedBox(
-                      height: 24,
-                      child: Row(
-                        children: [
-                          if (affiliationLabel(
-                                affiliationNames,
-                                c.affiliationId,
-                              )
-                              case final name?)
-                            AffiliationTag(name),
-                          // 남는 자리를 다 받아 오른쪽 끝에 붙인다 (Spacer와 Flexible이 자리를 반씩 나눠 오른쪽이 비지 않게).
-                          // 좁은 카드에서도 숫자가 넘치지 않게 줄여서 맞춘다.
-                          Expanded(
-                            child: FittedBox(
-                              fit: BoxFit.scaleDown,
-                              alignment: Alignment.centerRight,
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  // 댓글 수: 댓글이 꺼져 있거나, 비공개이고 교역자가 아니면 읽을 수 없어 뺀다.
-                                  if (alwaysStats ||
-                                      settings.allowReflections ||
-                                      settings.reflectionsPublic)
-                                    StreamBuilder<int>(
-                                      stream:
-                                          settings.reflectionsPublic ||
-                                              me.isStaff
-                                          ? AppScope.read(context).reflections
-                                                .count(me.churchId, c.id)
-                                          : Stream<int>.value(0),
-                                      builder: (context, n) => StatIcons(
-                                        locked: c.isPrivate,
-                                        horizontal: true,
-                                        showViews:
-                                            alwaysStats || settings.showViews,
-                                        showLikeCount:
-                                            alwaysStats ||
-                                            settings.showLikeCount,
-                                        views: c.views,
-                                        likes: c.likes,
-                                        liked: c.likedBy.contains(me.id),
-                                        comments:
-                                            alwaysStats ||
-                                                settings.reflectionsPublic ||
-                                                me.isStaff
-                                            ? (n.data ?? 0)
-                                            : null,
-                                      ),
-                                    )
-                                  else
-                                    StatIcons(
-                                      locked: c.isPrivate,
-                                      horizontal: true,
-                                      showViews:
-                                          alwaysStats || settings.showViews,
-                                      showLikeCount:
-                                          alwaysStats || settings.showLikeCount,
-                                      views: c.views,
-                                      likes: c.likes,
-                                      liked: c.likedBy.contains(me.id),
-                                    ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    // 글쓴이가 없어도 이 줄의 높이는 같다.
-                    SizedBox(
-                      height: 22,
-                      child: Row(
-                        children: [
-                          if (c.authorName.isNotEmpty &&
-                              settings.showAuthor) ...[
-                            c.hidesAuthorFrom(me.id, staff: me.isStaff)
-                                ? const AnonymousAvatar(radius: 10)
-                                : PersonTap(
-                                    churchId: me.churchId,
-                                    uid: c.authorId,
-                                    name: c.authorName,
-                                    photoUrl: c.authorPhotoUrl,
-                                    child: ThumbnailAvatar(
-                                      name: c.authorName,
-                                      url: c.authorPhotoUrl,
-                                      radius: 10,
-                                    ),
-                                  ),
-                            const SizedBox(width: 6),
-                            Expanded(
-                              child: Align(
-                                alignment: Alignment.centerLeft,
-                                child:
-                                    c.hidesAuthorFrom(me.id, staff: me.isStaff)
-                                    ? Text(
-                                        anonymousName,
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: const TextStyle(fontSize: 13),
-                                      )
-                                    : PersonTap(
-                                        churchId: me.churchId,
-                                        uid: c.authorId,
-                                        name: c.authorName,
-                                        photoUrl: c.authorPhotoUrl,
-                                        child: Text(
-                                          c.authorLabel(
-                                            me.id,
-                                            staff: me.isStaff,
-                                          ),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: const TextStyle(fontSize: 13),
-                                        ),
-                                      ),
-                              ),
-                            ),
-                          ] else
-                            const Spacer(),
-                          const SizedBox(width: 8),
-                          Text(
-                            fmtDateAt(c.date, c.createdAt),
-                            style: TextStyle(
-                              color: palette.muted,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ],
+            )
+          : hidden
+          ? AnonymousAvatar(radius: d / 2)
+          : PersonTap(
+              churchId: me.churchId,
+              uid: c.authorId,
+              name: c.authorName,
+              photoUrl: c.authorPhotoUrl,
+              child: ThumbnailAvatar(
+                name: c.authorName,
+                url: c.authorPhotoUrl,
+                radius: d / 2,
               ),
             ),
-          ],
-        ),
+      // 글쓴이 이름은 사진 영역에, 구절(창세기 1장 1절)은 오른쪽에. 굵은 글씨는 쓰지 않는다.
+      name: showAuthor ? c.authorLabel(me.id, staff: me.isStaff) : '',
+      title: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            split == null ? c.title : '${split.$1} ${split.$2}',
+            // 중보기도 제목(PrayerTile)과 같은 줄 수 · 크기 · 굵기.
+            maxLines: grid ? 5 : 3,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: grid ? 14 : 15,
+              fontWeight: FontWeight.w400,
+              height: 1.35,
+            ),
+          ),
+          if (more.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: Text(
+                more,
+                style: TextStyle(
+                  color: palette.muted,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w400,
+                ),
+              ),
+            ),
+        ],
       ),
+      // 중보기도 카드와 같은 표기(개인 설정의 일시 표기) · 같은 자리(아래 왼쪽).
+      date: fmtPosted(c.createdAt ?? c.date),
+      // 댓글 수: 댓글이 꺼져 있거나, 비공개이고 교역자가 아니면 읽을 수 없어 뺀다.
+      stats: hasComments
+          ? StreamBuilder<int>(
+              stream: settings.reflectionsPublic || me.isStaff
+                  ? AppScope.read(context).reflections.count(me.churchId, c.id)
+                  : Stream<int>.value(0),
+              builder: (context, n) => stats(
+                comments:
+                    alwaysStats || settings.reflectionsPublic || me.isStaff
+                    ? (n.data ?? 0)
+                    : null,
+              ),
+            )
+          : stats(),
     );
   }
 }

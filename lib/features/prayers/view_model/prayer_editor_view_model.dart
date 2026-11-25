@@ -78,24 +78,27 @@ class PrayerEditorViewModel extends ViewModel {
   }
 
   /// 저장에 성공하면 true.
-  Future<bool> save({required String content}) => run(() {
-    final current = existing;
-    if (current == null) {
-      return _prayers.create(
-        me.churchId,
-        authorName: me.name,
-        content: content,
-        visibility: _visibility,
-        affiliationId: _affiliationId,
-        authorHidden: authorHidden,
-      );
-    }
-    return _prayers.update(
-      me.churchId,
-      current.id,
-      content: content,
-      visibility: _visibility,
-      authorHidden: authorHidden,
-    );
-  });
+  Future<bool> save({required String title, required String content}) =>
+      run(() {
+        final current = existing;
+        if (current == null) {
+          return _prayers.create(
+            me.churchId,
+            authorName: me.name,
+            title: title,
+            content: content,
+            visibility: _visibility,
+            affiliationId: _affiliationId,
+            authorHidden: authorHidden,
+          );
+        }
+        return _prayers.update(
+          me.churchId,
+          current.id,
+          title: title,
+          content: content,
+          visibility: _visibility,
+          authorHidden: authorHidden,
+        );
+      });
 }

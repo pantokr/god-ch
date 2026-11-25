@@ -4,9 +4,12 @@ import '../../../core/layout/responsive.dart';
 import '../../../app/app_scope.dart';
 import '../../../core/layout/page_frame.dart';
 import '../../../core/theme.dart';
-import 'person_row.dart';
+import 'person_popup.dart';
 import '../../../core/widgets/app_inputs.dart';
 import '../../../core/widgets/app_loader.dart';
+import '../../../core/widgets/member_mark.dart';
+import '../../../core/widgets/stat_icons.dart' show Pastel;
+import '../../../core/widgets/thumbnail_avatar.dart';
 import '../../../data/models/affiliation.dart';
 import '../../../data/models/member.dart';
 import '../../../data/models/person_card.dart';
@@ -133,19 +136,40 @@ class _AffiliationPeoplePageState extends State<AffiliationPeoplePage> {
         if (members.isEmpty)
           EmptyHint(_query.isEmpty ? '사람 없음' : '해당하는 사람 없음')
         else
+          // 사람은 아바타 그리드로: 큰 사진 아래쪽에 이름 알약이 겹쳐 놓인다. 누르면 프로필 팝업이 뜬다.
           Card(
             margin: EdgeInsets.zero,
-            child: Column(
-              children: [
-                for (var i = 0; i < members.length; i++) ...[
-                  if (i > 0) const Divider(height: 1),
-                  _PersonRow(
-                    churchId: widget.me.churchId,
-                    person: members[i],
-                    isMe: members[i].id == me.id,
-                  ),
-                ],
-              ],
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 28, 20, 20),
+              // 늘 3열: 칸 너비에 맞춰 사진이 커진다 (넓은 화면에서도 너무 커지지 않게 상한을 둔다).
+              child: LayoutBuilder(
+                builder: (context, box) {
+                  const columns = 3;
+                  const gap = 16.0;
+                  final tileWidth =
+                      (box.maxWidth - gap * (columns - 1)) / columns;
+                  final avatar = (tileWidth * 0.66).clamp(56.0, 104.0);
+                  return GridView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: columns,
+                      mainAxisSpacing: 28,
+                      crossAxisSpacing: gap,
+                      // 글씨가 커져도 이름 알약이 잘리지 않게 칸 높이가 글씨 배율을 따른다.
+                      mainAxisExtent:
+                          avatar + MediaQuery.textScalerOf(context).scale(14),
+                    ),
+                    itemCount: members.length,
+                    itemBuilder: (context, i) => _PersonTile(
+                      churchId: me.churchId,
+                      person: members[i],
+                      isMe: members[i].id == me.id,
+                      avatar: avatar,
+                    ),
+                  );
+                },
+              ),
             ),
           ),
       ],
@@ -159,22 +183,129 @@ int _byRoleThenName(PersonCard a, PersonCard b) {
   return r != 0 ? r : a.name.compareTo(b.name);
 }
 
-class _PersonRow extends StatelessWidget {
-  const _PersonRow({
+/// 아바타 그리드의 한 칸 (캐주얼): 사람마다 다른 파스텔 그라데이션 테두리의 큰 사진 아래쪽에
+/// 이름 알약이 겹쳐 놓인다. 교회 관리자 · 교역자는 사진 위쪽 모서리에 직급 아이콘이 붙고,
+/// 본인의 알약은 브랜드색으로 채워진다.
+class _PersonTile extends StatelessWidget {
+  const _PersonTile({
     required this.churchId,
     required this.person,
     required this.isMe,
+    required this.avatar,
   });
 
   final String churchId;
   final PersonCard person;
   final bool isMe;
 
+  /// 테두리를 포함한 사진 지름 (칸 너비로 정해진다).
+  final double avatar;
+
   @override
-  Widget build(BuildContext context) => PersonRow(
-    churchId: churchId,
-    uid: person.id,
-    card: person,
-    badge: isMe ? '본인' : null,
-  );
+  Widget build(BuildContext context) {
+    final palette = context.palette;
+    final name = person.name.isEmpty ? '이름 없음' : person.name;
+    final i = Pastel.indexOf(person.id);
+    final hue = Pastel.hue(i);
+    final hue2 = Pastel.hue(i + 2);
+    return InkWell(
+      borderRadius: BorderRadius.circular(AppRadius.card),
+      onTap: () => showPersonPopup(
+        context,
+        churchId: churchId,
+        uid: person.id,
+        name: person.name,
+        photoUrl: person.photoUrl,
+      ),
+      child: Stack(
+        alignment: Alignment.topCenter,
+        clipBehavior: Clip.none,
+        children: [
+          SizedBox(
+            width: avatar,
+            height: avatar,
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                // 파스텔 그라데이션 테두리 + 면색 간격 + 사진.
+                Container(
+                  padding: const EdgeInsets.all(3),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [hue, hue2],
+                    ),
+                  ),
+                  child: Container(
+                    padding: const EdgeInsets.all(2),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: palette.surface,
+                    ),
+                    child: ThumbnailAvatar(
+                      name: person.name,
+                      url: person.photoUrl,
+                      radius: (avatar - 10) / 2,
+                    ),
+                  ),
+                ),
+                if (person.role != Role.member)
+                  Positioned(
+                    top: -2,
+                    right: -4,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: palette.surface,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: palette.border),
+                        boxShadow: AppShadow.soft(context),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(4),
+                        child: MemberMark(role: person.role, size: 14),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          // 이름 알약: 사진 아래쪽에 걸쳐 겹친다.
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: Center(
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 4,
+                ),
+                decoration: BoxDecoration(
+                  color: isMe ? palette.brand : palette.surface,
+                  borderRadius: BorderRadius.circular(99),
+                  border: Border.all(
+                    color: isMe ? palette.brand : hue.withValues(alpha: 0.6),
+                  ),
+                  boxShadow: AppShadow.soft(context),
+                ),
+                child: Text(
+                  name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    height: 1.3,
+                    color: isMe ? Colors.white : palette.ink,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }

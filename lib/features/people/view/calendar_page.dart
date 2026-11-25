@@ -106,9 +106,8 @@ class _CalendarPageState extends State<CalendarPage> {
     );
   }
 
-  /// 달력 칸 배치: 한 줄 높이와 날짜 칸 크기.
-  static const _rowPitch = 50.0;
-  static const _cellSize = 38.0;
+  /// 달력 칸 배치: 한 줄 높이.
+  static const _rowPitch = 54.0;
 
   Widget _body(
     BuildContext context,
@@ -134,9 +133,9 @@ class _CalendarPageState extends State<CalendarPage> {
         if (p.birthMonth == _selected.month && p.birthDay == _selected.day) p,
     ]..sort((a, b) => a.name.compareTo(b.name));
 
-    // 배색은 글자색(잉크) 하나에 강조색 하나뿐이다. 요일 색을 나누지 않는다.
-    // 선택한 날은 잉크색으로 채운 칸(입력칸과 같은 모서리), 오늘은 잉크색 테두리 칸,
-    // 모임이 있는 날은 숫자 아래 강조색 점, 생일이 있는 날은 속이 빈 점이다.
+    // 배색은 소프트 인디고(모임) 하나와 코랄(생일) 하나뿐이다. 요일 색을 나누지 않는다.
+    // 날짜는 선 없이 둥근 칸: 선택한 날은 인디고로 채우고 옅은 그림자, 오늘은 옅은 인디고 바탕,
+    // 모임이 있는 날은 숫자 아래 짧은 인디고 막대, 생일이 있는 날은 코랄 점이다.
     Widget cell(int day) {
       if (day < 1 || day > daysInMonth) return const SizedBox.shrink();
       final date = DateTime(_month.year, _month.month, day);
@@ -144,110 +143,126 @@ class _CalendarPageState extends State<CalendarPage> {
       final hasBirthday = birthdayOn(day);
       final isToday = _sameDay(date, _today);
       final isSelected = _sameDay(date, _selected);
-      final dotColor = isSelected ? palette.surface : palette.brand;
-      return Align(
-        alignment: Alignment.topCenter,
-        child: Padding(
-          padding: const EdgeInsets.only(top: 4),
-          child: InkResponse(
-            onTap: () => setState(() => _selected = date),
-            radius: _cellSize / 2 + 4,
-            child: Container(
-              width: _cellSize,
-              height: _cellSize + 6,
-              decoration: BoxDecoration(
-                color: isSelected ? palette.ink : null,
-                borderRadius: AppField.radius,
-                border: !isSelected && isToday
-                    ? Border.all(color: palette.ink, width: 1.2)
-                    : null,
-              ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    '$day',
-                    style: TextStyle(
-                      fontSize: 15,
-                      color: isSelected ? palette.surface : palette.ink,
-                    ),
+      return Padding(
+        padding: const EdgeInsets.all(3),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(14),
+          onTap: () => setState(() => _selected = date),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 160),
+            decoration: BoxDecoration(
+              color: isSelected
+                  ? palette.brand
+                  : isToday
+                  ? palette.brand.withValues(alpha: 0.12)
+                  : null,
+              borderRadius: BorderRadius.circular(14),
+              boxShadow: isSelected ? AppShadow.soft(context) : null,
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  '$day',
+                  style: TextStyle(
+                    fontSize: 15,
+                    color: isSelected
+                        ? palette.onBrand
+                        : isToday
+                        ? palette.brand
+                        : palette.ink,
                   ),
-                  const SizedBox(height: 3),
-                  SizedBox(
-                    height: 5,
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        if (hasMeeting)
-                          Container(
-                            width: 5,
-                            height: 5,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: dotColor,
-                            ),
+                ),
+                const SizedBox(height: 4),
+                SizedBox(
+                  height: 5,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (hasMeeting)
+                        Container(
+                          width: 14,
+                          height: 4,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(99),
+                            color: isSelected
+                                ? palette.onBrand.withValues(alpha: 0.9)
+                                : palette.brand,
                           ),
-                        if (hasMeeting && hasBirthday) const SizedBox(width: 3),
-                        if (hasBirthday)
-                          Container(
-                            width: 5,
-                            height: 5,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: isSelected
-                                    ? palette.surface
-                                    : palette.muted,
-                                width: 1,
-                              ),
-                            ),
+                        ),
+                      if (hasMeeting && hasBirthday) const SizedBox(width: 3),
+                      if (hasBirthday)
+                        Container(
+                          width: 5,
+                          height: 5,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: isSelected
+                                ? palette.onBrand.withValues(alpha: 0.9)
+                                : palette.accent,
                           ),
-                      ],
-                    ),
+                        ),
+                    ],
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ),
       );
     }
 
-    // 큰 달 숫자 + 작은 연도, 오른쪽에 이동 화살표. 달력 부분만 흰 바탕이다 (어두운 모드에서는 카드 바탕색).
+    final isThisMonth =
+        _month.year == _today.year && _month.month == _today.month;
+
+    // 큰 달 숫자 + 연도 알약, 오른쪽에 오늘 · 이동 버튼 (둥근 옅은 인디고 버튼).
     final calendar = Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Row(
-          crossAxisAlignment: CrossAxisAlignment.end,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Text(
               '${_month.month}월',
               style: const TextStyle(fontSize: 30, height: 1.1),
             ),
-            const SizedBox(width: 8),
-            Padding(
-              padding: const EdgeInsets.only(bottom: 4),
+            const SizedBox(width: 10),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+              decoration: BoxDecoration(
+                color: palette.muted.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(99),
+              ),
               child: Text(
                 '${_month.year}',
-                style: TextStyle(color: palette.muted, fontSize: 14),
+                style: TextStyle(color: palette.muted, fontSize: 13),
               ),
             ),
             const Spacer(),
-            IconButton(
+            if (!isThisMonth || !_sameDay(_selected, _today)) ...[
+              _RoundButton(
+                label: '오늘',
+                onTap: () => setState(() {
+                  _month = DateTime(_today.year, _today.month);
+                  _selected = _today;
+                }),
+              ),
+              const SizedBox(width: 8),
+            ],
+            _RoundButton(
+              icon: AppIcons.caretLeft,
               tooltip: '이전 달',
-              visualDensity: VisualDensity.compact,
-              icon: const Icon(AppIcons.caretLeft),
-              onPressed: () => _moveMonth(-1),
+              onTap: () => _moveMonth(-1),
             ),
-            IconButton(
+            const SizedBox(width: 8),
+            _RoundButton(
+              icon: AppIcons.caretRight,
               tooltip: '다음 달',
-              visualDensity: VisualDensity.compact,
-              icon: const Icon(AppIcons.caretRight),
-              onPressed: () => _moveMonth(1),
+              onTap: () => _moveMonth(1),
             ),
           ],
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: 18),
         Row(
           children: [
             for (var i = 0; i < 7; i++)
@@ -261,8 +276,7 @@ class _CalendarPageState extends State<CalendarPage> {
               ),
           ],
         ),
-        const SizedBox(height: 4),
-        Divider(height: 1, color: palette.border),
+        const SizedBox(height: 6),
         for (var r = 0; r < rows; r++)
           SizedBox(
             height: _rowPitch,
@@ -273,16 +287,17 @@ class _CalendarPageState extends State<CalendarPage> {
               ],
             ),
           ),
-        Divider(height: 1, color: palette.border),
       ],
     );
     final panel = Container(
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
+      padding: const EdgeInsets.fromLTRB(14, 18, 14, 12),
       decoration: BoxDecoration(
         color: Theme.of(context).brightness == Brightness.light
             ? Colors.white
             : palette.surface,
-        borderRadius: BorderRadius.circular(AppRadius.card),
+        borderRadius: BorderRadius.circular(AppRadius.panel),
+        border: Border.all(color: palette.border),
+        boxShadow: AppShadow.soft(context),
       ),
       child: calendar,
     );
@@ -295,9 +310,9 @@ class _CalendarPageState extends State<CalendarPage> {
         Gutter(
           child: Row(
             children: [
-              _Legend(color: palette.brand, label: '모임'),
+              _Legend(color: palette.brand, label: '모임', bar: true),
               const SizedBox(width: 16),
-              _Legend(color: palette.muted, label: '생일', hollow: true),
+              _Legend(color: palette.accent, label: '생일'),
             ],
           ),
         ),
@@ -310,7 +325,7 @@ class _CalendarPageState extends State<CalendarPage> {
         ),
         const SizedBox(height: 8),
         if (dayMeetings.isEmpty && dayBirthdays.isEmpty)
-          EmptyHint('일정 없음')
+          const _EmptyDay()
         else ...[
           for (final m in dayMeetings)
             _Bubble(
@@ -321,12 +336,13 @@ class _CalendarPageState extends State<CalendarPage> {
                 meetingWhen(m.date),
                 if (m.place.isNotEmpty) m.place,
               ].join(' · '),
+              leading: _Badge(color: palette.brand, icon: AppIcons.calendar),
               onTap: () =>
                   context.push(Routes.meeting(widget.me.churchId, m.id)),
             ),
           for (final p in dayBirthdays)
             _Bubble(
-              color: palette.muted,
+              color: palette.accent,
               label: '생일',
               title: p.name,
               sub: '${_selected.month}월 ${_selected.day}일',
@@ -345,29 +361,72 @@ class _CalendarPageState extends State<CalendarPage> {
   }
 }
 
-/// 달력 아래 범례 한 칸: 모임은 채운 점, 생일은 속이 빈 점.
-class _Legend extends StatelessWidget {
-  const _Legend({
-    required this.color,
-    required this.label,
-    this.hollow = false,
+/// 달 이동 · 오늘 버튼: 옅은 인디고 바탕의 둥근 버튼 (글자 또는 아이콘).
+class _RoundButton extends StatelessWidget {
+  const _RoundButton({
+    this.icon,
+    this.label,
+    this.tooltip,
+    required this.onTap,
   });
+
+  final IconData? icon;
+  final String? label;
+  final String? tooltip;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = context.palette;
+    final ShapeBorder shape = label == null
+        ? const CircleBorder()
+        : const StadiumBorder();
+    final child = Material(
+      color: palette.brand.withValues(alpha: 0.1),
+      shape: shape,
+      child: InkWell(
+        customBorder: shape,
+        onTap: onTap,
+        child: SizedBox(
+          width: label == null ? 36 : null,
+          height: 36,
+          child: Center(
+            widthFactor: label == null ? null : 1,
+            child: label != null
+                ? Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 14),
+                    child: Text(
+                      label!,
+                      style: TextStyle(color: palette.brand, fontSize: 13),
+                    ),
+                  )
+                : Icon(icon, size: 18, color: palette.brand),
+          ),
+        ),
+      ),
+    );
+    return tooltip == null ? child : Tooltip(message: tooltip!, child: child);
+  }
+}
+
+/// 달력 아래 범례 한 칸: 모임은 짧은 막대, 생일은 점.
+class _Legend extends StatelessWidget {
+  const _Legend({required this.color, required this.label, this.bar = false});
 
   final Color color;
   final String label;
-  final bool hollow;
+  final bool bar;
 
   @override
   Widget build(BuildContext context) => Row(
     mainAxisSize: MainAxisSize.min,
     children: [
       Container(
-        width: 7,
-        height: 7,
+        width: bar ? 14 : 7,
+        height: bar ? 4 : 7,
         decoration: BoxDecoration(
-          color: hollow ? null : color,
-          border: hollow ? Border.all(color: color, width: 1.2) : null,
-          shape: BoxShape.circle,
+          color: color,
+          borderRadius: BorderRadius.circular(99),
         ),
       ),
       const SizedBox(width: 6),
@@ -376,8 +435,30 @@ class _Legend extends StatelessWidget {
   );
 }
 
-/// 그날의 모임 · 생일 한 줄: 상자 없이 왼쪽의 가는 세로선 하나(모임은 강조색, 생일은 회색). 모임은 누르면 상세 화면이 열린다.
+/// 모임 줄 앞의 둥근 아이콘 칸 (생일 줄의 사진과 같은 크기).
+class _Badge extends StatelessWidget {
+  const _Badge({required this.color, required this.icon});
+
+  final Color color;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    width: 40,
+    height: 40,
+    decoration: BoxDecoration(
+      color: color.withValues(alpha: 0.12),
+      shape: BoxShape.circle,
+    ),
+    child: Icon(icon, size: 20, color: color),
+  );
+}
+
+/// 그날의 모임 · 생일 한 줄: 둥근 카드 하나(앞에 아이콘 또는 사진, 오른쪽 끝에 종류 알약). 모임은 누르면 상세 화면이 열린다.
 class _Bubble extends StatelessWidget {
+  /// 카드 안쪽 높이(아이콘 · 사진 칸 기준). 일정 없음 카드와 같다.
+  static const contentHeight = 44.0;
+
   const _Bubble({
     required this.color,
     required this.label,
@@ -397,48 +478,124 @@ class _Bubble extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final palette = context.palette;
-    return InkWell(
-      onTap: onTap,
-      child: Padding(
-        padding: EdgeInsets.symmetric(
-          horizontal: textGutter(context),
-          vertical: 8,
+    final radius = BorderRadius.circular(AppRadius.card);
+    final gutter = textGutter(context);
+    return Padding(
+      padding: EdgeInsets.fromLTRB(gutter, 6, gutter, 6),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          borderRadius: radius,
+          boxShadow: AppShadow.soft(context),
         ),
-        child: Container(
-          padding: const EdgeInsets.only(left: 12),
-          decoration: BoxDecoration(
-            border: Border(left: BorderSide(color: color, width: 2)),
+        child: Material(
+          color: palette.surface,
+          shape: RoundedRectangleBorder(
+            borderRadius: radius,
+            side: BorderSide(color: palette.border),
           ),
-          child: Row(
-            children: [
-              if (leading != null) ...[leading!, const SizedBox(width: 12)],
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: radius,
+            child: Padding(
+              padding: const EdgeInsets.all(14),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(
+                  minHeight: _Bubble.contentHeight,
+                ),
+                child: Row(
                   children: [
-                    Text(
-                      label,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(color: palette.muted, fontSize: 11.5),
-                    ),
-                    Text(
-                      title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 14.5),
-                    ),
-                    if (sub.isNotEmpty)
-                      Text(
-                        sub,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(color: palette.muted, fontSize: 12.5),
+                    if (leading != null) ...[
+                      leading!,
+                      const SizedBox(width: 14),
+                    ],
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontSize: 15),
+                          ),
+                          if (sub.isNotEmpty)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 2),
+                              child: Text(
+                                sub,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  color: palette.muted,
+                                  fontSize: 12.5,
+                                ),
+                              ),
+                            ),
+                        ],
                       ),
+                    ),
+                    const SizedBox(width: 10),
+                    // 종류(모임 · 생일) 알약.
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 3,
+                      ),
+                      decoration: BoxDecoration(
+                        color: color.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(99),
+                      ),
+                      child: Text(
+                        label,
+                        style: TextStyle(color: color, fontSize: 12),
+                      ),
+                    ),
                   ],
                 ),
               ),
-            ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// 일정이 없는 날: 일정 카드와 같은 크기 · 같은 모양의 카드에 "일정 없음".
+class _EmptyDay extends StatelessWidget {
+  const _EmptyDay();
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = context.palette;
+    final radius = BorderRadius.circular(AppRadius.card);
+    final gutter = textGutter(context);
+    return Padding(
+      padding: EdgeInsets.fromLTRB(gutter, 6, gutter, 6),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          borderRadius: radius,
+          boxShadow: AppShadow.soft(context),
+        ),
+        child: Material(
+          color: palette.surface,
+          shape: RoundedRectangleBorder(
+            borderRadius: radius,
+            side: BorderSide(color: palette.border),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(
+                minHeight: _Bubble.contentHeight,
+              ),
+              child: Center(
+                child: Text(
+                  '일정 없음',
+                  style: TextStyle(color: palette.muted, fontSize: 14),
+                ),
+              ),
+            ),
           ),
         ),
       ),

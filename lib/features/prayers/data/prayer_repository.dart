@@ -119,6 +119,7 @@ class PrayerRepository {
   Future<void> create(
     String churchId, {
     required String authorName,
+    required String title,
     required String content,
     required PrayerVisibility visibility,
     String? affiliationId,
@@ -132,6 +133,7 @@ class PrayerRepository {
           'authorId': _auth.uid,
           'authorName': authorName,
           'affiliationId': affiliationId,
+          'title': title,
           'content': content,
           'visibility': visibility.name,
           'authorHidden': authorHidden,
@@ -151,6 +153,7 @@ class PrayerRepository {
   Future<void> update(
     String churchId,
     String id, {
+    required String title,
     required String content,
     required PrayerVisibility visibility,
     bool authorHidden = false,
@@ -158,6 +161,7 @@ class PrayerRepository {
       .prayers(churchId)
       .doc(id)
       .update({
+        'title': title,
         'content': content,
         'visibility': visibility.name,
         'authorHidden': authorHidden,

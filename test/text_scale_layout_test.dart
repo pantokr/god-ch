@@ -298,6 +298,49 @@ Future<void> _pump(
 void _noop() {}
 
 void main() {
+  // 제목 30자(띄어쓰기 없는 한글: 가장 넓은 경우)가 폰 너비에서도 두 줄 안에 다 보이는가.
+  for (final width in [320.0, 360.0, 412.0, 880.0]) {
+    for (final grid in [false, true]) {
+      testWidgets(
+        '중보기도 제목 30자가 다 보인다 (리스트 3줄 · 그리드 5줄 안, ${width.toInt()}px ${grid ? '그리드' : '리스트'})',
+        (tester) async {
+          final title = ('가나다라마바사아자차카타파하' * 3).substring(0, Prayer.maxTitle);
+          final tile = PrayerTile(
+            prayer: Prayer(
+              id: 'fit',
+              authorId: 'x',
+              authorName: '긴이름을가진작성자',
+              title: title,
+              content: '내용',
+              visibility: PrayerVisibility.public,
+              deleted: false,
+              createdAt: DateTime.now(),
+            ),
+            me: _me,
+            settings: PrayerSettings.standard,
+            gutter: grid ? 0 : null,
+            grid: grid,
+          );
+          await _pump(
+            tester,
+            SingleChildScrollView(
+              child: grid ? TwoColumn(children: [tile]) : tile,
+            ),
+            width,
+            1.0,
+          );
+          expect(tester.takeException(), isNull);
+          final paragraph = tester.renderObject<RenderParagraph>(
+            find.text(title),
+          );
+          expect(paragraph.didExceedMaxLines, isFalse);
+          // 리스트는 세 줄 안에 보인다.
+          if (!grid) expect(paragraph.maxLines, 3);
+        },
+      );
+    }
+  }
+
   for (final (name, width, scale) in _cases) {
     group('글씨 크기 $name (배율 ${scale.toStringAsFixed(2)})', () {
       testWidgets('소속 관리 카드(미배정 포함)가 넘치지 않는다', (tester) async {
@@ -439,6 +482,7 @@ void main() {
                   id: 'p${long ? 1 : 0}',
                   authorId: 'x',
                   authorName: '긴이름을가진작성자',
+                  title: long ? '아주 아주 긴 중보기도 제목이 두 줄을 넘어갑니다 정말로' : '짧은 제목',
                   content: long ? '기도 제목이 아주 길어서 여러 줄로 넘어갑니다. ' * 8 : '짧은 기도',
                   visibility: PrayerVisibility.private,
                   deleted: false,
